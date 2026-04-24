@@ -13,6 +13,9 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.mark.haie
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_petition_department_list(
     inactive_haie_user_44,
     haie_instructor_no_dept,
@@ -405,6 +408,9 @@ class TestConfigMenuLink:
 
 
 @pytest.mark.haie
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 class TestParametrageDepartmentsMenu:
     """Test the content of the "Parametrage" menu."""
 

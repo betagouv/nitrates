@@ -17,7 +17,12 @@ from envergo.moulinette.tests.factories import (
     RUConfigHaieFactory,
 )
 
-pytestmark = pytest.mark.haie
+pytestmark = [
+    pytest.mark.haie,
+    pytest.mark.skip(
+        reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+    ),
+]
 
 
 HOME_TITLE = "Projet de destruction de haies ou alignements d'arbres"

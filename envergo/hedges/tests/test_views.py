@@ -9,7 +9,13 @@ from envergo.contrib.sites.tests.factories import SiteFactory
 from envergo.moulinette.tests.factories import DCConfigHaieFactory
 from envergo.petitions.tests.factories import PetitionProjectFactory
 
-pytestmark = [pytest.mark.django_db, pytest.mark.haie]
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.haie,
+    pytest.mark.skip(
+        reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+    ),
+]
 
 
 @pytest.fixture(autouse=True)

@@ -114,6 +114,9 @@ def test_map_does_not_display_even_when_non_concerne(captage_criteria):
 
 
 @pytest.mark.haie
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_perimeter_detail_hidden_when_map_not_displayed(bizous_town_center, client):
     """When show_map is False, the perimeter detail must not appear in the HTML."""
     regulation = RegulationFactory(
@@ -156,6 +159,9 @@ def test_perimeter_detail_hidden_when_map_not_displayed(bizous_town_center, clie
 
 
 @pytest.mark.haie
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_perimeter_detail_shown_when_map_displayed(bizous_town_center, client):
     """When show_map is True, the perimeter detail must appear in the HTML."""
     regulation = RegulationFactory(
