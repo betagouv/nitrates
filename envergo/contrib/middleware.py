@@ -38,6 +38,9 @@ class SetUrlConfBasedOnSite:
         if site.domain == settings.ENVERGO_HAIE_DOMAIN:
             request.urlconf = "config.urls_haie"
             request.base_template = "haie/base.html"
+        elif site.domain == settings.ENVERGO_NITRATES_DOMAIN:
+            request.urlconf = "config.urls_nitrates"
+            request.base_template = "nitrates/base.html"
 
         response = self.get_response(request)
 

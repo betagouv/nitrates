@@ -87,6 +87,7 @@ LOCAL_APPS = [
     "envergo.hedges",
     "envergo.petitions",
     "envergo.demos",
+    "envergo.nitrates",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -407,6 +408,9 @@ ENVERGO_AMENAGEMENT_DOMAIN = env(
     "DJANGO_ENVERGO_AMENAGEMENT_DOMAIN", default="envergo.beta.gouv.fr"
 )
 ENVERGO_HAIE_DOMAIN = env("DJANGO_ENVERGO_HAIE_DOMAIN", default="haie.beta.gouv.fr")
+ENVERGO_NITRATES_DOMAIN = env(
+    "DJANGO_ENVERGO_NITRATES_DOMAIN", default="nitrates.beta.gouv.fr"
+)
 
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
