@@ -1,0 +1,17 @@
+{% extends "multisite_base.html" %}
+
+{% block app_title %}
+  {% block title %}
+  {% endblock title %}
+  — Simulateur nitrates
+{% endblock %}
+
+{% block description %}Simulateur des obligations nitrates pour les agriculteurs en zones vulnérables{% endblock %}
+
+{% block include_header %}
+  {% include 'nitrates/_header.html' %}
+{% endblock %}
+
+{% block footer %}
+  {% include 'nitrates/_footer.html' %}
+{% endblock %}

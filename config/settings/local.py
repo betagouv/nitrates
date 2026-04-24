@@ -14,6 +14,7 @@ SECRET_KEY = env(
 
 ENVERGO_AMENAGEMENT_DOMAIN = "envergo.local"
 ENVERGO_HAIE_DOMAIN = "haie.local"
+ENVERGO_NITRATES_DOMAIN = "nitrates.local"
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
@@ -22,8 +23,10 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "envergo.local",
     "haie.local",
+    "nitrates.local",
     ENVERGO_AMENAGEMENT_DOMAIN,
     ENVERGO_HAIE_DOMAIN,
+    ENVERGO_NITRATES_DOMAIN,
 ]
 
 # CACHES
