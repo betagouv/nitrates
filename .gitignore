@@ -297,3 +297,6 @@ data.*
 /playwright/.cache/
 
 altis/
+
+# Local docker-compose override (ports, dev-only tweaks)
+docker-compose.override.yml
