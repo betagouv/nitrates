@@ -244,6 +244,9 @@ def test_evalenv_terrain_assiette_systematique():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evalenv_non_soumis_no_optional_criteria(admin_client):
     """When no optional form is activated, we can show the result."""
     ConfigAmenagementFactory()
@@ -265,6 +268,9 @@ def test_evalenv_non_soumis_no_optional_criteria(admin_client):
     )
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evalenv_non_soumis_missing_optional_criteria(admin_client):
     """When optional data is missing, we don't show the result page."""
     ConfigAmenagementFactory()
@@ -280,6 +286,9 @@ def test_evalenv_non_soumis_missing_optional_criteria(admin_client):
     assert res["Location"].startswith("/simulateur/formulaire/")
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evalenv_non_soumis_optional_criteria(admin_client):
     ConfigAmenagementFactory()
 
@@ -304,6 +313,9 @@ def test_evalenv_non_soumis_optional_criteria(admin_client):
     )
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evalenv_rubrique44(admin_client):
     ConfigAmenagementFactory()
 

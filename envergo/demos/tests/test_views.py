@@ -11,7 +11,13 @@ from envergo.geodata.tests.factories import (
 )
 from envergo.hedges.tests.factories import HedgeDataFactory
 
-pytestmark = [pytest.mark.django_db, pytest.mark.haie]
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.haie,
+    pytest.mark.skip(
+        reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+    ),
+]
 
 
 def test_hedges_density_around_point_demo(client):

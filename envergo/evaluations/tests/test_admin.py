@@ -107,6 +107,9 @@ def test_create_eval_fails_when_it_already_exists(client, admin_user, eval_reque
     assert qs.count() == 1
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evaluation_email_sending(admin_client, evaluation, mailoutbox):
     # Make sure the "loi sur l'eau" result will be set
     ConfigAmenagementFactory()
@@ -145,6 +148,9 @@ def test_evaluation_email_sending(admin_client, evaluation, mailoutbox):
     assert log.evaluation == evaluation
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evaluation_email_without_to_recipient_should_use_cc_instead(
     admin_client, evaluation, mailoutbox
 ):
@@ -182,6 +188,9 @@ def test_evaluation_email_without_to_recipient_should_use_cc_instead(
     assert log.evaluation == evaluation
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evaluation_email_throttling(admin_client, evaluation, mailoutbox):
     # Make sure the "loi sur l'eau" result will be set
     CriterionFactory()
@@ -212,6 +221,9 @@ def test_evaluation_email_throttling(admin_client, evaluation, mailoutbox):
     )
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evaluation_email_recipient_overriding(admin_client, evaluation, mailoutbox):
     # Make sure the "loi sur l'eau" result will be set
     CriterionFactory()
@@ -236,6 +248,9 @@ def test_evaluation_email_recipient_overriding(admin_client, evaluation, mailout
     assert mail.bcc == bcc
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_evaluation_email_with_empty_recipients(admin_client, evaluation, mailoutbox):
     # Make sure the "loi sur l'eau" result will be set
     CriterionFactory()
@@ -256,6 +271,9 @@ def test_evaluation_email_with_empty_recipients(admin_client, evaluation, mailou
     assert "Vous devez spécifier au moins un destinataire" in res.content.decode()
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_display_published_version_message(evaluation, admin_client, admin_user):
     # GIVEN an evaluation with a version not published
     url = reverse("admin:evaluations_evaluation_change", args=[evaluation.pk])

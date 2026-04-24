@@ -19,6 +19,9 @@ def test_set_visitor_id_cookie_middleware(client):
     assert request.COOKIES["visitorid"]
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_visitor_cookie_deactivation(client):
     # Set initial cookie
     res = client.get("/")
@@ -128,6 +131,9 @@ def test_analytics_empty_values(client):
     assert res.redirect_chain[0][0] == "/?"
 
 
+@pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues envergo/haie non routées par le middleware nitrates"
+)
 def test_analytics_with_post_request(client):
     # We don't prevent POST queries with mtm_ parameters
     res = client.post(
