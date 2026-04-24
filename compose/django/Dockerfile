@@ -8,7 +8,9 @@ ARG BUILD_ENVIRONMENT=local
 # Install apt packages
 RUN apt-get update && apt-get install --no-install-recommends -y \
   # dependencies for building Python packages
-  build-essential
+  build-essential \
+  # GDAL headers required to build GDAL wheel on arm64 (no prebuilt wheel on PyPI)
+  libgdal-dev
 
 # build assets
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
@@ -78,8 +80,5 @@ RUN chmod +x /start
 
 # copy application code to WORKDIR
 COPY . ${APP_HOME}
-
-# This is required because we disabled all npm scripts in .npmrc
-RUN node node_modules/optipng-bin/lib/install.js
 
 ENTRYPOINT ["/entrypoint"]
