@@ -25,6 +25,8 @@ MAP_TYPES = Choices(
     ("terres_emergees", "Délimitation terres + France"),
     ("zonage", "Identifiant zonage"),
     ("zone_sensible_ep", "Zone sensible EP"),
+    ("zv_nitrates", "Zone vulnérable nitrates"),
+    ("rpg_parcelle", "Parcelle RPG"),
 )
 
 # Sometimes, there are map with different certainty values.
