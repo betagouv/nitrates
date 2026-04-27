@@ -1,8 +1,31 @@
 {% extends "nitrates/base.html" %}
 
+{% load static leaflet_tags %}
+
 {% block title %}Accueil{% endblock %}
 
-{% block article %}
-  <h1>Simulateur nitrates</h1>
-  <p>Service en construction.</p>
+{% block extra_css %}
+  {% leaflet_css %}
+  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+  {% leaflet_js %}
+  <script>window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";</script>
+  <script defer src="{% static 'nitrates/home.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+    <h1>Simulateur nitrates</h1>
+    <p class="fr-text--lead">
+      Cliquez sur la carte pour obtenir les informations réglementaires associées à une parcelle.
+    </p>
+
+    <div id="nitrates-map" class="nitrates-map"></div>
+
+    <div id="nitrates-debug" class="nitrates-debug fr-mt-3w">
+      <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
+    </div>
+  </div>
 {% endblock %}
