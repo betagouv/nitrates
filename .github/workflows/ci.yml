@@ -101,91 +101,10 @@ jobs:
       - name: Run Django Tests
         run: pytest
 
-  e2e:
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-
-    # Configure the database service
-    services:
-      database:
-        image: postgis/postgis:14-master
-        env:
-          POSTGRES_USER: envergo
-          POSTGRES_PASSWORD: envergo
-          POSTGRES_DB: envergo
-        ports:
-          - 5432:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 18
-      - name: Install dependencies
-        run: npm ci
-      - name: Install French locale
-        run: |
-          sudo apt update
-          sudo apt install -y language-pack-fr
-          sudo locale-gen fr_FR.UTF-8
-          sudo update-locale LANG=fr_FR.UTF-8 LC_ALL=fr_FR.UTF-8
-      - name: Install Playwright Browsers
-        run: npm run playwright:install
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Create .env file for GUH
-        run: echo "DJANGO_ENVERGO_HAIE_DOMAIN=localhost" >> .env
-      - name: Launch services for GUH
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-      - name: Migrate database
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django python manage.py migrate
-      - name: Seed database
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django python manage.py loaddata e2e/fixtures/db_seed.json
-      - name: Build assets
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django bash bin/build_assets.sh
-      - name: Wait for services to be ready
-        run: wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries 10 http://localhost:3000/
-      - name: Run Playwright tests for GUH
-        run: npm run e2e-haie
-
-      - name: Stop services before relaunch
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down --volumes --remove-orphans
-      - name: Create .env file for amenagement
-        run: |
-          sed -i '/^DJANGO_ENVERGO_HAIE_DOMAIN=/d' .env
-          echo "DJANGO_ENVERGO_AMENAGEMENT_DOMAIN=localhost" >> .env
-      - name: Launch services for amenagement
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --force-recreate --build
-      - name: Migrate database
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django python manage.py migrate
-      - name: Seed database
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django python manage.py loaddata e2e/fixtures/db_seed.json
-      - name: Build assets
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm django bash bin/build_assets.sh
-      - name: Wait for services to be ready
-        run: wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 --tries 10 http://localhost:3000/
-      - name: Run Playwright tests for amenagement
-        run: npm run e2e-amenagement
-      - name: Dump Docker logs on failure
-        if: failure()
-        run: |
-          echo "=== Django logs ==="
-          docker compose logs django || true
-          echo "=== Node logs ==="
-          docker compose logs node || true
-          echo "=== Postgres logs ==="
-          docker compose logs postgres || true
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
-
+  # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+  # Le job e2e amenagement + GUH a ete supprime ici. Au remerge upstream,
+  # restaurer le job e2e d'origine.
+  #
+  # TODO mvp 0.0.2: ajouter un job e2e-nitrates dedie a la place. Il sera ajoute
+  # dans la PR qui apporte la vue debug + tests Playwright nitrates (les fichiers
+  # playwright.config.nitrates.ts et e2e/nitrates/* ne sont pas dans cette PR).
