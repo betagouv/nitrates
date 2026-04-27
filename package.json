@@ -46,6 +46,8 @@
     "e2e-haie:ui": "TEST_DIR='./e2e/haie' playwright test --ui",
     "e2e-amenagement": "TEST_DIR='./e2e/amenagement' playwright test",
     "e2e-amenagement:ui": "TEST_DIR='./e2e/amenagement' playwright test --ui",
+    "e2e-nitrates": "playwright test --config playwright.config.nitrates.ts",
+    "e2e-nitrates:ui": "playwright test --config playwright.config.nitrates.ts --ui",
     "playwright:install": "playwright install --with-deps"
   }
 }
