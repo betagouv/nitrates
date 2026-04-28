@@ -5,12 +5,18 @@ from django.views.generic import TemplateView
 from envergo.nitrates.views import (
     DebugView,
     HomeView,
+    MoulinetteView,
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
+    path(
+        _("simulateur/"),
+        MoulinetteView.as_view(),
+        name="nitrates_simulateur",
+    ),
     path(
         _("simulateur/debug/"),
         DebugView.as_view(),

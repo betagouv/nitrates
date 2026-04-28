@@ -256,19 +256,20 @@ def test_pan_sol_non_cultive_court_circuit(arbre_pan):
     assert res.type == "interdiction"
 
 
-def test_pan_mais_culture_principale_atteint_resultat(arbre_pan):
+def test_pan_culture_post_0101_type_0_atteint_resultat(arbre_pan):
     res = parcours(
         arbre_pan,
         {
             "en_zone_vulnerable": True,
             "occupation_sol": "culture_principale",
-            "sous_culture": "mais",
+            "sous_culture": "culture_recoltee_apres_0101_hors_colza",
+            "type_fertilisant": "type_0",
         },
     )
     assert isinstance(res, Resultat)
-    assert res.regle_id == "r_mais_principal"
+    assert res.regle_id == "r_post_0101_type_0"
     assert res.type == "interdiction"
-    assert res.code_prescription == "pc5"
+    assert res.code_prescription == "pc4"
 
 
 def test_pan_colza_type_II_demande_zone_note_5(arbre_pan):

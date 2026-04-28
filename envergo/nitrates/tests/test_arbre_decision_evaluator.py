@@ -94,29 +94,32 @@ def test_sol_non_cultive_court_circuit(setup):
 # ─── Resultats par type de regle ──────────────────────────────────────────
 
 
-def test_mais_culture_principale_interdiction(setup):
+def test_culture_post_0101_type_0_interdiction(setup):
+    """Culture recoltee apres le 01/01 + type 0 -> interdit du 15/12 au
+    15/01."""
     mou = _moulinette(
         occupation_sol="culture_principale",
-        sous_culture="mais",
+        sous_culture="culture_recoltee_apres_0101_hors_colza",
+        type_fertilisant="type_0",
     )
     ev = _evaluator(mou)
     assert ev.result == RESULTS.interdit
-    assert ev.result_code == "r_mais_principal"
-    assert ev.regle.code_prescription == "pc5"
+    assert ev.result_code == "r_post_0101_type_0"
+    assert ev.regle.code_prescription == "pc4"
 
 
 def test_chemin_trace_dans_evaluator(setup):
     """Le chemin doit etre accessible pour debug juriste."""
     mou = _moulinette(
         occupation_sol="culture_principale",
-        sous_culture="mais",
+        sous_culture="culture_recoltee_apres_0101_hors_colza",
+        type_fertilisant="type_0",
     )
     ev = _evaluator(mou)
     # chemin = ids des noeuds traverses
     assert "n_zvn" in ev.chemin
     assert "q_occupation_sol" in ev.chemin
-    assert "q_culture_type" in ev.chemin
-    assert "r_mais_principal" in ev.chemin
+    assert "r_post_0101_type_0" in ev.chemin
 
 
 # ─── Resolution catalogue interne (zone_note_5) ────────────────────────────
@@ -153,18 +156,28 @@ def test_colza_type_0_interdiction_directe(setup):
 # ─── Stub a_completer ─────────────────────────────────────────────────────
 
 
-def test_regle_a_completer_renvoie_non_disponible(setup):
+def test_regle_a_completer_force_non_disponible(monkeypatch, setup):
     """Une regle marquee a_completer (stub brouillon) ne doit pas afficher
-    un resultat final, on retourne non_disponible."""
-    mou = _moulinette(
-        occupation_sol="culture_principale",
-        sous_culture="luzerne",
-        type_fertilisant="type_Ib",
+    un resultat final, on force non_disponible meme si le mapping de type
+    aurait donne autre chose. Test via un faux Resultat injecte."""
+    from envergo.nitrates.regulations import arbre_decision
+    from envergo.nitrates.yaml_tree import Resultat
+
+    fake_resultat = Resultat(
+        regle_id="r_test_stub",
+        type="interdiction",  # mapping normal -> interdit
+        chemin=["n_zvn", "r_test_stub"],
+        a_completer=True,  # ... mais a_completer force non_disponible
     )
+
+    def fake_parcours(arbre, contexte):
+        return fake_resultat
+
+    monkeypatch.setattr(arbre_decision, "parcours", fake_parcours)
+
+    mou = _moulinette()
     ev = _evaluator(mou)
     assert ev.result == RESULTS.non_disponible
-    # Le code et le chemin restent accessibles pour debug.
-    assert ev.result_code == "r_luzerne_Ib_todo"
     assert ev.regle.a_completer is True
 
 

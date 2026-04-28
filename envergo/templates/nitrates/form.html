@@ -1,0 +1,124 @@
+{% extends "nitrates/base.html" %}
+
+{% block title %}Simulateur{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+    <h1>Simulateur nitrates</h1>
+    <p class="fr-text--lead">
+      Saisissez la position de votre parcelle et son occupation pour obtenir le calendrier d'épandage applicable.
+    </p>
+
+    <form method="get"
+          action="{% url 'nitrates_simulateur' %}"
+          class="fr-mt-4w">
+
+      <fieldset class="fr-fieldset">
+        <legend class="fr-fieldset__legend">Position de la parcelle</legend>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_lat">Latitude</label>
+            <input class="fr-input"
+                   type="number"
+                   step="any"
+                   name="lat"
+                   id="id_lat"
+                   value="{{ data.lat|default:'' }}"
+                   required
+                   min="-90"
+                   max="90">
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_lng">Longitude</label>
+            <input class="fr-input"
+                   type="number"
+                   step="any"
+                   name="lng"
+                   id="id_lng"
+                   value="{{ data.lng|default:'' }}"
+                   required
+                   min="-180"
+                   max="180">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fr-fieldset">
+        <legend class="fr-fieldset__legend">Caractéristiques de l'épandage</legend>
+        <p class="fr-hint-text">
+          Tous les champs sont optionnels. Les questions complémentaires seront posées au fur et à mesure selon vos réponses.
+        </p>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_occupation_sol">Occupation du sol</label>
+            <input class="fr-input"
+                   type="text"
+                   name="occupation_sol"
+                   id="id_occupation_sol"
+                   value="{{ data.occupation_sol|default:'' }}"
+                   placeholder="ex : culture_principale, sol_non_cultive">
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_sous_culture">Sous-culture</label>
+            <input class="fr-input"
+                   type="text"
+                   name="sous_culture"
+                   id="id_sous_culture"
+                   value="{{ data.sous_culture|default:'' }}"
+                   placeholder="ex : mais, colza, luzerne">
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_type_fertilisant">Type de fertilisant</label>
+            <input class="fr-input"
+                   type="text"
+                   name="type_fertilisant"
+                   id="id_type_fertilisant"
+                   value="{{ data.type_fertilisant|default:'' }}"
+                   placeholder="ex : type_0, type_Ia, type_II">
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-input-group">
+            <label class="fr-label" for="id_sous_fertilisant">Sous-fertilisant</label>
+            <input class="fr-input"
+                   type="text"
+                   name="sous_fertilisant"
+                   id="id_sous_fertilisant"
+                   value="{{ data.sous_fertilisant|default:'' }}"
+                   placeholder="ex : ammonitrate, uree (optionnel)">
+          </div>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="fr-btn fr-mt-2w">Lancer la simulation</button>
+    </form>
+
+    <div class="fr-mt-4w">
+      <h2 class="fr-h4">Liens utiles</h2>
+      <ul>
+        <li>
+          <a href="{% url 'nitrates_referentiels' %}" target="_blank">Référentiels (JSON)</a> — types de fertilisants, cultures, codes prescription, etc.
+        </li>
+        <li>
+          <a href="{% url 'nitrates_debug' %}?lng=4.0345&lat=49.2583"
+             target="_blank">Endpoint debug</a> — infos géo brutes pour un point
+        </li>
+        <li>
+          <a href="{% url 'home' %}">Carte interactive</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+{% endblock %}

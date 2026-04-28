@@ -1,0 +1,144 @@
+{% extends "nitrates/base.html" %}
+
+{% block title %}Résultat{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+    <h1>Résultat de la simulation</h1>
+
+    {# ─── Rappel saisie ─────────────────────────────────────────────── #}
+    <div class="fr-callout fr-mt-2w">
+      <h3 class="fr-callout__title">Saisie</h3>
+      <p>
+        <strong>Position :</strong> lat={{ moulinette.catalog.lat }}, lng={{ moulinette.catalog.lng }}
+        <br>
+        <strong>Département :</strong> {{ moulinette.catalog.department_code|default:"—" }}
+        ({{ moulinette.catalog.region_label|default:"hors France" }})
+        <br>
+        <strong>Zone vulnérable :</strong>
+        {% if moulinette.catalog.en_zone_vulnerable %}
+          oui — bassin {{ moulinette.catalog.bassin_label }}
+        {% else %}
+          non
+        {% endif %}
+      </p>
+      {% if moulinette.catalog.occupation_sol or moulinette.catalog.sous_culture %}
+        <p>
+          <strong>Occupation :</strong> {{ moulinette.catalog.occupation_sol|default:"—" }}
+          / <strong>Culture :</strong> {{ moulinette.catalog.sous_culture|default:"—" }}
+          / <strong>Type fertilisant :</strong> {{ moulinette.catalog.type_fertilisant|default:"—" }}
+          / <strong>Sous-fertilisant :</strong> {{ moulinette.catalog.sous_fertilisant|default:"—" }}
+        </p>
+      {% endif %}
+    </div>
+
+    {# ─── Resultat global ───────────────────────────────────────────── #}
+    {% if not moulinette.catalog.en_zone_vulnerable %}
+      <div class="fr-alert fr-alert--info fr-mt-3w">
+        <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
+        <p>La directive nitrates ne s'applique pas à cette parcelle.</p>
+      </div>
+    {% else %}
+      {% if regulations_evaluees %}
+        <h2 class="fr-mt-3w">Directive nitrates</h2>
+
+        {% for entry in regulations_evaluees %}
+          {% with regulation=entry.regulation criterion=entry.criterion ev=entry.evaluator %}
+            <div class="fr-mt-2w">
+              <h3 class="fr-h5">Critère : {{ criterion.title|default:criterion.slug }}</h3>
+              <p>
+                <strong>Résultat :</strong> <code>{{ ev.result }}</code>
+              </p>
+              <p>
+                <strong>Result code :</strong> <code>{{ ev.result_code }}</code>
+              </p>
+
+              {% if ev.regle %}
+                <div class="fr-callout fr-callout--brown-caramel fr-mt-2w">
+                  <p>
+                    <strong>Règle atteinte :</strong> <code>{{ ev.regle.regle_id }}</code> ({{ ev.regle.type }})
+                  </p>
+                  {% if ev.regle.message %}<p>{{ ev.regle.message }}</p>{% endif %}
+                  {% if ev.regle.texte %}<p>{{ ev.regle.texte }}</p>{% endif %}
+                  {% if ev.regle.periodes %}
+                    <p>
+                      <strong>Périodes :</strong>
+                    </p>
+                    <ul>
+                      {% for p in ev.regle.periodes %}<li>du {{ p.du }} au {{ p.au }}</li>{% endfor %}
+                    </ul>
+                  {% endif %}
+                  {% if ev.regle.plafond_azote_kg_n_ha %}
+                    <p>
+                      <strong>Plafond :</strong> {{ ev.regle.plafond_azote_kg_n_ha }} kg N/ha
+                    </p>
+                  {% endif %}
+                  {% if ev.regle.code_prescription %}
+                    <p>
+                      <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
+                    </p>
+                  {% endif %}
+                  {% if ev.regle.note %}
+                    <p>
+                      <strong>Note :</strong> {{ ev.regle.note }}
+                    </p>
+                  {% endif %}
+                  {% if ev.regle.a_completer %}
+                    <p class="fr-text--sm">
+                      <em>⚠ Cette règle est marquée "à compléter" dans le brouillon — résultat non finalisé.</em>
+                    </p>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if ev.questions_subsidiaires %}
+                <div class="fr-callout fr-callout--blue-cumulus fr-mt-2w">
+                  <h4 class="fr-callout__title">Questions complémentaires</h4>
+                  <p>
+                    Le parcours s'est arrêté avant la feuille. Il faut répondre aux questions suivantes pour obtenir le résultat final :
+                  </p>
+                  <ul>
+                    {% for q in ev.questions_subsidiaires.questions %}
+                      <li>
+                        <strong>{{ q.texte }}</strong> ({{ q.champ }}, niveau {{ q.niveau }})
+                        <br>
+                        <small>Choix possibles :
+                          {% for c in q.choix %}
+                            <code>{{ c.valeur }}</code>
+                            {% if c.libelle %}({{ c.libelle }}){% endif %}
+                            {% if not forloop.last %},{% endif %}
+                          {% endfor %}
+                        </small>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              {% endif %}
+
+              {% if ev.chemin %}
+                <details class="fr-mt-2w">
+                  <summary>Chemin parcouru (debug)</summary>
+                  <pre>{% for n in ev.chemin %}{{ n }}{% if not forloop.last %} → {% endif %}{% endfor %}</pre>
+                </details>
+              {% endif %}
+            </div>
+          {% endwith %}
+        {% endfor %}
+      {% else %}
+        <div class="fr-alert fr-alert--warning fr-mt-3w">
+          <h3 class="fr-alert__title">Aucun critère actif</h3>
+          <p>
+            Aucun critère ne s'est activé pour ce point. Le point est probablement hors d'une zone d'activation (ZV nitrates pour le critère arbre_decision).
+          </p>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="fr-mt-4w">
+      <a href="{% url 'nitrates_simulateur' %}?lng={{ moulinette.catalog.lng }}&lat={{ moulinette.catalog.lat }}"
+         class="fr-btn fr-btn--secondary">Modifier la simulation</a>
+      <a href="{% url 'nitrates_simulateur' %}"
+         class="fr-btn fr-btn--secondary fr-ml-2w">Nouvelle simulation</a>
+    </div>
+  </div>
+{% endblock %}
