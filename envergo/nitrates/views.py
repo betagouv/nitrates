@@ -2,14 +2,16 @@ import json
 
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
-from envergo.nitrates.models import RpgCulture
+from envergo.nitrates.models import MoulinetteNitrates, RpgCulture
 from envergo.nitrates.regions import region_for_department
+from envergo.nitrates.yaml_tree import load_arbre, load_referentiels
 
 
 class HomeView(TemplateView):
@@ -155,4 +157,77 @@ class DebugView(View):
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
             }
+        )
+
+
+@method_decorator(cache_page(60 * 60), name="dispatch")
+class ReferentielsView(View):
+    """Expose les listes fermees du YAML referentiels (types fertilisants,
+    cultures, codes prescription, notes...) en JSON pour le front.
+
+    Permet a la cascade JS d'afficher les bons libelles (libelle_public)
+    et de filtrer les options en fonction des choix precedents
+    (mapping_sous_fertilisant_vers_type).
+
+    Cache 1h : ce fichier ne change qu'au rythme de la reglementation.
+    """
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(load_referentiels())
+
+
+@method_decorator(cache_page(60 * 60), name="dispatch")
+class ArbreView(View):
+    """Expose l'arbre de decision PAN en JSON pour que le front puisse
+    construire les selects en cascade (occupation_sol, sous_culture,
+    type_fertilisant) en suivant la structure exacte de l'arbre."""
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(load_arbre("arbre_decision_national"))
+
+
+class MoulinetteView(View):
+    """Simulateur nitrates : instancie la moulinette avec les query params
+    et rend un template debug brut (resultat ou questions subsidiaires).
+
+    Tout passe en GET pour faciliter le debug et le partage d'URL. Plus
+    tard on pourra convertir en POST + redirect si besoin.
+
+    Sans lat/lng : on rend le formulaire vide.
+    Avec lat/lng + (optionnel) reponses cascade : on rend le resultat.
+    """
+
+    def get(self, request, *args, **kwargs):
+        if "lng" not in request.GET or "lat" not in request.GET:
+            return render(
+                request,
+                "nitrates/form.html",
+                {"data": request.GET},
+            )
+
+        # On passe le QueryDict directement -- pas dict(...) qui retournerait
+        # des listes pour chaque champ.
+        moulinette = MoulinetteNitrates(form_kwargs={"data": request.GET.dict()})
+        # Le template ne peut pas acceder a `criterion._evaluator` (Django
+        # interdit les attributs commencant par underscore). On expose
+        # explicitement les evaluators evalues sous forme de liste
+        # d'objets {regulation, criterion, evaluator}.
+        regulations_evaluees = []
+        for regulation in moulinette.regulations:
+            for criterion in regulation.criteria.all():
+                regulations_evaluees.append(
+                    {
+                        "regulation": regulation,
+                        "criterion": criterion,
+                        "evaluator": getattr(criterion, "_evaluator", None),
+                    }
+                )
+        return render(
+            request,
+            "nitrates/result.html",
+            {
+                "moulinette": moulinette,
+                "regulations_evaluees": regulations_evaluees,
+                "data": request.GET,
+            },
         )

@@ -411,6 +411,14 @@ ENVERGO_HAIE_DOMAIN = env("DJANGO_ENVERGO_HAIE_DOMAIN", default="haie.beta.gouv.
 ENVERGO_NITRATES_DOMAIN = env(
     "DJANGO_ENVERGO_NITRATES_DOMAIN", default="nitrates.beta.gouv.fr"
 )
+# Repertoire des specs YAML de l'arbre nitrates (grammaire, referentiels, arbres
+# PAN/PAR). En dev local on monte les specs externes via docker-compose.override
+# avec NITRATES_SPECS_DIR=/specs. Quand les specs seront stables et committees
+# elles vivront dans envergo/nitrates/specs/ (default ci-dessous).
+NITRATES_SPECS_DIR = env(
+    "NITRATES_SPECS_DIR",
+    default=str(ROOT_DIR / "envergo" / "nitrates" / "specs"),
+)
 
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
