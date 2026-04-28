@@ -66,6 +66,15 @@ def test_form_rendu_sans_params(client, nitrates_site):
     assert b'name="lat"' in response.content
 
 
+def test_form_inclut_carte_et_simulator_js(client, nitrates_site):
+    """La carte cliquable et son JS doivent etre presents pour permettre
+    de saisir lat/lng par clic."""
+    response = client.get("/simulateur/")
+    assert b'id="nitrates-map"' in response.content
+    assert b"simulator.js" in response.content
+    assert b"NITRATES_DEBUG_URL" in response.content
+
+
 def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata):
     """Point en ZV, sans reponses cascade : on doit voir des questions
     subsidiaires."""

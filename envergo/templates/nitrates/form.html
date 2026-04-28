@@ -1,12 +1,28 @@
 {% extends "nitrates/base.html" %}
 
+{% load static leaflet_tags %}
+
 {% block title %}Simulateur{% endblock %}
+
+{% block extra_css %}
+  {% leaflet_css %}
+  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+  {% leaflet_js %}
+  <script>
+    window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
+    window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+  </script>
+  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
+{% endblock %}
 
 {% block content %}
   <div class="fr-container fr-py-4w">
     <h1>Simulateur nitrates</h1>
     <p class="fr-text--lead">
-      Saisissez la position de votre parcelle et son occupation pour obtenir le calendrier d'épandage applicable.
+      Cliquez sur la carte pour positionner votre parcelle, puis renseignez son occupation pour obtenir le calendrier d'épandage applicable.
     </p>
 
     <form method="get"
@@ -16,33 +32,40 @@
       <fieldset class="fr-fieldset">
         <legend class="fr-fieldset__legend">Position de la parcelle</legend>
 
-        <div class="fr-fieldset__element">
-          <div class="fr-input-group">
-            <label class="fr-label" for="id_lat">Latitude</label>
-            <input class="fr-input"
-                   type="number"
-                   step="any"
-                   name="lat"
-                   id="id_lat"
-                   value="{{ data.lat|default:'' }}"
-                   required
-                   min="-90"
-                   max="90">
-          </div>
+        <div id="nitrates-map" class="nitrates-map fr-mb-2w"></div>
+
+        <div id="nitrates-debug" class="nitrates-debug fr-mb-2w">
+          <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
         </div>
 
-        <div class="fr-fieldset__element">
-          <div class="fr-input-group">
-            <label class="fr-label" for="id_lng">Longitude</label>
-            <input class="fr-input"
-                   type="number"
-                   step="any"
-                   name="lng"
-                   id="id_lng"
-                   value="{{ data.lng|default:'' }}"
-                   required
-                   min="-180"
-                   max="180">
+        <div class="fr-grid-row fr-grid-row--gutters">
+          <div class="fr-col-12 fr-col-md-6">
+            <div class="fr-input-group">
+              <label class="fr-label" for="id_lat">Latitude</label>
+              <input class="fr-input"
+                     type="number"
+                     step="any"
+                     name="lat"
+                     id="id_lat"
+                     value="{{ data.lat|default:'' }}"
+                     required
+                     min="-90"
+                     max="90">
+            </div>
+          </div>
+          <div class="fr-col-12 fr-col-md-6">
+            <div class="fr-input-group">
+              <label class="fr-label" for="id_lng">Longitude</label>
+              <input class="fr-input"
+                     type="number"
+                     step="any"
+                     name="lng"
+                     id="id_lng"
+                     value="{{ data.lng|default:'' }}"
+                     required
+                     min="-180"
+                     max="180">
+            </div>
           </div>
         </div>
       </fieldset>
