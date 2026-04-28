@@ -110,7 +110,8 @@ def test_debug_point_in_zv(client, marne_department, zv_map):
     assert resp.status_code == 200
     data = resp.json()
     assert data["en_zone_vulnerable"] is True
-    assert data["zv_info"]["nom"] == "ZV Seine-Normandie"
+    # Le nom officiel du bassin FRH écrase ce que le shapefile contient
+    assert data["zv_info"]["nom"] == "Seine-Normandie"
     assert data["zv_info"]["bassin"] == "FRH"
 
 

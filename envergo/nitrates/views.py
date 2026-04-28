@@ -1,13 +1,75 @@
+import json
+
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
+from envergo.nitrates.bassins import bassin_name
 from envergo.nitrates.regions import region_for_department
 
 
 class HomeView(TemplateView):
     template_name = "nitrates/home.html"
+
+
+@method_decorator(cache_page(60 * 60 * 24), name="dispatch")
+class ZoneVulnerableGeoJSONView(View):
+    """Renvoie les polygones ZV nitrates au format GeoJSON.
+
+    Geometrie simplifiees via ST_SimplifyPreserveTopology pour rester
+    raisonnable a charger cote client (sinon ~90 MB pour 8 polygones nationaux
+    avec leur précision originale au mètre).
+
+    Mis en cache 24h : les ZV ne changent qu'au rythme des arretes
+    prefectoraux (pas plus d'une fois par an en pratique). La simplification
+    PostGIS sur les polygones de 100k km2 coûte ~7s sans cache.
+
+    Format : FeatureCollection WGS84.
+    """
+
+    # ~0.005° ≈ 500m à la latitude de la France métropolitaine.
+    # Largement suffisant pour un overlay régional/national.
+    SIMPLIFY_TOLERANCE = 0.005
+
+    def get(self, request, *args, **kwargs):
+        from django.db import connection
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    ST_AsGeoJSON(
+                        ST_SimplifyPreserveTopology(
+                            z.geometry::geometry, %s
+                        )
+                    ),
+                    z.attributes
+                FROM geodata_zone z
+                JOIN geodata_map m ON z.map_id = m.id
+                WHERE m.map_type = %s
+                """,
+                [self.SIMPLIFY_TOLERANCE, MAP_TYPES.zv_nitrates],
+            )
+            features = []
+            for geom_json, attributes in cur.fetchall():
+                attrs = attributes or {}
+                if isinstance(attrs, str):
+                    attrs = json.loads(attrs)
+                bassin = attrs.get("CdEuBassin")
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(geom_json),
+                        "properties": {
+                            "nom": bassin_name(bassin, attrs.get("NomZoneVul")),
+                            "bassin": bassin,
+                        },
+                    }
+                )
+        return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
 class DebugView(View):
@@ -64,9 +126,10 @@ class DebugView(View):
         zv_info = None
         if zv_zone:
             attrs = zv_zone.attributes or {}
+            bassin = attrs.get("CdEuBassin")
             zv_info = {
-                "nom": attrs.get("NomZoneVul"),
-                "bassin": attrs.get("CdEuBassin"),
+                "nom": bassin_name(bassin, attrs.get("NomZoneVul")),
+                "bassin": bassin,
             }
 
         return JsonResponse(

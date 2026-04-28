@@ -11,7 +11,10 @@
 
 {% block extra_js %}
   {% leaflet_js %}
-  <script>window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";</script>
+  <script>
+    window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
+    window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+  </script>
   <script defer src="{% static 'nitrates/home.js' %}"></script>
 {% endblock %}
 
