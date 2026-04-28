@@ -8,6 +8,7 @@ from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
+from envergo.nitrates.models import RpgCulture
 from envergo.nitrates.regions import region_for_department
 
 
@@ -109,9 +110,20 @@ class DebugView(View):
         rpg_parcelle = None
         if rpg_zone:
             attrs = rpg_zone.attributes or {}
+            code_cultu = attrs.get("CODE_CULTU")
+            # Lookup du libelle depuis la table de reference si on l'a chargee
+            libelle = ""
+            groupe = ""
+            if code_cultu:
+                culture = RpgCulture.objects.filter(pk=code_cultu).first()
+                if culture:
+                    libelle = culture.libelle
+                    groupe = culture.libelle_groupe
             rpg_parcelle = {
                 "id_parcel": attrs.get("ID_PARCEL"),
-                "code_cultu": attrs.get("CODE_CULTU"),
+                "code_cultu": code_cultu,
+                "libelle_cultu": libelle,
+                "groupe_cultu": groupe,
                 "surf_parc": attrs.get("SURF_PARC"),
             }
 

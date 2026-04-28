@@ -103,6 +103,27 @@ def test_debug_point_in_rpg_parcel(client, marne_department, rpg_map):
     assert data["rpg_parcelle"] is not None
     assert data["rpg_parcelle"]["id_parcel"] == "P42"
     assert data["rpg_parcelle"]["code_cultu"] == "BTH"
+    # RpgCulture pas encore importe -> libelle vide, mais le code est present
+    assert data["rpg_parcelle"]["libelle_cultu"] == ""
+
+
+def test_debug_point_in_rpg_parcel_with_culture_lookup(
+    client, marne_department, rpg_map
+):
+    """Quand la table RpgCulture est peuplee, le libelle remonte en sortie."""
+    from envergo.nitrates.models import RpgCulture
+
+    RpgCulture.objects.create(
+        code="BTH",
+        libelle="Ble tendre",
+        code_groupe="1",
+        libelle_groupe="Cereales a paille",
+    )
+    resp = client.get(reverse("nitrates_debug"), {"lng": 4.05, "lat": 49.25})
+    parcel = resp.json()["rpg_parcelle"]
+    assert parcel["code_cultu"] == "BTH"
+    assert parcel["libelle_cultu"] == "Ble tendre"
+    assert parcel["groupe_cultu"] == "Cereales a paille"
 
 
 def test_debug_point_in_zv(client, marne_department, zv_map):

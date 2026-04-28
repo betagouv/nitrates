@@ -176,8 +176,10 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     });
 
     const cartouche = page.locator('#nitrates-debug');
-    await expect(cartouche).toContainText('Informations parcelle');
-    // Le code PTR doit apparaître avec son libellé lisible.
+    await expect(cartouche).toContainText('Informations parcelle', {
+      timeout: 10000,
+    });
+    // Le code PTR doit apparaitre avec son libelle lisible (lookup serveur).
     await expect(cartouche).toContainText(/PTR.*Prairie/);
   });
 });

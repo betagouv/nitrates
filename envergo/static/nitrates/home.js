@@ -5,16 +5,6 @@
   const INITIAL_CENTER = [48.96, 4.36];
   const INITIAL_ZOOM = 8;
 
-  // TODO mvp 0.0.2: virer ce mapping et le remplacer par un lookup serveur sur
-  // une table RpgCulture (REF_CULTURES_GROUPES_CULTURES_2024.csv cote IGN, 144
-  // codes). En attendant 4 codes pour pas afficher des trigrammes obscurs.
-  const CULTURE_LABELS = {
-    BTH: "Blé tendre",
-    MIS: "Maïs grain",
-    PTR: "Prairie temporaire",
-    PPH: "Prairie permanente",
-  };
-
   // Couleurs reprises des cartes officielles ZV (arretes prefectoraux 2021),
   // une par bassin DCE
   const ZV_COLORS_BY_BASSIN = {
@@ -123,17 +113,20 @@
 
   let marker = null;
 
-  function cultureLabel(code) {
-    if (!code) return "";
-    return CULTURE_LABELS[code] ? `${code} (${CULTURE_LABELS[code]})` : code;
+  function cultureLabel(parcel) {
+    if (!parcel || !parcel.code_cultu) return "";
+    if (parcel.libelle_cultu) {
+      return `${parcel.code_cultu} (${parcel.libelle_cultu})`;
+    }
+    return parcel.code_cultu;
   }
 
   function renderDebug(data) {
     const parcel = data.rpg_parcelle;
     const parcelHtml = parcel
-      ? `${parcel.id_parcel || "—"} — ${cultureLabel(parcel.code_cultu)} — ${
+      ? `${parcel.id_parcel || "—"} — ${cultureLabel(parcel)} — ${
           parcel.surf_parc != null ? parcel.surf_parc + " ha" : ""
-        }`
+        }${parcel.groupe_cultu ? " — groupe " + parcel.groupe_cultu : ""}`
       : "aucune parcelle RPG";
 
     const zvClass = data.en_zone_vulnerable

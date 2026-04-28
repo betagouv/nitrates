@@ -3,6 +3,26 @@
 Simulateur nitrates — règlementation épandage pour les agriculteurs en zones
 vulnérables (PAN + PAR). Fork Envergo.
 
+## Import du référentiel codes culture RPG
+
+Table de référence des 144 codes culture utilisés par le RPG (PAC). Le CSV
+officiel IGN/ASP est embarqué dans `envergo/nitrates/assets/`.
+
+```bash
+# Mode insert (défaut, non destructif) : ajoute uniquement les codes manquants
+docker compose run --rm django python manage.py import_rpg_cultures
+
+# Mode override : met à jour libellé et groupe pour tous les codes du CSV
+docker compose run --rm django python manage.py import_rpg_cultures --mode override
+
+# Avec un autre CSV (ex: nouveau millésime)
+docker compose run --rm django python manage.py import_rpg_cultures \
+  --file ./assets/REF_CULTURES_2025.csv --mode override
+```
+
+À lancer **après** `import_nitrates_rpg` pour que les libellés des cultures
+remontent dans la cartouche debug.
+
 ## Import des données SIG MVP
 
 Le MVP tourne avec 3 couches géographiques :

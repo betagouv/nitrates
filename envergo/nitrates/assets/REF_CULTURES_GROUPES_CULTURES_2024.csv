@@ -1,0 +1,145 @@
+CODE_CULTURE;LIBELLE_CULTURE;CODE_GROUPE_CULTURE;LIBELLE_GROUPE_CULTURE
+ACP;Autre culture pérenne et jachère dans les bananeraies;28;Divers
+AGR;Agrume;20;Vergers
+AIL;Aïl;25;Légumes ou fleurs
+ANA;Ananas;20;Vergers
+ARA;Arachide;7;Autres oléagineux
+ART;Artichaut;25;Légumes ou fleurs
+AVH;Avoine d’hiver;4;Autres céréales
+AVP;Avoine de printemps;4;Autres céréales
+BCA;Banane (hors export);20;Vergers
+BDH;Blé dur d’hiver;4;Autres céréales
+BDP;Blé dur de printemps;4;Autres céréales
+BEF;Banane (export);20;Vergers
+BFS;Bordure le long d'une forêt sans production;28;Divers
+BOR;Bordure de champ;28;Divers
+BTA;Bande tampon;28;Divers
+BTH;Blé tendre d’hiver;1;Blé tendre
+BTN;Betterave;24;Autres cultures industrielles
+BTP;Blé tendre de printemps;1;Blé tendre
+CAC;Café et cacao;20;Vergers
+CAE;Châtaigneraie entretenue par des porcins ou des petits ruminants;28;Divers
+CAG;Autre céréale ou pseudo-céréale secondaire de printemps (alpiste, quinoa, chia, …);4;Autres céréales
+CAR;Carotte;25;Légumes ou fleurs
+CBT;Cerise;20;Vergers
+CCN;Concombre, cornichon et courgette;25;Légumes ou fleurs
+CEE;Chênaie entretenue par des porcins ou des petits ruminants;28;Divers
+CEL;Céleri;25;Légumes ou fleurs
+CHU;Chou;25;Légumes ou fleurs
+CHV;Chanvre;9;Plantes à fibres
+CID;Cultures conduites en inter-rangs (bandes de cultures différentes)  - 2 cultures représentant chacune plus de 25  %;28;Divers
+CIT;Cultures conduites en inter-rangs (bandes de cultures différentes)  - 3 cultures représentant chacune plus de 25  %;28;Divers
+CML;Cameline;24;Autres cultures industrielles
+CPL;Mélange multi-espèces (céréales, oléagineux, légumineuses, …) sans graminées prairiales et sans prédominance de légumineuses;16;Fourrage
+CSA;Canne à sucre;26;Canne à sucre
+CSE;Chanvre sans étiquette conforme;9;Plantes à fibres
+CSS;Culture sous serre hors sol;25;Légumes ou fleurs
+CTG;Châtaigne;22;Fruits à coque
+CZH;Colza d’hiver;5;Colza
+CZP;Colza de printemps;5;Colza
+EPE;Epeautre (petit épeautre ou engrain et grand épeautre);4;Autres céréales
+EPI;Epinard, oseille et bette;25;Légumes ou fleurs
+FEV;Fève;8;Protéagineux
+FLA;Autre légume ou fruit annuel;25;Légumes ou fleurs
+FLP;Autre légume ou fruit pérenne (hors petit fruit à baie);25;Légumes ou fleurs
+FNU;Fenugrec;24;Autres cultures industrielles
+FRA;Fraise (en pleine terre);25;Légumes ou fleurs
+FVL;Féverole d'hiver;8;Protéagineux
+GES;Cornille, dolique (y/c lablab), gesse;16;Fourrage
+HBL;Houblon;24;Autres cultures industrielles
+HPC;Horticulture ornementale;25;Légumes ou fleurs
+JNO;Jachère sanitaire imposée par l'administration;11;Gel (surfaces gelées sans production)
+LAV;Lavande et lavandin;24;Autres cultures industrielles
+LBF;Laitue, endive et autres salades;25;Légumes ou fleurs
+LDH;Lupin doux d’hiver;8;Protéagineux
+LDP;Lupin doux de printemps semé avant le 31/05;8;Protéagineux
+LEC;Lentille;15;Légumineuses à grains
+LIF;Lin fibres;9;Plantes à fibres
+LIH;Lin non textile d’hiver;7;Autres oléagineux
+LIP;Lin non textile de printemps;7;Autres oléagineux
+LOT;Lotier, minette;16;Fourrage
+LUZ;Autre luzerne;16;Fourrage
+MCR;Mélange de céréales ou pseudo-céréales d'hiver entre elles;4;Autres céréales
+MID;Maïs doux;2;Maïs grain et ensilage
+MIS;Maïs (hors maïs doux);2;Maïs grain et ensilage
+MLG;Mélange de légumineuses prépondérantes et de graminées fourragères de 5 ans ou moins;16;Fourrage
+MLO;Melon et pastèque;25;Légumes ou fleurs
+MLT;Millet;4;Autres céréales
+MOH;Moha;16;Fourrage
+MOT;Moutarde d'hiver;24;Autres cultures industrielles
+MPC;Mélange de protéagineux (pois et/ou lupin et/ou féverole) prépondérants semés avant le 31/05 et de céréales;8;Protéagineux
+MRS;Marais salants;28;Divers
+NOS;Noisette;22;Fruits à coque
+NOX;Noix (y compris noix de coco);22;Fruits à coque
+NVT;Navet, rutabaga et autres légumes racines (hors carotte, radis, betterave);25;Légumes ou fleurs
+OAG;Autres oléagineux ou mélange d'oléagineux de printemps et d'été (dont moutarde ou navette d'été, sésame et nyger);7;Autres oléagineux
+OEI;Oeillette (pavot);7;Autres oléagineux
+OHR;Autres oléagineux ou mélange d'oléagineux d'hiver (dont navette d'hiver);7;Autres oléagineux
+OIG;Oignon et échalote;25;Légumes ou fleurs
+OLI;Olive;23;Oliviers
+ORH;Orge d'hiver;3;Orge
+ORP;Orge de printemps;3;Orge
+PAG;Autre légumineuse à graines ou fourragères;8;Protéagineux
+PCH;Pois chiche;15;Légumineuses à grains
+PEP;Pépinière (plants laissés en terre plus d’un an);28;Divers
+PFR;Petit fruit à baie (hors fraise);20;Vergers
+PHI;Pois protéagineux d'hiver (alimentation animale);8;Protéagineux
+POR;Poireau;25;Légumes ou fleurs
+POT;Potiron, citrouille et autres courges;25;Légumes ou fleurs
+PPH;Prairie de 6 ans ou plus (couvert herbacé);18;Prairies permanentes
+PPP;Plantes médicinales pérennes (arbres ou arbustes) sauf cassis;24;Autres cultures industrielles
+PPR;Pois protéagineux de printemps (alimentation animale);8;Protéagineux
+PRU;Prune (y compris mirabelle, quetsche, reine-claude, …);20;Vergers
+PSL;Persil;24;Autres cultures industrielles
+PTC;Pomme de terre;25;Légumes ou fleurs
+PTR;Prairie temporaire de moins de 5 ans et autre mélange avec graminées;19;Prairies temporaires
+PVP;Poivron, piment et aubergine;25;Légumes ou fleurs
+PVT;Pêche (y compris nectarine, brugnon);20;Vergers
+PWT;Poire;20;Vergers
+RDI;Radis;25;Légumes ou fleurs
+RIZ;Riz;14;Riz
+SAI;Sainfoin;16;Fourrage
+SBO;Boisement aidé d'une surface agricole;28;Divers
+SGH;Seigle d’hiver;4;Autres céréales
+SGP;Seigle de printemps;4;Autres céréales
+SNE;Surface agricole temporairement non admissible, autre que surface pâturable;28;Divers
+SOG;Sorgho;4;Autres céréales
+SOJ;Soja;7;Autres oléagineux
+SPH;Prairie avec herbe prédominante et ressources fourragères ligneuses présentes;17;Estives et landes
+SPL;Surface pastorale - Ressources fourragères ligneuses prédominantes;17;Estives et landes
+SRS;Sarrasin;4;Autres céréales
+TAB;Tabac;24;Autres cultures industrielles
+TBT;Tubercule tropical;28;Divers
+TCR;Taillis à courte rotation;28;Divers
+TOM;Tomate (en pleine terre);25;Légumes ou fleurs
+TRE;Autre trèfle;16;Fourrage
+TRN;Tournesol;6;Tournesol
+TRU;Truffière (chênaie de plants mycorhizés);28;Divers
+TTH;Triticale d’hiver;4;Autres céréales
+TTP;Triticale de printemps;4;Autres céréales
+VES;Vesce, mélilot, jarosse, serradelle;16;Fourrage
+VNL;Vanille;24;Autres cultures industrielles
+VRC;Vigne (sauf vigne rouge);21;Vignes
+VRG;Autre verger (y compris verger DOM);20;Vergers
+MLC;Mélange multi-espèces avec légumineuses fourragères prépondérantes sans graminées prairiales;16;Fourrage
+MLF;Mélange de légumineuses à graines ou fourragères pures;16;Fourrage
+CAH;Autre céréale ou pseudo-céréale secondaire d'hiver;4;Autres céréales
+MCS;Mélange de céréales ou pseudo-céréales de printemps entre elles;4;Autres céréales
+FVP;Féverole de printemps;8;Protéagineux
+PHS;Pois et haricot secs (alimentation humaine);8;Protéagineux
+PHF;Pois et haricot frais (alimentation humaine);8;Protéagineux
+MDI;Maraîchage diversifié (plusieurs espèces de fruits et légumes majoritairement non pérennes);25;Légumes ou fleurs
+SHD;Surfaces hautement diversifiées (DOM);28;Divers
+GRA;Graminée pure exclusivement pour gazon ou pour production de semences certifiées;28;Divers
+JAC;Jachère (terre arable);11;Gel (surfaces gelées sans production)
+ARP;Plante aromatique pérenne non arbustive ou arborée autre que la vanille;24;Autres cultures industrielles
+AAR;Plantes aromatiques herbacées non pérennes (< 5 ans) autres que persil;24;Autres cultures industrielles
+PRF;Plantes à parfum pérennes autres que lavande et lavandin;24;Autres cultures industrielles
+AME;Plantes médicinales et à parfum non pérennes (< 5 ans);24;Autres cultures industrielles
+PME;Plantes médicinales pérennes (autres que arbres);25;Autres cultures industrielles
+AFG;Autre plante fourragère annuelle (ni légumineuse, ni graminée, ni céréale, ni oléagineux);16;Fourrage
+MSW;Culture pérenne à forte biomasse (miscanthus, switchgrass, silphie, canne fourragère, …);28;Divers
+SAG;Roselière (récolte de sagnes);28;Divers
+SNU;Parc d'élevage de monogastriques avec couvert dégradé, voire sol nu;28;Divers
+SIN;Surface pastorale ou parcours non utilisé l'année en cours;28;Divers
+PEV;Pépinière (plants laissés en terre moins d’un an);28;Divers
