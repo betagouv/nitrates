@@ -10,6 +10,7 @@ from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
 from envergo.nitrates.models import RpgCulture
 from envergo.nitrates.regions import region_for_department
+from envergo.nitrates.yaml_tree import load_referentiels
 
 
 class HomeView(TemplateView):
@@ -156,3 +157,19 @@ class DebugView(View):
                 "zv_info": zv_info,
             }
         )
+
+
+@method_decorator(cache_page(60 * 60), name="dispatch")
+class ReferentielsView(View):
+    """Expose les listes fermees du YAML referentiels (types fertilisants,
+    cultures, codes prescription, notes...) en JSON pour le front.
+
+    Permet a la cascade JS d'afficher les bons libelles (libelle_public)
+    et de filtrer les options en fonction des choix precedents
+    (mapping_sous_fertilisant_vers_type).
+
+    Cache 1h : ce fichier ne change qu'au rythme de la reglementation.
+    """
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(load_referentiels())

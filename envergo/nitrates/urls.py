@@ -2,7 +2,12 @@ from django.urls import path
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
-from envergo.nitrates.views import DebugView, HomeView, ZoneVulnerableGeoJSONView
+from envergo.nitrates.views import (
+    DebugView,
+    HomeView,
+    ReferentielsView,
+    ZoneVulnerableGeoJSONView,
+)
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -15,6 +20,11 @@ urlpatterns = [
         "geojson/zv/",
         ZoneVulnerableGeoJSONView.as_view(),
         name="nitrates_zv_geojson",
+    ),
+    path(
+        "api/referentiels/",
+        ReferentielsView.as_view(),
+        name="nitrates_referentiels",
     ),
     path(
         _("contact-us/"),
