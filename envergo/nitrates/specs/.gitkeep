@@ -1,0 +1,12 @@
+Repertoire pour les specs YAML committees (grammaire, referentiels, arbres PAN/PAR).
+
+En dev, on monte plutot le dossier externe via docker-compose.override.yml :
+
+  services:
+    django:
+      volumes:
+        - /chemin/vers/specs/decision_tree_yaml:/specs:ro
+      environment:
+        - NITRATES_SPECS_DIR=/specs
+
+Quand les specs seront stables, elles seront committees ici.
