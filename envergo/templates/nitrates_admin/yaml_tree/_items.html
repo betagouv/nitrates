@@ -1,0 +1,7 @@
+{% if racine %}
+  <ul class="yaml-tree" role="tree">
+    {% include "nitrates_admin/yaml_tree/_noeud.html" with noeud=racine ancestors_path="" depth=0 %}
+  </ul>
+{% else %}
+  <p class="yaml-tree__empty">Arbre vide ou non chargé.</p>
+{% endif %}

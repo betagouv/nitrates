@@ -10,6 +10,7 @@ from envergo.nitrates.views import (
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_yaml import YamlTreeView
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -37,6 +38,11 @@ urlpatterns = [
         "api/arbre/",
         ArbreView.as_view(),
         name="nitrates_arbre",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/",
+        YamlTreeView.as_view(),
+        name="nitrates_admin_yaml_tree",
     ),
     path(
         _("contact-us/"),

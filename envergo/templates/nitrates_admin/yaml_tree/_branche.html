@@ -1,0 +1,24 @@
+{% load yaml_admin_extras %}
+
+<li class="yaml-tree__item yaml-tree__item--branche">
+  <div class="yaml-tree__branche-header">
+    <span class="yaml-tree__valeur">{{ branche.valeur }}</span>
+    {% if branche.libelle %}<span class="yaml-tree__libelle">{{ branche.libelle }}</span>{% endif %}
+  </div>
+
+  {% if branche.noeud %}
+    <ul class="yaml-tree__children">
+      {% include "nitrates_admin/yaml_tree/_noeud.html" with noeud=branche.noeud ancestors_path=ancestors_path depth=depth|add:1 %}
+    </ul>
+  {% elif branche.regle %}
+    {% include "nitrates_admin/yaml_tree/_regle.html" with regle=branche.regle %}
+  {% elif branche.renvoi_vers %}
+    <div class="yaml-tree__renvoi">
+      <span class="yaml-tag tag-renvoi" title="Renvoi vers une règle existante">
+        <span class="yaml-tag__icon" aria-hidden="true">↪️</span>
+        <span class="yaml-tag__label">renvoi</span>
+      </span>
+      <code class="yaml-tree__id">→ {{ branche.renvoi_vers }}</code>
+    </div>
+  {% endif %}
+</li>

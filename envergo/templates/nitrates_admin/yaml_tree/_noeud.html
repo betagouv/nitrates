@@ -1,0 +1,45 @@
+{% load yaml_admin_extras %}
+
+{% join_path ancestors_path noeud.id as path %}
+{% is_open open_paths path as opened %}
+{% fold_link querystring_base expand expand_deep path True as deep_url %}
+
+<li class="yaml-tree__item yaml-tree__item--noeud"
+    id="node-{{ path|slugify }}"
+    role="treeitem">
+  {% if noeud.branches %}
+    <a class="yaml-tree__deep-btn"
+       href="{{ deep_url }}#node-{{ path|slugify }}"
+       title="Déplier ce sous-arbre en profondeur (récursif)"
+       data-path="{{ path }}">▾▾</a>
+  {% endif %}
+  <details {% if opened %}open{% endif %}>
+    <summary class="yaml-tree__row">
+      <span class="yaml-tree__tags">
+        {% for tag in noeud|tags_for:"noeud" %}
+          <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
+            {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
+            <span class="yaml-tag__label">{{ tag.label }}</span>
+          </span>
+        {% endfor %}
+      </span>
+      <code class="yaml-tree__id">{{ noeud.id }}</code>
+      {% if noeud.texte %}
+        <span class="yaml-tree__libelle">{{ noeud.texte }}</span>
+      {% elif noeud.champ %}
+        <span class="yaml-tree__libelle">{{ noeud.champ }}</span>
+      {% endif %}
+      {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
+    </summary>
+
+    {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}
+
+    {% if noeud.branches %}
+      <ul class="yaml-tree__branches">
+        {% for branche in noeud.branches %}
+          {% include "nitrates_admin/yaml_tree/_branche.html" with branche=branche ancestors_path=path depth=depth|add:1 %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </details>
+</li>

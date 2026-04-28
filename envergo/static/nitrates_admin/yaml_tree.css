@@ -1,0 +1,490 @@
+/* Viewer admin de l'arbre de decision YAML (phase 2bis, read-only).
+   Couleurs doublees d'icones pour respecter RGAA AA (pas de signal couleur seul). */
+
+.yaml-admin {
+  --tree-indent: 1.25rem;
+  --tree-row-pad: 0.25rem;
+  --tag-bg-catalogue: #e3f2fd;
+  --tag-fg-catalogue: #0d47a1;
+  --tag-bg-form-culture: #e8f5e9;
+  --tag-fg-form-culture: #1b5e20;
+  --tag-bg-form-sous: #f1f8e9;
+  --tag-fg-form-sous: #33691e;
+  --tag-bg-form-fert: #fff3e0;
+  --tag-fg-form-fert: #e65100;
+  --tag-bg-form-comp: #fce4ec;
+  --tag-fg-form-comp: #880e4f;
+  --tag-bg-interdiction: #ffebee;
+  --tag-fg-interdiction: #b71c1c;
+  --tag-bg-autorisation: #e8f5e9;
+  --tag-fg-autorisation: #1b5e20;
+  --tag-bg-plafonnement: #f3e5f5;
+  --tag-fg-plafonnement: #4a148c;
+  --tag-bg-libre: #e0f2f1;
+  --tag-fg-libre: #004d40;
+  --tag-bg-na: #eee;
+  --tag-fg-na: #424242;
+  --tag-bg-calc: #ede7f6;
+  --tag-fg-calc: #311b92;
+  --tag-bg-renvoi: #f5f5f5;
+  --tag-fg-renvoi: #616161;
+  --tag-bg-warn: #fff8e1;
+  --tag-fg-warn: #f57f17;
+
+  font-size: 0.95rem;
+}
+
+.yaml-admin__header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.yaml-admin__header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+
+.yaml-admin__meta,
+.yaml-admin__stats {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.yaml-admin__meta span,
+.yaml-admin__stats span {
+  margin-right: 0.75rem;
+}
+
+.yaml-admin__stat-warn {
+  color: var(--tag-fg-warn);
+  font-weight: 600;
+}
+
+.yaml-admin__title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.yaml-admin__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  max-width: 60%;
+  justify-content: flex-end;
+}
+
+.yaml-admin__quick-btn {
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid transparent;
+  opacity: 0.7;
+}
+
+.yaml-admin__quick-btn:hover {
+  opacity: 1;
+}
+
+.yaml-admin__quick-btn.is-active {
+  opacity: 1;
+  border-color: currentcolor;
+  box-shadow: 0 0 0 1px currentcolor inset;
+  font-weight: 700;
+}
+
+.yaml-admin__quick-btn .yaml-tag__label {
+  text-transform: none;
+}
+
+.yaml-admin__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  align-items: center;
+}
+
+.yaml-admin__vues {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.yaml-admin__label {
+  font-size: 0.85rem;
+  color: #555;
+  margin-right: 0.25rem;
+}
+
+.yaml-admin__btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+}
+
+.yaml-admin__btn:hover {
+  background: #f5f5f5;
+}
+
+.yaml-admin__btn.is-active {
+  background: #1f4789;
+  color: #fff;
+  border-color: #1f4789;
+}
+
+.yaml-admin__layout {
+  display: block;
+}
+
+.yaml-admin__layout--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.yaml-admin__layout--brut .yaml-admin__raw {
+  max-width: 1100px;
+}
+
+.yaml-admin__raw {
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  overflow: auto;
+  font-size: 0.8rem;
+  max-height: 80vh;
+}
+
+.yaml-admin__raw pre {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Arbre */
+
+.yaml-tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.yaml-tree__branches,
+.yaml-tree__children {
+  list-style: none;
+  padding-left: var(--tree-indent);
+  margin: 0;
+  border-left: 2px solid #f0f0f0;
+}
+
+.yaml-tree__item {
+  margin: 0.15rem 0;
+}
+
+.yaml-tree__item.is-muted {
+  opacity: 0.45;
+}
+
+.yaml-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: var(--tree-row-pad) 0;
+}
+
+details > summary.yaml-tree__row {
+  cursor: pointer;
+  list-style: none;
+}
+
+details > summary.yaml-tree__row::-webkit-details-marker {
+  display: none;
+}
+
+details > summary.yaml-tree__row::before {
+  content: "▸";
+  display: inline-block;
+  width: 1rem;
+  color: #888;
+  transition: transform 0.15s;
+}
+
+details[open] > summary.yaml-tree__row::before {
+  content: "▾";
+}
+
+.yaml-tree__item--noeud {
+  position: relative;
+}
+
+.yaml-tree__deep-btn {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.4rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+  color: #888;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: -0.15em;
+  background: rgb(255 255 255 / 85%);
+  z-index: 2;
+  border: 1px solid transparent;
+}
+
+.yaml-tree__deep-btn:hover {
+  color: #1f4789;
+  background: #eef2ff;
+  border-color: #c8d4ec;
+}
+
+.yaml-tree__id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: #1f4789;
+  background: #f5f7fb;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+}
+
+.yaml-tree__libelle {
+  color: #222;
+}
+
+.yaml-tree__meta {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+.yaml-tree__branche-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.yaml-tree__valeur {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+}
+
+.yaml-tree__regle {
+  margin: 0.25rem 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  background: #fcfcfc;
+  border-left: 3px solid #ddd;
+}
+
+.yaml-tree__regle.is-todo {
+  border-left-color: var(--tag-fg-warn);
+  background: var(--tag-bg-warn);
+}
+
+.yaml-tree__regle .yaml-tree__row {
+  padding: 0;
+}
+
+.yaml-tree__pc code {
+  background: #eef;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.yaml-tree__note {
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+}
+
+.yaml-tree__periodes {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding-left: 0;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__periodes code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.yaml-tree__plafond,
+.yaml-tree__assoc,
+.yaml-tree__calc,
+.yaml-tree__calc-inputs,
+.yaml-tree__message,
+.yaml-tree__texte,
+.yaml-tree__condition,
+.yaml-tree__source,
+.yaml-tree__todo {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.yaml-tree__source {
+  color: #777;
+}
+
+.yaml-tree__todo {
+  color: var(--tag-fg-warn);
+  font-weight: 600;
+}
+
+.yaml-tree__aide {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+.yaml-tree__renvoi {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+.yaml-tree__badge {
+  display: inline-flex;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.yaml-tree__badge--warn {
+  background: var(--tag-bg-warn);
+  color: var(--tag-fg-warn);
+}
+
+/* Tags colores */
+
+.yaml-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: #eee;
+  color: #333;
+  white-space: nowrap;
+}
+
+.yaml-tag__icon {
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.yaml-tag__label {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.tag-catalogue {
+  background: var(--tag-bg-catalogue);
+  color: var(--tag-fg-catalogue);
+}
+
+.tag-form-culture {
+  background: var(--tag-bg-form-culture);
+  color: var(--tag-fg-form-culture);
+}
+
+.tag-form-sous-culture {
+  background: var(--tag-bg-form-sous);
+  color: var(--tag-fg-form-sous);
+}
+
+.tag-form-fertilisant {
+  background: var(--tag-bg-form-fert);
+  color: var(--tag-fg-form-fert);
+}
+
+.tag-form-complement {
+  background: var(--tag-bg-form-comp);
+  color: var(--tag-fg-form-comp);
+}
+
+.tag-formulaire {
+  background: var(--tag-bg-form-culture);
+  color: var(--tag-fg-form-culture);
+}
+
+.tag-regle-interdiction {
+  background: var(--tag-bg-interdiction);
+  color: var(--tag-fg-interdiction);
+}
+
+.tag-regle-autorisation {
+  background: var(--tag-bg-autorisation);
+  color: var(--tag-fg-autorisation);
+}
+
+.tag-regle-plafonnement {
+  background: var(--tag-bg-plafonnement);
+  color: var(--tag-fg-plafonnement);
+}
+
+.tag-regle-libre {
+  background: var(--tag-bg-libre);
+  color: var(--tag-fg-libre);
+}
+
+.tag-regle-non-applicable {
+  background: var(--tag-bg-na);
+  color: var(--tag-fg-na);
+}
+
+.tag-regle-calculatrice {
+  background: var(--tag-bg-calc);
+  color: var(--tag-fg-calc);
+}
+
+.tag-renvoi {
+  background: var(--tag-bg-renvoi);
+  color: var(--tag-fg-renvoi);
+}
+
+.tag-a-completer {
+  background: var(--tag-bg-warn);
+  color: var(--tag-fg-warn);
+}
+
+.tag-source-sig,
+.tag-source-mapping_referentiel,
+.tag-source-calcul {
+  background: #eceff1;
+  color: #455a64;
+}
+
+.yaml-tree__empty {
+  color: #888;
+  font-style: italic;
+}
