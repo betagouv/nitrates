@@ -208,6 +208,8 @@ propcache==0.3.2
     # via
     #   -r base.txt
     #   yarl
+pygments==2.20.0
+    # via -r base.txt
 psycopg[binary]==3.2.9
     # via -r base.txt
 psycopg-binary==3.2.9
@@ -273,6 +275,8 @@ rpds-py==0.30.0
     #   -r base.txt
     #   jsonschema
     #   referencing
+ruamel-yaml==0.19.1
+    # via -r base.txt
 s3transfer==0.13.1
     # via boto3
 scipy==1.16.1

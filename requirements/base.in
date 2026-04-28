@@ -36,3 +36,5 @@ requests-toolbelt
 dacite
 python-magic
 jsonschema
+ruamel.yaml
+Pygments

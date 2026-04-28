@@ -145,6 +145,8 @@ prompt-toolkit==3.0.51
     # via click-repl
 propcache==0.3.2
     # via yarl
+pygments==2.20.0
+    # via -r base.in
 psycopg[binary]==3.2.9
     # via -r base.in
 psycopg-binary==3.2.9
@@ -193,6 +195,8 @@ rpds-py==0.30.0
     # via
     #   jsonschema
     #   referencing
+ruamel-yaml==0.19.1
+    # via -r base.in
 scipy==1.16.1
     # via -r base.in
 shapely==2.1.1

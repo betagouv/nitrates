@@ -333,8 +333,9 @@ pycparser==2.22
     #   cffi
 pyflakes==3.4.0
     # via flake8
-pygments==2.19.2
+pygments==2.20.0
     # via
+    #   -r base.txt
     #   ipython
     #   ipython-pygments-lexers
     #   pytest
@@ -415,6 +416,8 @@ rpds-py==0.30.0
     #   -r base.txt
     #   jsonschema
     #   referencing
+ruamel-yaml==0.19.1
+    # via -r base.txt
 scipy==1.16.1
     # via -r base.txt
 shapely==2.1.1
