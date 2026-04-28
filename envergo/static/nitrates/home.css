@@ -1,0 +1,53 @@
+#nitrates-map.nitrates-map {
+  height: 500px;
+  width: 100%;
+  border: 1px solid var(--border-default-grey, #ddd);
+  border-radius: 4px;
+}
+
+.nitrates-debug {
+  background: var(--background-alt-grey, #f6f6f6);
+  border: 1px solid var(--border-default-grey, #ddd);
+  border-radius: 4px;
+  padding: 1rem 1.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.nitrates-debug__title {
+  font-family: Marianne, system-ui, sans-serif;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.nitrates-debug dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.nitrates-debug dt {
+  font-weight: 600;
+  color: var(--text-mention-grey, #666);
+}
+
+.nitrates-debug dd {
+  margin: 0;
+}
+
+.nitrates-debug__badge-yes {
+  color: var(--text-default-success, #18753c);
+  font-weight: 700;
+}
+
+.nitrates-debug__badge-no {
+  color: var(--text-default-warning, #b34000);
+  font-weight: 700;
+}
+
+.nitrates-debug__placeholder {
+  color: var(--text-mention-grey, #666);
+  font-style: italic;
+  margin: 0;
+}
