@@ -150,7 +150,7 @@ def test_colza_type_0_interdiction_directe(setup):
     ev = _evaluator(mou)
     assert ev.result == RESULTS.interdit
     assert ev.result_code == "r_colza_type_0"
-    assert ev.regle.code_prescription == "pc4"
+    assert ev.regle.periodes == [{"du": "15/12", "au": "15/01"}]
 
 
 # ─── Stub a_completer ─────────────────────────────────────────────────────
