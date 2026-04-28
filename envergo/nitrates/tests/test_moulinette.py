@@ -130,7 +130,9 @@ def test_critere_arbre_decision_present_et_evalue(department_marne, zv_map):
     criteres = list(regulation.criteria.all())
     assert len(criteres) == 1
     assert criteres[0].slug == "arbre_decision"
-    # C3a : stub renvoie non_disponible. C3b branchera parcours().
+    # Sans reponses cascade, l'arbre renvoie des questions subsidiaires
+    # donc non_disponible. Le branchement detail est teste dans
+    # test_arbre_decision_evaluator.py.
     assert criteres[0].result == "non_disponible"
 
 
