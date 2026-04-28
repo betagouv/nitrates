@@ -11,7 +11,7 @@ from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
 from envergo.nitrates.models import MoulinetteNitrates, RpgCulture
 from envergo.nitrates.regions import region_for_department
-from envergo.nitrates.yaml_tree import load_referentiels
+from envergo.nitrates.yaml_tree import load_arbre, load_referentiels
 
 
 class HomeView(TemplateView):
@@ -174,6 +174,16 @@ class ReferentielsView(View):
 
     def get(self, request, *args, **kwargs):
         return JsonResponse(load_referentiels())
+
+
+@method_decorator(cache_page(60 * 60), name="dispatch")
+class ArbreView(View):
+    """Expose l'arbre de decision PAN en JSON pour que le front puisse
+    construire les selects en cascade (occupation_sol, sous_culture,
+    type_fertilisant) en suivant la structure exacte de l'arbre."""
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(load_arbre("arbre_decision_national"))
 
 
 class MoulinetteView(View):

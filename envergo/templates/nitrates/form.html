@@ -14,8 +14,17 @@
   <script>
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+    window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
+    window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    window.NITRATES_INITIAL_DATA = {
+      occupation_sol: "{{ data.occupation_sol|default:'' }}",
+      sous_culture: "{{ data.sous_culture|default:'' }}",
+      type_fertilisant: "{{ data.type_fertilisant|default:'' }}",
+      sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
+    };
   </script>
   <script defer src="{% static 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -73,54 +82,48 @@
       <fieldset class="fr-fieldset">
         <legend class="fr-fieldset__legend">Caractéristiques de l'épandage</legend>
         <p class="fr-hint-text">
-          Tous les champs sont optionnels. Les questions complémentaires seront posées au fur et à mesure selon vos réponses.
+          Les choix se débloquent au fur et à mesure de vos réponses, en suivant l'arbre de décision PAN.
         </p>
 
         <div class="fr-fieldset__element">
-          <div class="fr-input-group">
+          <div class="fr-select-group">
             <label class="fr-label" for="id_occupation_sol">Occupation du sol</label>
-            <input class="fr-input"
-                   type="text"
-                   name="occupation_sol"
-                   id="id_occupation_sol"
-                   value="{{ data.occupation_sol|default:'' }}"
-                   placeholder="ex : culture_principale, sol_non_cultive">
+            <select class="fr-select" name="occupation_sol" id="id_occupation_sol">
+              <option value="">— Choisir —</option>
+            </select>
           </div>
         </div>
 
         <div class="fr-fieldset__element">
-          <div class="fr-input-group">
-            <label class="fr-label" for="id_sous_culture">Sous-culture</label>
-            <input class="fr-input"
-                   type="text"
-                   name="sous_culture"
-                   id="id_sous_culture"
-                   value="{{ data.sous_culture|default:'' }}"
-                   placeholder="ex : mais, colza, luzerne">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_sous_culture">Type de culture</label>
+            <select class="fr-select" name="sous_culture" id="id_sous_culture" disabled>
+              <option value="">— Choisir l'occupation d'abord —</option>
+            </select>
           </div>
         </div>
 
         <div class="fr-fieldset__element">
-          <div class="fr-input-group">
+          <div class="fr-select-group">
             <label class="fr-label" for="id_type_fertilisant">Type de fertilisant</label>
-            <input class="fr-input"
-                   type="text"
-                   name="type_fertilisant"
-                   id="id_type_fertilisant"
-                   value="{{ data.type_fertilisant|default:'' }}"
-                   placeholder="ex : type_0, type_Ia, type_II">
+            <select class="fr-select"
+                    name="type_fertilisant"
+                    id="id_type_fertilisant"
+                    disabled>
+              <option value="">— Choisir la culture d'abord —</option>
+            </select>
           </div>
         </div>
 
         <div class="fr-fieldset__element">
-          <div class="fr-input-group">
-            <label class="fr-label" for="id_sous_fertilisant">Sous-fertilisant</label>
-            <input class="fr-input"
-                   type="text"
-                   name="sous_fertilisant"
-                   id="id_sous_fertilisant"
-                   value="{{ data.sous_fertilisant|default:'' }}"
-                   placeholder="ex : ammonitrate, uree (optionnel)">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_sous_fertilisant">Sous-fertilisant (optionnel)</label>
+            <select class="fr-select"
+                    name="sous_fertilisant"
+                    id="id_sous_fertilisant"
+                    disabled>
+              <option value="">— Choisir le type de fertilisant d'abord —</option>
+            </select>
           </div>
         </div>
       </fieldset>

@@ -46,3 +46,11 @@ def test_referentiels_types_fertilisants_structure(client, nitrates_site):
     type_0 = data["types_fertilisants"]["type_0"]
     assert "libelle_public" in type_0
     assert isinstance(type_0["libelle_public"], str)
+
+
+def test_arbre_endpoint_renvoie_json(client, nitrates_site):
+    response = client.get("/api/arbre/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "arbre" in data
+    assert data["arbre"]["noeud"]["id"] == "n_zvn"

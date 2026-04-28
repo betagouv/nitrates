@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
 from envergo.nitrates.views import (
+    ArbreView,
     DebugView,
     HomeView,
     MoulinetteView,
@@ -31,6 +32,11 @@ urlpatterns = [
         "api/referentiels/",
         ReferentielsView.as_view(),
         name="nitrates_referentiels",
+    ),
+    path(
+        "api/arbre/",
+        ArbreView.as_view(),
+        name="nitrates_arbre",
     ),
     path(
         _("contact-us/"),
