@@ -18,11 +18,16 @@ pytestmark = [pytest.mark.django_db, pytest.mark.urls("config.urls_nitrates")]
 
 
 @pytest.fixture
-def specs_dir(tmp_path, settings):
-    """Repertoire de specs minimal qui couvre toutes les primitives :
+def specs_dir(tmp_path, settings, make_active_tree):
+    """Cree un DecisionTree actif minimal qui couvre toutes les primitives :
     catalogue racine, formulaire (4 niveaux ordonnes), regles
     (interdiction, autorisation, plafonnement, libre, non_applicable,
     calculatrice), renvoi_vers, a_completer.
+
+    Garde son ancien nom (`specs_dir`) pour minimiser le diff sur les tests
+    qui l'utilisent. Garde aussi l'ecriture sur disque + NITRATES_SPECS_DIR
+    pour que le test `test_loader_roundtrip_preserves_content` qui appelle
+    le loader fichier (ruamel) continue de marcher.
     """
     yaml_text = textwrap.dedent(
         """\
@@ -121,6 +126,7 @@ def specs_dir(tmp_path, settings):
     )
     (tmp_path / "arbre_decision_national.yaml").write_text(yaml_text, encoding="utf-8")
     settings.NITRATES_SPECS_DIR = str(tmp_path)
+    make_active_tree(yaml_text)
     return tmp_path
 
 

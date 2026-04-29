@@ -79,3 +79,37 @@ docker compose run --rm django python manage.py import_nitrates_rpg \
 
 Commande resumable : en cas d'interruption, relancer reprend là où l'import
 s'est arrêté. Batchs de 5000 avec `bulk_create`.
+
+## Arbre de décision : DB vs fichier YAML
+
+La source de vérité runtime de l'arbre de décision est la table
+`nitrates_decisiontree`. Le fichier YAML dans `NITRATES_SPECS_DIR` reste
+le format d'import et d'export (backup git).
+
+Au premier `migrate`, l'arbre est **auto-importé** depuis
+`NITRATES_SPECS_DIR/arbre_decision_national.yaml` si le fichier est
+accessible (cf. migration data `0004_import_initial_decision_tree`). Si
+le fichier n'est pas accessible (CI sans bind mount), la migration no-op
+silencieusement.
+
+Pour réimporter manuellement après modification du YAML :
+
+```bash
+# 1er import (table vide) : crée le tree actif
+docker compose run --rm django python manage.py import_decision_tree \
+  /specs/arbre_decision_national.yaml --mode auto
+
+# Mise à jour : crée un draft + active immédiatement (l'actif courant
+# passe en archive)
+docker compose run --rm django python manage.py import_decision_tree \
+  /specs/arbre_decision_national.yaml --mode force-active
+
+# Préparer une nouvelle version sans l'activer
+docker compose run --rm django python manage.py import_decision_tree \
+  /specs/arbre_decision_national.yaml --mode draft --name pan_v2
+```
+
+L'arbre est validé (`validate_arbre()`) avant insertion ; en cas de YAML
+non conforme, la commande échoue avec la liste des erreurs et n'écrit
+rien. Le YAML brut (round-trip ruamel) est conservé sur le tree pour
+permettre l'export et la coloration syntaxique dans le viewer admin.

@@ -9,9 +9,9 @@ from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
-from envergo.nitrates.models import MoulinetteNitrates, RpgCulture
+from envergo.nitrates.models import DecisionTree, MoulinetteNitrates, RpgCulture
 from envergo.nitrates.regions import region_for_department
-from envergo.nitrates.yaml_tree import load_arbre, load_referentiels
+from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 
 
 class HomeView(TemplateView):
@@ -177,13 +177,28 @@ class ReferentielsView(View):
 
 
 @method_decorator(cache_page(60 * 60), name="dispatch")
-class ArbreView(View):
-    """Expose l'arbre de decision PAN en JSON pour que le front puisse
+class DecisionTreeView(View):
+    """Expose l'arbre de decision actif en JSON pour que le front puisse
     construire les selects en cascade (occupation_sol, sous_culture,
-    type_fertilisant) en suivant la structure exacte de l'arbre."""
+    type_fertilisant) en suivant la structure exacte de l'arbre.
+
+    Source de verite : la table DecisionTree. Si aucun tree actif, on
+    retourne 503 plutot que 500 (cause = data manquante en base).
+    """
 
     def get(self, request, *args, **kwargs):
-        return JsonResponse(load_arbre("arbre_decision_national"))
+        try:
+            return JsonResponse(load_active_tree())
+        except DecisionTree.DoesNotExist:
+            return JsonResponse(
+                {
+                    "error": (
+                        "Aucun arbre de decision actif en base. "
+                        "Importer via `manage.py import_decision_tree`."
+                    )
+                },
+                status=503,
+            )
 
 
 class MoulinetteView(View):

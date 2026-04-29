@@ -10,73 +10,84 @@
 {% endblock %}
 
 {% block content %}
-  <div class="fr-container-fluid fr-py-3w yaml-admin">
-    <header class="yaml-admin__header">
-      <div class="yaml-admin__title-row">
-        <div>
-          <h1>Arbre de décision nitrates</h1>
-          <p class="yaml-admin__meta">
-            {% if metadata.version %}<span>v{{ metadata.version }}</span>{% endif %}
-            {% if metadata.statut %}<span>· {{ metadata.statut }}</span>{% endif %}
-            {% if metadata.derniere_maj %}<span>· maj {{ metadata.derniere_maj }}</span>{% endif %}
-          </p>
-          <p class="yaml-admin__stats">
-            <span><strong>{{ stats.noeuds }}</strong> nœuds</span>
-            <span><strong>{{ stats.regles }}</strong> règles</span>
-            {% if stats.renvois %}<span><strong>{{ stats.renvois }}</strong> renvois</span>{% endif %}
-            {% if stats.a_completer %}
-              <span class="yaml-admin__stat-warn"><strong>{{ stats.a_completer }}</strong> à compléter</span>
-            {% endif %}
-          </p>
-        </div>
-
-        <nav class="yaml-admin__quick" aria-label="Filtres rapides par tag">
-          <span class="yaml-admin__label">Filtres :</span>
-          <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}{% endif %}"
-             class="yaml-tag yaml-admin__quick-btn{% if not filtre %} is-active{% endif %}"
-             title="Aucun filtre">
-            <span class="yaml-tag__label">Tout</span>
-          </a>
-          {% for key, tag in quick_filters %}
-            <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}"
-               class="yaml-tag {{ tag.css }} yaml-admin__quick-btn{% if filtre == key %} is-active{% endif %}"
-               title="{{ tag.label }}">
-              {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
-              <span class="yaml-tag__label">{{ tag.label }}</span>
-            </a>
-          {% endfor %}
-        </nav>
+  {% if no_tree %}
+    <div class="fr-container fr-py-4w">
+      <h1>Arbre de décision nitrates</h1>
+      <div class="fr-alert fr-alert--warning">
+        <h3 class="fr-alert__title">Aucun arbre actif en base.</h3>
+        <p>Pour importer l'arbre depuis le fichier YAML, lancez :</p>
+        <pre><code>python manage.py import_decision_tree /specs/arbre_decision_national.yaml --mode auto</code></pre>
       </div>
-
-      <nav class="yaml-admin__toolbar" aria-label="Vues et fold">
-        <div class="yaml-admin__vues">
-          <span class="yaml-admin__label">Vue :</span>
-          <a href="?{% if filtre %}filtre={{ filtre }}{% endif %}"
-             class="yaml-admin__btn{% if vue == 'arbre' %} is-active{% endif %}">Arbre</a>
-          <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}"
-             class="yaml-admin__btn{% if vue == 'split' %} is-active{% endif %}">Arbre + YAML</a>
-          <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}"
-             class="yaml-admin__btn{% if vue == 'brut' %} is-active{% endif %}">YAML brut</a>
-        </div>
-        {% if expand or expand_deep %}
-          {% reset_link querystring_base as reset_url %}
-          <a href="{{ reset_url }}" class="yaml-admin__btn">↺ Réinitialiser le pli</a>
-        {% endif %}
-      </nav>
-    </header>
-
-    <div class="yaml-admin__layout yaml-admin__layout--{{ vue }}">
-      {% if vue != "brut" %}
-        <section class="yaml-admin__tree" aria-label="Arbre de décision">
-          {% include "nitrates_admin/yaml_tree/_items.html" %}
-        </section>
-      {% endif %}
-
-      {% if vue == "split" or vue == "brut" %}
-        <section class="yaml-admin__raw" aria-label="Source YAML">
-          {{ raw_html|safe }}
-        </section>
-      {% endif %}
     </div>
-  </div>
+  {% else %}
+    <div class="fr-container-fluid fr-py-3w yaml-admin">
+      <header class="yaml-admin__header">
+        <div class="yaml-admin__title-row">
+          <div>
+            <h1>Arbre de décision nitrates</h1>
+            <p class="yaml-admin__meta">
+              {% if metadata.version %}<span>v{{ metadata.version }}</span>{% endif %}
+              {% if metadata.statut %}<span>· {{ metadata.statut }}</span>{% endif %}
+              {% if metadata.derniere_maj %}<span>· maj {{ metadata.derniere_maj }}</span>{% endif %}
+            </p>
+            <p class="yaml-admin__stats">
+              <span><strong>{{ stats.noeuds }}</strong> nœuds</span>
+              <span><strong>{{ stats.regles }}</strong> règles</span>
+              {% if stats.renvois %}<span><strong>{{ stats.renvois }}</strong> renvois</span>{% endif %}
+              {% if stats.a_completer %}
+                <span class="yaml-admin__stat-warn"><strong>{{ stats.a_completer }}</strong> à compléter</span>
+              {% endif %}
+            </p>
+          </div>
+
+          <nav class="yaml-admin__quick" aria-label="Filtres rapides par tag">
+            <span class="yaml-admin__label">Filtres :</span>
+            <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}{% endif %}"
+               class="yaml-tag yaml-admin__quick-btn{% if not filtre %} is-active{% endif %}"
+               title="Aucun filtre">
+              <span class="yaml-tag__label">Tout</span>
+            </a>
+            {% for key, tag in quick_filters %}
+              <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}"
+                 class="yaml-tag {{ tag.css }} yaml-admin__quick-btn{% if filtre == key %} is-active{% endif %}"
+                 title="{{ tag.label }}">
+                {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
+                <span class="yaml-tag__label">{{ tag.label }}</span>
+              </a>
+            {% endfor %}
+          </nav>
+        </div>
+
+        <nav class="yaml-admin__toolbar" aria-label="Vues et fold">
+          <div class="yaml-admin__vues">
+            <span class="yaml-admin__label">Vue :</span>
+            <a href="?{% if filtre %}filtre={{ filtre }}{% endif %}"
+               class="yaml-admin__btn{% if vue == 'arbre' %} is-active{% endif %}">Arbre</a>
+            <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}"
+               class="yaml-admin__btn{% if vue == 'split' %} is-active{% endif %}">Arbre + YAML</a>
+            <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}"
+               class="yaml-admin__btn{% if vue == 'brut' %} is-active{% endif %}">YAML brut</a>
+          </div>
+          {% if expand or expand_deep %}
+            {% reset_link querystring_base as reset_url %}
+            <a href="{{ reset_url }}" class="yaml-admin__btn">↺ Réinitialiser le pli</a>
+          {% endif %}
+        </nav>
+      </header>
+
+      <div class="yaml-admin__layout yaml-admin__layout--{{ vue }}">
+        {% if vue != "brut" %}
+          <section class="yaml-admin__tree" aria-label="Arbre de décision">
+            {% include "nitrates_admin/yaml_tree/_items.html" %}
+          </section>
+        {% endif %}
+
+        {% if vue == "split" or vue == "brut" %}
+          <section class="yaml-admin__raw" aria-label="Source YAML">
+            {{ raw_html|safe }}
+          </section>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}

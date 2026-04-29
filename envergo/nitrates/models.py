@@ -2,16 +2,20 @@
 
 Contient :
   - `RpgCulture` : table de reference des codes culture du RPG
+  - `DecisionTree` : versions de l'arbre de decision (draft/active/archive),
+    source de verite runtime depuis la migration de l'arbre YAML vers la DB
   - `MoulinetteNitrates` : moulinette nitrates (heritage du pattern
     Envergo `Moulinette`, definie ici plutot que dans
     envergo/moulinette/models.py qui est deja sature)
 """
 
+from django.conf import settings
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
-from django.db import models
-from django.db.models import F, IntegerField
+from django.db import models, transaction
+from django.db.models import F, IntegerField, Q
 from django.db.models.functions import Cast
+from django.utils import timezone
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.moulinette.models import Moulinette
@@ -46,6 +50,102 @@ class RpgCulture(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.libelle}"
+
+
+class DecisionTree(models.Model):
+    """Une version de l'arbre de decision nitrates.
+
+    Source de verite runtime : la moulinette et les vues lisent l'arbre
+    depuis cette table, plus depuis le fichier YAML monte en volume.
+
+    Lifecycle :
+      - draft : version en preparation, peut coexister avec d'autres drafts
+      - active : version actuellement servie. UNE seule a la fois (contrainte
+        unique partielle).
+      - archive : ancienne version active. On garde toutes les archives.
+
+    Le YAML (champ `contenu_yaml_brut`) est conserve via ruamel round-trip
+    pour pouvoir re-exporter avec commentaires + ordre + ancres preserves.
+    Le parse pyyaml (champ `contenu`) est ce qui est consomme en runtime.
+    """
+
+    STATUS_DRAFT = "draft"
+    STATUS_ACTIVE = "active"
+    STATUS_ARCHIVE = "archive"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Brouillon"),
+        (STATUS_ACTIVE, "Actif"),
+        (STATUS_ARCHIVE, "Archive"),
+    ]
+
+    name = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+
+    # Arbre deserialise -- manipulable comme dict. Source de verite runtime.
+    contenu = models.JSONField()
+
+    # YAML round-trip ruamel : preserve commentaires + ordre + ancres.
+    # Sert a l'export et au viewer admin.
+    contenu_yaml_brut = models.TextField(blank=True)
+
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="children",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    activated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            # Une seule version active a la fois.
+            models.UniqueConstraint(
+                fields=["status"],
+                condition=Q(status="active"),
+                name="nitrates_decisiontree_unique_active",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status"]),
+        ]
+        ordering = ["-activated_at", "-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+    @transaction.atomic
+    def activate(self):
+        """Active ce DecisionTree. L'actif courant passe en archive.
+
+        Idempotent : re-activer un tree deja actif ne casse rien.
+
+        TODO MVP : un seul tree actif global. Quand on ajoutera les
+        overrides regionaux (PAR), la notion d'actif devra etre adossee
+        a un scope (national / region / departement / bassin). Modele
+        cible : champ `scope` (national | region | dept | bassin) +
+        champ optionnel `scope_value` (code region/dept/bassin), avec
+        contrainte unique partielle sur (status='active', scope, scope_value).
+        Cette methode `activate()` devra alors n'archiver que les actifs
+        du meme scope.
+        """
+        DecisionTree.objects.filter(status=self.STATUS_ACTIVE).exclude(
+            pk=self.pk
+        ).update(status=self.STATUS_ARCHIVE)
+        self.status = self.STATUS_ACTIVE
+        self.activated_at = timezone.now()
+        self.save(update_fields=["status", "activated_at", "updated_at"])
 
 
 class MoulinetteNitrates(Moulinette):

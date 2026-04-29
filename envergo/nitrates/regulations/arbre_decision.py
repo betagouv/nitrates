@@ -37,7 +37,7 @@ from envergo.nitrates.yaml_tree import (
     BesoinCatalogue,
     QuestionsSubsidiaires,
     Resultat,
-    load_arbre,
+    load_active_tree,
     parcours,
 )
 
@@ -83,7 +83,7 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     choice_label = "Arbre de decision PAN"
 
     def evaluate(self):
-        arbre = self._charger_arbre()
+        arbre = self._load_decision_tree()
         contexte = self._contexte_initial()
 
         # Boucle catalogue : tant que parcours() bute sur un noeud
@@ -118,10 +118,11 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
 
     # ─── Construction du contexte ──────────────────────────────────────────
 
-    def _charger_arbre(self) -> dict:
-        # MVP : toujours PAN national. Plus tard : PAR si dispo pour la
-        # region.
-        return load_arbre("arbre_decision_national")
+    def _load_decision_tree(self) -> dict:
+        # Source de verite : la table DecisionTree (un seul actif a la fois).
+        # La gestion du PAR R44 viendra plus tard via un champ region_code
+        # sur le modele.
+        return load_active_tree()
 
     def _contexte_initial(self) -> dict:
         contexte = {

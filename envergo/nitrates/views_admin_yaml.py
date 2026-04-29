@@ -3,6 +3,8 @@
 Une seule vue : `/admin/nitrates/arbre-decision/`. Toggle vue via `?vue=`.
 Filtre rapide via `?filtre=` (un tag a la fois). Etat de fold dans
 `?expand=` (cumulables) et `?expand_deep=` (recursif). SSR pur, pas de JS.
+
+Source de verite : la table `DecisionTree` (lecture du tree actif).
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -12,15 +14,16 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import YamlLexer
 
+from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.yaml_admin.flatten import iter_entries
 from envergo.nitrates.yaml_admin.fold import compute_open_paths
-from envergo.nitrates.yaml_admin.loader import load_arbre_admin, load_raw
 from envergo.nitrates.yaml_admin.tags import (
     QUICK_FILTER_KEYS,
     QUICK_FILTERS,
     get_tags,
     has_a_completer,
 )
+from envergo.nitrates.yaml_tree import load_active_tree_admin, load_active_tree_raw
 
 _VUES = {"arbre", "brut", "split"}
 
@@ -44,7 +47,20 @@ class YamlTreeView(TemplateView):
         expand = set(self.request.GET.getlist("expand")[:200])
         expand_deep = set(self.request.GET.getlist("expand_deep")[:200])
 
-        arbre = load_arbre_admin()
+        try:
+            arbre = load_active_tree_admin()
+        except DecisionTree.DoesNotExist:
+            ctx.update(
+                {
+                    "no_tree": True,
+                    "vue": vue,
+                    "filtre": filtre,
+                    "quick_filters": QUICK_FILTERS,
+                    "querystring_base": _querystring_base(vue, filtre),
+                }
+            )
+            return ctx
+
         racine = arbre.get("arbre", {}).get("noeud") or {}
 
         entries = list(iter_entries(arbre))
@@ -81,7 +97,7 @@ class YamlTreeView(TemplateView):
         )
 
         if vue in {"brut", "split"}:
-            raw = load_raw()
+            raw = load_active_tree_raw()
             formatter = HtmlFormatter(
                 cssclass="yaml-raw", linenos="inline", wrapcode=True
             )
