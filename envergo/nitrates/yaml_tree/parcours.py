@@ -70,6 +70,12 @@ class QuestionsSubsidiaires:
     questions: list[QuestionFormulaire]
     chemin_partiel: list[str] = field(default_factory=list)
 
+    @property
+    def champs_set(self) -> set[str]:
+        """Set des champs des questions en cours. Utile cote template
+        pour ne pas re-render ces champs en hidden input (collision)."""
+        return {q.champ for q in self.questions}
+
 
 @dataclass
 class BesoinCatalogue:
@@ -160,13 +166,58 @@ def _descendre_branche(
 
 def _choisir_branche(noeud: dict, valeur: Any) -> dict:
     for branche in noeud.get("branches", []):
-        if branche.get("valeur") == valeur:
+        if _valeurs_egales(branche.get("valeur"), valeur):
             return branche
+
+    # Fallback metier : sur un noeud `type_fertilisant`, l'arbre peut avoir
+    # une branche generique `type_I` qui couvre l'union {type_Ia, type_Ib}.
+    # Selon spec metier 2026-04 : "type I" = "type Ia ou Ib" indistinctement.
+    # Le mapping sous_fertilisant -> type genere uniquement type_Ia ou
+    # type_Ib (jamais type_I), donc on retombe sur type_I si dispo.
+    if noeud.get("champ") == "type_fertilisant" and valeur in ("type_Ia", "type_Ib"):
+        for branche in noeud.get("branches", []):
+            if branche.get("valeur") == "type_I":
+                return branche
+
     raise ParcoursError(
         f"noeud '{noeud['id']}' (champ={noeud['champ']!r}) : aucune branche "
         f"ne correspond a la valeur {valeur!r}. "
         f"Valeurs possibles : {[b.get('valeur') for b in noeud.get('branches', [])]}"
     )
+
+
+def _valeurs_egales(branche_val: Any, contexte_val: Any) -> bool:
+    """Compare une valeur de branche YAML (typee : bool, int, str) a une
+    valeur du contexte (qui peut venir d'une query string et donc etre
+    une string).
+
+    Cas particuliers :
+      - bool YAML vs string ('True'/'true'/'False'/'false') : on tolere
+      - int YAML vs string numerique : on tolere
+      - sinon comparaison stricte
+    """
+    if branche_val == contexte_val:
+        return True
+    # Bool YAML <-> string contexte
+    if isinstance(branche_val, bool) and isinstance(contexte_val, str):
+        normalise = contexte_val.strip().lower()
+        if branche_val is True and normalise in ("true", "oui", "1"):
+            return True
+        if branche_val is False and normalise in ("false", "non", "0"):
+            return True
+    # Int YAML <-> string numerique. (`bool` etant une sous-classe de `int`,
+    # on l'exclut explicitement pour ne pas matcher 0/1 comme True/False
+    # ici -- deja gere ci-dessus.)
+    if (
+        isinstance(branche_val, int)
+        and not isinstance(branche_val, bool)
+        and isinstance(contexte_val, str)
+    ):
+        try:
+            return branche_val == int(contexte_val)
+        except ValueError:
+            return False
+    return False
 
 
 # ─── Resultat ───────────────────────────────────────────────────────────────
@@ -206,54 +257,103 @@ def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
 def _collecter_questions(
     noeud_formulaire: dict, contexte: dict[str, Any], index_ids: dict[str, dict]
 ) -> list[QuestionFormulaire]:
-    """A partir d'un noeud formulaire bloquant, retourne la liste des questions
-    a poser. On commence par celle qui bloque, puis on collecte les noeuds
-    formulaire qui suivent sur les branches qu'on pourrait prendre apres
-    avoir repondu (questions de sous-niveau qui seront forcement posees).
+    """A partir d'un noeud formulaire bloquant, retourne la liste des
+    questions a poser en BATCH **sur la branche en cours uniquement**.
 
-    Strategie pragmatique : pour chaque branche, on plonge et on collecte
-    les premiers noeuds formulaire rencontres. Si toutes les branches
-    convergent vers les memes niveaux suivants, ca evite un aller-retour.
-    Si elles divergent, on liste tout ce qui pourrait etre demande -- le
-    front filtrera selon les reponses au fur et a mesure."""
-    questions: list[QuestionFormulaire] = [_question_de(noeud_formulaire)]
-    deja_vus: set[str] = {noeud_formulaire["id"]}
-    for branche in noeud_formulaire.get("branches", []):
-        _collecter_questions_aval(branche, deja_vus, questions, index_ids)
+    Strategie :
+      - Le 1er noeud qui bloque est inclus.
+      - On ne descend dans les sous-branches que si le contexte fournit
+        deja une valeur permettant de choisir la branche (cas typique :
+        l'utilisateur a rempli les niveaux precedents, on suit son
+        chemin specifique). On collecte ainsi les questions strictement
+        en aval du chemin choisi.
+      - Si le noeud bloque sans qu'aucune valeur ne soit dans le contexte,
+        on n'explore PAS toutes les sous-branches latĂŠrales : on s'arrete
+        sur ce noeud, l'utilisateur repondra et on collectera la suite au
+        prochain tour.
+      - Les noeuds catalogue sont traverses sans etre listes (resolus par
+        la moulinette via SIG, pas par l'utilisateur). Mais on ne descend
+        que si le catalogue est resolu dans le contexte ; sinon on
+        s'arrete.
+
+    Cette strategie garantit que l'utilisateur ne voit jamais de questions
+    qui ne le concernent pas (branches laterales non choisies)."""
+    questions: list[QuestionFormulaire] = []
+    _ajouter_question(questions, noeud_formulaire)
+
+    # On essaie de descendre seulement si la valeur du noeud bloquant est
+    # connue dans le contexte. Mais par definition, si on arrive ici c'est
+    # que la valeur est absente : donc on s'arrete au 1er noeud.
+    # CEPENDANT : le walker peut etre appele depuis un point ou la 1re
+    # question est repondue mais d'autres en aval ne le sont pas.
+    # Pour rester correct, on essaie de descendre branche par branche
+    # selon le contexte.
+    valeur = contexte.get(noeud_formulaire["champ"])
+    if valeur is not None:
+        for branche in noeud_formulaire.get("branches", []):
+            if _valeurs_egales(branche.get("valeur"), valeur):
+                _collecter_aval_si_chemin_unique(branche, contexte, questions)
+                break
+
     return questions
 
 
-def _collecter_questions_aval(
+def _collecter_aval_si_chemin_unique(
     branche: dict,
-    deja_vus: set[str],
+    contexte: dict[str, Any],
     questions: list[QuestionFormulaire],
-    index_ids: dict[str, dict],
 ) -> None:
-    if "noeud" in branche:
-        sous = branche["noeud"]
-        if sous.get("type_noeud") == "formulaire" and sous["id"] not in deja_vus:
-            deja_vus.add(sous["id"])
-            questions.append(_question_de(sous))
-            for sb in sous.get("branches", []):
-                _collecter_questions_aval(sb, deja_vus, questions, index_ids)
-        elif sous.get("type_noeud") == "catalogue":
-            # On traverse les catalogues sans les inclure (ils ne sont pas
-            # poses a l'utilisateur).
-            for sb in sous.get("branches", []):
-                _collecter_questions_aval(sb, deja_vus, questions, index_ids)
+    """Suit la branche en cours et collecte les noeuds formulaire en aval
+    tant qu'on peut identifier le chemin (valeurs presentes dans le
+    contexte ou catalogue resolu)."""
+    if "noeud" not in branche:
+        return
+    sous = branche["noeud"]
+    type_noeud = sous.get("type_noeud")
+
+    if type_noeud == "formulaire":
+        # Question : on l'ajoute. Si la reponse est dans le contexte, on
+        # peut continuer a descendre ; sinon on s'arrete.
+        _ajouter_question(questions, sous)
+        valeur = contexte.get(sous["champ"])
+        if valeur is None:
+            return
+        for sb in sous.get("branches", []):
+            if _valeurs_egales(sb.get("valeur"), valeur):
+                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                break
+        return
+
+    if type_noeud == "catalogue":
+        # Catalogue : pas de question utilisateur. On descend uniquement si
+        # la valeur est dans le contexte (catalogue deja resolu par la
+        # moulinette ou par un tour precedent).
+        valeur = contexte.get(sous["champ"])
+        if valeur is None:
+            return
+        for sb in sous.get("branches", []):
+            if _valeurs_egales(sb.get("valeur"), valeur):
+                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                break
 
 
-def _question_de(noeud: dict) -> QuestionFormulaire:
-    return QuestionFormulaire(
-        noeud_id=noeud["id"],
-        champ=noeud["champ"],
-        niveau=noeud["niveau"],
-        texte=noeud["texte"],
-        aide=noeud.get("aide"),
-        choix=[
-            {"valeur": b["valeur"], "libelle": b.get("libelle")}
-            for b in noeud.get("branches", [])
-        ],
+def _ajouter_question(questions: list[QuestionFormulaire], noeud: dict) -> None:
+    """Ajoute une question si pas deja presente (par champ)."""
+    champ = noeud["champ"]
+    if any(q.champ == champ for q in questions):
+        return
+    questions.append(
+        QuestionFormulaire(
+            noeud_id=noeud["id"],
+            champ=champ,
+            niveau=noeud["niveau"],
+            texte=noeud["texte"],
+            aide=noeud.get("aide"),
+            choix=[
+                {"valeur": b["valeur"], "libelle": b.get("libelle")}
+                for b in noeud.get("branches", [])
+            ],
+        )
     )
 
 

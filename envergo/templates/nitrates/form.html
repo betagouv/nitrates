@@ -19,7 +19,7 @@
     window.NITRATES_INITIAL_DATA = {
       occupation_sol: "{{ data.occupation_sol|default:'' }}",
       sous_culture: "{{ data.sous_culture|default:'' }}",
-      type_fertilisant: "{{ data.type_fertilisant|default:'' }}",
+      categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
       sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
     };
   </script>
@@ -105,10 +105,10 @@
 
         <div class="fr-fieldset__element">
           <div class="fr-select-group">
-            <label class="fr-label" for="id_type_fertilisant">Type de fertilisant</label>
+            <label class="fr-label" for="id_categorie_fertilisant">Catégorie de fertilisant</label>
             <select class="fr-select"
-                    name="type_fertilisant"
-                    id="id_type_fertilisant"
+                    name="categorie_fertilisant"
+                    id="id_categorie_fertilisant"
                     disabled>
               <option value="">— Choisir la culture d'abord —</option>
             </select>
@@ -117,15 +117,22 @@
 
         <div class="fr-fieldset__element">
           <div class="fr-select-group">
-            <label class="fr-label" for="id_sous_fertilisant">Sous-fertilisant (optionnel)</label>
+            <label class="fr-label" for="id_sous_fertilisant">Fertilisant précis</label>
             <select class="fr-select"
                     name="sous_fertilisant"
                     id="id_sous_fertilisant"
                     disabled>
-              <option value="">— Choisir le type de fertilisant d'abord —</option>
+              <option value="">— Choisir la catégorie d'abord —</option>
             </select>
+            <p class="fr-hint-text">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
           </div>
         </div>
+
+        {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
+        <input type="hidden"
+               name="type_fertilisant"
+               id="id_type_fertilisant"
+               value="{{ data.type_fertilisant|default:'' }}">
       </fieldset>
 
       <button type="submit" class="fr-btn fr-mt-2w">Lancer la simulation</button>

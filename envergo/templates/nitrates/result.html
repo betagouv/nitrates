@@ -1,6 +1,13 @@
 {% extends "nitrates/base.html" %}
 
+{% load static %}
+
 {% block title %}Résultat{% endblock %}
+
+{% block extra_js %}
+  <script>window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";</script>
+  <script defer src="{% static 'nitrates/subsidiaires.js' %}"></script>
+{% endblock %}
 
 {% block content %}
   <div class="fr-container fr-py-4w">
@@ -95,23 +102,70 @@
                 <div class="fr-callout fr-callout--blue-cumulus fr-mt-2w">
                   <h4 class="fr-callout__title">Questions complémentaires</h4>
                   <p>
-                    Le parcours s'est arrêté avant la feuille. Il faut répondre aux questions suivantes pour obtenir le résultat final :
+                    Répondez aux questions ci-dessous. Les questions suivantes
+                    apparaîtront automatiquement (cascade côté client).
                   </p>
-                  <ul>
-                    {% for q in ev.questions_subsidiaires.questions %}
-                      <li>
-                        <strong>{{ q.texte }}</strong> ({{ q.champ }}, niveau {{ q.niveau }})
-                        <br>
-                        <small>Choix possibles :
-                          {% for c in q.choix %}
-                            <code>{{ c.valeur }}</code>
-                            {% if c.libelle %}({{ c.libelle }}){% endif %}
-                            {% if not forloop.last %},{% endif %}
-                          {% endfor %}
-                        </small>
-                      </li>
-                    {% endfor %}
-                  </ul>
+
+                  <form method="get"
+                        action="{% url 'nitrates_simulateur' %}"
+                        class="fr-mt-2w subsidiaires-form"
+                        data-subsidiaires>
+
+                    {# Conserve les params actuels comme hidden inputs.
+                       Important : on n'inclut PAS les champs des questions
+                       en cours (selects en aval) pour eviter d'avoir 2
+                       inputs avec le meme name. #}
+                    {% with subsidiary_fields=ev.questions_subsidiaires.champs_set %}
+                      {% for key, value in data.items %}
+                        {% if value and key not in subsidiary_fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+                      {% endfor %}
+                    {% endwith %}
+
+                    <div class="subsidiaires-questions">
+                      {% for q in ev.questions_subsidiaires.questions %}
+                        <div class="fr-fieldset__element subsidiaire-question">
+                          <div class="fr-select-group">
+                            <label class="fr-label" for="id_subsidiaire_{{ q.champ }}">
+                              {{ q.texte }}
+                              <span class="fr-hint-text">champ : {{ q.champ }} (niveau {{ q.niveau }})</span>
+                            </label>
+                            <select class="fr-select"
+                                    name="{{ q.champ }}"
+                                    id="id_subsidiaire_{{ q.champ }}"
+                                    data-subsidiaire>
+                              <option value="">— Choisir —</option>
+                              {% for c in q.choix %}
+                                <option value="{{ c.valeur }}">
+                                  {% if c.libelle %}
+                                    {{ c.libelle }} ({{ c.valeur }})
+                                  {% else %}
+                                    {{ c.valeur }}
+                                  {% endif %}
+                                </option>
+                              {% endfor %}
+                            </select>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <button type="submit" class="fr-btn fr-mt-2w">Voir le résultat</button>
+                  </form>
+                </div>
+              {% endif %}
+
+              {% if ev.catalogue_manquant %}
+                <div class="fr-callout fr-callout--brown-opera fr-mt-2w">
+                  <h4 class="fr-callout__title">Données SIG manquantes</h4>
+                  <p>
+                    Le parcours requiert la résolution d'une zone géographique
+                    pour laquelle nous n'avons pas encore importé le dataset
+                    nécessaire. Le résultat ne peut donc pas être finalisé.
+                  </p>
+                  <p class="fr-text--sm">
+                    <strong>Référence demandée :</strong> <code>{{ ev.catalogue_manquant.reference }}</code>
+                    (champ : <code>{{ ev.catalogue_manquant.champ }}</code>, source : {{ ev.catalogue_manquant.source }})
+                  </p>
                 </div>
               {% endif %}
 

@@ -126,17 +126,20 @@ def test_chemin_trace_dans_evaluator(setup):
 
 
 def test_colza_type_II_zone_note_5_absente_sig(setup):
-    """zone_note_5 n'a pas encore de dataset, donc resolution = False
-    par defaut. Le parcours descend la branche 'autres' (zone_note_5=false)
-    et atteint r_colza_type_II_autres."""
+    """zone_note_5 n'a pas encore de dataset SIG. On ne veut PAS deviner
+    la valeur (False) parce qu'on tomberait sur une branche par defaut
+    qui n'a aucun sens metier. On retourne non_disponible et on expose
+    le `catalogue_manquant` pour que le template explique au user."""
     mou = _moulinette(
         occupation_sol="culture_principale",
         sous_culture="colza",
         type_fertilisant="type_II",
     )
     ev = _evaluator(mou)
-    assert ev.result == RESULTS.interdit
-    assert ev.result_code == "r_colza_type_II_autres"
+    assert ev.result == RESULTS.non_disponible
+    assert ev.catalogue_manquant is not None
+    assert ev.catalogue_manquant.reference == "zone_note_5"
+    assert ev.catalogue_manquant.champ == "zone_note_5"
 
 
 def test_colza_type_0_interdiction_directe(setup):

@@ -33,11 +33,22 @@ class ValidationError(Exception):
         super().__init__(f"{len(errors)} erreur(s) de validation : {errors[:3]}...")
 
 
-def validate_arbre(arbre: dict, referentiels: dict | None = None) -> None:
+def validate_arbre(
+    arbre: dict,
+    referentiels: dict | None = None,
+    references_sig_supportees: set[str] | None = None,
+) -> None:
     """Lance toute la chaine de validation. Leve ValidationError si KO.
 
     referentiels (optionnel) : si fourni, on verifie aussi que les
     code_prescription / note / evenements_phenologiques referencees existent.
+
+    references_sig_supportees (optionnel) : set des references SIG que le
+    backend sait resoudre (cf. ArbreDecisionEvaluator.REFERENCE_TO_MAP_TYPE).
+    Si fourni, on signale les noeuds catalogue source=sig dont la
+    reference n'est pas couverte par le backend (= dataset SIG manquant).
+    Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
+    que les datasets -- mais on les liste pour traque.
     """
     errors: list[str] = []
 
@@ -56,8 +67,31 @@ def validate_arbre(arbre: dict, referentiels: dict | None = None) -> None:
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
 
+    if references_sig_supportees is not None:
+        errors.extend(
+            _check_references_sig_supportees(arbre, references_sig_supportees)
+        )
+
     if errors:
         raise ValidationError(errors)
+
+
+def collect_references_sig(arbre: dict) -> list[tuple[str, str]]:
+    """Liste les references SIG (source=sig) utilisees par l'arbre,
+    avec leur noeud_id pour pouvoir les localiser. Utile pour savoir
+    quels datasets il faut importer."""
+    refs: list[tuple[str, str]] = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict):
+            continue
+        if obj.get("type_noeud") != "catalogue":
+            continue
+        if obj.get("source") != "sig":
+            continue
+        ref = obj.get("reference")
+        if ref:
+            refs.append((obj.get("id", "?"), ref))
+    return refs
 
 
 # ─── Structure ──────────────────────────────────────────────────────────────
@@ -255,6 +289,34 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
             errors.append(
                 f"[reference] regle '{obj.get('id')}' : note '{note}' "
                 f"inconnue dans referentiels.yaml"
+            )
+    return errors
+
+
+# ─── References SIG resolvables par le backend ──────────────────────────────
+
+
+def _check_references_sig_supportees(
+    arbre: dict, references_supportees: set[str]
+) -> list[str]:
+    """Signale les noeuds catalogue source=sig dont la reference n'est pas
+    dans le set passe en parametre (= dataset/mapping non implementes
+    cote backend). Permet de detecter au plus tot les trous d'integration
+    plutot que de tomber sur une erreur runtime au milieu d'un parcours."""
+    errors = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict):
+            continue
+        if obj.get("type_noeud") != "catalogue":
+            continue
+        if obj.get("source") != "sig":
+            continue
+        ref = obj.get("reference")
+        if ref and ref not in references_supportees:
+            errors.append(
+                f"[sig] noeud '{obj.get('id')}' (champ='{obj.get('champ')}') : "
+                f"reference SIG '{ref}' non supportee par le backend (dataset "
+                f"manquant ou mapping a ajouter dans REFERENCE_TO_MAP_TYPE)"
             )
     return errors
 

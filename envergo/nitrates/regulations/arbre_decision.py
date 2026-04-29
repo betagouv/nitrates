@@ -64,18 +64,38 @@ REFERENCE_TO_MAP_TYPE = {
     # zone_note_5 : pas encore de dataset, retournera False.
 }
 
-# Champs du form principal qui peuvent alimenter le contexte (cf.
-# MoulinetteFormNitrates).
-CHAMPS_CASCADE = (
+# Champs du form principal lus depuis le catalog (ceux passes par le form
+# Django valide). Les questions subsidiaires (effluent_peu_charge,
+# fertirrigation, culture_irriguee, plan_epandage, fertilisant_iaa, etc.)
+# sont lues directement depuis form_kwargs["data"] (request.GET brut)
+# parce que l'ensemble des champs possibles est dicte par l'arbre YAML --
+# on ne veut pas les declarer un par un dans MoulinetteFormNitrates.
+# categorie_fertilisant est exclu du contexte parcours : c'est de la
+# tracabilite front, l'arbre ne s'en sert pas (le mapping vers
+# type_fertilisant est deja resolu cote client via referentiels.yaml).
+CHAMPS_CATALOG = (
     "occupation_sol",
     "sous_culture",
     "type_fertilisant",
     "sous_fertilisant",
 )
+# Champs explicitement exclus du contexte parcours (ils ne sont jamais
+# utilises comme `champ` de noeud dans l'arbre, juste comme tracabilite
+# front ou meta).
+CHAMPS_EXCLUS_CONTEXTE = {
+    "lat",
+    "lng",
+    "categorie_fertilisant",
+    "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
+}
 
 # Garde-fou contre une boucle infinie de resolutions catalogue (un arbre
 # normal n'a pas plus de quelques noeuds catalogue empiles).
 MAX_ITERATIONS_CATALOGUE = 20
+
+# Sentinelle retournee par _resoudre_catalogue quand on ne sait pas
+# resoudre la reference (dataset SIG manquant, source non geree).
+_CATALOGUE_NON_RESOLVABLE = object()
 
 
 class ArbreDecisionEvaluator(CriterionEvaluator):
@@ -93,7 +113,18 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             res = parcours(arbre, contexte)
 
             if isinstance(res, BesoinCatalogue):
-                contexte[res.champ] = self._resoudre_catalogue(res)
+                resolu = self._resoudre_catalogue(res)
+                if resolu is _CATALOGUE_NON_RESOLVABLE:
+                    # Dataset SIG manquant pour cette reference. On ne
+                    # peut pas continuer : on retourne non_disponible
+                    # avec un message debug. Cas typique MVP : zonage
+                    # montagne, zone_note_5, etc.
+                    self._catalogue_manquant = res
+                    self._chemin = res.chemin_partiel
+                    self._result_code = RESULTS.non_disponible
+                    self._result = RESULTS.non_disponible
+                    return
+                contexte[res.champ] = resolu
                 continue
 
             if isinstance(res, QuestionsSubsidiaires):
@@ -128,30 +159,52 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         contexte = {
             "en_zone_vulnerable": self.catalog.get("en_zone_vulnerable", True),
         }
-        # Reponses cascade depuis le form principal (catalog les contient
-        # une fois le form valide).
-        for champ in CHAMPS_CASCADE:
+        # 1) Reponses cascade depuis le form principal (catalog : champs
+        #    validees par MoulinetteFormNitrates).
+        for champ in CHAMPS_CATALOG:
             valeur = self.catalog.get(champ)
             if valeur not in (None, ""):
                 contexte[champ] = valeur
+
+        # 2) Toutes les autres reponses subsidiaires viennent directement
+        #    de la query string (form_kwargs["data"]). On ne les declare
+        #    pas une par une dans le Form Django parce que l'ensemble des
+        #    champs possibles est dicte par l'arbre YAML, qui evolue.
+        raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+        for cle, valeur in raw_data.items():
+            if cle in CHAMPS_EXCLUS_CONTEXTE:
+                continue
+            if cle in contexte:
+                continue
+            if valeur in (None, ""):
+                continue
+            contexte[cle] = valeur
+
         return contexte
 
     def _resoudre_catalogue(self, besoin: BesoinCatalogue):
         """Resoud un noeud catalogue via SIG. Retourne la valeur a injecter
-        dans le contexte. Pour les references non mappees ou sans dataset
-        on retourne False (interpretation prudente : pas de zone speciale)."""
+        dans le contexte, ou la sentinelle `_CATALOGUE_NON_RESOLVABLE` si
+        on ne sait pas resoudre la reference (dataset manquant, source
+        non geree).
+
+        L'evaluator detecte la sentinelle et retourne RESULTS.non_disponible
+        au lieu de planter ou de retomber sur une valeur qui ne match
+        aucune branche."""
         if besoin.source != "sig":
             # source `mapping_referentiel` ou `calcul` : pas dans le scope
-            # du MVP, on retourne False par defaut.
-            return False
+            # du MVP, on ne sait pas resoudre.
+            return _CATALOGUE_NON_RESOLVABLE
 
         map_type = REFERENCE_TO_MAP_TYPE.get(besoin.reference)
         if map_type is None:
-            return False
+            # Reference non mappee : dataset SIG pas encore importe pour
+            # cette reference (ex : zone_note_5, zone_note_7_montagne).
+            return _CATALOGUE_NON_RESOLVABLE
 
         point = self.catalog.get("lng_lat")
         if point is None:
-            return False
+            return _CATALOGUE_NON_RESOLVABLE
 
         return Zone.objects.filter(
             map__map_type=map_type, geometry__intersects=point
@@ -227,3 +280,10 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     def questions_subsidiaires(self):
         """Les questions a poser si on n'a pas encore atteint une feuille."""
         return getattr(self, "_questions_subsidiaires", None)
+
+    @property
+    def catalogue_manquant(self):
+        """Si le parcours s'est arrete parce qu'un noeud catalogue n'a
+        pas pu etre resolu (dataset SIG absent), retourne le
+        BesoinCatalogue correspondant. Sinon None."""
+        return getattr(self, "_catalogue_manquant", None)

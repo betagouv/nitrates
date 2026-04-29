@@ -227,6 +227,106 @@ def test_valeur_inconnue_dans_contexte_leve_parcours_error():
     assert "valeur_inexistante" in str(exc.value)
 
 
+# ─── Fallback type_I = union {type_Ia, type_Ib} ─────────────────────────────
+
+
+def _arbre_avec_type_I_combine() -> dict:
+    """Arbre minimal avec une branche `type_I` combinee (cas metier ou
+    l'arbre ne distingue pas type_Ia et type_Ib)."""
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_root",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "type_fertilisant",
+                            "id": "q_fert",
+                            "champ": "type_fertilisant",
+                            "texte": "Quel type ?",
+                            "branches": [
+                                {
+                                    "valeur": "type_0",
+                                    "regle": {"id": "r_t0", "type": "libre"},
+                                },
+                                {
+                                    "valeur": "type_I",
+                                    "regle": {
+                                        "id": "r_tI_combine",
+                                        "type": "interdiction",
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_type_Ia_retombe_sur_type_I_combine():
+    """L'arbre n'a qu'une branche type_I ; un input type_Ia y retombe."""
+    res = parcours(
+        _arbre_avec_type_I_combine(),
+        {"en_zone_vulnerable": True, "type_fertilisant": "type_Ia"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_tI_combine"
+
+
+def test_type_Ib_retombe_sur_type_I_combine():
+    res = parcours(
+        _arbre_avec_type_I_combine(),
+        {"en_zone_vulnerable": True, "type_fertilisant": "type_Ib"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_tI_combine"
+
+
+def test_type_Ia_ne_retombe_pas_si_branche_specifique_existe():
+    """Si l'arbre a une branche `type_Ia` explicite, on prend celle-ci
+    (pas le fallback type_I)."""
+    arbre = _arbre_avec_type_I_combine()
+    # On ajoute une branche type_Ia specifique a cote du type_I combine
+    arbre["arbre"]["noeud"]["branches"][0]["noeud"]["branches"].append(
+        {"valeur": "type_Ia", "regle": {"id": "r_tIa_specifique", "type": "libre"}}
+    )
+    res = parcours(arbre, {"en_zone_vulnerable": True, "type_fertilisant": "type_Ia"})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_tIa_specifique"
+
+
+def test_fallback_type_I_ne_concerne_que_le_champ_type_fertilisant():
+    """Le fallback type_Ia/Ib -> type_I ne s'applique pas sur d'autres
+    champs. Une valeur 'type_Ia' sur un champ different leve normalement
+    ParcoursError si pas de branche correspondante."""
+    arbre = {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_x",
+                "champ": "autre_champ",
+                "texte": "?",
+                "branches": [
+                    {"valeur": "type_I", "regle": {"id": "r_x", "type": "libre"}},
+                ],
+            }
+        },
+    }
+    with pytest.raises(ParcoursError):
+        parcours(arbre, {"autre_champ": "type_Ia"})
+
+
 # ─── Sur le vrai brouillon PAN ─────────────────────────────────────────────
 
 

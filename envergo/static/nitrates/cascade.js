@@ -1,31 +1,35 @@
 // Cascade des selects du formulaire /simulateur/.
 //
-// Les selects (occupation_sol -> sous_culture -> type_fertilisant ->
-// sous_fertilisant) se peuplent dynamiquement en suivant la structure de
-// l'arbre PAN charge via /api/arbre/. Avantage : on n'a aucun mapping
-// hardcode cote front, c'est l'arbre qui dit quels choix sont possibles
-// a chaque etape.
+// Ordre de cascade UX :
+//   1. occupation_sol     -> depuis l'arbre PAN (q_occupation_sol)
+//   2. sous_culture       -> depuis l'arbre PAN (q_culture_principale_type, etc.)
+//   3. categorie_fertilisant -> depuis referentiels.categories_fertilisants
+//   4. sous_fertilisant   -> depuis categories_fertilisants[X].sous_fertilisants
+//   5. type_fertilisant   -> RESOLU via mapping_sous_fertilisant_vers_type
+//                            stocke dans un input hidden, envoye au serveur
 //
-// Le sous_fertilisant n'est pas une question de l'arbre PAN (l'arbre
-// s'arrete au type_fertilisant). On le peuple depuis referentiels.json
-// (cle `sous_fertilisants`) en filtrant par le type choisi via
-// `mapping_sous_fertilisant_vers_type`. C'est purement informatif pour
-// l'instant ; le serveur ne s'en sert pas dans le parcours.
+// Le serveur consomme `type_fertilisant` directement (compatible avec
+// l'arbre actuel) ; `categorie_fertilisant` et `sous_fertilisant` sont
+// envoyes en plus pour la tracabilite (URL partageable, debug juriste).
 
 (function () {
   "use strict";
 
-  const FIELDS = [
+  // Champs visibles dans le formulaire (selects)
+  const VISIBLE_FIELDS = [
     "occupation_sol",
     "sous_culture",
-    "type_fertilisant",
+    "categorie_fertilisant",
     "sous_fertilisant",
   ];
 
   const selects = {};
-  for (const champ of FIELDS) {
+  for (const champ of VISIBLE_FIELDS) {
     selects[champ] = document.getElementById(`id_${champ}`);
   }
+  // Champ cache resolu cote front
+  const typeFertilisantHidden = document.getElementById("id_type_fertilisant");
+
   if (!selects.occupation_sol) return;
 
   const initial = window.NITRATES_INITIAL_DATA || {};
@@ -87,7 +91,10 @@
       select.appendChild(opt);
     }
     select.disabled = false;
-    if (valeurInitiale && [...select.options].some((o) => o.value === valeurInitiale)) {
+    if (
+      valeurInitiale &&
+      [...select.options].some((o) => o.value === valeurInitiale)
+    ) {
       select.value = valeurInitiale;
     }
   }
@@ -98,23 +105,40 @@
     select.disabled = true;
   }
 
-  function peuplerSousFertilisant() {
+  function peuplerCategoriesFertilisant() {
+    const select = selects.categorie_fertilisant;
+    if (!select) return;
+    const categories = (referentiels || {}).categories_fertilisants || {};
+    select.innerHTML = '<option value="">— Choisir —</option>';
+    for (const [cle, meta] of Object.entries(categories)) {
+      const opt = document.createElement("option");
+      opt.value = cle;
+      opt.textContent = meta.libelle_public || cle;
+      select.appendChild(opt);
+    }
+    select.disabled = false;
+    if (
+      initial.categorie_fertilisant &&
+      [...select.options].some((o) => o.value === initial.categorie_fertilisant)
+    ) {
+      select.value = initial.categorie_fertilisant;
+    }
+  }
+
+  function peuplerSousFertilisantPourCategorie() {
     const select = selects.sous_fertilisant;
     if (!select) return;
-    const typeFert = selects.type_fertilisant.value;
-    if (!typeFert) {
-      viderSelect(select, "— Choisir le type de fertilisant d'abord —");
+    const categorie = selects.categorie_fertilisant.value;
+    if (!categorie) {
+      viderSelect(select, "— Choisir la categorie d'abord —");
       return;
     }
-    const mapping = (referentiels || {}).mapping_sous_fertilisant_vers_type || {};
+    const categories = (referentiels || {}).categories_fertilisants || {};
     const sousFerts = (referentiels || {}).sous_fertilisants || {};
-    // Filtre les sous-fertilisants dont le mapping pointe vers le type choisi.
-    const candidats = Object.keys(sousFerts).filter(
-      (sf) => mapping[sf] === typeFert
-    );
+    const cles = (categories[categorie] || {}).sous_fertilisants || [];
 
-    select.innerHTML = '<option value="">— Aucun (optionnel) —</option>';
-    for (const sf of candidats) {
+    select.innerHTML = '<option value="">— Choisir —</option>';
+    for (const sf of cles) {
       const meta = sousFerts[sf] || {};
       const opt = document.createElement("option");
       opt.value = sf;
@@ -130,11 +154,22 @@
     }
   }
 
+  function resoudreTypeFertilisant() {
+    if (!typeFertilisantHidden) return;
+    const sf = selects.sous_fertilisant.value;
+    if (!sf) {
+      typeFertilisantHidden.value = "";
+      return;
+    }
+    const mapping =
+      (referentiels || {}).mapping_sous_fertilisant_vers_type || {};
+    typeFertilisantHidden.value = mapping[sf] || "";
+  }
+
   // ─── Initialisation et propagation des changes ────────────────────────
 
   function initialiser() {
-    // Niveau 1 : peuple occupation_sol et propage en aval si valeur
-    // initiale presente.
+    // Niveau 1 : peuple occupation_sol depuis l'arbre.
     peuplerOccupationSol();
     propagerDepuis("occupation_sol");
 
@@ -144,8 +179,11 @@
     selects.sous_culture.addEventListener("change", () => {
       propagerDepuis("sous_culture");
     });
-    selects.type_fertilisant.addEventListener("change", () => {
-      propagerDepuis("type_fertilisant");
+    selects.categorie_fertilisant.addEventListener("change", () => {
+      propagerDepuis("categorie_fertilisant");
+    });
+    selects.sous_fertilisant.addEventListener("change", () => {
+      propagerDepuis("sous_fertilisant");
     });
   }
 
@@ -160,54 +198,66 @@
     }
   }
 
-  // Propage le changement d'un select donne vers tous les selects en aval.
-  // On NE re-peuple PAS le select source : il vient juste d'etre modifie
-  // par l'utilisateur.
   function propagerDepuis(champSource) {
-    const order = ["occupation_sol", "sous_culture", "type_fertilisant", "sous_fertilisant"];
+    const order = VISIBLE_FIELDS;
     const idxSource = order.indexOf(champSource);
 
-    // 1) Reset des selects en aval
+    // Reset des selects en aval
     for (let i = idxSource + 1; i < order.length; i++) {
-      const champ = order[i];
-      viderSelect(selects[champ], placeholderPour(champ));
+      viderSelect(selects[order[i]], placeholderPour(order[i]));
+    }
+    // Reset systematique du hidden type_fertilisant si en aval de la source
+    if (idxSource < order.indexOf("sous_fertilisant")) {
+      if (typeFertilisantHidden) typeFertilisantHidden.value = "";
     }
 
     if (!selects[champSource].value) return;
 
-    // 2) Peuple le 1er select en aval (champSource + 1).
+    // Peuple le select suivant selon la nature du champ source
     const champSuivant = order[idxSource + 1];
-    if (!champSuivant) return;
 
-    if (champSuivant === "sous_fertilisant") {
-      peuplerSousFertilisant();
-      return;
-    }
-
-    const noeudSuivant = noeudFormulairePourChamp(
-      arbre.arbre.noeud,
-      champSuivant
-    );
-    if (!noeudSuivant) {
-      // Pas de noeud formulaire pour ce champ sous le chemin actuel
-      // (ex: sol_non_cultive court-circuite -> pas de sous_culture).
-      viderSelect(selects[champSuivant], "— Non applicable —");
-      for (let i = idxSource + 2; i < order.length; i++) {
-        viderSelect(selects[order[i]], "— Non applicable —");
+    if (champSuivant === "sous_culture") {
+      const noeud = noeudFormulairePourChamp(arbre.arbre.noeud, "sous_culture");
+      if (noeud) {
+        peuplerSelectDepuisNoeud(
+          selects.sous_culture,
+          noeud,
+          initial.sous_culture
+        );
+        if (selects.sous_culture.value) propagerDepuis("sous_culture");
+      } else {
+        // Branche court-circuit (ex: sol_non_cultive) -> pas de sous_culture
+        // mais on peut quand meme proposer le fertilisant pour les chemins
+        // qui en demandent.
+        viderSelect(selects.sous_culture, "— Non applicable —");
+        peuplerCategoriesFertilisant();
+        if (selects.categorie_fertilisant.value) {
+          propagerDepuis("categorie_fertilisant");
+        }
       }
       return;
     }
 
-    peuplerSelectDepuisNoeud(
-      selects[champSuivant],
-      noeudSuivant,
-      initial[champSuivant]
-    );
+    if (champSuivant === "categorie_fertilisant") {
+      peuplerCategoriesFertilisant();
+      if (selects.categorie_fertilisant.value) {
+        propagerDepuis("categorie_fertilisant");
+      }
+      return;
+    }
 
-    // Si un initial[champSuivant] a ete applique (form pre-rempli depuis
-    // l'URL), on continue la propagation pour peupler les niveaux d'apres.
-    if (selects[champSuivant].value) {
-      propagerDepuis(champSuivant);
+    if (champSuivant === "sous_fertilisant") {
+      peuplerSousFertilisantPourCategorie();
+      if (selects.sous_fertilisant.value) {
+        propagerDepuis("sous_fertilisant");
+      }
+      return;
+    }
+
+    if (champSource === "sous_fertilisant") {
+      // Plus de select en aval, mais on resout type_fertilisant.
+      resoudreTypeFertilisant();
+      return;
     }
   }
 
@@ -215,10 +265,10 @@
     switch (champ) {
       case "sous_culture":
         return "— Choisir l'occupation d'abord —";
-      case "type_fertilisant":
+      case "categorie_fertilisant":
         return "— Choisir la culture d'abord —";
       case "sous_fertilisant":
-        return "— Choisir le type de fertilisant d'abord —";
+        return "— Choisir la categorie de fertilisant d'abord —";
       default:
         return "— Choisir —";
     }

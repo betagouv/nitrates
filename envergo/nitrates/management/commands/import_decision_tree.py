@@ -27,8 +27,13 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.regulations.arbre_decision import REFERENCE_TO_MAP_TYPE
 from envergo.nitrates.yaml_tree.loader import load_referentiels
-from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+from envergo.nitrates.yaml_tree.validator import (
+    ValidationError,
+    collect_references_sig,
+    validate_arbre,
+)
 
 
 class Command(BaseCommand):
@@ -81,6 +86,24 @@ class Command(BaseCommand):
                     "referentiels.yaml introuvable -- validation des "
                     "references (codes_prescription, notes, evenements) "
                     "ignoree. Verifier NITRATES_SPECS_DIR."
+                )
+            )
+
+        # Warning non-bloquant : references SIG utilisees par l'arbre mais
+        # pas encore implementees cote backend (dataset Map+Zone manquant).
+        # Le runtime affichera "non disponible" sur ces branches ; ici on
+        # liste juste les trous pour traque.
+        refs_sig = collect_references_sig(arbre)
+        non_supportees = sorted(
+            {ref for _, ref in refs_sig if ref not in REFERENCE_TO_MAP_TYPE}
+        )
+        if non_supportees:
+            self.stdout.write(
+                self.style.WARNING(
+                    "References SIG utilisees par l'arbre mais non supportees "
+                    "par le backend (dataset Map+Zone manquant ou mapping a "
+                    "ajouter dans REFERENCE_TO_MAP_TYPE) :\n  - "
+                    + "\n  - ".join(non_supportees)
                 )
             )
 
