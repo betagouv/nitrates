@@ -1,0 +1,64 @@
+{% comment %}
+Calendrier d'epandage 12 mois (fragment), affiche par annee agricole
+(juillet -> juin) pour que les periodes d'interdiction hivernales
+typiques (15/12 -> 15/01) tombent au centre de la barre, pas a cheval
+sur les bords.
+
+Inputs (cf. templatetag calendrier_epandage) :
+  - mois : liste des labels mensuels [Juil, Aout, ..., Juin]
+  - fond : "vert" | "gris" | "orange" (couleur de la barre)
+  - zone_couleur : "rouge" | "orange" | None (couleur des segments overlay)
+  - label : texte du resultat principal
+  - segments : liste de {start_pct, width_pct} avec offset annee agricole
+  - today_pct : float [0..100] position du marqueur "aujourd'hui"
+  - bornes : liste de {label, pct} pour afficher les dates de transition
+  - periodes_phenologiques : liste de periodes non parsables
+    (ex: "du brunissement_soies au 15/02") affichees en texte
+  - vide : bool si pas de regle
+{% endcomment %}
+
+{% load l10n %}
+
+{% if not vide %}
+  <div class="calendrier-epandage calendrier-epandage--{{ fond }}">
+    <p class="calendrier-epandage__label">{{ label }}</p>
+
+    <div class="calendrier-epandage__months">
+      {% for m in mois %}<span>{{ m }}</span>{% endfor %}
+    </div>
+
+    <div class="calendrier-epandage__bar">
+      {% if zone_couleur %}
+        {% for seg in segments %}
+          <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ zone_couleur }}"
+               style="left: {{ seg.start_pct|unlocalize }}%;
+                      width: {{ seg.width_pct|unlocalize }}%"
+               aria-label="Zone {{ zone_couleur }}"></div>
+        {% endfor %}
+      {% endif %}
+
+      <div class="calendrier-epandage__today"
+           style="left: {{ today_pct|unlocalize }}%"
+           aria-label="Aujourd'hui"></div>
+    </div>
+
+    {% if bornes %}
+      <div class="calendrier-epandage__period">
+        {% for b in bornes %}
+          <span class="calendrier-epandage__period-date"
+                style="left: {{ b.pct|unlocalize }}%">{{ b.label }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if periodes_phenologiques %}
+      <ul class="calendrier-epandage__phenologique fr-text--sm">
+        {% for p in periodes_phenologiques %}
+          <li>
+            du <strong>{{ p.du }}</strong> au <strong>{{ p.au }}</strong>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endif %}

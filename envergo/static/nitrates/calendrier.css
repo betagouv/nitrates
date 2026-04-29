@@ -1,0 +1,107 @@
+/* Calendrier d'epandage 12 mois (annee agricole juil -> juin).
+   Reproduit le look de la maquette site-nitrates-maquette/index.html. */
+
+.calendrier-epandage {
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+.calendrier-epandage__label {
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.calendrier-epandage__months {
+  display: flex;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.calendrier-epandage__months span {
+  flex: 1;
+  text-align: center;
+}
+
+.calendrier-epandage__bar {
+  position: relative;
+  height: 46px;
+  border-radius: 8px;
+}
+
+.calendrier-epandage--vert .calendrier-epandage__bar {
+  background: #c3fad5;
+  border: 1px solid #4b9f6c;
+}
+
+.calendrier-epandage--gris .calendrier-epandage__bar {
+  background: #eaeaea;
+  border: 1px solid #b8b8b8;
+}
+
+.calendrier-epandage--orange .calendrier-epandage__bar {
+  background: #ffe0b2;
+  border: 1px solid #f93;
+}
+
+.calendrier-epandage__zone {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+}
+
+.calendrier-epandage__zone--rouge {
+  background: #ffeaeb;
+  border-left: 1px solid #f95a5c;
+  border-right: 1px solid #f95a5c;
+}
+
+.calendrier-epandage__zone--orange {
+  background: #fff3e0;
+  border-left: 1px solid #f93;
+  border-right: 1px solid #f93;
+}
+
+.calendrier-epandage__today {
+  position: absolute;
+  top: 8px;
+  width: 9px;
+  height: 9px;
+  background: #161616;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.calendrier-epandage__today::after {
+  content: "Aujourd'hui";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #161616;
+}
+
+.calendrier-epandage__period {
+  position: relative;
+  height: 20px;
+  margin-top: 8px;
+}
+
+.calendrier-epandage__period-date {
+  position: absolute;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e1000f;
+  transform: translateX(-50%);
+}
+
+.calendrier-epandage__phenologique {
+  margin-top: 0.5rem;
+  color: #666;
+}

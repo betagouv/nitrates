@@ -1,8 +1,12 @@
 {% extends "nitrates/base.html" %}
 
-{% load static %}
+{% load static nitrates_tags %}
 
 {% block title %}Résultat{% endblock %}
+
+{% block extra_css %}
+  <link href="{% static 'nitrates/calendrier.css' %}" rel="stylesheet">
+{% endblock %}
 
 {% block extra_js %}
   <script>window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";</script>
@@ -61,6 +65,9 @@
               </p>
 
               {% if ev.regle %}
+                {# Calendrier visuel 12 mois (rouge=interdit, orange=conditionnel, vert=libre) #}
+                {% calendrier_epandage ev.regle %}
+
                 <div class="fr-callout fr-callout--brown-caramel fr-mt-2w">
                   <p>
                     <strong>Règle atteinte :</strong> <code>{{ ev.regle.regle_id }}</code> ({{ ev.regle.type }})
@@ -69,7 +76,7 @@
                   {% if ev.regle.texte %}<p>{{ ev.regle.texte }}</p>{% endif %}
                   {% if ev.regle.periodes %}
                     <p>
-                      <strong>Périodes :</strong>
+                      <strong>Périodes (debug) :</strong>
                     </p>
                     <ul>
                       {% for p in ev.regle.periodes %}<li>du {{ p.du }} au {{ p.au }}</li>{% endfor %}
