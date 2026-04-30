@@ -264,6 +264,123 @@ class DecisionTree(models.Model):
         return cls.clone_to_draft(active, user=user)
 
 
+class DecisionTreeRevision(models.Model):
+    """Historique d'une edition d'un DecisionTree.
+
+    Chaque action d'edition (edit / add / delete / rename) cree une
+    revision qui contient le snapshot complet d'AVANT l'action. Permet
+    le retour en arriere pas a pas.
+
+    Stockage : full snapshot (JSON + YAML brut). C'est plus simple et
+    plus robuste qu'un systeme de patches, et la taille est OK
+    (~40 KB par revision, max 50 revisions par tree = ~2 MB par draft).
+
+    Auto-purge : au-dela de MAX_REVISIONS_PER_TREE, les revisions les
+    plus anciennes sont supprimees. Voir `record()`.
+    """
+
+    ACTION_EDIT = "edit"
+    ACTION_ADD = "add"
+    ACTION_DELETE = "delete"
+    ACTION_RENAME = "rename"
+    ACTION_CHOICES = [
+        (ACTION_EDIT, "Édition"),
+        (ACTION_ADD, "Ajout"),
+        (ACTION_DELETE, "Suppression"),
+        (ACTION_RENAME, "Renommage"),
+    ]
+
+    MAX_REVISIONS_PER_TREE = 50
+
+    tree = models.ForeignKey(
+        "DecisionTree",
+        on_delete=models.CASCADE,
+        related_name="revisions",
+    )
+    action = models.CharField(max_length=16, choices=ACTION_CHOICES)
+    target_path = models.CharField(max_length=500, blank=True)
+    description = models.CharField(max_length=500, blank=True)
+
+    # Snapshot complet d'avant l'action.
+    previous_contenu = models.JSONField()
+    previous_yaml_brut = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tree", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.tree.name} #{self.pk} {self.action} ({self.created_at:%Y-%m-%d %H:%M})"
+
+    @classmethod
+    def record(
+        cls,
+        tree: "DecisionTree",
+        action: str,
+        user=None,
+        target_path: str = "",
+        description: str = "",
+    ) -> "DecisionTreeRevision":
+        """Enregistre une revision avec snapshot de l'etat actuel du tree.
+
+        A appeler AVANT toute mutation : on capture l'etat existant comme
+        previous_contenu / previous_yaml_brut, puis l'appelant applique
+        sa modification au tree et le save().
+
+        Auto-purge : si on depasse MAX_REVISIONS_PER_TREE, on supprime les
+        plus anciennes pour rester sous la limite.
+        """
+        revision = cls.objects.create(
+            tree=tree,
+            action=action,
+            target_path=target_path,
+            description=description,
+            previous_contenu=copy.deepcopy(tree.contenu),
+            previous_yaml_brut=tree.contenu_yaml_brut,
+            created_by=user,
+        )
+        # Purge des revisions excedentaires.
+        excess_pks = list(
+            cls.objects.filter(tree=tree)
+            .order_by("-created_at")
+            .values_list("pk", flat=True)[cls.MAX_REVISIONS_PER_TREE :]  # noqa: E203
+        )
+        if excess_pks:
+            cls.objects.filter(pk__in=excess_pks).delete()
+        return revision
+
+    def restore(self) -> None:
+        """Restaure le tree dans l'etat capture par cette revision.
+
+        L'action de restauration cree elle-meme une nouvelle revision
+        (pour pouvoir defaire la restauration). L'historique est donc
+        chronologique strict : pas de redo distinct, on revient en
+        arriere ou on continue, jamais on n'efface.
+        """
+        # Snapshot AVANT restauration (pour pouvoir defaire le retour-arriere).
+        DecisionTreeRevision.record(
+            self.tree,
+            action=self.ACTION_EDIT,
+            user=self.created_by,
+            target_path="",
+            description=f"Retour à l'état du {self.created_at:%d/%m/%Y %H:%M}",
+        )
+        self.tree.contenu = copy.deepcopy(self.previous_contenu)
+        self.tree.contenu_yaml_brut = self.previous_yaml_brut
+        self.tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+
+
 class MoulinetteNitrates(Moulinette):
     """Moulinette nitrates : pilote la reglementation epandage azote
     via l'arbre de decision YAML.
