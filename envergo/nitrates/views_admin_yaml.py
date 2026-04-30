@@ -31,6 +31,7 @@ from envergo.nitrates.yaml_admin.tags import (
 from envergo.nitrates.yaml_tree import load_tree_admin, load_tree_raw
 
 _VUES = {"arbre", "brut", "split"}
+_MODES = {"lecture", "edition"}
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -66,6 +67,26 @@ class YamlTreeView(TemplateView):
                 }
             )
             return ctx
+
+        # Mode lecture/edition. Le mode edition n'est autorise que sur des
+        # drafts. Si l'utilisateur force `?mode=edition` sur un autre statut,
+        # on retombe silencieusement en lecture.
+        mode = self.request.GET.get("mode", "lecture")
+        if mode not in _MODES:
+            mode = "lecture"
+        if mode == "edition" and tree.status != DecisionTree.STATUS_DRAFT:
+            mode = "lecture"
+
+        # Lock : si on entre en mode edition, on tente d'acquerir le lock.
+        # Si refuse (autre admin en train d'editer), on retombe en lecture
+        # avec un message explicatif via le contexte.
+        lock_blocked_by = None
+        if mode == "edition":
+            if not tree.acquire_lock(self.request.user):
+                # Re-charger pour avoir locked_by/locked_at a jour
+                tree.refresh_from_db()
+                lock_blocked_by = tree.locked_by
+                mode = "lecture"
 
         active_tree = (
             DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
@@ -109,6 +130,10 @@ class YamlTreeView(TemplateView):
                 "tree": tree,
                 "active_tree": active_tree,
                 "is_viewing_active": active_tree and active_tree.pk == tree.pk,
+                "mode": mode,
+                "is_editing": mode == "edition",
+                "lock_blocked_by": lock_blocked_by,
+                "edited_origin_name": _edited_origin_name(tree),
             }
         )
 
@@ -122,6 +147,56 @@ class YamlTreeView(TemplateView):
             ctx["arbre_has_a_completer"] = has_a_completer(racine)
 
         return ctx
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class EditActiveView(View):
+    """Entry point pour "Editer l'arbre actif".
+
+    GET ou POST : trouve ou cree le draft d'edition de l'utilisateur sur
+    l'arbre actif courant, redirige vers le viewer en mode edition.
+    UX : l'utilisateur ne voit pas l'existence du draft, il croit
+    "editer l'arbre actif" -- en realite on travaille sur un clone.
+    """
+
+    def get(self, request, *args, **kwargs):
+        return self._do(request)
+
+    def post(self, request, *args, **kwargs):
+        return self._do(request)
+
+    def _do(self, request):
+        draft = DecisionTree.find_or_create_edit_draft(request.user)
+        if draft is None:
+            return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
+        url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={draft.pk}&mode=edition"
+        return HttpResponseRedirect(url)
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CancelEditView(View):
+    """Sort du mode edition. Libere le lock si l'utilisateur le detenait.
+
+    Le draft sous-jacent reste en DB (pas de suppression) -- l'utilisateur
+    pourra le reprendre via "Editer l'arbre actif" plus tard.
+
+    Redirige vers le viewer de l'arbre actif (UX : retour au point de
+    depart, sans exposer le draft).
+    """
+
+    def post(self, request, pk, *args, **kwargs):
+        tree = get_object_or_404(DecisionTree, pk=pk)
+        tree.release_lock(request.user)
+        active = (
+            DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+            .only("pk")
+            .first()
+        )
+        if active is not None:
+            return HttpResponseRedirect(
+                reverse("nitrates_admin_yaml_tree") + f"?tree_id={active.pk}"
+            )
+        return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -197,6 +272,16 @@ class CreateDraftView(View):
         draft = DecisionTree.clone_to_draft(source, user=request.user)
         url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={draft.pk}"
         return HttpResponseRedirect(url)
+
+
+def _edited_origin_name(tree: DecisionTree) -> str:
+    """Pour l'UX d'edition : le nom de l'arbre source que l'utilisateur
+    croit editer. Si le draft a ete cree depuis l'actif, c'est le nom de
+    cet actif. Sinon (parent archive ou null), le nom du draft lui-meme.
+    """
+    if tree.status == DecisionTree.STATUS_DRAFT and tree.parent_id:
+        return tree.parent.name
+    return tree.name
 
 
 def _resolve_tree(tree_id) -> DecisionTree | None:

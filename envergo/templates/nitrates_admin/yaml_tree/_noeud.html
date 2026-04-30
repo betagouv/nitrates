@@ -30,6 +30,26 @@
         <span class="yaml-tree__libelle">{{ noeud.champ }}</span>
       {% endif %}
       {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
+
+      {% if is_editing %}
+        <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+          <a href="#"
+             class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+             title="Éditer ce nœud"
+             data-action="edit"
+             data-path="{{ path }}">✎</a>
+          <a href="#"
+             class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
+             title="Ajouter un enfant"
+             data-action="add"
+             data-path="{{ path }}">+</a>
+          <a href="#"
+             class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+             title="Supprimer"
+             data-action="delete"
+             data-path="{{ path }}">🗑</a>
+        </span>
+      {% endif %}
     </summary>
 
     {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}

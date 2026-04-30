@@ -124,6 +124,110 @@
   outline: 2px solid #c8d4ec;
 }
 
+/* Bandeau d'edition (mode edition) */
+
+.yaml-admin__edit-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.75rem;
+  border: 2px solid #e65100;
+  border-radius: 4px;
+  background: #fff8e1;
+  font-size: 0.95rem;
+}
+
+.yaml-admin__edit-banner-msg {
+  flex: 1 1 auto;
+  min-width: 20ch;
+}
+
+.yaml-admin__edit-icon {
+  font-size: 1.2rem;
+  margin-right: 0.25rem;
+}
+
+.yaml-admin__edit-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.yaml-admin__edit-banner-actions button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.yaml-admin__lock-warning {
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.75rem;
+  border: 1px solid #b71c1c;
+  background: #ffebee;
+  border-radius: 4px;
+  color: #b71c1c;
+}
+
+/* Icones inline d'edition (sur chaque noeud / regle / branche) */
+
+.yaml-tree__edit-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: 0.5rem;
+}
+
+.yaml-tree__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  opacity: 0.65;
+}
+
+.yaml-tree__edit-btn:hover {
+  opacity: 1;
+  border-color: currentcolor;
+}
+
+/* Edit -- bleu */
+
+.yaml-tree__edit-btn--edit {
+  color: #1565c0;
+}
+
+.yaml-tree__edit-btn--edit:hover {
+  background: #e3f2fd;
+}
+
+/* Add -- vert */
+
+.yaml-tree__edit-btn--add {
+  color: #2e7d32;
+}
+
+.yaml-tree__edit-btn--add:hover {
+  background: #e8f5e9;
+}
+
+/* Delete -- rouge */
+
+.yaml-tree__edit-btn--danger {
+  color: #c62828;
+}
+
+.yaml-tree__edit-btn--danger:hover {
+  background: #ffebee;
+}
+
 .yaml-admin__status-meta {
   color: #555;
   font-size: 0.85rem;

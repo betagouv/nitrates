@@ -15,6 +15,21 @@
       <span class="yaml-tree__pc"><code>{{ regle.code_prescription }}</code></span>
     {% endif %}
     {% if regle.note %}<span class="yaml-tree__note">{{ regle.note }}</span>{% endif %}
+
+    {% if is_editing %}
+      <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+        <a href="#"
+           class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+           title="Éditer cette règle"
+           data-action="edit"
+           data-id="{{ regle.id }}">✎</a>
+        <a href="#"
+           class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+           title="Supprimer cette règle"
+           data-action="delete"
+           data-id="{{ regle.id }}">🗑</a>
+      </span>
+    {% endif %}
   </div>
 
   {% if regle.periodes %}

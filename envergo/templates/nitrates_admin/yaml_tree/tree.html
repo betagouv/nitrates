@@ -20,9 +20,22 @@
       </div>
     </div>
   {% else %}
-    <div class="fr-container-fluid fr-py-3w yaml-admin">
+    <div class="fr-container-fluid fr-py-3w yaml-admin{% if is_editing %} yaml-admin--editing{% endif %}">
       <header class="yaml-admin__header">
-        {% include "nitrates_admin/yaml_tree/_status_banner.html" %}
+        {% if lock_blocked_by %}
+          <div class="yaml-admin__lock-warning">
+            <strong>🔒 Édition impossible :</strong>
+            cet arbre est en cours d'édition par
+            <strong>{{ lock_blocked_by.email }}</strong>.
+            Le verrou sera automatiquement libéré après 15 min sans activité.
+          </div>
+        {% endif %}
+
+        {% if is_editing %}
+          {% include "nitrates_admin/yaml_tree/_edit_banner.html" %}
+        {% else %}
+          {% include "nitrates_admin/yaml_tree/_status_banner.html" %}
+        {% endif %}
 
         <div class="yaml-admin__title-row">
           <div>

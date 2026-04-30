@@ -229,6 +229,40 @@ class DecisionTree(models.Model):
             created_by=user,
         )
 
+    @classmethod
+    def find_or_create_edit_draft(cls, user) -> "DecisionTree | None":
+        """Trouve le draft d'edition de l'arbre actif pour cet utilisateur,
+        ou en cree un nouveau.
+
+        Logique : on cherche un draft existant qui satisfait les 3 criteres :
+          1. parent = arbre actif courant
+          2. created_by = user
+          3. pas locked par un autre user (lock libre ou expire ou meme user)
+
+        Si aucun match, on clone l'actif en nouveau draft. Permet a
+        l'utilisateur de retrouver son travail en cours s'il revient
+        plus tard, sans pour autant perturber un autre admin qui
+        editerait deja un draft sur le meme actif.
+
+        Retourne None si aucun arbre actif n'existe (cas anormal).
+        """
+        active = cls.objects.filter(status=cls.STATUS_ACTIVE).first()
+        if active is None:
+            return None
+
+        # Cherche un draft reutilisable de cet utilisateur sur cet actif.
+        candidates = cls.objects.filter(
+            status=cls.STATUS_DRAFT,
+            parent=active,
+            created_by=user,
+        ).order_by("-updated_at")
+        for draft in candidates:
+            if not draft.is_locked_by_other(user):
+                return draft
+
+        # Aucun draft reutilisable : on en cree un nouveau.
+        return cls.clone_to_draft(active, user=user)
+
 
 class MoulinetteNitrates(Moulinette):
     """Moulinette nitrates : pilote la reglementation epandage azote

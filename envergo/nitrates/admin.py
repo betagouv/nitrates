@@ -24,6 +24,8 @@ class RpgCultureAdmin(admin.ModelAdmin):
 
 @admin.register(DecisionTree)
 class DecisionTreeAdmin(admin.ModelAdmin):
+    change_list_template = "admin/nitrates/decisiontree/change_list.html"
+
     list_display = (
         "name",
         "status_badge",

@@ -1,0 +1,31 @@
+{# Bandeau affiche en mode edition. Le draft sous-jacent est invisible
+   pour l'utilisateur : on parle de "modification de l'arbre actif" pour
+   ne pas perdre les admins metier. #}
+<div class="yaml-admin__edit-banner">
+  <div class="yaml-admin__edit-banner-msg">
+    <span class="yaml-admin__edit-icon" aria-hidden="true">🔧</span>
+    <strong>Édition de « {{ edited_origin_name }} »</strong>
+    — vos modifications ne sont pas encore en production. Sauvegarde
+    automatique à chaque changement.
+  </div>
+
+  <div class="yaml-admin__edit-banner-actions">
+    <form method="post"
+          action="{% url 'nitrates_admin_yaml_cancel_edit' pk=tree.pk %}"
+          style="display:inline">
+      {% csrf_token %}
+      <button type="submit" class="yaml-admin__btn">Annuler les modifications</button>
+    </form>
+
+    {# Placeholders pour les boutons globaux : seront branches a l'etape 7 (deep validate)
+       et 8 (activation). Pour l'instant ils sont disabled. #}
+    <button type="button"
+            class="yaml-admin__btn"
+            disabled
+            title="Branche a l'etape 7 -- deep validate">Vérifier l'arbre</button>
+    <button type="button"
+            class="yaml-admin__btn yaml-admin__btn--primary"
+            disabled
+            title="Branche a l'etape 8 -- activation">Valider et publier</button>
+  </div>
+</div>

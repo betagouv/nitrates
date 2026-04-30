@@ -35,7 +35,10 @@
     {% if not is_viewing_active and active_tree %}
       <a class="yaml-admin__btn" href="?tree_id={{ active_tree.pk }}">Voir l'arbre actif</a>
     {% endif %}
-    {% if tree.status != "draft" %}
+    {% if tree.status == "active" %}
+      <a class="yaml-admin__btn yaml-admin__btn--primary"
+         href="{% url 'nitrates_admin_yaml_edit_active' %}">✏️ Éditer cet arbre</a>
+    {% elif tree.status == "archive" %}
       <form method="post"
             action="{% url 'nitrates_admin_yaml_create_draft' %}?from={{ tree.pk }}"
             style="display:inline">

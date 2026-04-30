@@ -11,8 +11,10 @@ from envergo.nitrates.views import (
     ZoneVulnerableGeoJSONView,
 )
 from envergo.nitrates.views_admin_yaml import (
+    CancelEditView,
     CloneConfirmView,
     CreateDraftView,
+    EditActiveView,
     RenameTreeView,
     YamlTreeView,
 )
@@ -63,6 +65,16 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:pk>/cloner/",
         CloneConfirmView.as_view(),
         name="nitrates_admin_yaml_clone_confirm",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/editer-actif/",
+        EditActiveView.as_view(),
+        name="nitrates_admin_yaml_edit_active",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/sortir-edition/",
+        CancelEditView.as_view(),
+        name="nitrates_admin_yaml_cancel_edit",
     ),
     path(
         _("contact-us/"),
