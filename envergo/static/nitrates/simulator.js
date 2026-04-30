@@ -63,10 +63,26 @@
   const photoLayer = wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg");
   planLayer.addTo(map);
 
-  const rpgOverlay = wmts(
-    "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024",
+  // Cadastre IGN (parcellaire express) : layer principal pour
+  // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
+  // tuiles WMTS raster + identification a la demande via l'API
+  // data.geopf.fr/geocodage/reverse au clic.
+  const cadastreOverlay = wmts(
+    "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
     "png"
   );
+  cadastreOverlay.addTo(map);
+
+  // RPG (Registre Parcellaire Graphique) : desactive en MVP (retour
+  // juriste 0.0.1 : la donnee correcte pour la zone d'activation est
+  // le cadastre, pas le RPG). On garde l'import et la table en DB
+  // pour reactivation V1+ : resoudre la culture declaree par
+  // l'agriculteur a partir de la parcelle RPG. Le layer reste defini
+  // mais n'est pas ajoute au LayerControl.
+  // const rpgOverlay = wmts(
+  //   "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024",
+  //   "png"
+  // );
 
   const zvLayer = L.geoJSON(null, {
     style: (feature) => {
@@ -105,7 +121,7 @@
         "Photo aérienne": photoLayer,
       },
       {
-        "Parcelles RPG (PAC)": rpgOverlay,
+        "Cadastre": cadastreOverlay,
         "Zones vulnérables nitrates": zvLayer,
       },
       { collapsed: false }
@@ -131,14 +147,8 @@
     return parcel.code_cultu;
   }
 
-  function renderDebug(data, communeInfo) {
+  function renderDebug(data, communeInfo, parcelInfo) {
     if (!debugEl) return;
-    const parcel = data.rpg_parcelle;
-    const parcelHtml = parcel
-      ? `${parcel.id_parcel || "—"} — ${cultureLabel(parcel)} — ${
-          parcel.surf_parc != null ? parcel.surf_parc + " ha" : ""
-        }${parcel.groupe_cultu ? " — groupe " + parcel.groupe_cultu : ""}`
-      : "aucune parcelle RPG";
 
     const zvClass = data.en_zone_vulnerable
       ? "nitrates-debug__badge-yes"
@@ -154,6 +164,11 @@
       ? `${ci.nom} (INSEE ${ci.code || "—"})`
       : "—";
 
+    // Cadastre : id complet (14 car) + section + numero pour debug
+    const parcelHtml = parcelInfo && parcelInfo.id
+      ? `${parcelInfo.id} (section ${parcelInfo.section || "—"}, n° ${parcelInfo.number || "—"})`
+      : "aucune parcelle cadastrale identifiée";
+
     debugEl.innerHTML = `
       <p class="nitrates-debug__title">Informations parcelle</p>
       <dl>
@@ -165,7 +180,7 @@
             ? `${data.region_code} (${data.region_label})`
             : "—"
         }</dd>
-        <dt>Parcelle RPG</dt><dd>${parcelHtml}</dd>
+        <dt>Parcelle cadastre</dt><dd>${parcelHtml}</dd>
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
       </dl>
     `;
@@ -217,6 +232,29 @@
     }
   }
 
+  // Reverse geocode parcellaire IGN : on appelle data.geopf.fr/geocodage
+  // pour recuperer l'identifiant de la parcelle cadastrale au point
+  // clique. Retourne {id, section, number, city} ou null si echec.
+  async function fetchParcelInfo(lat, lng) {
+    try {
+      const r = await fetch(
+        `https://data.geopf.fr/geocodage/reverse?lat=${lat}&lon=${lng}&index=parcel&limit=1`
+      );
+      const json = await r.json();
+      const f = (json.features || [])[0];
+      if (!f) return null;
+      const p = f.properties || {};
+      return {
+        id: p.id || null,
+        section: p.section || null,
+        number: p.number || null,
+        city: p.city || null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   map.on("click", function (e) {
     const { lat, lng } = e.latlng;
 
@@ -242,9 +280,10 @@
         return r.json();
       }),
       fetchCommuneInfo(lat, lng),
+      fetchParcelInfo(lat, lng),
     ])
-      .then(([data, communeInfo]) => {
-        renderDebug(data, communeInfo);
+      .then(([data, communeInfo, parcelInfo]) => {
+        renderDebug(data, communeInfo, parcelInfo);
         updateLocalisationReadonly(data, communeInfo.nom);
         // Pousse le code INSEE dans le hidden : il sera soumis avec
         // le form et utilise cote backend pour resoudre la zone

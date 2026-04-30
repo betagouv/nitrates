@@ -62,9 +62,11 @@ remplis au clic carte (cf. simulator.js).
       {% endif %}
     </div>
 
-    {# Lat / lng + code INSEE en hidden : remplis au clic carte par
-       simulator.js. Le code INSEE est utilise cote backend pour
-       resoudre la zone montagne (D113-14) via mapping sans PostGIS. #}
+    {% comment %}
+    Lat / lng + code INSEE en hidden : remplis au clic carte par
+    simulator.js. Le code INSEE est utilise cote backend pour
+    resoudre la zone montagne (D113-14) via mapping sans PostGIS.
+    {% endcomment %}
     <input type="hidden"
            name="lat"
            id="id_lat"

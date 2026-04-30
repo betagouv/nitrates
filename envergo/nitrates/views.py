@@ -9,7 +9,7 @@ from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import bassin_name
-from envergo.nitrates.models import DecisionTree, MoulinetteNitrates, RpgCulture
+from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 
@@ -78,8 +78,14 @@ class ZoneVulnerableGeoJSONView(View):
 class DebugView(View):
     """Renvoie les infos géographiques pour un point (lng, lat) cliqué.
 
-    Endpoint de démo end-to-end : département, région, parcelle RPG si
-    présente, appartenance à une zone vulnérable nitrates.
+    Endpoint de démo end-to-end : département, région, appartenance
+    à une zone vulnérable nitrates.
+
+    Le RPG (Registre Parcellaire Graphique) a été retiré de cet
+    endpoint en 0.0.3 (retour juriste 0.0.1 : la donnée correcte pour
+    la zone d'activation est le cadastre, pas le RPG). L'import et la
+    table sont conservés pour réactivation V1+ : résoudre la culture
+    déclarée par l'agriculteur à partir de la parcelle RPG.
     """
 
     def get(self, request, *args, **kwargs):
@@ -100,34 +106,6 @@ class DebugView(View):
         )
         department_code = department.department if department else None
         region_code, region_label = region_for_department(department_code or "")
-
-        rpg_zone = (
-            Zone.objects.filter(
-                map__map_type=MAP_TYPES.rpg_parcelle,
-                geometry__intersects=point,
-            )
-            .only("attributes")
-            .first()
-        )
-        rpg_parcelle = None
-        if rpg_zone:
-            attrs = rpg_zone.attributes or {}
-            code_cultu = attrs.get("CODE_CULTU")
-            # Lookup du libelle depuis la table de reference si on l'a chargee
-            libelle = ""
-            groupe = ""
-            if code_cultu:
-                culture = RpgCulture.objects.filter(pk=code_cultu).first()
-                if culture:
-                    libelle = culture.libelle
-                    groupe = culture.libelle_groupe
-            rpg_parcelle = {
-                "id_parcel": attrs.get("ID_PARCEL"),
-                "code_cultu": code_cultu,
-                "libelle_cultu": libelle,
-                "groupe_cultu": groupe,
-                "surf_parc": attrs.get("SURF_PARC"),
-            }
 
         zv_zone = (
             Zone.objects.filter(
@@ -153,7 +131,6 @@ class DebugView(View):
                 "department_code": department_code,
                 "region_code": region_code,
                 "region_label": region_label,
-                "rpg_parcelle": rpg_parcelle,
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
             }
