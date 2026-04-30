@@ -9,6 +9,8 @@ Contient :
     envergo/moulinette/models.py qui est deja sature)
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
@@ -108,6 +110,19 @@ class DecisionTree(models.Model):
     )
     activated_at = models.DateTimeField(null=True, blank=True)
 
+    # Lock simple : un seul editeur a la fois sur un draft donne. Le lock
+    # expire automatiquement apres LOCK_TIMEOUT (cf methodes utilitaires).
+    locked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    locked_at = models.DateTimeField(null=True, blank=True)
+
+    LOCK_TIMEOUT = timedelta(minutes=15)
+
     class Meta:
         constraints = [
             # Une seule version active a la fois.
@@ -146,6 +161,44 @@ class DecisionTree(models.Model):
         self.status = self.STATUS_ACTIVE
         self.activated_at = timezone.now()
         self.save(update_fields=["status", "activated_at", "updated_at"])
+
+    # ─── Lock d'edition ────────────────────────────────────────────────────
+
+    def is_locked_by_other(self, user) -> bool:
+        """True si quelqu'un d'autre detient un lock encore valide."""
+        if self.locked_by_id is None or self.locked_at is None:
+            return False
+        if self.locked_by_id == user.pk:
+            return False
+        return self.locked_at >= timezone.now() - self.LOCK_TIMEOUT
+
+    @transaction.atomic
+    def acquire_lock(self, user) -> bool:
+        """Tente de prendre le lock pour user. Retourne True si OK,
+        False si quelqu'un d'autre detient un lock encore valide.
+
+        Idempotent : si user detient deja le lock, on rafraichit
+        simplement locked_at.
+        """
+        # Re-check avec lock pessimiste pour eviter la race entre 2 admins
+        # qui cliquent en meme temps.
+        fresh = DecisionTree.objects.select_for_update().get(pk=self.pk)
+        if fresh.is_locked_by_other(user):
+            return False
+        fresh.locked_by = user
+        fresh.locked_at = timezone.now()
+        fresh.save(update_fields=["locked_by", "locked_at", "updated_at"])
+        # Refresh self pour que l'appelant voie l'etat a jour
+        self.locked_by = fresh.locked_by
+        self.locked_at = fresh.locked_at
+        return True
+
+    def release_lock(self, user) -> None:
+        """Libere le lock si user le detient. No-op sinon."""
+        if self.locked_by_id == user.pk:
+            self.locked_by = None
+            self.locked_at = None
+            self.save(update_fields=["locked_by", "locked_at", "updated_at"])
 
 
 class MoulinetteNitrates(Moulinette):
