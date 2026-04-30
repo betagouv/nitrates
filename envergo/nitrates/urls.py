@@ -18,6 +18,7 @@ from envergo.nitrates.views_admin_yaml import (
     RenameTreeView,
     YamlTreeView,
 )
+from envergo.nitrates.views_admin_yaml_edit import CancelEditNodeView, EditNodeView
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -75,6 +76,17 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:pk>/sortir-edition/",
         CancelEditView.as_view(),
         name="nitrates_admin_yaml_cancel_edit",
+    ),
+    # Endpoints htmx d'edition inline (etape 5c).
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/noeud/",
+        EditNodeView.as_view(),
+        name="nitrates_admin_yaml_edit_node",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/noeud/cancel/",
+        CancelEditNodeView.as_view(),
+        name="nitrates_admin_yaml_edit_node_cancel",
     ),
     path(
         _("contact-us/"),

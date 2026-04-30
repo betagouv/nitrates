@@ -1,6 +1,3 @@
-{# Bandeau affiche en mode edition. Le draft sous-jacent est invisible
-   pour l'utilisateur : on parle de "modification de l'arbre actif" pour
-   ne pas perdre les admins metier. #}
 <div class="yaml-admin__edit-banner">
   <div class="yaml-admin__edit-banner-msg">
     <span class="yaml-admin__edit-icon" aria-hidden="true">🔧</span>
@@ -17,8 +14,7 @@
       <button type="submit" class="yaml-admin__btn">Annuler les modifications</button>
     </form>
 
-    {# Placeholders pour les boutons globaux : seront branches a l'etape 7 (deep validate)
-       et 8 (activation). Pour l'instant ils sont disabled. #}
+    {% comment %}Placeholders pour les boutons globaux : etape 7 deep validate, etape 8 activation. Disabled pour l'instant.{% endcomment %}
     <button type="button"
             class="yaml-admin__btn"
             disabled

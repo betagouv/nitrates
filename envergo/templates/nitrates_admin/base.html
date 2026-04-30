@@ -71,6 +71,8 @@
       {% block content %}{% endblock %}
     </main>
 
+    {% comment %}htmx pour l'edition inline (charge en permanence, ~14 KB minified).{% endcomment %}
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>

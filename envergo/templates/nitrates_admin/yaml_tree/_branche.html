@@ -7,16 +7,18 @@
 
     {% if is_editing %}
       <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
-        <a href="#"
-           class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
-           title="Éditer cette branche"
-           data-action="edit"
-           data-path="{{ ancestors_path }}#{{ branche.valeur }}">✎</a>
-        <a href="#"
-           class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-           title="Supprimer cette branche"
-           data-action="delete"
-           data-path="{{ ancestors_path }}#{{ branche.valeur }}">🗑</a>
+        <button type="button"
+                class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+                title="Éditer cette branche (pas encore branché)"
+                data-action="edit"
+                data-path="{{ ancestors_path }}#{{ branche.valeur }}"
+                disabled>✎</button>
+        <button type="button"
+                class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+                title="Supprimer cette branche (pas encore branché)"
+                data-action="delete"
+                data-path="{{ ancestors_path }}#{{ branche.valeur }}"
+                disabled>🗑</button>
       </span>
     {% endif %}
   </div>

@@ -15,6 +15,14 @@ def tags_for(data, kind):
     return get_tags(kind, data)
 
 
+@register.filter(name="split")
+def split_filter(value, sep=","):
+    """Filtre simple pour splitter une chaine dans un template."""
+    if not value:
+        return []
+    return str(value).split(sep)
+
+
 @register.simple_tag
 def join_path(ancestors_str, node_id):
     """Concatene un parent_path string avec un id pour produire le path

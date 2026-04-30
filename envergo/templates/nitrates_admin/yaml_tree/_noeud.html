@@ -13,8 +13,33 @@
        title="Déplier ce sous-arbre en profondeur (récursif)"
        data-path="{{ path }}">▾▾</a>
   {% endif %}
+
+  {% if is_editing %}
+    {% comment %}Actions d'edition en absolute, hors du summary pour eviter que le clic toggle le details en plus de declencher l'action.{% endcomment %}
+    <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+      <button type="button"
+              class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+              title="Éditer ce nœud"
+              hx-get="{% url 'nitrates_admin_yaml_edit_node' tree_pk=tree.pk %}?path={{ path }}"
+              hx-target="#node-row-{{ path|slugify }}"
+              hx-swap="outerHTML">✎</button>
+      <button type="button"
+              class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
+              title="Ajouter un enfant"
+              data-action="add"
+              data-path="{{ path }}"
+              disabled>+</button>
+      <button type="button"
+              class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+              title="Supprimer"
+              data-action="delete"
+              data-path="{{ path }}"
+              disabled>🗑</button>
+    </span>
+  {% endif %}
+
   <details {% if opened %}open{% endif %}>
-    <summary class="yaml-tree__row">
+    <summary class="yaml-tree__row" id="node-row-{{ path|slugify }}">
       <span class="yaml-tree__tags">
         {% for tag in noeud|tags_for:"noeud" %}
           <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
@@ -30,26 +55,6 @@
         <span class="yaml-tree__libelle">{{ noeud.champ }}</span>
       {% endif %}
       {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
-
-      {% if is_editing %}
-        <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
-          <a href="#"
-             class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
-             title="Éditer ce nœud"
-             data-action="edit"
-             data-path="{{ path }}">✎</a>
-          <a href="#"
-             class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
-             title="Ajouter un enfant"
-             data-action="add"
-             data-path="{{ path }}">+</a>
-          <a href="#"
-             class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-             title="Supprimer"
-             data-action="delete"
-             data-path="{{ path }}">🗑</a>
-        </span>
-      {% endif %}
     </summary>
 
     {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}
