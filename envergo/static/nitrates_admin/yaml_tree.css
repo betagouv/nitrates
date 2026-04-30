@@ -171,29 +171,14 @@
 }
 
 /* Icones inline d'edition (sur chaque noeud / regle / branche).
-   Sur les noeuds, .yaml-tree__edit-actions est positionne en absolute
-   a droite, a cote du bouton ▾▾, pour eviter de bubbler le clic vers
-   le summary du details (qui togglerait le fold). */
+   Toujours inline, juste apres le contenu de la ligne. Les <button>
+   a l'interieur d'un <summary> ne togglent PAS le <details> natif
+   (comportement standard HTML), donc on peut les mettre dans le summary
+   sans precaution. */
 
 .yaml-tree__edit-actions {
   display: inline-flex;
   gap: 0.15rem;
-}
-
-.yaml-tree__item--noeud > .yaml-tree__edit-actions {
-  position: absolute;
-  top: 0.2rem;
-  right: 3.5rem;
-  z-index: 2;
-  background: rgb(255 255 255 / 85%);
-  padding: 0.05rem;
-  border-radius: 3px;
-}
-
-/* Sur branches/regles, on garde inline (la zone est plate). */
-
-.yaml-tree__branche-header .yaml-tree__edit-actions,
-.yaml-tree__regle .yaml-tree__edit-actions {
   margin-left: 0.5rem;
 }
 
@@ -257,7 +242,8 @@
 
 /* Formulaire d'edition inline (htmx) */
 
-.yaml-tree__row--editing {
+.yaml-tree__row--editing,
+.yaml-tree__regle--editing {
   display: block;
   cursor: default;
   background: #fffde7;
@@ -268,6 +254,20 @@
 
 .yaml-tree__row--editing::before {
   content: none !important;
+}
+
+.yaml-tree__form-fieldset {
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  margin: 0;
+}
+
+.yaml-tree__form-fieldset legend {
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: 600;
+  padding: 0 0.3rem;
 }
 
 .yaml-tree__inline-form {

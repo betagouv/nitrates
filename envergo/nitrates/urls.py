@@ -18,7 +18,12 @@ from envergo.nitrates.views_admin_yaml import (
     RenameTreeView,
     YamlTreeView,
 )
-from envergo.nitrates.views_admin_yaml_edit import CancelEditNodeView, EditNodeView
+from envergo.nitrates.views_admin_yaml_edit import (
+    CancelEditNodeView,
+    CancelEditRegleView,
+    EditNodeView,
+    EditRegleView,
+)
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -87,6 +92,16 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/noeud/cancel/",
         CancelEditNodeView.as_view(),
         name="nitrates_admin_yaml_edit_node_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/regle/",
+        EditRegleView.as_view(),
+        name="nitrates_admin_yaml_edit_regle",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/regle/cancel/",
+        CancelEditRegleView.as_view(),
+        name="nitrates_admin_yaml_edit_regle_cancel",
     ),
     path(
         _("contact-us/"),

@@ -28,7 +28,7 @@
       {% include "nitrates_admin/yaml_tree/_noeud.html" with noeud=branche.noeud ancestors_path=ancestors_path depth=depth|add:1 %}
     </ul>
   {% elif branche.regle %}
-    {% include "nitrates_admin/yaml_tree/_regle.html" with regle=branche.regle %}
+    {% include "nitrates_admin/yaml_tree/_regle.html" with regle=branche.regle parent_path=ancestors_path valeur=branche.valeur %}
   {% elif branche.renvoi_vers %}
     <div class="yaml-tree__renvoi">
       <span class="yaml-tag tag-renvoi" title="Renvoi vers une règle existante">

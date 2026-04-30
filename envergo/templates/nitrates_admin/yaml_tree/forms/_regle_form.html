@@ -1,0 +1,173 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Formulaire inline pour editer une regle.{% endcomment %}
+<div class="yaml-tree__regle yaml-tree__regle--editing"
+     id="regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}">
+  <form class="yaml-tree__inline-form"
+        hx-post="{% url 'nitrates_admin_yaml_edit_regle' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+        hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>id</span>
+        <input type="text" name="id" value="{{ regle.id }}" required>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>type</span>
+        <select name="type">
+          <option value="">— (aucun, brouillon)</option>
+          {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+            <option value="{{ t }}"{% if regle.type == t %} selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "type" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>a_completer</span>
+        <input type="checkbox"
+               name="a_completer"
+               {% if regle.a_completer %}checked{% endif %}>
+      </label>
+    </div>
+
+    <fieldset class="yaml-tree__form-fieldset">
+      <legend>Périodes (du JJ/MM ou événement → au JJ/MM ou événement)</legend>
+      {% with regle.periodes|default_if_none:"" as periodes %}
+        {% for p in periodes %}
+          <div class="yaml-tree__form-row">
+            <label class="yaml-tree__form-label">
+              <span>période #{{ forloop.counter }}</span>
+              <input type="text"
+                     name="periodes-{{ forloop.counter0 }}-du"
+                     value="{{ p.du|default_if_none:'' }}"
+                     placeholder="du (JJ/MM)"
+                     style="max-width:14ch">
+              <input type="text"
+                     name="periodes-{{ forloop.counter0 }}-au"
+                     value="{{ p.au|default_if_none:'' }}"
+                     placeholder="au (JJ/MM)"
+                     style="max-width:14ch">
+            </label>
+            {% for err in errors %}
+              {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
+                <small class="yaml-tree__form-field-error">{{ err.message }}</small>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endfor %}
+        {% comment %}Une ligne vide pour ajouter une nouvelle periode.{% endcomment %}
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label">
+            <span>+ ajouter</span>
+            <input type="text"
+                   name="periodes-{{ regle.periodes|length|default:0 }}-du"
+                   value=""
+                   placeholder="du (JJ/MM)"
+                   style="max-width:14ch">
+            <input type="text"
+                   name="periodes-{{ regle.periodes|length|default:0 }}-au"
+                   value=""
+                   placeholder="au (JJ/MM)"
+                   style="max-width:14ch">
+          </label>
+        </div>
+      {% endwith %}
+    </fieldset>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>code_prescription</span>
+        <input type="text"
+               name="code_prescription"
+               value="{{ regle.code_prescription|default_if_none:'' }}"
+               placeholder="ex: pc4">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>note</span>
+        <input type="text"
+               name="note"
+               value="{{ regle.note|default_if_none:'' }}"
+               placeholder="ex: note_5">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>message</span>
+        <input type="text"
+               name="message"
+               value="{{ regle.message|default_if_none:'' }}">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>texte</span>
+        <input type="text" name="texte" value="{{ regle.texte|default_if_none:'' }}">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>texte_condition</span>
+        <input type="text"
+               name="texte_condition"
+               value="{{ regle.texte_condition|default_if_none:'' }}">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>plafond N kg/ha</span>
+        <input type="text"
+               name="plafond_azote_kg_n_ha"
+               value="{{ regle.plafond_azote_kg_n_ha|default_if_none:'' }}">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>plafonnement_associe</span>
+        <input type="text"
+               name="plafonnement_associe"
+               value="{{ regle.plafonnement_associe|default_if_none:'' }}"
+               placeholder="ex: r_plafond_x">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>source juridique</span>
+        <input type="text"
+               name="source_juridique"
+               value="{{ regle.source_juridique|default_if_none:'' }}">
+      </label>
+    </div>
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_edit_regle_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+              hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>

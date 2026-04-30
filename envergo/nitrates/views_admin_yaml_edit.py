@@ -35,6 +35,22 @@ def _parse_path(raw: str | None) -> tuple[str, ...]:
     return tuple(p for p in raw.split("/") if p)
 
 
+def _parse_valeur(raw):
+    """Les valeurs de branches en YAML peuvent etre str, bool ou int.
+    En query string elles arrivent en str. On reconstruit le type :
+    `True`/`False` -> bool, sinon str (les ints sont rares et finissent
+    aussi en str -- on accepte les deux ; le compare dans get_branche_at
+    matchera le str si la valeur YAML est elle-meme un str).
+    """
+    if raw is None:
+        return None
+    if raw == "True":
+        return True
+    if raw == "False":
+        return False
+    return raw
+
+
 def _check_editable(tree: DecisionTree, user) -> str | None:
     """Retourne un message d'erreur si l'utilisateur n'a pas le droit
     d'editer ce tree. None sinon."""
@@ -134,6 +150,155 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "tags": get_tags("noeud", node),
+            },
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class EditRegleView(View):
+    """GET : formulaire pour editer une regle.
+    POST : applique la modification + renvoie la ligne mise a jour.
+
+    La regle est identifiee par le path de son noeud parent + la valeur
+    de la branche dans laquelle elle est attachee :
+        ?path=<parent_path>&valeur=<branche_valeur>
+    """
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None or "regle" not in branche:
+            return HttpResponseForbidden("Règle introuvable.")
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_regle_form.html",
+            {
+                "tree": tree,
+                "regle": branche["regle"],
+                "parent_path_str": "/".join(parent_path),
+                "valeur": valeur,
+                "errors": [],
+            },
+        )
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur")) or request.POST.get("valeur")
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None or "regle" not in branche:
+            return HttpResponseForbidden("Règle introuvable.")
+
+        # Reconstruit new_data depuis le POST.
+        new_data: dict = {}
+        new_id = request.POST.get("id", "").strip()
+        if new_id:
+            new_data["id"] = new_id
+        rtype = request.POST.get("type", "").strip()
+        if rtype:
+            new_data["type"] = rtype
+        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au
+        periodes = []
+        i = 0
+        while True:
+            du = request.POST.get(f"periodes-{i}-du", "").strip()
+            au = request.POST.get(f"periodes-{i}-au", "").strip()
+            if not du and not au:
+                if i == 0:
+                    break
+                # Ligne suivante vide -> on s'arrete
+                break
+            if du or au:
+                periodes.append({"du": du, "au": au})
+            i += 1
+        if periodes:
+            new_data["periodes"] = periodes
+        elif "periodes" in branche["regle"]:
+            # L'utilisateur a vide les periodes -> on les retire
+            new_data["periodes"] = []
+        # Champs optionnels scalaires
+        for key in (
+            "code_prescription",
+            "note",
+            "source_juridique",
+            "message",
+            "texte",
+            "texte_condition",
+            "plafonnement_associe",
+        ):
+            val = request.POST.get(key, "").strip()
+            if val:
+                new_data[key] = val
+        plafond = request.POST.get("plafond_azote_kg_n_ha", "").strip()
+        if plafond:
+            try:
+                new_data["plafond_azote_kg_n_ha"] = float(plafond)
+            except ValueError:
+                pass
+        if request.POST.get("a_completer") in ("on", "true", "1"):
+            new_data["a_completer"] = True
+
+        result = editor.update_regle(tree, parent_path, valeur, new_data, request.user)
+        if not result.ok:
+            tree.refresh_from_db()
+            branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+            current = {**branche["regle"], **new_data}
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/forms/_regle_form.html",
+                {
+                    "tree": tree,
+                    "regle": current,
+                    "parent_path_str": "/".join(parent_path),
+                    "valeur": valeur,
+                    "errors": result.errors,
+                },
+                status=422,
+            )
+        # Succes : re-render la regle entiere (pas juste une ligne)
+        tree.refresh_from_db()
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_regle_block.html",
+            {
+                "tree": tree,
+                "regle": branche["regle"],
+                "is_editing": True,
+                "parent_path": "/".join(parent_path),
+                "valeur": valeur,
+            },
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CancelEditRegleView(View):
+    """GET : annule l'edition d'une regle, renvoie le bloc en lecture."""
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None or "regle" not in branche:
+            return HttpResponse(status=204)
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_regle_block.html",
+            {
+                "tree": tree,
+                "regle": branche["regle"],
+                "is_editing": True,
+                "parent_path": "/".join(parent_path),
+                "valeur": valeur,
             },
         )
 
