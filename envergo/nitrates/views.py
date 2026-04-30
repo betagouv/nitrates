@@ -213,15 +213,25 @@ class MoulinetteView(View):
     """
 
     def get(self, request, *args, **kwargs):
-        if "lng" not in request.GET or "lat" not in request.GET:
-            return render(
-                request,
-                "nitrates/form.html",
-                {"data": request.GET},
-            )
+        # Charge les referentiels une fois (utilises pour resoudre les
+        # libelles longs cote template).
+        try:
+            referentiels = load_referentiels()
+        except FileNotFoundError:
+            referentiels = {}
 
-        # On passe le QueryDict directement -- pas dict(...) qui retournerait
-        # des listes pour chaque champ.
+        ctx = {
+            "data": request.GET,
+            "codes_prescription": referentiels.get("codes_prescription", {}),
+            "notes_referentiel": referentiels.get("notes", {}),
+            "afficher_resultat": False,
+        }
+
+        # Sans lat/lng -> on rend juste le panneau form (pas de resultat).
+        if "lng" not in request.GET or "lat" not in request.GET:
+            return render(request, "nitrates/simulateur.html", ctx)
+
+        # Avec lat/lng -> moulinette + resultat dans la 2e colonne.
         moulinette = MoulinetteNitrates(form_kwargs={"data": request.GET.dict()})
         # Le template ne peut pas acceder a `criterion._evaluator` (Django
         # interdit les attributs commencant par underscore). On expose
@@ -237,12 +247,12 @@ class MoulinetteView(View):
                         "evaluator": getattr(criterion, "_evaluator", None),
                     }
                 )
-        return render(
-            request,
-            "nitrates/result.html",
+
+        ctx.update(
             {
+                "afficher_resultat": True,
                 "moulinette": moulinette,
                 "regulations_evaluees": regulations_evaluees,
-                "data": request.GET,
-            },
+            }
         )
+        return render(request, "nitrates/simulateur.html", ctx)

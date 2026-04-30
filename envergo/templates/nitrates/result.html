@@ -103,6 +103,9 @@
                     </p>
                   {% endif %}
                 </div>
+
+                {# Accordeons DSFR pour les libelles longs codes prescription et notes #}
+                {% include "nitrates/fragments/_prescriptions_notes.html" %}
               {% endif %}
 
               {% if ev.questions_subsidiaires %}

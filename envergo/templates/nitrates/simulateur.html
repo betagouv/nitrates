@@ -1,0 +1,55 @@
+{% extends "nitrates/base.html" %}
+
+{% load static leaflet_tags nitrates_tags %}
+
+{% block title %}Simulateur{% endblock %}
+
+{% block extra_css %}
+  {% leaflet_css %}
+  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
+  <link href="{% static 'nitrates/calendrier.css' %}" rel="stylesheet">
+  <link href="{% static 'nitrates/simulateur.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+  {% leaflet_js %}
+  <script>
+    window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
+    window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+    window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
+    window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    window.NITRATES_INITIAL_DATA = {
+      occupation_sol: "{{ data.occupation_sol|default:'' }}",
+      sous_culture: "{{ data.sous_culture|default:'' }}",
+      categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
+      sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
+    };
+  </script>
+  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {% if afficher_resultat %}
+    <script defer src="{% static 'nitrates/subsidiaires.js' %}"></script>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+    <h1>Simulateur nitrates</h1>
+
+    <div class="fr-grid-row fr-grid-row--gutters simulateur-row{% if afficher_resultat %} simulateur-row--with-result{% endif %}">
+
+      {# ─── Colonne gauche : form + carte ──────────────────────────── #}
+      <div class="fr-col-12 {% if afficher_resultat %}fr-col-lg-6{% else %}fr-col-lg-8{% endif %} simulateur-col simulateur-col--form">
+        {% include "nitrates/fragments/_panneau_form.html" %}
+      </div>
+
+      {# ─── Colonne droite : resultat (si dispo) ──────────────────── #}
+      {% if afficher_resultat %}
+        <div class="fr-col-12 fr-col-lg-6 simulateur-col simulateur-col--result">
+          {% include "nitrates/fragments/_panneau_resultat.html" %}
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

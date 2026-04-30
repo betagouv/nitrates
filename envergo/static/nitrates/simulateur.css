@@ -1,0 +1,111 @@
+/* Layout 2 colonnes du simulateur (form gauche, resultat droite).
+   Couleurs strictement issues de la maquette
+   site-nitrates-maquette/index.html (mode light DSFR). */
+
+.simulateur-row {
+  align-items: flex-start;
+}
+
+.simulateur-col--result {
+  position: sticky;
+  top: 1rem;
+}
+
+/* ─── Panneau resultat ─────────────────────────────────────────────── */
+
+.resultat-panel {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+
+  /* Force le texte en noir maquette (et non gris #3a3a3a DSFR par defaut) */
+  color: #161616;
+}
+
+.resultat-panel h2,
+.resultat-panel h3,
+.resultat-panel h4 {
+  color: #161616;
+}
+
+.resultat-panel p {
+  color: #161616;
+}
+
+.resultat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.resultat-row:last-of-type {
+  border-bottom: none;
+}
+
+.resultat-row__label {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #161616;
+}
+
+/* ─── Badges resultat (couleurs maquette) ─────────────────────────── */
+
+.resultat-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.resultat-badge--concerne {
+  background: #dee9fd;
+  color: #0063cb;
+}
+
+.resultat-badge--autorise {
+  background: #b8fec9;
+  color: #18753c;
+}
+
+.resultat-badge--interdit {
+  background: #ffeaeb;
+  color: #e1000f;
+}
+
+.resultat-badge--conditionnel {
+  background: #ffe0b2;
+  color: #b35900;
+}
+
+.resultat-badge--neutre {
+  background: #eaeaea;
+  color: #666;
+}
+
+/* ─── Accordeons : on respecte le style DSFR par defaut ─────────────
+   - Bouton ferme (aria-expanded=false) : couleur DSFR France #000091
+   - Bouton ouvert (aria-expanded=true) : on force le noir maquette
+   - Contenu (.fr-collapse) : noir maquette aussi
+*/
+
+.resultat-panel .fr-accordion__btn[aria-expanded="true"] {
+  color: #161616;
+}
+
+.resultat-panel .fr-collapse {
+  color: #161616;
+}
+
+/* Sur petit ecran, les colonnes passent en stack vertical */
+@media (width <= 991px) {
+  .simulateur-col--result {
+    position: static;
+    margin-top: 2rem;
+  }
+}

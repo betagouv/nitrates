@@ -12,6 +12,19 @@ from django import template
 register = template.Library()
 
 
+@register.filter
+def get_item(d, key):
+    """Filtre dict[key] pour le template (Django ne le supporte pas
+    nativement quand la cle a des caracteres speciaux).
+
+    Usage : {{ mon_dict|get_item:ma_cle }}
+    Retourne None si dict ou cle absent.
+    """
+    if not isinstance(d, dict):
+        return None
+    return d.get(key)
+
+
 # Mapping regle.type -> couleur de fond de la barre.
 # Pour les types qui ont une periode specifique (interdiction,
 # plafonnement, autorisation_sous_condition), le fond reste vert (= autorise

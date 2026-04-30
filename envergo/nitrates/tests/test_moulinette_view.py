@@ -80,8 +80,10 @@ def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata)
     subsidiaires."""
     response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
     assert response.status_code == 200
-    assert b"Directive nitrates" in response.content
-    assert b"Questions compl" in response.content  # "complémentaires"
+    # Header du panneau resultat
+    assert b"glementations applicables" in response.content
+    # Questions complementaires affichees
+    assert b"Questions compl" in response.content
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):

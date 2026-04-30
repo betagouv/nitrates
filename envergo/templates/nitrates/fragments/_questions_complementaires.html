@@ -1,0 +1,55 @@
+{% comment %}
+Mini-formulaire des questions complementaires. Le serveur rend la ou
+les questions bloquantes en cours, le JS subsidiaires.js descend
+l'arbre cote client pour ajouter les suivantes au fil des reponses.
+{% endcomment %}
+
+<div class="fr-callout fr-callout--blue-cumulus fr-mt-3w">
+  <h4 class="fr-callout__title">Questions complémentaires</h4>
+  <p>
+    Répondez aux questions ci-dessous. Les questions suivantes
+    apparaîtront automatiquement (cascade côté client).
+  </p>
+
+  <form method="get"
+        action="{% url 'nitrates_simulateur' %}"
+        class="fr-mt-2w subsidiaires-form"
+        data-subsidiaires>
+
+    {% with subsidiary_fields=ev.questions_subsidiaires.champs_set %}
+      {% for key, value in data.items %}
+        {% if value and key not in subsidiary_fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+      {% endfor %}
+    {% endwith %}
+
+    <div class="subsidiaires-questions">
+      {% for q in ev.questions_subsidiaires.questions %}
+        <div class="fr-fieldset__element subsidiaire-question">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_subsidiaire_{{ q.champ }}">
+              {{ q.texte }}
+              <span class="fr-hint-text">champ : {{ q.champ }} (niveau {{ q.niveau }})</span>
+            </label>
+            <select class="fr-select"
+                    name="{{ q.champ }}"
+                    id="id_subsidiaire_{{ q.champ }}"
+                    data-subsidiaire>
+              <option value="">— Choisir —</option>
+              {% for c in q.choix %}
+                <option value="{{ c.valeur }}">
+                  {% if c.libelle %}
+                    {{ c.libelle }} ({{ c.valeur }})
+                  {% else %}
+                    {{ c.valeur }}
+                  {% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="fr-btn fr-mt-2w">Voir le résultat</button>
+  </form>
+</div>
