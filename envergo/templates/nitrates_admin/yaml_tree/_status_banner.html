@@ -1,0 +1,20 @@
+{% load yaml_admin_extras %}
+
+<div class="yaml-admin__status-banner yaml-admin__status-banner--{{ tree.status }}">
+  <span class="yaml-admin__status-tag yaml-admin__status-tag--{{ tree.status }}">{{ tree.get_status_display }}</span>
+  <span class="yaml-admin__status-name">{{ tree.name }}</span>
+  <span class="yaml-admin__status-meta">
+    {% if tree.activated_at %}
+      activé le {{ tree.activated_at|date:"d/m/Y H:i" }}
+    {% else %}
+      créé le {{ tree.created_at|date:"d/m/Y H:i" }}
+    {% endif %}
+    {% if tree.updated_at and tree.updated_at != tree.created_at %}· maj {{ tree.updated_at|date:"d/m/Y H:i" }}{% endif %}
+    {% if tree.created_by %}· par {{ tree.created_by.email }}{% endif %}
+  </span>
+
+  {% if not is_viewing_active and active_tree %}
+    <a class="yaml-admin__btn yaml-admin__status-link"
+       href="?tree_id={{ active_tree.pk }}">Voir l'arbre actif</a>
+  {% endif %}
+</div>

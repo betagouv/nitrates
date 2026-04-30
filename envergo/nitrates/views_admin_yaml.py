@@ -1,10 +1,11 @@
-"""Viewer admin de l'arbre de decision YAML (phase 2bis, read-only).
+"""Viewer admin de l'arbre de decision YAML.
 
 Une seule vue : `/admin/nitrates/arbre-decision/`. Toggle vue via `?vue=`.
 Filtre rapide via `?filtre=` (un tag a la fois). Etat de fold dans
-`?expand=` (cumulables) et `?expand_deep=` (recursif). SSR pur, pas de JS.
+`?expand=` (cumulables) et `?expand_deep=` (recursif). Selection du tree
+via `?tree_id=<pk>` (defaut : tree actif). SSR pur, pas de JS.
 
-Source de verite : la table `DecisionTree` (lecture du tree actif).
+Source de verite : la table `DecisionTree`.
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -23,7 +24,7 @@ from envergo.nitrates.yaml_admin.tags import (
     get_tags,
     has_a_completer,
 )
-from envergo.nitrates.yaml_tree import load_active_tree_admin, load_active_tree_raw
+from envergo.nitrates.yaml_tree import load_tree_admin, load_tree_raw
 
 _VUES = {"arbre", "brut", "split"}
 
@@ -47,20 +48,28 @@ class YamlTreeView(TemplateView):
         expand = set(self.request.GET.getlist("expand")[:200])
         expand_deep = set(self.request.GET.getlist("expand_deep")[:200])
 
-        try:
-            arbre = load_active_tree_admin()
-        except DecisionTree.DoesNotExist:
+        # Selection du tree : ?tree_id=<pk> sinon le tree actif.
+        tree_id = self.request.GET.get("tree_id")
+        tree = _resolve_tree(tree_id)
+        if tree is None:
             ctx.update(
                 {
                     "no_tree": True,
                     "vue": vue,
                     "filtre": filtre,
                     "quick_filters": QUICK_FILTERS,
-                    "querystring_base": _querystring_base(vue, filtre),
+                    "querystring_base": _querystring_base(vue, filtre, None),
                 }
             )
             return ctx
 
+        active_tree = (
+            DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+            .only("pk", "name")
+            .first()
+        )
+
+        arbre = load_tree_admin(tree)
         racine = arbre.get("arbre", {}).get("noeud") or {}
 
         entries = list(iter_entries(arbre))
@@ -92,12 +101,15 @@ class YamlTreeView(TemplateView):
                 "open_paths": open_paths,
                 "quick_filters": QUICK_FILTERS,
                 "stats": _compute_stats(items),
-                "querystring_base": _querystring_base(vue, filtre),
+                "querystring_base": _querystring_base(vue, filtre, tree.pk),
+                "tree": tree,
+                "active_tree": active_tree,
+                "is_viewing_active": active_tree and active_tree.pk == tree.pk,
             }
         )
 
         if vue in {"brut", "split"}:
-            raw = load_active_tree_raw()
+            raw = load_tree_raw(tree)
             formatter = HtmlFormatter(
                 cssclass="yaml-raw", linenos="inline", wrapcode=True
             )
@@ -108,7 +120,19 @@ class YamlTreeView(TemplateView):
         return ctx
 
 
-def _querystring_base(vue: str, filtre: str) -> str:
+def _resolve_tree(tree_id) -> DecisionTree | None:
+    """Retourne le DecisionTree cible. Si tree_id est fourni, on le charge
+    (lance 404 si introuvable). Sinon on retourne l'actif courant.
+    Retourne None si rien n'est dispo (DB vide)."""
+    if tree_id:
+        try:
+            return DecisionTree.objects.get(pk=tree_id)
+        except (DecisionTree.DoesNotExist, ValueError):
+            return None
+    return DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
+
+
+def _querystring_base(vue: str, filtre: str, tree_pk) -> str:
     """Querystring pour les liens de la barre de fold (sans expand/expand_deep,
     ces deux la sont gerees au cas par cas dans le template)."""
     parts = []
@@ -116,6 +140,8 @@ def _querystring_base(vue: str, filtre: str) -> str:
         parts.append(f"vue={vue}")
     if filtre:
         parts.append(f"filtre={filtre}")
+    if tree_pk is not None:
+        parts.append(f"tree_id={tree_pk}")
     return "&".join(parts)
 
 
