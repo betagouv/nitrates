@@ -10,7 +10,12 @@ from envergo.nitrates.views import (
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
-from envergo.nitrates.views_admin_yaml import YamlTreeView
+from envergo.nitrates.views_admin_yaml import (
+    CloneConfirmView,
+    CreateDraftView,
+    RenameTreeView,
+    YamlTreeView,
+)
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -43,6 +48,21 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/",
         YamlTreeView.as_view(),
         name="nitrates_admin_yaml_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/draft/nouveau/",
+        CreateDraftView.as_view(),
+        name="nitrates_admin_yaml_create_draft",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/renommer/",
+        RenameTreeView.as_view(),
+        name="nitrates_admin_yaml_rename_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/cloner/",
+        CloneConfirmView.as_view(),
+        name="nitrates_admin_yaml_clone_confirm",
     ),
     path(
         _("contact-us/"),

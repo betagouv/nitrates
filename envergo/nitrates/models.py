@@ -9,6 +9,7 @@ Contient :
     envergo/moulinette/models.py qui est deja sature)
 """
 
+import copy
 from datetime import timedelta
 
 from django.conf import settings
@@ -199,6 +200,34 @@ class DecisionTree(models.Model):
             self.locked_by = None
             self.locked_at = None
             self.save(update_fields=["locked_by", "locked_at", "updated_at"])
+
+    @classmethod
+    def unique_copy_name(cls, base_name: str) -> str:
+        """Genere un nom '<base> (copy)' ou '<base> (copy N)' sans collision
+        avec un nom existant."""
+        candidate = f"{base_name} (copy)"
+        if not cls.objects.filter(name=candidate).exists():
+            return candidate
+        n = 2
+        while True:
+            candidate = f"{base_name} (copy {n})"
+            if not cls.objects.filter(name=candidate).exists():
+                return candidate
+            n += 1
+
+    @classmethod
+    def clone_to_draft(cls, source: "DecisionTree", user=None) -> "DecisionTree":
+        """Clone un tree existant en nouveau draft. Le contenu et le YAML
+        brut sont dupliques en profondeur. Le nouveau draft pointe vers
+        `source` via `parent`."""
+        return cls.objects.create(
+            name=cls.unique_copy_name(source.name),
+            status=cls.STATUS_DRAFT,
+            contenu=copy.deepcopy(source.contenu),
+            contenu_yaml_brut=source.contenu_yaml_brut,
+            parent=source,
+            created_by=user,
+        )
 
 
 class MoulinetteNitrates(Moulinette):

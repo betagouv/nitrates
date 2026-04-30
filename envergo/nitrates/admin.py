@@ -5,7 +5,8 @@ Note : `MoulinetteNitrates` n'est pas un model Django (il herite de
 pas ici.
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -80,9 +81,38 @@ class DecisionTreeAdmin(admin.ModelAdmin):
 
     @admin.display(description="Actions")
     def actions_links(self, obj):
-        # Pour le MVP : lien unique vers le viewer (lecture seule de l'actif).
-        # Le mode édition par draft sera branché plus tard via ?tree_id=.
-        if obj.status != DecisionTree.STATUS_ACTIVE:
-            return "—"
-        url = reverse("nitrates_admin_yaml_tree")
-        return mark_safe(f'<a class="button" href="{url}">Voir</a>')
+        view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
+        clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
+        if obj.status == DecisionTree.STATUS_DRAFT:
+            # Sur un draft : juste Éditer (cloner un draft n'a pas de sens
+            # immediat ; si on en a vraiment besoin, l'action dropdown reste).
+            return mark_safe(f'<a class="button" href="{view_url}">Éditer</a>')
+        return mark_safe(
+            f'<a class="button" href="{view_url}">Voir</a> '
+            f'<a class="button" href="{clone_url}">Cloner</a>'
+        )
+
+    actions = ["clone_to_draft"]
+
+    @admin.action(description="Cloner en draft (1 seul à la fois)")
+    def clone_to_draft(self, request, queryset):
+        """Action admin : clone le tree selectionne en nouveau draft.
+
+        N'accepte qu'une seule ligne a la fois (cloner plusieurs trees
+        d'un coup n'a pas de sens : on perd le focus).
+        """
+        if queryset.count() != 1:
+            self.message_user(
+                request,
+                "Sélectionnez exactement une ligne à cloner.",
+                level=messages.ERROR,
+            )
+            return
+        source = queryset.get()
+        draft = DecisionTree.clone_to_draft(source, user=request.user)
+        url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={draft.pk}"
+        self.message_user(
+            request,
+            f"Draft « {draft.name} » créé. Redirection vers l'éditeur.",
+        )
+        return redirect(url)

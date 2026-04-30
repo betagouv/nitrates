@@ -9,7 +9,11 @@ Source de verite : la table `DecisionTree`.
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.generic import TemplateView
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -118,6 +122,81 @@ class YamlTreeView(TemplateView):
             ctx["arbre_has_a_completer"] = has_a_completer(racine)
 
         return ctx
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class RenameTreeView(View):
+    """Renomme un tree depuis la page d'edition (bandeau viewer).
+
+    POST `/admin/nitrates/arbre-decision/<pk>/renommer/`
+    Body : `name=<nouveau_nom>`
+
+    Refuse si le nouveau nom est vide ou entre en collision avec un autre
+    tree.
+    """
+
+    def post(self, request, pk, *args, **kwargs):
+        tree = get_object_or_404(DecisionTree, pk=pk)
+        new_name = (request.POST.get("name") or "").strip()
+        if not new_name:
+            return HttpResponseRedirect(
+                reverse("nitrates_admin_yaml_tree") + f"?tree_id={tree.pk}"
+            )
+        # Collision : si un autre tree porte deja ce nom, on ajoute un suffixe.
+        if DecisionTree.objects.filter(name=new_name).exclude(pk=tree.pk).exists():
+            new_name = DecisionTree.unique_copy_name(new_name).replace(
+                " (copy)", " (renommé)"
+            )
+        tree.name = new_name
+        tree.save(update_fields=["name", "updated_at"])
+        return HttpResponseRedirect(
+            reverse("nitrates_admin_yaml_tree") + f"?tree_id={tree.pk}"
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CloneConfirmView(TemplateView):
+    """Page intermediaire de confirmation pour le clone depuis la liste admin.
+
+    Utile parce que les `<a>` de la colonne actions admin ne peuvent pas
+    embarquer un csrf token (pas d'acces a la request). On passe donc par
+    un GET qui affiche un formulaire POST CSRF-protege.
+    """
+
+    template_name = "nitrates_admin/clone_confirm.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["source"] = get_object_or_404(DecisionTree, pk=kwargs["pk"])
+        return ctx
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CreateDraftView(View):
+    """Cree un draft par clonage d'un tree existant.
+
+    POST `/admin/nitrates/arbre-decision/draft/nouveau/?from=<pk>`
+
+    Source par defaut : l'arbre actif. Si `from` est fourni, on clone ce
+    tree-la (peu importe son statut). Le draft cree porte un nom auto
+    `<source.name> (copy)` (suffixe `(copy 2)`, `(copy 3)`... si collision).
+    Redirige vers le viewer du draft cree.
+    """
+
+    def post(self, request, *args, **kwargs):
+        from_id = request.GET.get("from") or request.POST.get("from")
+        if from_id:
+            source = get_object_or_404(DecisionTree, pk=from_id)
+        else:
+            source = DecisionTree.objects.filter(
+                status=DecisionTree.STATUS_ACTIVE
+            ).first()
+            if source is None:
+                return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
+
+        draft = DecisionTree.clone_to_draft(source, user=request.user)
+        url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={draft.pk}"
+        return HttpResponseRedirect(url)
 
 
 def _resolve_tree(tree_id) -> DecisionTree | None:

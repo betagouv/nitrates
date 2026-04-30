@@ -100,13 +100,58 @@
   font-weight: 600;
 }
 
+.yaml-admin__rename-form {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  margin: 0;
+}
+
+.yaml-admin__rename-input {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 80%);
+  min-width: 18ch;
+  font-family: inherit;
+}
+
+.yaml-admin__rename-input:focus {
+  background: #fff;
+  border-color: #1f4789;
+  outline: 2px solid #c8d4ec;
+}
+
 .yaml-admin__status-meta {
   color: #555;
   font-size: 0.85rem;
 }
 
-.yaml-admin__status-link {
+.yaml-admin__status-actions {
   margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.yaml-admin__btn--primary {
+  background: #1f4789;
+  color: #fff;
+  border-color: #1f4789;
+}
+
+.yaml-admin__btn--primary:hover {
+  background: #2a5aa8;
+  color: #fff;
+  border-color: #2a5aa8;
+}
+
+button.yaml-admin__btn {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
 }
 
 .yaml-admin__meta,

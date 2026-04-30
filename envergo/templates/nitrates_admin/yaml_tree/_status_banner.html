@@ -2,7 +2,23 @@
 
 <div class="yaml-admin__status-banner yaml-admin__status-banner--{{ tree.status }}">
   <span class="yaml-admin__status-tag yaml-admin__status-tag--{{ tree.status }}">{{ tree.get_status_display }}</span>
-  <span class="yaml-admin__status-name">{{ tree.name }}</span>
+
+  {% if tree.status == "draft" %}
+    <form method="post"
+          action="{% url 'nitrates_admin_yaml_rename_tree' pk=tree.pk %}"
+          class="yaml-admin__rename-form">
+      {% csrf_token %}
+      <input type="text"
+             name="name"
+             value="{{ tree.name }}"
+             class="yaml-admin__rename-input"
+             aria-label="Nom du draft">
+      <button type="submit" class="yaml-admin__btn">Renommer</button>
+    </form>
+  {% else %}
+    <span class="yaml-admin__status-name">{{ tree.name }}</span>
+  {% endif %}
+
   <span class="yaml-admin__status-meta">
     {% if tree.activated_at %}
       activé le {{ tree.activated_at|date:"d/m/Y H:i" }}
@@ -13,8 +29,21 @@
     {% if tree.created_by %}· par {{ tree.created_by.email }}{% endif %}
   </span>
 
-  {% if not is_viewing_active and active_tree %}
-    <a class="yaml-admin__btn yaml-admin__status-link"
-       href="?tree_id={{ active_tree.pk }}">Voir l'arbre actif</a>
-  {% endif %}
+  <div class="yaml-admin__status-actions">
+    <a class="yaml-admin__btn"
+       href="{% url 'admin:nitrates_decisiontree_changelist' %}">← Liste des arbres</a>
+    {% if not is_viewing_active and active_tree %}
+      <a class="yaml-admin__btn" href="?tree_id={{ active_tree.pk }}">Voir l'arbre actif</a>
+    {% endif %}
+    {% if tree.status != "draft" %}
+      <form method="post"
+            action="{% url 'nitrates_admin_yaml_create_draft' %}?from={{ tree.pk }}"
+            style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">
+          ✏️ Créer un draft à partir de cette version
+        </button>
+      </form>
+    {% endif %}
+  </div>
 </div>

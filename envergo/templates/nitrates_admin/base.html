@@ -57,7 +57,10 @@
                    font-size:0.9rem">
       <strong>Admin nitrates</strong>
       <nav style="display:flex;gap:1rem;">
-        <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre de décision</a>
+        <a href="{% url 'admin:index' %}" style="color:#fff;">← Django admin</a>
+        <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
+           style="color:#fff">Arbres (liste)</a>
+        <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
       </nav>
       <span style="margin-left:auto;color:#cdd6e4;">
         {% if user.is_authenticated %}{{ user.email }}{% endif %}
