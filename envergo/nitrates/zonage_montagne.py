@@ -1,30 +1,37 @@
 """Mapping commune INSEE -> classification zone montagne (D113-14).
 
-L'arbre de decision PAN distingue 3 valeurs pour le champ
-`zonage_montagne_d113_14` :
+Regle metier (validee juriste 2026-04-30) :
 
-  - `montagne_note_7` : commune en zone montagne ET dans une region/dept
-    deroge "Note 7" (PACA, Occitanie, Aquitaine 24/33/40/47/64)
-  - `montagne_note_6` : commune en zone montagne, hors zones Note 7
-  - `non_montagne`    : commune hors zone montagne D113-14
+  Set A = { commune dans region PACA ou Occitanie }
+        UNION { commune dans departements 24, 33, 40, 47, 64 }
+  Set B = { commune flaggee `zone_montagne=C` dans le CSV juriste }
 
-Source : CSV juriste `zone_montagne_communes_2026-04-30.csv` (5789
-communes flaggees `zone_montagne=C`). Lecture en memoire au premier
-appel, mise en cache process. ~3MB de CSV, dictionnaire final ~600KB.
+  - `montagne_note_7`  : commune dans  B  inter  A
+  - `montagne_note_6`  : commune dans  B  inter  ¬A   (= dans B, hors A)
+  - `non_montagne`     : commune hors B (peu importe A)
+
+L'arbre de decision PAN consomme ces 3 valeurs sur le champ
+`zonage_montagne_d113_14` (et la reference `zonage_prairie_III` qui
+porte la meme semantique). Set A est code en dur dans ce module ;
+Set B est lu depuis le CSV juriste.
+
+Source CSV : `assets/zone_montagne_communes_2026-04-30.csv` (5789
+communes flaggees C). Lecture en memoire au premier appel, mise en
+cache process. ~3MB de CSV, dictionnaire final ~600KB.
 
 Pas de PostGIS, pas de polygones de communes : on resoud uniquement
 sur le code INSEE (5 chiffres) que le front passe en query param apres
-reverse geocoding via `geo.api.gouv.fr`. Si le code INSEE est manquant,
-on retombe sur un appel geo.api cote serveur.
+reverse geocoding via `geo.api.gouv.fr` au clic carte.
 """
 
 import csv
 from functools import lru_cache
 from pathlib import Path
 
-# Identifiants des regions/departements en "Note 7" (zone montagne avec
-# derogation a periode plus courte, cf. arbre PAN). Source : juriste,
-# avril 2026. Format : ensembles de strings INSEE.
+# Set A : zones où une commune montagne tombe en Note 7 (cf. regle
+# juriste validee 2026-04-30). Codes INSEE de region (76, 93) et de
+# departement (24/33/40/47/64). Si le CSV juriste evolue, Set A reste
+# stable -- c'est une derogation reglementaire fixe par le PAN.
 _REGIONS_NOTE_7 = {"76", "93"}  # Occitanie, PACA
 _DEPARTEMENTS_NOTE_7 = {"24", "33", "40", "47", "64"}  # Aquitaine
 
