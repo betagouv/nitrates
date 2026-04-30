@@ -18,11 +18,14 @@ def get_item(d, key):
     nativement quand la cle a des caracteres speciaux).
 
     Usage : {{ mon_dict|get_item:ma_cle }}
-    Retourne None si dict ou cle absent.
+    Retourne None si la cle est absente. Tolere les QueryDict (request.GET).
     """
-    if not isinstance(d, dict):
+    if d is None:
         return None
-    return d.get(key)
+    try:
+        return d.get(key)
+    except (AttributeError, TypeError):
+        return None
 
 
 # Mapping regle.type -> couleur de fond de la barre.

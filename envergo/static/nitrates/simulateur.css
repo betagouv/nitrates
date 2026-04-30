@@ -2,13 +2,251 @@
    Couleurs strictement issues de la maquette
    site-nitrates-maquette/index.html (mode light DSFR). */
 
-.simulateur-row {
-  align-items: flex-start;
+/* ─── Recherche commune (BAN) ──────────────────────────────────────── */
+
+.map-search-wrapper {
+  position: relative;
+  margin-bottom: 6px;
+  z-index: 10;
 }
 
-.simulateur-col--result {
-  position: sticky;
-  top: 1rem;
+.ban-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #aaa;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ban-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #eee;
+}
+
+.ban-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.ban-suggestions li:hover {
+  background: #f0f0f0;
+}
+
+/* ─── Localisation read-only (commune / dept / region) ────────────── */
+
+.localisation-readonly {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 12px 16px;
+  background: #f6f6f6;
+  border-left: 3px solid #000091;
+}
+
+.localisation-readonly__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.localisation-readonly__label {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 400;
+}
+
+.localisation-readonly__value {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #161616;
+}
+
+/* ─── Sections form (maquette : .form-section + .form-question-group) ─
+
+   Repris strictement de la maquette : titres 32px, textes 16px,
+   gap 10px entre titre/contenu et entre libellé/radios. */
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-section-title {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  color: #161616;
+  margin: 0;
+}
+
+.form-question-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* `display: flex` ne doit pas court-circuiter l'attribut `hidden`. */
+.form-section[hidden],
+.form-question-group[hidden] {
+  display: none !important;
+}
+
+.form-question-text {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: #161616;
+  margin: 0;
+}
+
+/* fr-radio-group sans la marge DSFR par defaut, mais on garde un peu
+   d'air entre options pour le confort de lecture (maquette). */
+.form-question-group .fr-radio-group {
+  margin: 0;
+  min-height: unset;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* Espacement entre 2 form-question-group consecutifs dans une section */
+.form-section .form-question-group + .form-question-group {
+  margin-top: 22px;
+}
+
+/* ─── Carte ────────────────────────────────────────────────────────── */
+
+/* Leaflet pose des elements de proxy (.leaflet-proxy) hors viewport
+   pour ses animations zoom : sans `overflow: hidden`, ces elements
+   etendent la largeur du document et provoquent un scrollbar
+   horizontal qui squeeze le rendu html/body. */
+.nitrates-map {
+  width: 100%;
+  height: 380px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Filet de securite global : on garantit qu'aucun overflow horizontal
+   inattendu ne squeeze le viewport. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* ─── Boite Questions complementaires (mauve) ─────────────────────── */
+
+.qc-box {
+  background: #cecefc;
+  padding: 30px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.qc-box__title {
+  margin: 0 0 8px;
+}
+
+.qc-box__lead {
+  font-size: 0.875rem;
+  margin: 0 0 8px;
+  color: #161616;
+}
+
+.qc-box .form-question-group {
+  margin: 0;
+}
+
+/* ─── Result panel sticky en desktop ──────────────────────────────── */
+
+@media (width >= 992px) {
+  .results-row.layout--split .result-col {
+    position: sticky;
+    top: 1rem;
+    align-self: flex-start;
+  }
+}
+
+/* ─── Section hero ─────────────────────────────────────────────────── */
+
+.nitrates-hero-illustration {
+  width: 480px;
+  height: 480px;
+  max-width: 100%;
+  flex-shrink: 0;
+  background: none;
+}
+
+.nitrates-hero-illustration img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nitrates-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+/* ─── Layout 2 colonnes (form / result) avec animation split ──────── */
+
+/* Centre toujours la row : le formulaire (et le couple form+result en
+   split) doit etre centre dans le container, et non aligne sur le
+   bord gauche du hero. Le hero garde sa structure 7/12 + 5/12 standard
+   DSFR ; le bloc simulateur en-dessous est plus etroit et centre. */
+.results-row {
+  flex-wrap: nowrap;
+  overflow: clip;
+  justify-content: center;
+}
+
+.results-row .form-col {
+  transition:
+    flex-basis 0.55s ease,
+    max-width 0.55s ease;
+}
+
+/* Mode solo : le form prend ~58% (~fr-col-lg-7) et reste centre. */
+@media (width >= 992px) {
+  .results-row:not(.layout--split) .form-col {
+    flex-basis: 58.3333%;
+    max-width: 58.3333%;
+  }
+}
+
+.results-row .result-col {
+  flex-shrink: 0;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(40px);
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    max-width 0.55s ease,
+    opacity 0.4s ease 0.15s,
+    transform 0.4s ease 0.15s;
+}
+
+.results-row.layout--split .result-col {
+  max-width: 700px;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* ─── Panneau resultat ─────────────────────────────────────────────── */
@@ -104,8 +342,17 @@
 
 /* Sur petit ecran, les colonnes passent en stack vertical */
 @media (width <= 991px) {
-  .simulateur-col--result {
-    position: static;
+  .results-row {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .results-row .result-col {
+    max-width: 100%;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    overflow: visible;
     margin-top: 2rem;
   }
 }

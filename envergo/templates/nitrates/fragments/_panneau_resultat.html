@@ -149,11 +149,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
         {% endif %}
 
-        {# Questions complementaires (extrait dans son fragment dedie) #}
-        {% if ev.questions_subsidiaires %}
-          {% include "nitrates/fragments/_questions_complementaires.html" %}
-        {% endif %}
-
         {# Catalogue SIG manquant #}
         {% if ev.catalogue_manquant %}
           <div class="fr-callout fr-callout--brown-opera fr-mt-2w">
@@ -172,8 +167,8 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           </div>
         {% endif %}
 
-        {# Chemin parcouru (debug, masque par defaut) #}
-        {% if ev.chemin %}
+        {# Chemin parcouru : seulement en mode debug #}
+        {% if ev.chemin and debug %}
           <details class="fr-mt-3w fr-text--sm">
             <summary>Chemin parcouru (debug)</summary>
             <pre>{% for n in ev.chemin %}{{ n }}{% if not forloop.last %} → {% endif %}{% endfor %}</pre>
@@ -188,4 +183,10 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% endfor %}
 
   {% endif %}
+
+  {# Bouton Recommencer : redirige vers la home /simulateur/ sans params #}
+  <div class="fr-mt-4w">
+    <a href="{% url 'nitrates_simulateur' %}"
+       class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
+  </div>
 </div>

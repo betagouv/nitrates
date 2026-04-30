@@ -170,6 +170,42 @@
     debugEl.innerHTML = `<p class="nitrates-debug__placeholder">Erreur : ${message}</p>`;
   }
 
+  // Panel "Commune / Departement / Region" sous la carte (visible meme
+  // hors mode debug, c'est UX maquette).
+  const localisationReadonly = document.getElementById(
+    "nitrates-localisation-info"
+  );
+  const communeDisplay = document.getElementById("commune-display");
+  const deptDisplay = document.getElementById("departement-display");
+  const regionDisplay = document.getElementById("region-display");
+
+  function updateLocalisationReadonly(data, communeNom) {
+    if (!localisationReadonly) return;
+    if (communeDisplay) communeDisplay.textContent = communeNom || "—";
+    if (deptDisplay)
+      deptDisplay.textContent = data.department_code || "—";
+    if (regionDisplay) {
+      const r = data.region_code
+        ? `${data.region_label || ""} (${data.region_code})`
+        : "—";
+      regionDisplay.textContent = r;
+    }
+    localisationReadonly.hidden = false;
+  }
+
+  // Reverse geocode pour avoir le nom de la commune au clic carte.
+  async function fetchCommuneNom(lat, lng) {
+    try {
+      const r = await fetch(
+        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom&format=json`
+      );
+      const arr = await r.json();
+      return Array.isArray(arr) && arr.length ? arr[0].nom : null;
+    } catch {
+      return null;
+    }
+  }
+
   map.on("click", function (e) {
     const { lat, lng } = e.latlng;
 
@@ -189,12 +225,84 @@
     }
 
     const url = `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}`;
-    fetch(url, { headers: { Accept: "application/json" } })
-      .then((r) => {
+    Promise.all([
+      fetch(url, { headers: { Accept: "application/json" } }).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
+      }),
+      fetchCommuneNom(lat, lng),
+    ])
+      .then(([data, communeNom]) => {
+        renderDebug(data);
+        updateLocalisationReadonly(data, communeNom);
       })
-      .then(renderDebug)
       .catch((err) => renderError(err.message || String(err)));
   });
+
+  // ─── Recherche commune BAN ─────────────────────────────────────────
+  const searchInput = document.getElementById("map-search");
+  const searchList = document.getElementById("map-search-list");
+  if (searchInput && searchList) {
+    let searchTimer = null;
+    let searchResults = [];
+
+    async function searchCommune(q) {
+      if (q.length < 2) {
+        closeSearch();
+        return;
+      }
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&type=municipality&limit=6`
+        );
+        const data = await res.json();
+        renderSearch(data.features || []);
+      } catch {
+        closeSearch();
+      }
+    }
+
+    function renderSearch(features) {
+      searchResults = features;
+      searchList.innerHTML = "";
+      if (!features.length) {
+        closeSearch();
+        return;
+      }
+      features.forEach((f) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.textContent = f.properties.label;
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          selectCommune(f);
+        });
+        searchList.appendChild(li);
+      });
+      searchList.hidden = false;
+    }
+
+    function selectCommune(feature) {
+      const [lng, lat] = feature.geometry.coordinates;
+      searchInput.value = feature.properties.label;
+      closeSearch();
+      map.flyTo([lat, lng], 13);
+    }
+
+    function closeSearch() {
+      searchList.hidden = true;
+      searchList.innerHTML = "";
+    }
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(
+        () => searchCommune(searchInput.value.trim()),
+        250
+      );
+    });
+    searchInput.addEventListener("blur", () =>
+      setTimeout(closeSearch, 150)
+    );
+  }
 })();

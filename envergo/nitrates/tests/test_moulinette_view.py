@@ -102,5 +102,8 @@ def test_resultat_rendu_chemin_complet_sol_non_cultive(
         "/simulateur/?lng=4.0345&lat=49.2583&occupation_sol=sol_non_cultive"
     )
     assert response.status_code == 200
-    assert b"r_sol_non_cultive" in response.content
-    assert b"interdiction" in response.content
+    # Badge INTERDIT visible dans le panel resultat
+    assert b"INTERDIT" in response.content
+    # Periode toute l'annee (1er janvier au 31 decembre)
+    assert b"01/01" in response.content
+    assert b"31/12" in response.content

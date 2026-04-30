@@ -1,111 +1,108 @@
 {% comment %}
-Panneau gauche : carte + form de saisie. Reste visible meme apres
-soumission (la maquette le veut comme ca).
+Panneau gauche : carte + form de saisie (structure maquette).
+Pas de fr-fieldset/fr-legend qui indenteraient les titres : on utilise
+des `form-section` simples, comme dans site-nitrates-maquette/index.html.
+
+Les radios cascade sont rendus dynamiquement par cascade.js dans les
+conteneurs `[data-cascade="<champ>"]`. Lat/lng sont des hidden inputs
+remplis au clic carte (cf. simulator.js).
 {% endcomment %}
 
-<form method="get"
-      action="{% url 'nitrates_simulateur' %}"
-      class="fr-mt-2w">
+<form method="get" action="{% url 'nitrates_simulateur' %}">
 
-  <fieldset class="fr-fieldset">
-    <legend class="fr-fieldset__legend">
-      <h2 class="fr-h4">Localisation</h2>
-    </legend>
+  {# ─── Localisation ───────────────────────────────────────────────── #}
+  <div class="form-section" id="section-localisation">
+    <h2 class="form-section-title">Localisation</h2>
 
-    <p class="fr-hint-text">Cliquez sur la carte pour positionner votre parcelle.</p>
+    <div class="map-container">
+      <p class="fr-label">
+        <span style="font-weight: 700;">Localisez votre parcelle *</span>
+        <span class="fr-hint-text">Recherchez une commune, puis cliquez pour placer le marqueur.</span>
+      </p>
 
-    <div id="nitrates-map" class="nitrates-map fr-mb-2w"></div>
+      {# Recherche commune (BAN) #}
+      <div class="map-search-wrapper">
+        <input type="text"
+               id="map-search"
+               class="fr-input"
+               placeholder="Rechercher une commune…"
+               autocomplete="off">
+        <ul id="map-search-list" class="ban-suggestions" role="listbox" hidden>
+        </ul>
+      </div>
 
-    <div id="nitrates-debug" class="nitrates-debug fr-mb-2w">
-      <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
+      <div id="nitrates-map" class="nitrates-map"></div>
     </div>
 
-    <div class="fr-grid-row fr-grid-row--gutters">
-      <div class="fr-col-12 fr-col-md-6">
-        <div class="fr-input-group">
-          <label class="fr-label" for="id_lat">Latitude</label>
-          <input class="fr-input"
-                 type="number"
-                 step="any"
-                 name="lat"
-                 id="id_lat"
-                 value="{{ data.lat|default:'' }}"
-                 required
-                 min="-90"
-                 max="90">
+    {# Affichage commune / dept / region (rempli par simulator.js) #}
+    <div id="nitrates-localisation-info" hidden>
+      <div class="localisation-readonly">
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Commune</span>
+          <span class="localisation-readonly__value" id="commune-display">—</span>
+        </div>
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Département</span>
+          <span class="localisation-readonly__value" id="departement-display">—</span>
+        </div>
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Région</span>
+          <span class="localisation-readonly__value" id="region-display">—</span>
         </div>
       </div>
-      <div class="fr-col-12 fr-col-md-6">
-        <div class="fr-input-group">
-          <label class="fr-label" for="id_lng">Longitude</label>
-          <input class="fr-input"
-                 type="number"
-                 step="any"
-                 name="lng"
-                 id="id_lng"
-                 value="{{ data.lng|default:'' }}"
-                 required
-                 min="-180"
-                 max="180">
-        </div>
-      </div>
-    </div>
-  </fieldset>
 
-  <fieldset class="fr-fieldset">
-    <legend class="fr-fieldset__legend">
-      <h2 class="fr-h4">Culture</h2>
-    </legend>
-
-    <p class="fr-hint-text">Les choix se débloquent au fur et à mesure de vos réponses.</p>
-
-    <div class="fr-fieldset__element">
-      <div class="fr-select-group">
-        <label class="fr-label" for="id_occupation_sol">Occupation du sol</label>
-        <select class="fr-select" name="occupation_sol" id="id_occupation_sol">
-          <option value="">— Choisir —</option>
-        </select>
-      </div>
+      {% if debug %}
+        {# Panel debug : ne s'affiche qu'en mode DEBUG (settings.DEBUG=True) #}
+        <details class="fr-mt-2w fr-text--sm">
+          <summary>Informations parcelle (debug)</summary>
+          <div id="nitrates-debug" class="nitrates-debug">
+            <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
+          </div>
+        </details>
+      {% endif %}
     </div>
 
-    <div class="fr-fieldset__element">
-      <div class="fr-select-group">
-        <label class="fr-label" for="id_sous_culture">Type de culture</label>
-        <select class="fr-select" name="sous_culture" id="id_sous_culture" disabled>
-          <option value="">— Choisir l'occupation d'abord —</option>
-        </select>
-      </div>
-    </div>
-  </fieldset>
+    {# Lat / lng en hidden : rempli au clic carte par simulator.js #}
+    <input type="hidden"
+           name="lat"
+           id="id_lat"
+           value="{{ data.lat|default:'' }}">
+    <input type="hidden"
+           name="lng"
+           id="id_lng"
+           value="{{ data.lng|default:'' }}">
+  </div>
 
-  <fieldset class="fr-fieldset">
-    <legend class="fr-fieldset__legend">
-      <h2 class="fr-h4">Fertilisant</h2>
-    </legend>
+  {# ─── Culture ────────────────────────────────────────────────────── #}
+  <div class="form-section" id="section-culture" style="margin-top: 40px;">
+    <h2 class="form-section-title">Culture</h2>
 
-    <div class="fr-fieldset__element">
-      <div class="fr-select-group">
-        <label class="fr-label" for="id_categorie_fertilisant">Catégorie de fertilisant</label>
-        <select class="fr-select"
-                name="categorie_fertilisant"
-                id="id_categorie_fertilisant"
-                disabled>
-          <option value="">— Choisir la culture d'abord —</option>
-        </select>
-      </div>
+    <div class="form-question-group">
+      <p class="form-question-text">Qu'est-ce qui occupe la parcelle ? *</p>
+      <div data-cascade="occupation_sol"></div>
     </div>
 
-    <div class="fr-fieldset__element">
-      <div class="fr-select-group">
-        <label class="fr-label" for="id_sous_fertilisant">Fertilisant précis</label>
-        <select class="fr-select"
-                name="sous_fertilisant"
-                id="id_sous_fertilisant"
-                disabled>
-          <option value="">— Choisir la catégorie d'abord —</option>
-        </select>
-        <p class="fr-hint-text">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
-      </div>
+    <div class="form-question-group" id="sous_culture-wrapper" hidden>
+      <p class="form-question-text">Précisez le type de culture *</p>
+      <div data-cascade="sous_culture"></div>
+    </div>
+  </div>
+
+  {# ─── Fertilisant ────────────────────────────────────────────────── #}
+  <div class="form-section"
+       id="section-fertilisant"
+       style="margin-top: 40px">
+    <h2 class="form-section-title">Fertilisant</h2>
+
+    <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
+      <p class="form-question-text">Catégorie de fertilisant *</p>
+      <div data-cascade="categorie_fertilisant"></div>
+    </div>
+
+    <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
+      <p class="form-question-text">Fertilisant précis *</p>
+      <div data-cascade="sous_fertilisant"></div>
+      <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
     </div>
 
     {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
@@ -113,7 +110,21 @@ soumission (la maquette le veut comme ca).
            name="type_fertilisant"
            id="id_type_fertilisant"
            value="{{ data.type_fertilisant|default:'' }}">
-  </fieldset>
+  </div>
 
-  <button type="submit" class="fr-btn fr-mt-2w">Lancer la simulation</button>
+  {# ─── Questions complementaires (sous le form principal) ────────── #}
+  {% if afficher_resultat %}
+    {% with ev=premier_evaluator_avec_questions %}
+      {% if ev.questions_subsidiaires %}
+        <div class="form-section questions-complementaires-box"
+             style="margin-top: 32px">{% include "nitrates/fragments/_questions_complementaires.html" %}</div>
+      {% endif %}
+    {% endwith %}
+  {% endif %}
+
+  {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
+
+  <div style="margin-top: 32px;">
+    <button type="submit" class="fr-btn">Lancer la simulation</button>
+  </div>
 </form>

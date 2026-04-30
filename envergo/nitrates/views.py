@@ -213,6 +213,8 @@ class MoulinetteView(View):
     """
 
     def get(self, request, *args, **kwargs):
+        from django.conf import settings
+
         # Charge les referentiels une fois (utilises pour resoudre les
         # libelles longs cote template).
         try:
@@ -220,11 +222,29 @@ class MoulinetteView(View):
         except FileNotFoundError:
             referentiels = {}
 
+        # Champs deja rendus dans le form principal (cascade + lat/lng +
+        # hidden type_fertilisant). On les exclut du passthrough.
+        # Liste (et pas set) car Django templates rendent mal les sets.
+        cascade_fields = [
+            "lat",
+            "lng",
+            "occupation_sol",
+            "sous_culture",
+            "categorie_fertilisant",
+            "sous_fertilisant",
+            "type_fertilisant",
+        ]
+
         ctx = {
             "data": request.GET,
             "codes_prescription": referentiels.get("codes_prescription", {}),
             "notes_referentiel": referentiels.get("notes", {}),
             "afficher_resultat": False,
+            # Active les panels debug (info parcelle, chemin parcouru,
+            # result_code, etc.) uniquement en mode developpeur.
+            "debug": settings.DEBUG,
+            "cascade_fields": cascade_fields,
+            "qc_actifs": [],
         }
 
         # Sans lat/lng -> on rend juste le panneau form (pas de resultat).
@@ -248,11 +268,31 @@ class MoulinetteView(View):
                     }
                 )
 
+        # Premier evaluator porteur de questions complementaires
+        # (le QC est rendu sous le form principal, colonne gauche, pas
+        # dans le panel resultat).
+        premier_qc = next(
+            (
+                e["evaluator"]
+                for e in regulations_evaluees
+                if getattr(e["evaluator"], "questions_subsidiaires", None)
+            ),
+            None,
+        )
+        # Noms des QC en cours de saisie : exclus du passthrough hidden
+        # pour eviter d'envoyer 2 fois la meme cle a la prochaine
+        # soumission.
+        qc_actifs = []
+        if premier_qc and getattr(premier_qc, "questions_subsidiaires", None):
+            qc_actifs = list(premier_qc.questions_subsidiaires.champs_set)
+
         ctx.update(
             {
                 "afficher_resultat": True,
                 "moulinette": moulinette,
                 "regulations_evaluees": regulations_evaluees,
+                "premier_evaluator_avec_questions": premier_qc,
+                "qc_actifs": qc_actifs,
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)
