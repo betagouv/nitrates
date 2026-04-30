@@ -223,11 +223,13 @@ class MoulinetteView(View):
             referentiels = {}
 
         # Champs deja rendus dans le form principal (cascade + lat/lng +
-        # hidden type_fertilisant). On les exclut du passthrough.
-        # Liste (et pas set) car Django templates rendent mal les sets.
+        # code_insee + hidden type_fertilisant). On les exclut du
+        # passthrough. Liste (et pas set) car Django templates rendent
+        # mal les sets.
         cascade_fields = [
             "lat",
             "lng",
+            "code_insee",
             "occupation_sol",
             "sous_culture",
             "categorie_fertilisant",

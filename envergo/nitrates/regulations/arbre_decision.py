@@ -40,6 +40,7 @@ from envergo.nitrates.yaml_tree import (
     load_active_tree,
     parcours,
 )
+from envergo.nitrates.zonage_montagne import zonage_montagne_pour_commune
 
 # Mapping regle.type (YAML) -> RESULTS Envergo.
 TYPE_REGLE_TO_RESULT = {
@@ -64,6 +65,12 @@ REFERENCE_TO_MAP_TYPE = {
     # zone_note_5 : pas encore de dataset, retournera False.
 }
 
+# Reference YAML resolues via le mapping commune INSEE -> zone montagne
+# (cf. envergo.nitrates.zonage_montagne). Elles partagent la meme
+# semantique (montagne_note_7 / montagne_note_6 / non_montagne) et sont
+# resolues sans PostGIS, juste sur le code INSEE pousse par le front.
+REFERENCES_ZONE_MONTAGNE = {"zonage_prairie_III", "zone_note_7_montagne"}
+
 # Champs du form principal lus depuis le catalog (ceux passes par le form
 # Django valide). Les questions subsidiaires (effluent_peu_charge,
 # fertirrigation, culture_irriguee, plan_epandage, fertilisant_iaa, etc.)
@@ -85,6 +92,7 @@ CHAMPS_CATALOG = (
 CHAMPS_EXCLUS_CONTEXTE = {
     "lat",
     "lng",
+    "code_insee",  # utilise pour resoudre la zone montagne, pas un champ d'arbre
     "categorie_fertilisant",
     "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
 }
@@ -196,10 +204,19 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             # du MVP, on ne sait pas resoudre.
             return _CATALOGUE_NON_RESOLVABLE
 
+        # Resolution speciale pour la zone montagne (D113-14) : on a un
+        # mapping commune INSEE -> classification (note_6 / note_7 / non),
+        # pas besoin de PostGIS. Le code INSEE est pousse par le front au
+        # clic carte (cf. simulator.js).
+        if besoin.reference in REFERENCES_ZONE_MONTAGNE:
+            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
+            return zonage_montagne_pour_commune(code_insee)
+
         map_type = REFERENCE_TO_MAP_TYPE.get(besoin.reference)
         if map_type is None:
             # Reference non mappee : dataset SIG pas encore importe pour
-            # cette reference (ex : zone_note_5, zone_note_7_montagne).
+            # cette reference (ex : zone_note_5).
             return _CATALOGUE_NON_RESOLVABLE
 
         point = self.catalog.get("lng_lat")

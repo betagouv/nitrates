@@ -131,7 +131,7 @@
     return parcel.code_cultu;
   }
 
-  function renderDebug(data) {
+  function renderDebug(data, communeInfo) {
     if (!debugEl) return;
     const parcel = data.rpg_parcelle;
     const parcelHtml = parcel
@@ -149,10 +149,16 @@
         })`
       : "NON";
 
+    const ci = communeInfo || {};
+    const communeHtml = ci.nom
+      ? `${ci.nom} (INSEE ${ci.code || "—"})`
+      : "—";
+
     debugEl.innerHTML = `
       <p class="nitrates-debug__title">Informations parcelle</p>
       <dl>
         <dt>Coordonnées</dt><dd>${data.lng.toFixed(5)}, ${data.lat.toFixed(5)}</dd>
+        <dt>Commune</dt><dd>${communeHtml}</dd>
         <dt>Département</dt><dd>${data.department_code || "hors métropole"}</dd>
         <dt>Région</dt><dd>${
           data.region_code
@@ -193,16 +199,21 @@
     localisationReadonly.hidden = false;
   }
 
-  // Reverse geocode pour avoir le nom de la commune au clic carte.
-  async function fetchCommuneNom(lat, lng) {
+  // Reverse geocode pour recuperer commune + code INSEE au clic carte.
+  // Le code INSEE est utilise par le backend pour resoudre la zone
+  // montagne (D113-14) sans avoir a charger les polygones de communes.
+  async function fetchCommuneInfo(lat, lng) {
     try {
       const r = await fetch(
-        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom&format=json`
+        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom,code&format=json`
       );
       const arr = await r.json();
-      return Array.isArray(arr) && arr.length ? arr[0].nom : null;
+      if (Array.isArray(arr) && arr.length) {
+        return { nom: arr[0].nom || null, code: arr[0].code || null };
+      }
+      return { nom: null, code: null };
     } catch {
-      return null;
+      return { nom: null, code: null };
     }
   }
 
@@ -230,11 +241,16 @@
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
-      fetchCommuneNom(lat, lng),
+      fetchCommuneInfo(lat, lng),
     ])
-      .then(([data, communeNom]) => {
-        renderDebug(data);
-        updateLocalisationReadonly(data, communeNom);
+      .then(([data, communeInfo]) => {
+        renderDebug(data, communeInfo);
+        updateLocalisationReadonly(data, communeInfo.nom);
+        // Pousse le code INSEE dans le hidden : il sera soumis avec
+        // le form et utilise cote backend pour resoudre la zone
+        // montagne (D113-14) sans charger les polygones communes.
+        const codeInseeInput = document.getElementById("id_code_insee");
+        if (codeInseeInput) codeInseeInput.value = communeInfo.code || "";
       })
       .catch((err) => renderError(err.message || String(err)));
   });
