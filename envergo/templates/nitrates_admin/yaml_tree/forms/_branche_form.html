@@ -1,0 +1,49 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Formulaire inline pour editer une branche (valeur + libelle).{% endcomment %}
+<div class="yaml-tree__branche-header yaml-tree__branche-header--editing"
+     id="branche-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}">
+  <form class="yaml-tree__inline-form"
+        hx-post="{% url 'nitrates_admin_yaml_edit_branche' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+        hx-target="#branche-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>valeur</span>
+        <input type="text" name="valeur_new" value="{{ branche.valeur }}" required>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>libelle</span>
+        <input type="text"
+               name="libelle"
+               value="{{ branche.libelle|default_if_none:'' }}"
+               placeholder="Texte affiché à l'utilisateur">
+      </label>
+    </div>
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_edit_branche_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+              hx-target="#branche-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>

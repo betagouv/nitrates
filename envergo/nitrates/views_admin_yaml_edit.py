@@ -304,6 +304,175 @@ class CancelEditRegleView(View):
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class EditBrancheView(View):
+    """GET / POST : edition de la valeur + libelle d'une branche.
+
+    La branche est identifiee par son chemin parent + sa valeur courante :
+        ?path=<parent_path>&valeur=<valeur>
+
+    On ne touche pas a son contenu (noeud / regle / renvoi_vers) ici --
+    c'est l'edition de la **branche elle-meme** (valeur scalaire + libelle).
+    """
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None:
+            return HttpResponseForbidden("Branche introuvable.")
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_branche_form.html",
+            {
+                "tree": tree,
+                "branche": branche,
+                "parent_path_str": "/".join(parent_path),
+                "valeur": valeur,
+                "errors": [],
+            },
+        )
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur") or request.POST.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None:
+            return HttpResponseForbidden("Branche introuvable.")
+
+        new_valeur_raw = request.POST.get("valeur_new", "").strip()
+        new_libelle = request.POST.get("libelle", "").strip()
+
+        # Conversion type-aware de la nouvelle valeur (preserve bool/int).
+        if new_valeur_raw == "":
+            return _render_branche_error(
+                request,
+                tree,
+                branche,
+                parent_path,
+                valeur,
+                "valeur",
+                "La valeur est requise.",
+            )
+        new_valeur = _coerce_valeur(new_valeur_raw, type(valeur))
+
+        # Si la nouvelle valeur != ancienne, on verifie qu'elle n'entre pas
+        # en collision avec une autre branche du meme parent.
+        if new_valeur != valeur:
+            parent = editor.get_node_at(tree.contenu, parent_path)
+            if parent is not None:
+                for b in parent.get("branches") or []:
+                    if isinstance(b, dict) and b.get("valeur") == new_valeur:
+                        return _render_branche_error(
+                            request,
+                            tree,
+                            branche,
+                            parent_path,
+                            valeur,
+                            "valeur",
+                            f"Une branche avec la valeur {new_valeur!r} existe deja.",
+                        )
+
+        # Application directe (mutation atomique sur la branche).
+        from django.db import transaction
+
+        from envergo.nitrates.models import DecisionTreeRevision
+
+        with transaction.atomic():
+            DecisionTreeRevision.record(
+                tree,
+                action=DecisionTreeRevision.ACTION_EDIT,
+                user=request.user,
+                target_path=f"{'/'.join(parent_path)}#{valeur}",
+                description=f"Édition de la branche {valeur!r}",
+            )
+            branche["valeur"] = new_valeur
+            if new_libelle:
+                branche["libelle"] = new_libelle
+            elif "libelle" in branche:
+                del branche["libelle"]
+            tree.contenu_yaml_brut = editor._dump_yaml(tree.contenu)
+            tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+
+        # Re-render le bloc branche en lecture
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_branche_block.html",
+            {
+                "tree": tree,
+                "branche": branche,
+                "parent_path": "/".join(parent_path),
+                "valeur": new_valeur,
+                "is_editing": True,
+            },
+        )
+
+
+def _render_branche_error(request, tree, branche, parent_path, valeur, field, msg):
+    from envergo.nitrates.yaml_admin.grammar import FieldError
+
+    return render(
+        request,
+        "nitrates_admin/yaml_tree/forms/_branche_form.html",
+        {
+            "tree": tree,
+            "branche": branche,
+            "parent_path_str": "/".join(parent_path),
+            "valeur": valeur,
+            "errors": [FieldError(field, msg)],
+        },
+        status=422,
+    )
+
+
+def _coerce_valeur(raw: str, target_type):
+    """Convertit une saisie utilisateur vers le type cible (preserve bool/int)."""
+    if target_type is bool:
+        if raw.lower() in ("true", "1", "yes", "oui"):
+            return True
+        if raw.lower() in ("false", "0", "no", "non"):
+            return False
+        return raw  # fallback string si saisie ambigue
+    if target_type is int:
+        try:
+            return int(raw)
+        except ValueError:
+            return raw
+    return raw
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CancelEditBrancheView(View):
+    """GET : annule l'edition d'une branche, renvoie le bloc en lecture."""
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None:
+            return HttpResponse(status=204)
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_branche_block.html",
+            {
+                "tree": tree,
+                "branche": branche,
+                "parent_path": "/".join(parent_path),
+                "valeur": valeur,
+                "is_editing": True,
+            },
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class CancelEditNodeView(View):
     """GET : annule l'edition inline d'un noeud, renvoie la ligne en
     lecture (re-render). Pas de mutation."""

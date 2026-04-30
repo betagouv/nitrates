@@ -1,27 +1,7 @@
 {% load yaml_admin_extras %}
 
 <li class="yaml-tree__item yaml-tree__item--branche">
-  <div class="yaml-tree__branche-header">
-    <span class="yaml-tree__valeur">{{ branche.valeur }}</span>
-    {% if branche.libelle %}<span class="yaml-tree__libelle">{{ branche.libelle }}</span>{% endif %}
-
-    {% if is_editing %}
-      <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
-        <button type="button"
-                class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
-                title="Éditer cette branche (pas encore branché)"
-                data-action="edit"
-                data-path="{{ ancestors_path }}#{{ branche.valeur }}"
-                disabled>✎</button>
-        <button type="button"
-                class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-                title="Supprimer cette branche (pas encore branché)"
-                data-action="delete"
-                data-path="{{ ancestors_path }}#{{ branche.valeur }}"
-                disabled>🗑</button>
-      </span>
-    {% endif %}
-  </div>
+  {% include "nitrates_admin/yaml_tree/forms/_branche_block.html" with branche=branche parent_path=ancestors_path valeur=branche.valeur %}
 
   {% if branche.noeud %}
     <ul class="yaml-tree__children">

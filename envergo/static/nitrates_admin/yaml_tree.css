@@ -243,7 +243,8 @@
 /* Formulaire d'edition inline (htmx) */
 
 .yaml-tree__row--editing,
-.yaml-tree__regle--editing {
+.yaml-tree__regle--editing,
+.yaml-tree__branche-header--editing {
   display: block;
   cursor: default;
   background: #fffde7;
