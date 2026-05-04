@@ -953,8 +953,8 @@ class DeleteBrancheView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        return _refresh_response(
-            request, f"Branche {valeur!r} supprimée. Rechargement…"
+        return _render_partial_node_response(
+            request, tree, parent_path, f"Branche {valeur!r} supprimée."
         )
 
 
@@ -977,8 +977,15 @@ class DeleteNodeView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        return _refresh_response(
-            request, f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
+        # On swap le grand-parent : le noeud supprime + sa branche
+        # disparaissent. Si on n'a pas de grand-parent (suppression d'un
+        # enfant direct de la racine), on prend le parent.
+        parent_path = path[:-1] if len(path) >= 2 else path[:-1]
+        return _render_partial_node_response(
+            request,
+            tree,
+            parent_path,
+            f"Nœud {path[-1] if path else ''} supprimé.",
         )
 
 
