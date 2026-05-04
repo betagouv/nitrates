@@ -132,6 +132,63 @@
           sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
         }
       });
+
+      // ─── Persistance cross-session du fold ────────────────────────────
+      // Quand l'utilisateur deplie/replie un noeud (<details>), on stocke
+      // la liste des paths ouverts dans localStorage, par tree_id. Au
+      // chargement on re-applique ces paths : meme apres un reload
+      // (HX-Refresh / HX-Redirect / nav directe), l'arbre revient a
+      // l'etat precedent.
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const treeId = params.get('tree_id');
+        if (!treeId) return;
+        const KEY = 'nitrates_admin__open_paths__' + treeId;
+
+        const loadOpen = () => {
+          try { return new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); }
+          catch (e) { return new Set(); }
+        };
+        const saveOpen = (set) => {
+          localStorage.setItem(KEY, JSON.stringify([...set]));
+        };
+
+        const applyOpen = () => {
+          const open = loadOpen();
+          document.querySelectorAll('li.yaml-tree__item--noeud[data-path]').forEach(li => {
+            const path = li.getAttribute('data-path');
+            const det = li.querySelector(':scope > details');
+            if (!det) return;
+            if (open.has(path)) det.open = true;
+          });
+        };
+
+        // Capture les toggles pour les persister.
+        const wireToggles = () => {
+          document.querySelectorAll('li.yaml-tree__item--noeud[data-path]').forEach(li => {
+            const det = li.querySelector(':scope > details');
+            if (!det || det.dataset.foldWired) return;
+            det.dataset.foldWired = '1';
+            det.addEventListener('toggle', () => {
+              const path = li.getAttribute('data-path');
+              const open = loadOpen();
+              if (det.open) open.add(path);
+              else open.delete(path);
+              saveOpen(open);
+            });
+          });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+          applyOpen();
+          wireToggles();
+        });
+        // Re-apply apres un swap htmx (la page peut avoir change).
+        document.addEventListener('htmx:afterSwap', () => {
+          applyOpen();
+          wireToggles();
+        });
+      })();
     </script>
     {% block extra_js %}{% endblock %}
   </body>

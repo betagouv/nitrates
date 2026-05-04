@@ -23,7 +23,10 @@
       root.querySelectorAll('[name=libelle], [name=c_id]').forEach(inp => {
         inp.addEventListener('input', () => inp.dataset.touched = '1');
       });
-      valeur.addEventListener('input', () => {
+      // Auto-populate sur `change` (focus out) ou Enter, PAS sur input :
+      // sinon on remplit le libelle pendant la frappe ("m" -> "M") et c'est tres
+      // perturbant. On laisse l'utilisateur finir sa saisie d'abord.
+      const autoPopulate = () => {
         const v = valeur.value.trim();
         if (!v) return;
         const libelle = root.querySelector('[name=libelle]');
@@ -32,7 +35,6 @@
         }
         const cId = root.querySelector('[name=c_id]');
         if (cId && !cId.dataset.touched && !cId.value) {
-          // Prefixe selon le kind selectionne.
           const kind = root.querySelector('[name=kind]')?.value || '';
           let prefix = '';
           if (kind.startsWith('noeud_formulaire_')) prefix = 'q_';
@@ -40,7 +42,8 @@
           else if (kind === 'regle') prefix = 'r_';
           if (prefix) cId.value = prefix + slug(v);
         }
-      });
+      };
+      valeur.addEventListener('change', autoPopulate);
     })();
   </script>
   <form class="yaml-tree__inline-form yaml-tree__inline-form--add"

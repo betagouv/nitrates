@@ -6,6 +6,7 @@
 
 <li class="yaml-tree__item yaml-tree__item--noeud"
     id="node-{{ path|slugify }}"
+    data-path="{{ path }}"
     role="treeitem">
   {% if noeud.branches %}
     <a class="yaml-tree__deep-btn"
