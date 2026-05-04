@@ -3,14 +3,7 @@
 {% comment %}Champs specifiques au kind selectionne dans le formulaire d'ajout.
 Variables : kind (string), errors (FieldError list), form_data (POST repop).{% endcomment %}
 
-{% if kind == "valeur_seule" %}
-  <p class="yaml-tree__form-hint">
-    Aucun contenu attaché : cette branche est une feuille terminale,
-    utile pour les questions à choix multiples (ex: 0, 1, 2, 3 sous une
-    question fertilisant).
-  </p>
-
-{% elif kind == "noeud_formulaire_culture" or kind == "noeud_formulaire_sous_culture" or kind == "noeud_formulaire_type_fertilisant" or kind == "noeud_formulaire_complement" %}
+{% if kind == "noeud_formulaire_culture" or kind == "noeud_formulaire_sous_culture" or kind == "noeud_formulaire_type_fertilisant" or kind == "noeud_formulaire_complement" %}
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>id (q_…)</span>

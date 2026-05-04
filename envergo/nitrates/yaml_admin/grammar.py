@@ -299,7 +299,6 @@ def get_allowed_child_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[s
     Vide pour la racine.
 
     Retourne une liste de strings parmi :
-      - "valeur_seule" (branche feuille sans contenu, ex: 0/1/2/3 sous une question)
       - "noeud_formulaire_culture"
       - "noeud_formulaire_sous_culture"
       - "noeud_formulaire_type_fertilisant"
@@ -309,17 +308,14 @@ def get_allowed_child_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[s
       - "renvoi_vers"
 
     Les niveaux formulaire deja vus sur le chemin sont exclus (sauf
-    `complement` qui peut se chainer 0..N fois).
+    `complement` qui peut se chainer 0..N fois). Une feuille est
+    toujours une regle (ou un renvoi_vers une regle) -- pas de valeur
+    sans contenu.
     """
     parent_node = _get_node_at(arbre, parent_path)
     niveaux_vus = _niveaux_formulaire_sur_chemin(arbre, parent_path)
 
     allowed: list[str] = []
-
-    # Valeur seule : utile pour les questions a choix multiples sans
-    # noeud enfant (ex: type_fertilisant 0/1/2/3 -- chaque branche est
-    # juste une valeur sans contenu).
-    allowed.append("valeur_seule")
 
     # Niveaux formulaire : on autorise tout niveau >= au plus haut deja vu,
     # et si pas encore vu (sauf complement qui peut se repeter).

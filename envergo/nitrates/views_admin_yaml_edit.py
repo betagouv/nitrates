@@ -614,13 +614,7 @@ class AddChildView(View):
                 form_data=request.POST,
             )
 
-        # 2) Si valeur_seule : on s'arrete la (branche feuille sans contenu).
-        if kind == "valeur_seule":
-            return _refresh_response(
-                request, f"Valeur {valeur!r} ajoutée. Rechargement…"
-            )
-
-        # 3) Sinon on insere le contenu choisi.
+        # 2) Insere le contenu choisi.
         content = _build_content_data(kind, request.POST)
         res_content = editor.update_branch_content(
             tree, parent_path, valeur, kind, content, request.user
