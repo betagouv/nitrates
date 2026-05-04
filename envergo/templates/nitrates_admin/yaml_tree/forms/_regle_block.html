@@ -21,7 +21,7 @@
         </span>
       {% endfor %}
     </span>
-    <code class="yaml-tree__id">{{ regle.id }}</code>
+    {% if is_editing %}<code class="yaml-tree__id" title="Identifiant technique">{{ regle.id }}</code>{% endif %}
     {% if regle.code_prescription %}
       <span class="yaml-tree__pc"><code>{{ regle.code_prescription }}</code></span>
     {% endif %}

@@ -468,6 +468,31 @@
   border-bottom: none;
 }
 
+.yaml-admin__validation-kind {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.yaml-admin__validation-kind--structure {
+  background: #ffe0b2;
+  color: #6d4c00;
+}
+
+.yaml-admin__validation-kind--semantique {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+
+.yaml-admin__validation-msg {
+  color: #444;
+}
+
 .yaml-admin__toasts {
   position: fixed;
   top: 4rem;
@@ -769,6 +794,17 @@ details[open] > summary.yaml-tree__row::before {
   border-radius: 3px;
   opacity: 0.35;
   transition: opacity 0.15s ease;
+}
+
+/* Cible d'un renvoi vers : on la garde visible (utile au juriste pour
+   suivre le flux). Pas de grisage. */
+.yaml-tree__renvoi-target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: #1f4789;
+  background: #f5f7fb;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
 }
 
 /* Ids techniques (q_, n_, r_) revealed au survol/focus de la ligne. */

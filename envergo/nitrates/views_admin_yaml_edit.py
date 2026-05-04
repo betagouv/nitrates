@@ -1013,8 +1013,94 @@ class ValidateTreeView(View):
         return render(
             request,
             "nitrates_admin/yaml_tree/_validation_panel.html",
-            {"tree": tree, "errors": errors},
+            {
+                "tree": tree,
+                "errors": [_humanize_error(arbre, e) for e in errors],
+            },
         )
+
+
+def _humanize_error(arbre: dict, raw_error: str) -> dict:
+    """Transforme une erreur de validation en dict {label, message, raw}.
+
+    `label` : chemin metier lisible (ex: "Culture principale > Colza >
+    période #1").
+    `message` : la fin du message d'erreur, sans le chemin technique.
+    `raw` : message original, montre au survol pour debug.
+    `kind` : "structure" ou "semantique" (vient du prefix entre crochets).
+    """
+    import re
+
+    m = re.match(r"^\[(?P<kind>\w+)\]\s*(?P<path>\S*)\s*:\s*(?P<msg>.*)$", raw_error)
+    if not m:
+        return {"label": "", "message": raw_error, "raw": raw_error, "kind": ""}
+    path = m.group("path")
+    msg = m.group("msg")
+    label = _path_to_breadcrumb(arbre, path)
+    return {"label": label, "message": msg, "raw": raw_error, "kind": m.group("kind")}
+
+
+def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
+    """Convertit un path JSON style "arbre/noeud/branches/1/noeud/branches/0"
+    en chemin lisible "Culture principale > Colza > ...".
+
+    On parcourt l'arbre et a chaque noeud on prend `texte` (ou `champ`),
+    a chaque branche on prend `libelle` (ou `valeur`).
+    """
+    if not raw_path:
+        return ""
+    parts = raw_path.split("/")
+    cursor = arbre
+    crumbs: list[str] = []
+    i = 0
+    while i < len(parts):
+        seg = parts[i]
+        if seg == "arbre":
+            cursor = cursor.get("arbre", {}) if isinstance(cursor, dict) else cursor
+            i += 1
+            continue
+        if seg == "noeud":
+            cursor = cursor.get("noeud", {}) if isinstance(cursor, dict) else cursor
+            if isinstance(cursor, dict):
+                label = cursor.get("texte") or cursor.get("champ") or cursor.get("id")
+                if label:
+                    crumbs.append(str(label))
+            i += 1
+            continue
+        if seg == "branches" and i + 1 < len(parts):
+            try:
+                idx = int(parts[i + 1])
+            except ValueError:
+                break
+            branches = cursor.get("branches") if isinstance(cursor, dict) else None
+            if not branches or idx >= len(branches):
+                break
+            cursor = branches[idx]
+            label = (
+                cursor.get("libelle") if isinstance(cursor, dict) else None
+            ) or str(cursor.get("valeur") if isinstance(cursor, dict) else "")
+            if label:
+                crumbs.append(label)
+            i += 2
+            continue
+        if seg == "regle":
+            cursor = cursor.get("regle", {}) if isinstance(cursor, dict) else cursor
+            i += 1
+            continue
+        if seg == "periodes" and i + 1 < len(parts):
+            try:
+                idx = int(parts[i + 1])
+            except ValueError:
+                break
+            crumbs.append(f"période #{idx + 1}")
+            periodes = cursor.get("periodes") if isinstance(cursor, dict) else None
+            if periodes and idx < len(periodes):
+                cursor = periodes[idx]
+            i += 2
+            continue
+        crumbs.append(seg)
+        i += 1
+    return " > ".join(crumbs) if crumbs else raw_path
 
 
 @method_decorator(staff_member_required, name="dispatch")
