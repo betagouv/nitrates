@@ -130,7 +130,7 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     <p class="yaml-tree__form-hint">
       Optionnel pour les règles libres / non applicables. Format
       <code>JJ/MM</code> (ex: <code>15/12</code>) ou nom d'évènement
-      phénologique.
+      phénologique. Le régime est optionnel (ex: <code>autorise</code>).
     </p>
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
@@ -142,6 +142,36 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       <label class="yaml-tree__form-label">
         <span>au</span>
         <input type="text" name="c_periodes-0-au" placeholder="ex: 15/01">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>regime</span>
+        <input type="text"
+               name="c_periodes-0-regime"
+               placeholder="ex: autorise (optionnel)">
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset class="yaml-tree__form-fieldset">
+    <legend>Calculatrice (si type=calculatrice)</legend>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>composant</span>
+        <input type="text"
+               name="c_composant"
+               value="{{ form_data.c_composant|default_if_none:'' }}"
+               placeholder="ex: fenetre_fertirrigation">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>inputs_requis</span>
+        <input type="text"
+               name="c_inputs_requis"
+               value="{{ form_data.c_inputs_requis|default_if_none:'' }}"
+               placeholder="liste, ex: culture, parcelle_communique">
       </label>
     </div>
   </fieldset>

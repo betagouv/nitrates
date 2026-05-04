@@ -231,25 +231,43 @@ class EditRegleView(View):
         rtype = request.POST.get("type", "").strip()
         if rtype:
             new_data["type"] = rtype
-        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au
+        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au /
+        # periodes-{i}-regime (optionnel).
         periodes = []
         i = 0
         while True:
             du = request.POST.get(f"periodes-{i}-du", "").strip()
             au = request.POST.get(f"periodes-{i}-au", "").strip()
-            if not du and not au:
+            regime = request.POST.get(f"periodes-{i}-regime", "").strip()
+            if not du and not au and not regime:
                 if i == 0:
                     break
                 # Ligne suivante vide -> on s'arrete
                 break
-            if du or au:
-                periodes.append({"du": du, "au": au})
+            if du or au or regime:
+                p: dict = {}
+                if du:
+                    p["du"] = du
+                if au:
+                    p["au"] = au
+                if regime:
+                    p["regime"] = regime
+                periodes.append(p)
             i += 1
         if periodes:
             new_data["periodes"] = periodes
         elif "periodes" in branche["regle"]:
             # L'utilisateur a vide les periodes -> on les retire
             new_data["periodes"] = []
+        # Calculatrice : composant + inputs_requis
+        composant = request.POST.get("composant", "").strip()
+        if composant:
+            new_data["composant"] = composant
+        inputs_raw = request.POST.get("inputs_requis", "").strip()
+        if inputs_raw:
+            new_data["inputs_requis"] = [
+                x.strip() for x in inputs_raw.split(",") if x.strip()
+            ]
         # Champs optionnels scalaires
         for key in (
             "code_prescription",
@@ -712,21 +730,38 @@ def _build_content_data(
             data["type"] = rtype
         if post.get("c_a_completer") in ("on", "true", "1"):
             data["a_completer"] = True
-        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au
+        # Periodes : POST contient c_periodes-{i}-du / c_periodes-{i}-au /
+        # c_periodes-{i}-regime (optionnel).
         periodes = []
         i = 0
         while True:
             du = post.get(f"c_periodes-{i}-du", "").strip()
             au = post.get(f"c_periodes-{i}-au", "").strip()
-            if not du and not au:
+            regime = post.get(f"c_periodes-{i}-regime", "").strip()
+            if not du and not au and not regime:
                 if i == 0:
                     break
                 break
-            if du or au:
-                periodes.append({"du": du, "au": au})
+            if du or au or regime:
+                p: dict = {}
+                if du:
+                    p["du"] = du
+                if au:
+                    p["au"] = au
+                if regime:
+                    p["regime"] = regime
+                periodes.append(p)
             i += 1
         if periodes:
             data["periodes"] = periodes
+        composant = post.get("c_composant", "").strip()
+        if composant:
+            data["composant"] = composant
+        inputs_raw = post.get("c_inputs_requis", "").strip()
+        if inputs_raw:
+            data["inputs_requis"] = [
+                x.strip() for x in inputs_raw.split(",") if x.strip()
+            ]
         plafond = post.get("c_plafond_azote_kg_n_ha", "").strip()
         if plafond:
             try:

@@ -52,7 +52,7 @@
     </div>
 
     <fieldset class="yaml-tree__form-fieldset">
-      <legend>Périodes (du JJ/MM ou événement → au JJ/MM ou événement)</legend>
+      <legend>Périodes (du / au + régime optionnel)</legend>
       {% with regle.periodes|default_if_none:"" as periodes %}
         {% for p in periodes %}
           <div class="yaml-tree__form-row">
@@ -68,6 +68,11 @@
                      value="{{ p.au|default_if_none:'' }}"
                      placeholder="au (JJ/MM)"
                      style="max-width:14ch">
+              <input type="text"
+                     name="periodes-{{ forloop.counter0 }}-regime"
+                     value="{{ p.regime|default_if_none:'' }}"
+                     placeholder="regime (optionnel)"
+                     style="max-width:18ch">
             </label>
             {% for err in errors %}
               {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
@@ -90,9 +95,36 @@
                    value=""
                    placeholder="au (JJ/MM)"
                    style="max-width:14ch">
+            <input type="text"
+                   name="periodes-{{ regle.periodes|length|default:0 }}-regime"
+                   value=""
+                   placeholder="regime (optionnel)"
+                   style="max-width:18ch">
           </label>
         </div>
       {% endwith %}
+    </fieldset>
+
+    <fieldset class="yaml-tree__form-fieldset">
+      <legend>Calculatrice (si type=calculatrice)</legend>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label">
+          <span>composant</span>
+          <input type="text"
+                 name="composant"
+                 value="{{ regle.composant|default_if_none:'' }}"
+                 placeholder="ex: fenetre_fertirrigation">
+        </label>
+      </div>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label">
+          <span>inputs_requis</span>
+          <input type="text"
+                 name="inputs_requis"
+                 value="{% if regle.inputs_requis %}{{ regle.inputs_requis|join:', ' }}{% endif %}"
+                 placeholder="liste séparée par des virgules, ex: culture, parcelle_communique">
+        </label>
+      </div>
     </fieldset>
 
     <div class="yaml-tree__form-row">
