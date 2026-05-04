@@ -40,7 +40,11 @@ from envergo.nitrates.yaml_tree import (
     load_active_tree,
     parcours,
 )
-from envergo.nitrates.zonage_montagne import zonage_montagne_pour_commune
+from envergo.nitrates.zonage_montagne import (
+    est_zone_montagne_d113_14,
+    zonage_montagne_pour_commune,
+)
+from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
 
 # Mapping regle.type (YAML) -> RESULTS Envergo.
 TYPE_REGLE_TO_RESULT = {
@@ -62,8 +66,14 @@ TYPE_REGLE_TO_RESULT = {
 # le dataset retournent False par defaut (et on log un warning).
 REFERENCE_TO_MAP_TYPE = {
     "zone_vulnerable_nitrates": MAP_TYPES.zv_nitrates,
-    # zone_note_5 : pas encore de dataset, retournera False.
 }
+
+# Reference YAML zone_note_5 : zone Sud-Ouest (PACA, Occitanie, depts
+# 24/33/40/47/64) definie geographiquement par codes INSEE region/dept.
+# Resolution sans PostGIS via le code INSEE de la commune (cf.
+# envergo.nitrates.zonage_note_5). Retourne un bool, l'arbre branche
+# sur valeur: true / false.
+REFERENCES_ZONE_NOTE_5 = {"zone_note_5"}
 
 # References YAML resolues via le mapping commune INSEE -> zone
 # montagne (cf. envergo.nitrates.zonage_montagne). Elles partagent la
@@ -83,6 +93,12 @@ REFERENCES_ZONE_MONTAGNE = {
     "zone_note_7_vs_note_6",
     "zone_note_7_montagne",
 }
+
+# `zone_montagne_d113_14` -> noeud catalogue qui branche sur bool
+# (true/false) : la commune est-elle en zone montagne au sens
+# D113-14, peu importe la note 6 vs 7. Resolution sur le code INSEE
+# via le CSV juriste (cf. zonage_montagne._mapping).
+REFERENCES_ZONE_MONTAGNE_BOOL = {"zone_montagne_d113_14"}
 
 # Champs du form principal lus depuis le catalog (ceux passes par le form
 # Django valide). Les questions subsidiaires (effluent_peu_charge,
@@ -225,6 +241,21 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
             code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
             return zonage_montagne_pour_commune(code_insee)
+
+        # Resolution bool pour zone_montagne_d113_14 (oui/non commune
+        # en zone montagne au sens D113-14, peu importe la note).
+        if besoin.reference in REFERENCES_ZONE_MONTAGNE_BOOL:
+            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
+            return est_zone_montagne_d113_14(code_insee)
+
+        # Resolution speciale pour zone_note_5 (Sud-Ouest + PACA/Occitanie) :
+        # purement geographique, resolu sur le code INSEE comme la zone
+        # montagne mais retourne un bool (l'arbre branche sur true/false).
+        if besoin.reference in REFERENCES_ZONE_NOTE_5:
+            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
+            return zone_note_5_pour_commune(code_insee)
 
         map_type = REFERENCE_TO_MAP_TYPE.get(besoin.reference)
         if map_type is None:

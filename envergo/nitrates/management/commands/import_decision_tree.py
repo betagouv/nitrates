@@ -30,6 +30,8 @@ from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.regulations.arbre_decision import (
     REFERENCE_TO_MAP_TYPE,
     REFERENCES_ZONE_MONTAGNE,
+    REFERENCES_ZONE_MONTAGNE_BOOL,
+    REFERENCES_ZONE_NOTE_5,
 )
 from envergo.nitrates.yaml_tree.loader import load_referentiels
 from envergo.nitrates.yaml_tree.validator import (
@@ -101,7 +103,12 @@ class Command(BaseCommand):
         #   - REFERENCE_TO_MAP_TYPE : via PostGIS sur les Map+Zone importes.
         #   - REFERENCES_ZONE_MONTAGNE : via le mapping commune INSEE
         #     (envergo.nitrates.zonage_montagne), pas de PostGIS.
-        refs_supportees = set(REFERENCE_TO_MAP_TYPE) | REFERENCES_ZONE_MONTAGNE
+        refs_supportees = (
+            set(REFERENCE_TO_MAP_TYPE)
+            | REFERENCES_ZONE_MONTAGNE
+            | REFERENCES_ZONE_MONTAGNE_BOOL
+            | REFERENCES_ZONE_NOTE_5
+        )
         non_supportees = sorted(
             {ref for _, ref in refs_sig if ref not in refs_supportees}
         )

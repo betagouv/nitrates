@@ -73,3 +73,14 @@ def zonage_montagne_pour_commune(code_insee: str | None) -> str:
     if info["region"] in _REGIONS_NOTE_7 or info["departement"] in _DEPARTEMENTS_NOTE_7:
         return "montagne_note_7"
     return "montagne_note_6"
+
+
+def est_zone_montagne_d113_14(code_insee: str | None) -> bool:
+    """Retourne True si la commune est flaggee zone montagne (D113-14)
+    dans le CSV juriste, False sinon. Utilise pour le noeud catalogue
+    YAML `zone_montagne_d113_14` qui branche sur true/false (sans
+    distinction note 6/7)."""
+    if not code_insee:
+        return False
+    info = _mapping().get(str(code_insee).strip())
+    return bool(info and info["montagne"])

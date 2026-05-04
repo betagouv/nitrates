@@ -122,24 +122,36 @@ def test_chemin_trace_dans_evaluator(setup):
     assert "r_post_0101_type_0" in ev.chemin
 
 
-# ─── Resolution catalogue interne (zone_note_5) ────────────────────────────
+# ─── Resolution catalogue zone_note_5 (Sud-Ouest + PACA/Occitanie) ────────
 
 
-def test_colza_type_II_zone_note_5_absente_sig(setup):
-    """zone_note_5 n'a pas encore de dataset SIG. On ne veut PAS deviner
-    la valeur (False) parce qu'on tomberait sur une branche par defaut
-    qui n'a aucun sens metier. On retourne non_disponible et on expose
-    le `catalogue_manquant` pour que le template explique au user."""
+def test_colza_type_II_hors_zone_note_5(setup):
+    """Sans code INSEE pousse par le front (clic carte non fait), le
+    resolver zone_note_5 retombe sur False -> branche `autres`."""
     mou = _moulinette(
         occupation_sol="culture_principale",
         sous_culture="colza",
         type_fertilisant="type_II",
     )
     ev = _evaluator(mou)
-    assert ev.result == RESULTS.non_disponible
-    assert ev.catalogue_manquant is not None
-    assert ev.catalogue_manquant.reference == "zone_note_5"
-    assert ev.catalogue_manquant.champ == "zone_note_5"
+    assert ev.result == RESULTS.interdit
+    assert ev.regle is not None
+    assert ev.regle.regle_id == "r_colza_type_II_autres"
+
+
+def test_colza_type_II_dans_zone_note_5(setup):
+    """Avec un code INSEE en zone Sud-Ouest (Toulouse, Occitanie), on
+    atteint la branche note 5 specifique."""
+    mou = _moulinette(
+        code_insee="31555",
+        occupation_sol="culture_principale",
+        sous_culture="colza",
+        type_fertilisant="type_II",
+    )
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.interdit
+    assert ev.regle is not None
+    assert ev.regle.regle_id == "r_colza_type_II_note5"
 
 
 def test_colza_type_0_interdiction_directe(setup):
