@@ -77,7 +77,16 @@
     s'affichent dans le formulaire.{% endcomment %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <script>
-      document.addEventListener('htmx:configRequest', function(){});
+      function _getCsrfToken() {
+        const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (m) return decodeURIComponent(m[1]);
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        return input ? input.value : '';
+      }
+      document.addEventListener('htmx:configRequest', function(evt) {
+        // Toute requete htmx unsafe (POST/PUT/DELETE) doit porter X-CSRFToken.
+        evt.detail.headers['X-CSRFToken'] = _getCsrfToken();
+      });
       document.addEventListener('DOMContentLoaded', function() {
         if (window.htmx) {
           htmx.config.responseHandling = [
