@@ -134,6 +134,11 @@ class YamlTreeView(TemplateView):
                 "is_editing": mode == "edition",
                 "lock_blocked_by": lock_blocked_by,
                 "edited_origin_name": _edited_origin_name(tree),
+                "recent_revisions": (
+                    list(tree.revisions.order_by("-created_at")[:5])
+                    if mode == "edition"
+                    else []
+                ),
             }
         )
 

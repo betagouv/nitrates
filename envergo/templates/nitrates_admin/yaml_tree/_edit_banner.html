@@ -7,11 +7,24 @@
   </div>
 
   <div class="yaml-admin__edit-banner-actions">
+    {% if recent_revisions %}
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-post="{% url 'nitrates_admin_yaml_undo' tree_pk=tree.pk %}"
+              hx-confirm="Annuler la dernière action ({{ recent_revisions.0.description }}) ?"
+              title="Annuler la dernière action">↶ Annuler</button>
+    {% else %}
+      <button type="button"
+              class="yaml-admin__btn"
+              disabled
+              title="Aucune action à annuler">↶ Annuler</button>
+    {% endif %}
+
     <form method="post"
           action="{% url 'nitrates_admin_yaml_cancel_edit' pk=tree.pk %}"
           style="display:inline">
       {% csrf_token %}
-      <button type="submit" class="yaml-admin__btn">Annuler les modifications</button>
+      <button type="submit" class="yaml-admin__btn">Sortir de l'édition</button>
     </form>
 
     {% comment %}Placeholders pour les boutons globaux : etape 7 deep validate, etape 8 activation. Disabled pour l'instant.{% endcomment %}
@@ -24,4 +37,25 @@
             disabled
             title="Branche a l'etape 8 -- activation">Valider et publier</button>
   </div>
+
+  {% if recent_revisions %}
+    <details class="yaml-admin__history">
+      <summary>
+        Historique récent ({{ recent_revisions|length }} dernière{{ recent_revisions|length|pluralize:"s,s" }})
+      </summary>
+      <ul class="yaml-admin__history-list">
+        {% for rev in recent_revisions %}
+          <li class="yaml-admin__history-item">
+            <span class="yaml-admin__history-when">{{ rev.created_at|date:"H:i:s" }}</span>
+            <span class="yaml-admin__history-action">{{ rev.get_action_display }}</span>
+            <span class="yaml-admin__history-desc">{{ rev.description }}</span>
+            <button type="button"
+                    class="yaml-admin__btn yaml-admin__btn--small"
+                    hx-post="{% url 'nitrates_admin_yaml_restore_revision' tree_pk=tree.pk %}?revision_id={{ rev.pk }}"
+                    hx-confirm="Restaurer l'état d'avant « {{ rev.description }} » ?">Restaurer</button>
+          </li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
 </div>

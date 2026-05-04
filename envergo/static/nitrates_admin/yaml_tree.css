@@ -348,6 +348,56 @@
   margin: 0.4rem 0 0.4rem 1.2rem;
 }
 
+.yaml-admin__history {
+  flex: 1 0 100%;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__history > summary {
+  cursor: pointer;
+  color: #555;
+}
+
+.yaml-admin__history-list {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+.yaml-admin__history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.yaml-admin__history-when {
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  width: 6ch;
+}
+
+.yaml-admin__history-action {
+  background: #eceff1;
+  color: #455a64;
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.yaml-admin__history-desc {
+  flex: 1 1 auto;
+}
+
+.yaml-admin__btn--small {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+}
+
 .yaml-tree__add-form-title {
   margin: 0 0 0.4rem;
   font-weight: 600;

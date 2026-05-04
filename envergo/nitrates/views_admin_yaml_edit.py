@@ -21,7 +21,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
 from envergo.nitrates.yaml_admin.grammar import FieldError, get_allowed_child_kinds
 from envergo.nitrates.yaml_admin.tags import get_tags
@@ -769,6 +769,59 @@ class DeleteNodeView(View):
             "<div class='yaml-tree__add-ok'>"
             f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
             "</div>"
+        )
+        response["HX-Refresh"] = "true"
+        return response
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class UndoLastView(View):
+    """POST : annule la derniere action sur le draft. Restaure l'etat
+    capture par la derniere DecisionTreeRevision et reload."""
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        last = (
+            DecisionTreeRevision.objects.filter(tree=tree)
+            .order_by("-created_at")
+            .first()
+        )
+        if last is None:
+            return HttpResponseForbidden("Aucune action a annuler.")
+        last.restore()
+        response = HttpResponse(
+            "<div class='yaml-tree__add-ok'>Action annulée. Rechargement…</div>"
+        )
+        response["HX-Refresh"] = "true"
+        return response
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class RestoreRevisionView(View):
+    """POST : restaure une revision specifique (par id) -- pour la page
+    historique."""
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        revision_id = request.POST.get("revision_id") or request.GET.get("revision_id")
+        try:
+            revision_id = int(revision_id)
+        except (TypeError, ValueError):
+            return HttpResponseForbidden("Identifiant de revision invalide.")
+        revision = DecisionTreeRevision.objects.filter(
+            tree=tree, pk=revision_id
+        ).first()
+        if revision is None:
+            return HttpResponseForbidden("Revision introuvable.")
+        revision.restore()
+        response = HttpResponse(
+            "<div class='yaml-tree__add-ok'>État restauré. Rechargement…</div>"
         )
         response["HX-Refresh"] = "true"
         return response

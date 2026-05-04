@@ -29,6 +29,8 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditBrancheView,
     EditNodeView,
     EditRegleView,
+    RestoreRevisionView,
+    UndoLastView,
 )
 
 urlpatterns = [
@@ -138,6 +140,16 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-noeud/",
         DeleteNodeView.as_view(),
         name="nitrates_admin_yaml_delete_node",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/undo/",
+        UndoLastView.as_view(),
+        name="nitrates_admin_yaml_undo",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/restore/",
+        RestoreRevisionView.as_view(),
+        name="nitrates_admin_yaml_restore_revision",
     ),
     path(
         _("contact-us/"),
