@@ -9,6 +9,9 @@ Contient :
     envergo/moulinette/models.py qui est deja sature)
 """
 
+import copy
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
@@ -113,6 +116,19 @@ class DecisionTree(models.Model):
     )
     activated_at = models.DateTimeField(null=True, blank=True)
 
+    # Lock simple : un seul editeur a la fois sur un draft donne. Le lock
+    # expire automatiquement apres LOCK_TIMEOUT (cf methodes utilitaires).
+    locked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    locked_at = models.DateTimeField(null=True, blank=True)
+
+    LOCK_TIMEOUT = timedelta(minutes=15)
+
     class Meta:
         constraints = [
             # Une seule version active a la fois.
@@ -151,6 +167,224 @@ class DecisionTree(models.Model):
         self.status = self.STATUS_ACTIVE
         self.activated_at = timezone.now()
         self.save(update_fields=["status", "activated_at", "updated_at"])
+
+    # ─── Lock d'edition ────────────────────────────────────────────────────
+
+    def is_locked_by_other(self, user) -> bool:
+        """True si quelqu'un d'autre detient un lock encore valide."""
+        if self.locked_by_id is None or self.locked_at is None:
+            return False
+        if self.locked_by_id == user.pk:
+            return False
+        return self.locked_at >= timezone.now() - self.LOCK_TIMEOUT
+
+    @transaction.atomic
+    def acquire_lock(self, user) -> bool:
+        """Tente de prendre le lock pour user. Retourne True si OK,
+        False si quelqu'un d'autre detient un lock encore valide.
+
+        Idempotent : si user detient deja le lock, on rafraichit
+        simplement locked_at.
+        """
+        # Re-check avec lock pessimiste pour eviter la race entre 2 admins
+        # qui cliquent en meme temps.
+        fresh = DecisionTree.objects.select_for_update().get(pk=self.pk)
+        if fresh.is_locked_by_other(user):
+            return False
+        fresh.locked_by = user
+        fresh.locked_at = timezone.now()
+        fresh.save(update_fields=["locked_by", "locked_at", "updated_at"])
+        # Refresh self pour que l'appelant voie l'etat a jour
+        self.locked_by = fresh.locked_by
+        self.locked_at = fresh.locked_at
+        return True
+
+    def release_lock(self, user) -> None:
+        """Libere le lock si user le detient. No-op sinon."""
+        if self.locked_by_id == user.pk:
+            self.locked_by = None
+            self.locked_at = None
+            self.save(update_fields=["locked_by", "locked_at", "updated_at"])
+
+    @classmethod
+    def unique_copy_name(cls, base_name: str) -> str:
+        """Genere un nom '<base> (copy)' ou '<base> (copy N)' sans collision
+        avec un nom existant."""
+        candidate = f"{base_name} (copy)"
+        if not cls.objects.filter(name=candidate).exists():
+            return candidate
+        n = 2
+        while True:
+            candidate = f"{base_name} (copy {n})"
+            if not cls.objects.filter(name=candidate).exists():
+                return candidate
+            n += 1
+
+    @classmethod
+    def clone_to_draft(cls, source: "DecisionTree", user=None) -> "DecisionTree":
+        """Clone un tree existant en nouveau draft. Le contenu et le YAML
+        brut sont dupliques en profondeur. Le nouveau draft pointe vers
+        `source` via `parent`."""
+        return cls.objects.create(
+            name=cls.unique_copy_name(source.name),
+            status=cls.STATUS_DRAFT,
+            contenu=copy.deepcopy(source.contenu),
+            contenu_yaml_brut=source.contenu_yaml_brut,
+            parent=source,
+            created_by=user,
+        )
+
+    @classmethod
+    def find_or_create_edit_draft(cls, user) -> "DecisionTree | None":
+        """Trouve le draft d'edition de l'arbre actif pour cet utilisateur,
+        ou en cree un nouveau.
+
+        Logique : on cherche un draft existant qui satisfait les 3 criteres :
+          1. parent = arbre actif courant
+          2. created_by = user
+          3. pas locked par un autre user (lock libre ou expire ou meme user)
+
+        Si aucun match, on clone l'actif en nouveau draft. Permet a
+        l'utilisateur de retrouver son travail en cours s'il revient
+        plus tard, sans pour autant perturber un autre admin qui
+        editerait deja un draft sur le meme actif.
+
+        Retourne None si aucun arbre actif n'existe (cas anormal).
+        """
+        active = cls.objects.filter(status=cls.STATUS_ACTIVE).first()
+        if active is None:
+            return None
+
+        # Cherche un draft reutilisable de cet utilisateur sur cet actif.
+        candidates = cls.objects.filter(
+            status=cls.STATUS_DRAFT,
+            parent=active,
+            created_by=user,
+        ).order_by("-updated_at")
+        for draft in candidates:
+            if not draft.is_locked_by_other(user):
+                return draft
+
+        # Aucun draft reutilisable : on en cree un nouveau.
+        return cls.clone_to_draft(active, user=user)
+
+
+class DecisionTreeRevision(models.Model):
+    """Historique d'une edition d'un DecisionTree.
+
+    Chaque action d'edition (edit / add / delete / rename) cree une
+    revision qui contient le snapshot complet d'AVANT l'action. Permet
+    le retour en arriere pas a pas.
+
+    Stockage : full snapshot (JSON + YAML brut). C'est plus simple et
+    plus robuste qu'un systeme de patches, et la taille est OK
+    (~40 KB par revision, max 50 revisions par tree = ~2 MB par draft).
+
+    Auto-purge : au-dela de MAX_REVISIONS_PER_TREE, les revisions les
+    plus anciennes sont supprimees. Voir `record()`.
+    """
+
+    ACTION_EDIT = "edit"
+    ACTION_ADD = "add"
+    ACTION_DELETE = "delete"
+    ACTION_RENAME = "rename"
+    ACTION_RESTORE = "restore"
+    ACTION_CHOICES = [
+        (ACTION_EDIT, "Édition"),
+        (ACTION_ADD, "Ajout"),
+        (ACTION_DELETE, "Suppression"),
+        (ACTION_RENAME, "Renommage"),
+        (ACTION_RESTORE, "Restauration"),
+    ]
+
+    MAX_REVISIONS_PER_TREE = 50
+
+    tree = models.ForeignKey(
+        "DecisionTree",
+        on_delete=models.CASCADE,
+        related_name="revisions",
+    )
+    action = models.CharField(max_length=16, choices=ACTION_CHOICES)
+    target_path = models.CharField(max_length=500, blank=True)
+    description = models.CharField(max_length=500, blank=True)
+
+    # Snapshot complet d'avant l'action.
+    previous_contenu = models.JSONField()
+    previous_yaml_brut = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tree", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.tree.name} #{self.pk} {self.action} ({self.created_at:%Y-%m-%d %H:%M})"
+
+    @classmethod
+    def record(
+        cls,
+        tree: "DecisionTree",
+        action: str,
+        user=None,
+        target_path: str = "",
+        description: str = "",
+    ) -> "DecisionTreeRevision":
+        """Enregistre une revision avec snapshot de l'etat actuel du tree.
+
+        A appeler AVANT toute mutation : on capture l'etat existant comme
+        previous_contenu / previous_yaml_brut, puis l'appelant applique
+        sa modification au tree et le save().
+
+        Auto-purge : si on depasse MAX_REVISIONS_PER_TREE, on supprime les
+        plus anciennes pour rester sous la limite.
+        """
+        revision = cls.objects.create(
+            tree=tree,
+            action=action,
+            target_path=target_path,
+            description=description,
+            previous_contenu=copy.deepcopy(tree.contenu),
+            previous_yaml_brut=tree.contenu_yaml_brut,
+            created_by=user,
+        )
+        # Purge des revisions excedentaires.
+        excess_pks = list(
+            cls.objects.filter(tree=tree)
+            .order_by("-created_at")
+            .values_list("pk", flat=True)[cls.MAX_REVISIONS_PER_TREE :]  # noqa: E203
+        )
+        if excess_pks:
+            cls.objects.filter(pk__in=excess_pks).delete()
+        return revision
+
+    def restore(self, drop: bool = True) -> None:
+        """Restaure le tree dans l'etat capture par cette revision.
+
+        Si `drop=True` (defaut) : on supprime cette revision apres
+        restauration. C'est le comportement de "undo" : annuler une
+        action efface aussi sa trace de l'historique. Permet d'undo en
+        chaine sans ping-pong (la prochaine "derniere revision" est
+        l'avant-derniere reelle).
+
+        Si `drop=False` : on conserve la revision (utile si on veut
+        permettre un redo, ou pour la page d'historique qui restaure un
+        etat ancien sans casser le suivi).
+        """
+        self.tree.contenu = copy.deepcopy(self.previous_contenu)
+        self.tree.contenu_yaml_brut = self.previous_yaml_brut
+        self.tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+        if drop:
+            self.delete()
 
 
 class MoulinetteNitrates(Moulinette):

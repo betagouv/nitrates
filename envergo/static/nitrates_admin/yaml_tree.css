@@ -45,6 +45,467 @@
   font-size: 1.4rem;
 }
 
+.yaml-admin__status-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  border: 1px solid #ddd;
+}
+
+.yaml-admin__status-banner--active {
+  background: #e8f5e9;
+  border-color: #c8e6c9;
+}
+
+.yaml-admin__status-banner--draft {
+  background: #fff3e0;
+  border-color: #ffe0b2;
+}
+
+.yaml-admin__status-banner--archive {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+}
+
+.yaml-admin__status-tag {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.yaml-admin__status-tag--active {
+  background: #1b5e20;
+  color: #fff;
+}
+
+.yaml-admin__status-tag--draft {
+  background: #e65100;
+  color: #fff;
+}
+
+.yaml-admin__status-tag--archive {
+  background: #616161;
+  color: #fff;
+}
+
+.yaml-admin__status-name {
+  font-weight: 600;
+}
+
+.yaml-admin__rename-form {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  margin: 0;
+}
+
+.yaml-admin__rename-input {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 80%);
+  min-width: 18ch;
+  font-family: inherit;
+}
+
+.yaml-admin__rename-input:focus {
+  background: #fff;
+  border-color: #1f4789;
+  outline: 2px solid #c8d4ec;
+}
+
+/* Bandeau d'edition (mode edition) */
+
+.yaml-admin__edit-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.75rem;
+  border: 2px solid #e65100;
+  border-radius: 4px;
+  background: #fff8e1;
+  font-size: 0.95rem;
+}
+
+.yaml-admin__edit-banner-msg {
+  flex: 1 1 auto;
+  min-width: 20ch;
+}
+
+.yaml-admin__edit-icon {
+  font-size: 1.2rem;
+  margin-right: 0.25rem;
+}
+
+.yaml-admin__edit-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.yaml-admin__edit-banner-actions button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.yaml-admin__lock-warning {
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.75rem;
+  border: 1px solid #b71c1c;
+  background: #ffebee;
+  border-radius: 4px;
+  color: #b71c1c;
+}
+
+/* Icones inline d'edition (sur chaque noeud / regle / branche).
+   Toujours inline, juste apres le contenu de la ligne. Les <button>
+   a l'interieur d'un <summary> ne togglent PAS le <details> natif
+   (comportement standard HTML), donc on peut les mettre dans le summary
+   sans precaution. */
+
+.yaml-tree__edit-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: 0.5rem;
+}
+
+.yaml-tree__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  opacity: 0.65;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.yaml-tree__edit-btn:hover:not([disabled]) {
+  opacity: 1;
+  border-color: currentcolor;
+}
+
+.yaml-tree__edit-btn[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Edit -- bleu */
+
+.yaml-tree__edit-btn--edit {
+  color: #1565c0;
+}
+
+.yaml-tree__edit-btn--edit:hover {
+  background: #e3f2fd;
+}
+
+/* Add -- vert */
+
+.yaml-tree__edit-btn--add {
+  color: #2e7d32;
+}
+
+.yaml-tree__edit-btn--add:hover {
+  background: #e8f5e9;
+}
+
+/* Delete -- rouge */
+
+.yaml-tree__edit-btn--danger {
+  color: #c62828;
+}
+
+.yaml-tree__edit-btn--danger:hover {
+  background: #ffebee;
+}
+
+/* Formulaire d'edition inline (htmx) */
+
+.yaml-tree__row--editing,
+.yaml-tree__regle--editing,
+.yaml-tree__branche-header--editing {
+  display: block;
+  cursor: default;
+  background: #fffde7;
+  border: 1px solid #fbc02d;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+}
+
+.yaml-tree__row--editing::before {
+  content: none !important;
+}
+
+.yaml-tree__form-fieldset {
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  margin: 0;
+}
+
+.yaml-tree__form-fieldset legend {
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: 600;
+  padding: 0 0.3rem;
+}
+
+.yaml-tree__inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.yaml-tree__form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.yaml-tree__form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.yaml-tree__form-label > span {
+  width: 12ch;
+  color: #555;
+  font-weight: 600;
+}
+
+.yaml-tree__form-label input,
+.yaml-tree__form-label select {
+  flex: 1;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: inherit;
+  background: #fff;
+}
+
+.yaml-tree__form-label input:focus,
+.yaml-tree__form-label select:focus {
+  border-color: #1f4789;
+  outline: 2px solid #c8d4ec;
+}
+
+.yaml-tree__form-field-error {
+  color: #b71c1c;
+  font-size: 0.8rem;
+  margin-left: calc(12ch + 0.5rem);
+}
+
+.yaml-tree__form-errors {
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__form-error-global {
+  margin: 0;
+  color: #b71c1c;
+}
+
+.yaml-tree__form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.yaml-tree__add-form {
+  background: #e8f5e9;
+  border: 1px solid #66bb6a;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.4rem 0 0.4rem 1.2rem;
+}
+
+.yaml-admin__history {
+  flex: 1 0 100%;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__history > summary {
+  cursor: pointer;
+  color: #555;
+}
+
+.yaml-admin__history-list {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+.yaml-admin__history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.yaml-admin__history-when {
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  width: 6ch;
+}
+
+.yaml-admin__history-action {
+  background: #eceff1;
+  color: #455a64;
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.yaml-admin__history-desc {
+  flex: 1 1 auto;
+}
+
+.yaml-admin__btn--small {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.yaml-tree__form-hint {
+  background: #fffde7;
+  border: 1px solid #fbc02d;
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #6d4c00;
+}
+
+.yaml-tree__form-advanced {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__form-advanced > summary {
+  cursor: pointer;
+  color: #888;
+  font-style: italic;
+  padding: 0.2rem 0;
+}
+
+.yaml-admin__toasts {
+  position: fixed;
+  top: 4rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.yaml-admin__toast {
+  background: #1b5e20;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  font-size: 0.9rem;
+  pointer-events: auto;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+
+.yaml-admin__toast--fade {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.yaml-tree__add-form-title {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: #1b5e20;
+  font-size: 0.9rem;
+}
+
+.yaml-tree__form-label--inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.yaml-tree__form-label--inline > span {
+  width: auto;
+  font-weight: 400;
+}
+
+.yaml-tree__add-ok {
+  background: #c8e6c9;
+  border: 1px solid #66bb6a;
+  border-radius: 3px;
+  padding: 0.5rem 0.8rem;
+  color: #1b5e20;
+  font-size: 0.9rem;
+}
+
+.yaml-admin__status-meta {
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__status-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.yaml-admin__btn--primary {
+  background: #1f4789;
+  color: #fff;
+  border-color: #1f4789;
+}
+
+.yaml-admin__btn--primary:hover {
+  background: #2a5aa8;
+  color: #fff;
+  border-color: #2a5aa8;
+}
+
+button.yaml-admin__btn {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
 .yaml-admin__meta,
 .yaml-admin__stats {
   margin: 0.25rem 0;
@@ -487,4 +948,37 @@ details[open] > summary.yaml-tree__row::before {
 .yaml-tree__empty {
   color: #888;
   font-style: italic;
+}
+
+/* Vue compacte : quand un noeud est ferme (details:not([open])), on
+   masque le tag de type et le libelle dans son summary. Seul reste l'id
+   (et les boutons d'edition s'il y en a). Permet d'avoir une liste plate
+   des branches d'un parent sans la surcharge des questions descendantes. */
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__tags,
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__libelle,
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta {
+  display: none;
+}
+
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__id {
+  opacity: 0.7;
+}
+
+.yaml-tree__item--noeud > details:not([open]) > summary {
+  padding: 0.05rem 0;
+  font-size: 0.85rem;
+}
+
+/* On garde la racine avec son tag (pas dans une branche) toujours visible. */
+.yaml-tree--root
+  > .yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__tags,
+.yaml-tree--root
+  > .yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__libelle {
+  display: inline-flex;
 }

@@ -10,7 +10,28 @@ from envergo.nitrates.views import (
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
-from envergo.nitrates.views_admin_yaml import YamlTreeView
+from envergo.nitrates.views_admin_yaml import (
+    CancelEditView,
+    CloneConfirmView,
+    CreateDraftView,
+    EditActiveView,
+    RenameTreeView,
+    YamlTreeView,
+)
+from envergo.nitrates.views_admin_yaml_edit import (
+    AddChildView,
+    CancelAddChildView,
+    CancelEditBrancheView,
+    CancelEditNodeView,
+    CancelEditRegleView,
+    DeleteBrancheView,
+    DeleteNodeView,
+    EditBrancheView,
+    EditNodeView,
+    EditRegleView,
+    RestoreRevisionView,
+    UndoLastView,
+)
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -43,6 +64,92 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/",
         YamlTreeView.as_view(),
         name="nitrates_admin_yaml_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/draft/nouveau/",
+        CreateDraftView.as_view(),
+        name="nitrates_admin_yaml_create_draft",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/renommer/",
+        RenameTreeView.as_view(),
+        name="nitrates_admin_yaml_rename_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/cloner/",
+        CloneConfirmView.as_view(),
+        name="nitrates_admin_yaml_clone_confirm",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/editer-actif/",
+        EditActiveView.as_view(),
+        name="nitrates_admin_yaml_edit_active",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:pk>/sortir-edition/",
+        CancelEditView.as_view(),
+        name="nitrates_admin_yaml_cancel_edit",
+    ),
+    # Endpoints htmx d'edition inline (etape 5c).
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/noeud/",
+        EditNodeView.as_view(),
+        name="nitrates_admin_yaml_edit_node",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/noeud/cancel/",
+        CancelEditNodeView.as_view(),
+        name="nitrates_admin_yaml_edit_node_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/regle/",
+        EditRegleView.as_view(),
+        name="nitrates_admin_yaml_edit_regle",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/regle/cancel/",
+        CancelEditRegleView.as_view(),
+        name="nitrates_admin_yaml_edit_regle_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/branche/",
+        EditBrancheView.as_view(),
+        name="nitrates_admin_yaml_edit_branche",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/branche/cancel/",
+        CancelEditBrancheView.as_view(),
+        name="nitrates_admin_yaml_edit_branche_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/",
+        AddChildView.as_view(),
+        name="nitrates_admin_yaml_add_child",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/cancel/",
+        CancelAddChildView.as_view(),
+        name="nitrates_admin_yaml_add_child_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-branche/",
+        DeleteBrancheView.as_view(),
+        name="nitrates_admin_yaml_delete_branche",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-noeud/",
+        DeleteNodeView.as_view(),
+        name="nitrates_admin_yaml_delete_node",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/undo/",
+        UndoLastView.as_view(),
+        name="nitrates_admin_yaml_undo",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/restore/",
+        RestoreRevisionView.as_view(),
+        name="nitrates_admin_yaml_restore_revision",
     ),
     path(
         _("contact-us/"),

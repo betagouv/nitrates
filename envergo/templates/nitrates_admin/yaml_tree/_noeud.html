@@ -6,6 +6,7 @@
 
 <li class="yaml-tree__item yaml-tree__item--noeud"
     id="node-{{ path|slugify }}"
+    data-path="{{ path }}"
     role="treeitem">
   {% if noeud.branches %}
     <a class="yaml-tree__deep-btn"
@@ -13,8 +14,9 @@
        title="Déplier ce sous-arbre en profondeur (récursif)"
        data-path="{{ path }}">▾▾</a>
   {% endif %}
+
   <details {% if opened %}open{% endif %}>
-    <summary class="yaml-tree__row">
+    <summary class="yaml-tree__row" id="node-row-{{ path|slugify }}">
       <span class="yaml-tree__tags">
         {% for tag in noeud|tags_for:"noeud" %}
           <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
@@ -30,9 +32,39 @@
         <span class="yaml-tree__libelle">{{ noeud.champ }}</span>
       {% endif %}
       {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
+
+      {% if is_editing %}
+        <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+          <button type="button"
+                  class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+                  title="Éditer ce nœud"
+                  hx-get="{% url 'nitrates_admin_yaml_edit_node' tree_pk=tree.pk %}?path={{ path }}"
+                  hx-target="#node-row-{{ path|slugify }}"
+                  hx-swap="outerHTML">✎</button>
+          <button type="button"
+                  class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
+                  title="Ajouter une valeur (branche enfant)"
+                  hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
+                  hx-target="#add-zone-{{ path|slugify }}"
+                  hx-swap="outerHTML">+</button>
+          {% if ancestors_path %}
+            <button type="button"
+                    class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+                    title="Supprimer ce nœud et son sous-arbre (annulable via ↩ Annuler)"
+                    hx-post="{% url 'nitrates_admin_yaml_delete_node' tree_pk=tree.pk %}?path={{ path }}">🗑</button>
+          {% else %}
+            <button type="button"
+                    class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+                    title="La racine ne peut pas être supprimée"
+                    disabled>🗑</button>
+          {% endif %}
+        </span>
+      {% endif %}
     </summary>
 
     {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}
+
+    {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
 
     {% if noeud.branches %}
       <ul class="yaml-tree__branches">

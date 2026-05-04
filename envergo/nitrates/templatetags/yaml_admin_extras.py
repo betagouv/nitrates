@@ -15,6 +15,14 @@ def tags_for(data, kind):
     return get_tags(kind, data)
 
 
+@register.filter(name="split")
+def split_filter(value, sep=","):
+    """Filtre simple pour splitter une chaine dans un template."""
+    if not value:
+        return []
+    return str(value).split(sep)
+
+
 @register.simple_tag
 def join_path(ancestors_str, node_id):
     """Concatene un parent_path string avec un id pour produire le path
@@ -61,6 +69,23 @@ def fold_link(querystring_base, expand_paths, expand_deep_paths, path, deep=Fals
     parts += [f"expand={escape(p)}" for p in expand]
     parts += [f"expand_deep={escape(p)}" for p in expand_deep]
     return "?" + "&".join(parts) if parts else "?"
+
+
+_KIND_LABELS = {
+    "noeud_formulaire_culture": "🌱 Question — culture",
+    "noeud_formulaire_sous_culture": "🌿 Question — sous-culture",
+    "noeud_formulaire_type_fertilisant": "💧 Question — type de fertilisant",
+    "noeud_formulaire_complement": "➕ Question — complément",
+    "noeud_catalogue": "📋 Catalogue (calcul / SIG / référentiel)",
+    "regle": "⚖️ Règle (interdiction, plafond, calculatrice…)",
+    "renvoi_vers": "↪️ Renvoi vers une règle existante",
+}
+
+
+@register.filter
+def kind_label(kind):
+    """Libelle humain pour un kind d'enfant autorise."""
+    return _KIND_LABELS.get(kind, kind)
 
 
 @register.simple_tag

@@ -42,6 +42,21 @@ def load_active_tree_admin():
     commentaires preserves (rendu identique au fichier source).
     """
     raw = load_active_tree_raw()
+    return _parse_yaml_rt(raw)
+
+
+def load_tree_admin(tree: DecisionTree):
+    """Variante de `load_active_tree_admin` pour un tree arbitraire (n'importe
+    quel statut). Utilise par le viewer multi-arbres (?tree_id=...)."""
+    return _parse_yaml_rt(tree.contenu_yaml_brut)
+
+
+def load_tree_raw(tree: DecisionTree) -> str:
+    """YAML brut d'un tree arbitraire."""
+    return tree.contenu_yaml_brut
+
+
+def _parse_yaml_rt(raw: str):
     yaml = YAML(typ="rt")
     yaml.preserve_quotes = True
     yaml.width = 4096
