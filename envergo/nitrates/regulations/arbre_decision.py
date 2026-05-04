@@ -142,6 +142,11 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     def evaluate(self):
         arbre = self._load_decision_tree()
         contexte = self._contexte_initial()
+        # On garde une reference sur le contexte pour l'exposer dans le
+        # panel debug (utile pour comprendre la resolution complete :
+        # quelles valeurs ont ete poussees par le form, quelles ont ete
+        # resolues par les noeuds catalogue, etc.).
+        self._contexte = contexte
 
         # Boucle catalogue : tant que parcours() bute sur un noeud
         # catalogue interne (genre zone_note_5), on resout via SIG et
@@ -348,3 +353,11 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         pas pu etre resolu (dataset SIG absent), retourne le
         BesoinCatalogue correspondant. Sinon None."""
         return getattr(self, "_catalogue_manquant", None)
+
+    @property
+    def contexte(self):
+        """Etat final du contexte de parcours : tous les champs poussés
+        par le form principal + les valeurs resolues par les noeuds
+        catalogue (en_zone_vulnerable, zone_note_5, zone_montagne_*,
+        etc.). Utilise pour le panel debug."""
+        return getattr(self, "_contexte", {})

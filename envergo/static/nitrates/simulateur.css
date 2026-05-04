@@ -48,8 +48,8 @@
   gap: 24px;
   margin: 0;
   padding: 12px 16px;
-  background: #f6f6f6;
-  border-left: 3px solid #000091;
+  background: var(--background-alt-grey);
+  border-left: 3px solid var(--border-action-high-blue-france);
 }
 
 .localisation-readonly__item {
@@ -61,7 +61,7 @@
 .localisation-readonly__label {
   display: block;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-mention-grey);
   font-weight: 400;
 }
 
@@ -69,7 +69,7 @@
   display: block;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #161616;
+  color: var(--text-title-grey);
 }
 
 /* ─── Sections form (maquette : .form-section + .form-question-group) ─
@@ -87,7 +87,7 @@
   font-size: 32px;
   font-weight: 700;
   line-height: 40px;
-  color: #161616;
+  color: var(--text-title-grey);
   margin: 0;
 }
 
@@ -107,7 +107,7 @@
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
-  color: #161616;
+  color: var(--text-title-grey);
   margin: 0;
 }
 
@@ -163,7 +163,7 @@ body {
 .qc-box__lead {
   font-size: 0.875rem;
   margin: 0 0 8px;
-  color: #161616;
+  color: var(--text-default-grey);
 }
 
 .qc-box .form-question-group {
@@ -252,22 +252,20 @@ body {
 /* ─── Panneau resultat ─────────────────────────────────────────────── */
 
 .resultat-panel {
-  background: #f9f9f9;
+  background: var(--background-alt-grey);
   border-radius: 8px;
   padding: 1.5rem 2rem;
-
-  /* Force le texte en noir maquette (et non gris #3a3a3a DSFR par defaut) */
-  color: #161616;
+  color: var(--text-default-grey);
 }
 
 .resultat-panel h2,
 .resultat-panel h3,
 .resultat-panel h4 {
-  color: #161616;
+  color: var(--text-title-grey);
 }
 
 .resultat-panel p {
-  color: #161616;
+  color: var(--text-default-grey);
 }
 
 .resultat-row {
@@ -285,7 +283,7 @@ body {
 .resultat-row__label {
   font-weight: 700;
   font-size: 1.1rem;
-  color: #161616;
+  color: var(--text-title-grey);
 }
 
 /* ─── Badges resultat (couleurs maquette) ─────────────────────────── */
@@ -333,11 +331,11 @@ body {
 */
 
 .resultat-panel .fr-accordion__btn[aria-expanded="true"] {
-  color: #161616;
+  color: var(--text-title-grey);
 }
 
 .resultat-panel .fr-collapse {
-  color: #161616;
+  color: var(--text-default-grey);
 }
 
 /* Sur petit ecran, les colonnes passent en stack vertical */
@@ -355,4 +353,83 @@ body {
     overflow: visible;
     margin-top: 2rem;
   }
+}
+
+/* ─── Panel debug parcours (mode developpeur) ──────────────────────── */
+
+.nitrates-debug-panel {
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+}
+
+.nitrates-debug-panel > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+.nitrates-debug-panel__section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-default-grey);
+}
+
+.nitrates-debug-panel__section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.nitrates-debug-panel__title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-mention-grey);
+  margin: 0 0 6px;
+}
+
+/* Liste cle/valeur en 2 colonnes : libelle a gauche, valeur a droite,
+   les valeurs longues passent a la ligne sans deborder. */
+.nitrates-debug-panel__dl {
+  display: grid;
+  grid-template-columns: minmax(180px, max-content) 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.nitrates-debug-panel__dl dt {
+  font-weight: 600;
+  color: var(--text-default-grey);
+}
+
+.nitrates-debug-panel__dl dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.nitrates-debug-panel__dl dd code,
+.nitrates-debug-panel__path code {
+  background: var(--background-alt-grey);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Chemin parcouru : une etape par ligne, numerotee, plus lisible que
+   l'ancien rendu inline. */
+.nitrates-debug-panel__path {
+  margin: 0;
+  padding-left: 1.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nitrates-debug-panel__path li {
+  list-style: decimal;
 }

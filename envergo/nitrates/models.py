@@ -22,6 +22,11 @@ from envergo.moulinette.models import Moulinette
 from envergo.nitrates.bassins import bassin_name
 from envergo.nitrates.forms import MoulinetteFormNitrates
 from envergo.nitrates.regions import region_for_department
+from envergo.nitrates.zonage_montagne import (
+    est_zone_montagne_d113_14,
+    zonage_montagne_pour_commune,
+)
+from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
 
 EPSG_WGS84 = 4326
 
@@ -227,6 +232,22 @@ class MoulinetteNitrates(Moulinette):
             else:
                 catalog["bassin"] = None
                 catalog["bassin_label"] = None
+
+            # Zonages reglementaires resolus a partir du code INSEE pousse
+            # par le front (clic carte). Calcul cheap (lookup CSV en
+            # memoire), on les pre-resoud ici pour les exposer dans le
+            # panel debug -- le parcours d'arbre les recalcule a la
+            # demande, mais c'est la meme fonction donc cohérent.
+            # `code_insee` n'est pas un champ du form (il n'apparait pas
+            # dans cleaned_data) ; on le lit dans les form_kwargs bruts.
+            raw_data = self.form_kwargs.get("data", {}) or {}
+            code_insee = raw_data.get("code_insee")
+            catalog["code_insee"] = code_insee
+            catalog["zone_montagne_d113_14"] = est_zone_montagne_d113_14(code_insee)
+            catalog["zone_montagne_classification"] = zonage_montagne_pour_commune(
+                code_insee
+            )
+            catalog["zone_note_5"] = zone_note_5_pour_commune(code_insee)
 
         return catalog
 

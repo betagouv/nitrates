@@ -130,15 +130,6 @@
 
   let marker = null;
 
-  // Si lat/lng deja saisis (form pre-rempli depuis URL), on positionne le
-  // marker directement.
-  const initialLng = parseFloat(lngInput.value);
-  const initialLat = parseFloat(latInput.value);
-  if (!isNaN(initialLng) && !isNaN(initialLat)) {
-    marker = L.marker([initialLat, initialLng]).addTo(map);
-    map.setView([initialLat, initialLng], 13);
-  }
-
   function cultureLabel(parcel) {
     if (!parcel || !parcel.code_cultu) return "";
     if (parcel.libelle_cultu) {
@@ -252,6 +243,24 @@
       };
     } catch {
       return null;
+    }
+  }
+
+  // Si lat/lng deja saisis (form pre-rempli depuis URL apres "Lancer
+  // la simulation"), on positionne le marker et on repeuple le bandeau
+  // localisation (commune / dept / region) sans attendre un nouveau
+  // clic. Le serveur nous a deja envoye le catalog dans
+  // window.NITRATES_CATALOG (cf. template) ; on fetch juste le nom de
+  // commune via la BAN.
+  const initialLng = parseFloat(lngInput.value);
+  const initialLat = parseFloat(latInput.value);
+  if (!isNaN(initialLng) && !isNaN(initialLat)) {
+    marker = L.marker([initialLat, initialLng]).addTo(map);
+    map.setView([initialLat, initialLng], 13);
+    if (window.NITRATES_CATALOG) {
+      fetchCommuneInfo(initialLat, initialLng).then((communeInfo) => {
+        updateLocalisationReadonly(window.NITRATES_CATALOG, communeInfo.nom);
+      });
     }
   }
 

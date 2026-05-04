@@ -167,15 +167,87 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           </div>
         {% endif %}
 
-        {# Chemin parcouru : seulement en mode debug #}
-        {% if ev.chemin and debug %}
-          <details class="fr-mt-3w fr-text--sm">
-            <summary>Chemin parcouru (debug)</summary>
-            <pre>{% for n in ev.chemin %}{{ n }}{% if not forloop.last %} → {% endif %}{% endfor %}</pre>
-            <p>
-              <strong>Result code :</strong> <code>{{ ev.result_code }}</code>
-              {% if ev.regle %}| <strong>Règle :</strong> <code>{{ ev.regle.regle_id }}</code>{% endif %}
-            </p>
+        {# Panel debug : seulement en mode developpeur (settings.DEBUG) #}
+        {% if debug %}
+          <details class="fr-mt-3w nitrates-debug-panel" open>
+            <summary>Debug parcours</summary>
+
+            <div class="nitrates-debug-panel__section">
+              <h5 class="nitrates-debug-panel__title">Resultat</h5>
+              <dl class="nitrates-debug-panel__dl">
+                <dt>result_code</dt>
+                <dd>
+                  <code>{{ ev.result_code|default:"—" }}</code>
+                </dd>
+                <dt>regle_id</dt>
+                <dd>
+                  <code>{{ ev.regle.regle_id|default:"—" }}</code>
+                </dd>
+              </dl>
+            </div>
+
+            {% if ev.chemin %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Chemin parcouru</h5>
+                <ol class="nitrates-debug-panel__path">
+                  {% for n in ev.chemin %}
+                    <li>
+                      <code>{{ n }}</code>
+                    </li>
+                  {% endfor %}
+                </ol>
+              </div>
+            {% endif %}
+
+            {% if ev.contexte %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Contexte (resolutions formulaire + catalogue)</h5>
+                <dl class="nitrates-debug-panel__dl">
+                  {% for cle, valeur in ev.contexte.items %}
+                    <dt>{{ cle }}</dt>
+                    <dd>
+                      <code>{{ valeur }}</code>
+                    </dd>
+                  {% endfor %}
+                </dl>
+              </div>
+            {% endif %}
+
+            {% if moulinette.catalog %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Zonages (catalog)</h5>
+                <dl class="nitrates-debug-panel__dl">
+                  <dt>en_zone_vulnerable</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.en_zone_vulnerable }}</code>
+                  </dd>
+                  <dt>zone_montagne_d113_14</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_montagne_d113_14 }}</code>
+                  </dd>
+                  <dt>zone_montagne_classification</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_montagne_classification }}</code>
+                  </dd>
+                  <dt>zone_note_5</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_note_5 }}</code>
+                  </dd>
+                  <dt>code_insee</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.code_insee|default:"—" }}</code>
+                  </dd>
+                  <dt>departement</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.department_code|default:"—" }}</code>
+                  </dd>
+                  <dt>region</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.region_code|default:"—" }} ({{ moulinette.catalog.region_label|default:"—" }})</code>
+                  </dd>
+                </dl>
+              </div>
+            {% endif %}
           </details>
         {% endif %}
 

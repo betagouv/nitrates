@@ -24,6 +24,17 @@
       categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
       sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
     };
+    {% if moulinette %}
+    // Catalog deja resolu cote serveur : on l'expose pour repeupler le
+    // bandeau localisation au rechargement de page (apres "Lancer la
+    // simulation" ou "Recommencer" avec lat/lng dans l'URL).
+    window.NITRATES_CATALOG = {
+      department_code: "{{ moulinette.catalog.department_code|default:'' }}",
+      region_code: "{{ moulinette.catalog.region_code|default:'' }}",
+      region_label: "{{ moulinette.catalog.region_label|default:'' }}",
+      en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
+    };
+    {% endif %}
   </script>
   <script defer src="{% static 'nitrates/simulator.js' %}"></script>
   <script defer src="{% static 'nitrates/cascade.js' %}"></script>
