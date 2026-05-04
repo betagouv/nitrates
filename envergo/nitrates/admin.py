@@ -84,11 +84,22 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     @admin.display(description="Actions")
     def actions_links(self, obj):
         view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
+        edit_url = view_url + "&mode=edition"
         clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
+        edit_active_url = reverse("nitrates_admin_yaml_edit_active")
         if obj.status == DecisionTree.STATUS_DRAFT:
-            # Sur un draft : juste Éditer (cloner un draft n'a pas de sens
-            # immediat ; si on en a vraiment besoin, l'action dropdown reste).
-            return mark_safe(f'<a class="button" href="{view_url}">Éditer</a>')
+            # Draft : on ouvre directement en mode edition.
+            return mark_safe(
+                f'<a class="button" href="{view_url}">Voir</a> '
+                f'<a class="button" href="{edit_url}">Éditer</a>'
+            )
+        if obj.status == DecisionTree.STATUS_ACTIVE:
+            # Active : Voir + "Éditer" qui clone vers un draft puis bascule.
+            return mark_safe(
+                f'<a class="button" href="{view_url}">Voir</a> '
+                f'<a class="button" href="{edit_active_url}">Éditer</a>'
+            )
+        # Archive : Voir + Cloner (pas d'edition directe sur un archive).
         return mark_safe(
             f'<a class="button" href="{view_url}">Voir</a> '
             f'<a class="button" href="{clone_url}">Cloner</a>'
