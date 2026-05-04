@@ -1027,17 +1027,122 @@ def _humanize_error(arbre: dict, raw_error: str) -> dict:
     période #1").
     `message` : la fin du message d'erreur, sans le chemin technique.
     `raw` : message original, montre au survol pour debug.
-    `kind` : "structure" ou "semantique" (vient du prefix entre crochets).
+    `kind` : "structure" / "renvoi_vers" / "niveau" / "ids" / "date" / ...
     """
     import re
 
-    m = re.match(r"^\[(?P<kind>\w+)\]\s*(?P<path>\S*)\s*:\s*(?P<msg>.*)$", raw_error)
-    if not m:
-        return {"label": "", "message": raw_error, "raw": raw_error, "kind": ""}
-    path = m.group("path")
-    msg = m.group("msg")
-    label = _path_to_breadcrumb(arbre, path)
-    return {"label": label, "message": msg, "raw": raw_error, "kind": m.group("kind")}
+    # Erreur de structure (jsonschema) : "[structure] arbre/.../path : msg"
+    m = re.match(r"^\[structure\]\s*(?P<path>\S*)\s*:\s*(?P<msg>.*)$", raw_error)
+    if m:
+        return {
+            "label": _path_to_breadcrumb(arbre, m.group("path")),
+            "message": m.group("msg"),
+            "raw": raw_error,
+            "kind": "structure",
+        }
+
+    # Erreur renvoi_vers : "[renvoi_vers] 'r_xxx' (depuis branche valeur=X) ..."
+    m = re.match(
+        r"^\[renvoi_vers\]\s*'(?P<cible>[^']+)'\s*"
+        r"\(depuis branche valeur=(?P<valeur>[^)]+)\)\s*(?P<msg>.*)$",
+        raw_error,
+    )
+    if m:
+        valeur = m.group("valeur").strip().strip("'\"")
+        cible = m.group("cible")
+        label = _find_branch_breadcrumb(arbre, valeur, "renvoi_vers", cible)
+        return {
+            "label": label,
+            "message": f"renvoi vers '{cible}' inconnu",
+            "raw": raw_error,
+            "kind": "renvoi_vers",
+        }
+
+    # Erreur niveau : "[niveau] noeud 'q_xxx' : msg"
+    m = re.match(
+        r"^\[niveau\]\s*noeud\s*'(?P<nid>[^']+)'\s*:\s*(?P<msg>.*)$", raw_error
+    )
+    if m:
+        nid = m.group("nid")
+        label = _find_node_breadcrumb(arbre, nid)
+        return {
+            "label": label,
+            "message": m.group("msg"),
+            "raw": raw_error,
+            "kind": "niveau",
+        }
+
+    # Fallback generique
+    m = re.match(r"^\[(?P<kind>\w+)\]\s*(?P<rest>.*)$", raw_error)
+    if m:
+        return {
+            "label": "",
+            "message": m.group("rest"),
+            "raw": raw_error,
+            "kind": m.group("kind"),
+        }
+    return {"label": "", "message": raw_error, "raw": raw_error, "kind": ""}
+
+
+def _find_branch_breadcrumb(arbre: dict, valeur: str, key: str, value: str) -> str:
+    """Cherche la branche {valeur, key:value} dans l'arbre et renvoie son
+    chemin metier lisible."""
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if not racine:
+        return ""
+    found = _walk_for_branch(racine, valeur, key, value, [])
+    return " > ".join(found) if found else ""
+
+
+def _walk_for_branch(noeud, target_valeur, target_key, target_value, crumbs):
+    if not isinstance(noeud, dict):
+        return None
+    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
+    next_crumbs = crumbs + ([str(label)] if label else [])
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        if str(branche.get("valeur")) == str(target_valeur) and str(
+            branche.get(target_key)
+        ) == str(target_value):
+            return b_crumbs
+        if isinstance(branche.get("noeud"), dict):
+            res = _walk_for_branch(
+                branche["noeud"], target_valeur, target_key, target_value, b_crumbs
+            )
+            if res is not None:
+                return res
+    return None
+
+
+def _find_node_breadcrumb(arbre: dict, target_id: str) -> str:
+    """Cherche un noeud par son id et renvoie son chemin metier lisible."""
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if not racine:
+        return ""
+    found = _walk_for_node(racine, target_id, [])
+    return " > ".join(found) if found else ""
+
+
+def _walk_for_node(noeud, target_id, crumbs):
+    if not isinstance(noeud, dict):
+        return None
+    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
+    next_crumbs = crumbs + ([str(label)] if label else [])
+    if noeud.get("id") == target_id:
+        return next_crumbs
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        if isinstance(branche.get("noeud"), dict):
+            res = _walk_for_node(branche["noeud"], target_id, b_crumbs)
+            if res is not None:
+                return res
+    return None
 
 
 def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:

@@ -401,10 +401,13 @@ def _collect_ids(arbre: dict) -> set[str]:
     racine = (arbre or {}).get("arbre", {}).get("noeud")
     if racine:
         _collect_ids_in_node(racine, ids)
-    for entry in arbre.get("plafonnements") or []:
-        regle = entry.get("regle") if isinstance(entry, dict) else None
-        if isinstance(regle, dict) and regle.get("id"):
-            ids.add(regle["id"])
+    # Regles top-level reutilisables : `plafonnements` (legacy) et
+    # `regles_partagees` (couvert d'interculture, etc.).
+    for top_key in ("plafonnements", "regles_partagees"):
+        for entry in (arbre or {}).get(top_key) or []:
+            regle = entry.get("regle") if isinstance(entry, dict) else None
+            if isinstance(regle, dict) and regle.get("id"):
+                ids.add(regle["id"])
     return ids
 
 
