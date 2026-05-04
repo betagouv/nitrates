@@ -72,6 +72,7 @@ def fold_link(querystring_base, expand_paths, expand_deep_paths, path, deep=Fals
 
 
 _KIND_LABELS = {
+    "valeur_seule": "🍃 Valeur seule (feuille, sans contenu en dessous)",
     "noeud_formulaire_culture": "🌱 Question — culture",
     "noeud_formulaire_sous_culture": "🌿 Question — sous-culture",
     "noeud_formulaire_type_fertilisant": "💧 Question — type de fertilisant",

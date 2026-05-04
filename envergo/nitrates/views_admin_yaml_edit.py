@@ -528,6 +528,10 @@ class AddChildView(View):
         kind = request.GET.get("kind") or allowed[0]
         if kind not in allowed:
             kind = allowed[0]
+        # Quand l'utilisateur change le `<select kind>`, htmx repostule
+        # le GET avec hx-include des champs deja saisis. On les remet
+        # dans form_data pour les preserver dans le re-render.
+        form_data = {k: v for k, v in request.GET.items() if k not in ("path", "kind")}
         return render(
             request,
             "nitrates_admin/yaml_tree/forms/_add_form.html",
@@ -537,7 +541,7 @@ class AddChildView(View):
                 "allowed_kinds": allowed,
                 "selected_kind": kind,
                 "errors": [],
-                "form_data": {},
+                "form_data": form_data,
             },
         )
 
@@ -597,10 +601,7 @@ class AddChildView(View):
         if libelle:
             branche_data["libelle"] = libelle
 
-        # Construit le contenu selon le kind
-        content = _build_content_data(kind, request.POST)
-
-        # 1) Cree la branche (squelette)
+        # 1) Cree la branche (squelette).
         res_branch = editor.add_branch(tree, parent_path, branche_data, request.user)
         if not res_branch.ok:
             return _render_add_errors(
@@ -612,7 +613,15 @@ class AddChildView(View):
                 res_branch.errors,
                 form_data=request.POST,
             )
-        # 2) Insere le contenu
+
+        # 2) Si valeur_seule : on s'arrete la (branche feuille sans contenu).
+        if kind == "valeur_seule":
+            return _refresh_response(
+                request, f"Valeur {valeur!r} ajoutée. Rechargement…"
+            )
+
+        # 3) Sinon on insere le contenu choisi.
+        content = _build_content_data(kind, request.POST)
         res_content = editor.update_branch_content(
             tree, parent_path, valeur, kind, content, request.user
         )

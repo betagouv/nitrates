@@ -398,6 +398,16 @@
   padding: 0.1rem 0.4rem;
 }
 
+.yaml-tree__form-hint {
+  background: #fffde7;
+  border: 1px solid #fbc02d;
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #6d4c00;
+}
+
 .yaml-tree__add-form-title {
   margin: 0 0 0.4rem;
   font-weight: 600;

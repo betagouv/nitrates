@@ -42,7 +42,7 @@
                   hx-swap="outerHTML">✎</button>
           <button type="button"
                   class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
-                  title="Ajouter une branche enfant"
+                  title="Ajouter une valeur (branche enfant)"
                   hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
                   hx-target="#add-zone-{{ path|slugify }}"
                   hx-swap="outerHTML">+</button>
