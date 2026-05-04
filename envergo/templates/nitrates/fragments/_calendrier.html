@@ -7,9 +7,9 @@ sur les bords.
 Inputs (cf. templatetag calendrier_epandage) :
   - mois : liste des labels mensuels [Juil, Aout, ..., Juin]
   - fond : "vert" | "gris" | "orange" (couleur de la barre)
-  - zone_couleur : "rouge" | "orange" | None (couleur des segments overlay)
   - label : texte du resultat principal
-  - segments : liste de {start_pct, width_pct} avec offset annee agricole
+  - segments : liste de {start_pct, width_pct, couleur} - chaque segment
+    porte sa propre couleur (regime mixte gere)
   - today_pct : float [0..100] position du marqueur "aujourd'hui"
   - bornes : liste de {label, pct} pour afficher les dates de transition
   - periodes_phenologiques : liste de periodes non parsables
@@ -28,14 +28,12 @@ Inputs (cf. templatetag calendrier_epandage) :
     </div>
 
     <div class="calendrier-epandage__bar">
-      {% if zone_couleur %}
-        {% for seg in segments %}
-          <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ zone_couleur }}"
-               style="left: {{ seg.start_pct|unlocalize }}%;
-                      width: {{ seg.width_pct|unlocalize }}%"
-               aria-label="Zone {{ zone_couleur }}"></div>
-        {% endfor %}
-      {% endif %}
+      {% for seg in segments %}
+        <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}"
+             style="left: {{ seg.start_pct|unlocalize }}%;
+                    width: {{ seg.width_pct|unlocalize }}%"
+             aria-label="Zone {{ seg.couleur }}"></div>
+      {% endfor %}
 
       <div class="calendrier-epandage__today"
            style="left: {{ today_pct|unlocalize }}%"

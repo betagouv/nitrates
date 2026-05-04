@@ -65,11 +65,24 @@ REFERENCE_TO_MAP_TYPE = {
     # zone_note_5 : pas encore de dataset, retournera False.
 }
 
-# Reference YAML resolues via le mapping commune INSEE -> zone montagne
-# (cf. envergo.nitrates.zonage_montagne). Elles partagent la meme
-# semantique (montagne_note_7 / montagne_note_6 / non_montagne) et sont
-# resolues sans PostGIS, juste sur le code INSEE pousse par le front.
-REFERENCES_ZONE_MONTAGNE = {"zonage_prairie_III", "zone_note_7_montagne"}
+# References YAML resolues via le mapping commune INSEE -> zone
+# montagne (cf. envergo.nitrates.zonage_montagne). Elles partagent la
+# meme semantique (montagne_note_7 / montagne_note_6 / non_montagne)
+# et sont resolues sans PostGIS, juste sur le code INSEE pousse par
+# le front.
+#
+# `zonage_prairie_III` -> noeud catalogue prairie+6 type_III dans
+#   l'arbre PAN (2 ou 3 valeurs selon version : note_7 / note_6 /
+#   non_montagne).
+# `zone_note_7_vs_note_6` (renommee 30/04) -> noeud catalogue
+#   imbrique apres un 1er catalogue zone montagne D113-14 : tranche
+#   entre note_7 et note_6 quand on sait deja qu'on est en montagne.
+# `zone_note_7_montagne` -> ancien nom (compatibilite descendante).
+REFERENCES_ZONE_MONTAGNE = {
+    "zonage_prairie_III",
+    "zone_note_7_vs_note_6",
+    "zone_note_7_montagne",
+}
 
 # Champs du form principal lus depuis le catalog (ceux passes par le form
 # Django valide). Les questions subsidiaires (effluent_peu_charge,

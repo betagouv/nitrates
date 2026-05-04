@@ -27,7 +27,10 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from envergo.nitrates.models import DecisionTree
-from envergo.nitrates.regulations.arbre_decision import REFERENCE_TO_MAP_TYPE
+from envergo.nitrates.regulations.arbre_decision import (
+    REFERENCE_TO_MAP_TYPE,
+    REFERENCES_ZONE_MONTAGNE,
+)
 from envergo.nitrates.yaml_tree.loader import load_referentiels
 from envergo.nitrates.yaml_tree.validator import (
     ValidationError,
@@ -94,8 +97,13 @@ class Command(BaseCommand):
         # Le runtime affichera "non disponible" sur ces branches ; ici on
         # liste juste les trous pour traque.
         refs_sig = collect_references_sig(arbre)
+        # Le backend resoud 2 familles de references SIG :
+        #   - REFERENCE_TO_MAP_TYPE : via PostGIS sur les Map+Zone importes.
+        #   - REFERENCES_ZONE_MONTAGNE : via le mapping commune INSEE
+        #     (envergo.nitrates.zonage_montagne), pas de PostGIS.
+        refs_supportees = set(REFERENCE_TO_MAP_TYPE) | REFERENCES_ZONE_MONTAGNE
         non_supportees = sorted(
-            {ref for _, ref in refs_sig if ref not in REFERENCE_TO_MAP_TYPE}
+            {ref for _, ref in refs_sig if ref not in refs_supportees}
         )
         if non_supportees:
             self.stdout.write(

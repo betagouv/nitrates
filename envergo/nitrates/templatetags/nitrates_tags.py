@@ -44,7 +44,10 @@ _FOND_PAR_TYPE = {
     "a_completer": "gris",
 }
 
-# Couleur de la zone overlay selon le type.
+# Couleur de la zone overlay selon le type / regime effectif.
+# `libre` : pas d'overlay, c'est l'etat de fond. Les types `non_applicable`,
+# `calculatrice`, `a_completer` ne devraient pas porter de periode (le fond
+# represente le statut entier).
 _COULEUR_ZONE_PAR_TYPE = {
     "interdiction": "rouge",
     "autorisation_sous_condition": "orange",
@@ -147,6 +150,10 @@ def calendrier_epandage(regle):
 
     `regle` : un dataclass `Resultat` ou un objet avec `type` et
     `periodes` (compatible).
+
+    Chaque periode peut porter un champ `regime` optionnel : si
+    present, c'est lui qui determine la couleur du segment (regime
+    mixte) ; sinon on retombe sur le `type` global de la regle.
     """
     if regle is None:
         return {"vide": True, "mois": _MOIS_LABELS}
@@ -155,17 +162,30 @@ def calendrier_epandage(regle):
     periodes = getattr(regle, "periodes", None) or []
 
     fond = _FOND_PAR_TYPE.get(regle_type, "gris")
-    zone_couleur = _COULEUR_ZONE_PAR_TYPE.get(regle_type)
     label = _LABEL_PAR_TYPE.get(regle_type, regle_type or "—")
 
-    # Construction des segments sur l'annee
+    # Construction des segments sur l'annee, chacun avec sa propre couleur.
+    # Couleur par segment = couleur du `regime` de la periode si present,
+    # sinon couleur du `type` global de la regle.
     segments = []
-    periodes_phenologiques = []  # pour celles non parsables (ex: brunissement_soies)
+    periodes_phenologiques = []  # non parsables (ex: brunissement_soies)
     for p in periodes:
+        regime_effectif = p.get("regime") or regle_type
+        couleur = _COULEUR_ZONE_PAR_TYPE.get(regime_effectif)
+        if not couleur:
+            # `libre` (= pas d'overlay) ou type sans overlay : on n'affiche
+            # rien pour cette periode (le fond suffit a porter le sens).
+            continue
         seg = _segment_interdit(p)
         if seg:
             for start, width in seg:
-                segments.append({"start_pct": start, "width_pct": width})
+                segments.append(
+                    {
+                        "start_pct": start,
+                        "width_pct": width,
+                        "couleur": couleur,
+                    }
+                )
         else:
             # Periode avec evenement phenologique -> on l'affiche en texte
             periodes_phenologiques.append(p)
@@ -192,7 +212,6 @@ def calendrier_epandage(regle):
         "vide": False,
         "mois": _MOIS_LABELS,
         "fond": fond,
-        "zone_couleur": zone_couleur,
         "label": label,
         "segments": segments,
         "today_pct": today_pct,

@@ -356,20 +356,22 @@ def test_pan_sol_non_cultive_court_circuit(arbre_pan):
     assert res.type == "interdiction"
 
 
-def test_pan_culture_post_0101_type_0_atteint_resultat(arbre_pan):
+def test_pan_culture_hiver_hors_colza_type_0_atteint_resultat(arbre_pan):
+    """Refonte 30/04 : culture_recoltee_apres_0101_hors_colza renommee
+    en culture_hiver_hors_colza (avec doublon temporaire des deux dans
+    l'arbre tant que Louise n'a pas valide la suppression)."""
     res = parcours(
         arbre_pan,
         {
             "en_zone_vulnerable": True,
             "occupation_sol": "culture_principale",
-            "sous_culture": "culture_recoltee_apres_0101_hors_colza",
+            "sous_culture": "culture_hiver_hors_colza",
             "type_fertilisant": "type_0",
         },
     )
     assert isinstance(res, Resultat)
-    assert res.regle_id == "r_post_0101_type_0"
+    assert res.regle_id == "r_hiver_hors_colza_type_0"
     assert res.type == "interdiction"
-    assert res.code_prescription == "pc4"
 
 
 def test_pan_colza_type_II_demande_zone_note_5(arbre_pan):

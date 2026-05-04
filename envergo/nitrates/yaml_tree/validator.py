@@ -110,14 +110,20 @@ def _validate_structure(arbre: dict) -> list[str]:
 
 
 def _walk_objects(arbre: dict) -> Iterable[dict]:
-    """Generator qui yield tous les noeuds, branches et regles d'un arbre."""
+    """Generator qui yield tous les noeuds, branches et regles d'un arbre.
+
+    Inclut les regles definies au top-level dans les sections
+    `plafonnements` et `regles_partagees` -- toutes deux sont des
+    listes de `{regle: ...}` reutilisables (cibles de renvoi_vers).
+    """
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
         yield from _walk_node(racine)
-    for entry in arbre.get("plafonnements", []) or []:
-        regle = entry.get("regle")
-        if regle:
-            yield regle
+    for section in ("plafonnements", "regles_partagees"):
+        for entry in arbre.get(section, []) or []:
+            regle = entry.get("regle")
+            if regle:
+                yield regle
 
 
 def _walk_node(noeud: dict) -> Iterable[dict]:
@@ -223,8 +229,13 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     l'ordre culture -> sous_culture -> type_fertilisant -> complement.
 
     Sauts autorises (on peut passer directement de culture a complement),
-    retour interdit (on ne peut pas voir un sous_culture apres un complement),
-    doublon interdit pour les 3 premiers niveaux.
+    retour interdit (on ne peut pas voir un sous_culture apres un complement).
+
+    Doublon de niveau : tolere si les noeuds portent des `champ` differents
+    (cas legitime : interculture pose 2 questions de niveau "sous_culture",
+    une sur la duree (`sous_culture`) et une sur le type de couvert
+    (`sous_culture_couvert`)). Doublon strict (meme niveau ET meme champ)
+    interdit.
     """
     errors = []
     racine = arbre.get("arbre", {}).get("noeud")
@@ -233,36 +244,47 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     return errors
 
 
-def _walk_paths(noeud: dict, path_niveaux: list[str], errors: list[str]) -> None:
-    nouveau_chemin = list(path_niveaux)
+def _walk_paths(noeud: dict, chemin: list[tuple[str, str]], errors: list[str]) -> None:
+    """`chemin` : liste de (niveau, champ) des noeuds formulaire deja
+    rencontres dans la branche."""
+    nouveau_chemin = list(chemin)
     if noeud.get("type_noeud") == "formulaire":
         niveau = noeud.get("niveau")
+        champ = noeud.get("champ", "")
         if niveau:
-            err = _check_niveau_ajout(nouveau_chemin, niveau, noeud.get("id"))
+            err = _check_niveau_ajout(nouveau_chemin, niveau, champ, noeud.get("id"))
             if err:
                 errors.append(err)
-            nouveau_chemin.append(niveau)
+            nouveau_chemin.append((niveau, champ))
 
     for branche in noeud.get("branches", []):
         if "noeud" in branche:
             _walk_paths(branche["noeud"], nouveau_chemin, errors)
 
 
-def _check_niveau_ajout(chemin: list[str], niveau: str, noeud_id: str) -> str | None:
+def _check_niveau_ajout(
+    chemin: list[tuple[str, str]], niveau: str, champ: str, noeud_id: str
+) -> str | None:
     if niveau not in NIVEAUX_FORMULAIRE_ORDRE:
         return None  # le schema l'aurait deja attrape
     idx_nouveau = NIVEAUX_FORMULAIRE_ORDRE.index(niveau)
-    for prec in chemin:
-        idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec)
+    for prec_niveau, prec_champ in chemin:
+        idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec_niveau)
         if idx_nouveau < idx_prec:
             return (
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
-                f"{prec!r} dans le chemin (retour en arriere interdit)"
+                f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"
             )
-        if idx_nouveau == idx_prec and niveau != "complement" and prec != "complement":
+        if (
+            idx_nouveau == idx_prec
+            and niveau != "complement"
+            and prec_niveau != "complement"
+            and champ == prec_champ
+        ):
             return (
-                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} en doublon "
-                f"sur le chemin (les 3 premiers niveaux ne se repetent pas)"
+                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} et champ "
+                f"{champ!r} en doublon sur le chemin (deja vus avec champ "
+                f"{prec_champ!r})"
             )
     return None
 

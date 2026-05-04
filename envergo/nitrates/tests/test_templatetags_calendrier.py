@@ -74,14 +74,14 @@ def test_calendrier_avec_regle_none():
 
 def test_calendrier_interdiction_genere_segments():
     """Une regle d'interdiction sur 15/12 -> 15/01 doit produire 1 segment
-    centre (annee agricole juil->juin, le 31/12 n'est pas le pivot)."""
+    rouge centre (annee agricole juil->juin, le 31/12 n'est pas le pivot)."""
     ctx = calendrier_epandage(
         _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
     )
     assert ctx["vide"] is False
     assert ctx["fond"] == "vert"
-    assert ctx["zone_couleur"] == "rouge"
     assert len(ctx["segments"]) == 1
+    assert ctx["segments"][0]["couleur"] == "rouge"
     assert "Épandage interdit" in ctx["label"]
 
 
@@ -89,7 +89,6 @@ def test_calendrier_libre_pas_de_zone_overlay():
     """Une regle 'libre' n'a pas de periode interdite : pas de zone overlay."""
     ctx = calendrier_epandage(_regle(type="libre", periodes=[]))
     assert ctx["fond"] == "vert"
-    assert ctx["zone_couleur"] is None
     assert ctx["segments"] == []
     assert ctx["label"] == "Épandage autorisé"
 
@@ -104,7 +103,8 @@ def test_calendrier_plafonnement_overlay_orange():
     ctx = calendrier_epandage(
         _regle(type="plafonnement", periodes=[{"du": "01/03", "au": "31/05"}])
     )
-    assert ctx["zone_couleur"] == "orange"
+    assert len(ctx["segments"]) == 1
+    assert ctx["segments"][0]["couleur"] == "orange"
     assert ctx["label"] == "Plafond"
 
 
@@ -165,3 +165,47 @@ def test_calendrier_12_mois_annee_agricole():
     assert len(ctx["mois"]) == 12
     assert ctx["mois"][0] == "Juil"
     assert ctx["mois"][-1] == "Juin"
+
+
+def test_calendrier_regime_mixte_par_periode():
+    """Une regle a regime mixte (cf. colza Type III note_5 du 30/04) :
+    1ere periode `autorisation_sous_condition` (orange), 2e periode
+    `interdiction` (rouge). Le `type` global de la regle est utilise
+    comme fallback uniquement si la periode n'a pas de `regime`."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="interdiction",
+            periodes=[
+                {
+                    "du": "01/09",
+                    "au": "15/10",
+                    "regime": "autorisation_sous_condition",
+                },
+                {"du": "15/10", "au": "15/01", "regime": "interdiction"},
+            ],
+        )
+    )
+    assert len(ctx["segments"]) == 2
+    couleurs = [s["couleur"] for s in ctx["segments"]]
+    assert couleurs == ["orange", "rouge"]
+
+
+def test_calendrier_regime_periode_prime_sur_type_global():
+    """Si une regle est de type `interdiction` mais qu'une de ses
+    periodes a `regime: libre`, ce segment ne doit pas s'afficher
+    (libre = etat de fond, pas d'overlay)."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="interdiction",
+            periodes=[
+                {"du": "01/09", "au": "15/10", "regime": "libre"},
+                {
+                    "du": "15/10",
+                    "au": "15/01",
+                },  # pas de regime -> fallback interdiction
+            ],
+        )
+    )
+    # 1 seul segment rouge (le 2e), pas de segment pour le 1er (libre)
+    assert len(ctx["segments"]) == 1
+    assert ctx["segments"][0]["couleur"] == "rouge"

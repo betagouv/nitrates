@@ -37,6 +37,22 @@ REGLE_SCHEMA = {
                 "properties": {
                     "du": {"type": "string"},
                     "au": {"type": "string"},
+                    # Optionnel : regime de cette periode specifique. Si
+                    # absent, on retombe sur le `type` global de la regle
+                    # parente. Permet d'exprimer des regles a regimes
+                    # mixtes successifs (ex: colza Type III note_5 :
+                    # autorisation_sous_condition puis interdiction).
+                    # Seuls les 3 regimes "vrais" sont autorises ; les
+                    # types `plafonnement`, `non_applicable`,
+                    # `calculatrice`, `a_completer` ne sont pas des
+                    # regimes valides pour une periode.
+                    "regime": {
+                        "enum": [
+                            "interdiction",
+                            "autorisation_sous_condition",
+                            "libre",
+                        ]
+                    },
                 },
             },
         },
@@ -123,7 +139,8 @@ BRANCHE_SCHEMA = {
 # Schema racine pour un fichier arbre national :
 #   metadata: { version, source, ... }
 #   arbre:    { noeud: ... }   — point d'entree de l'arbre
-#   plafonnements: [ { regle: ... }, ... ]   — regles libres reutilisables
+#   plafonnements: [ { regle: ... }, ... ]      — regles libres reutilisables
+#   regles_partagees: [ { regle: ... }, ... ]   — regles cibles de renvoi_vers
 ARBRE_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -137,6 +154,14 @@ ARBRE_SCHEMA = {
             "properties": {"noeud": {"$ref": "#/$defs/noeud"}},
         },
         "plafonnements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["regle"],
+                "properties": {"regle": {"$ref": "#/$defs/regle"}},
+            },
+        },
+        "regles_partagees": {
             "type": "array",
             "items": {
                 "type": "object",

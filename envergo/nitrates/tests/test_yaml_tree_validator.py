@@ -256,7 +256,9 @@ def test_niveau_formulaire_retour_arriere_echoue():
     assert any("retour" in e or "niveau" in e for e in exc.value.errors)
 
 
-def test_niveau_formulaire_doublon_culture_echoue():
+def test_niveau_formulaire_doublon_strict_meme_champ_echoue():
+    """Doublon strict (meme niveau ET meme champ) interdit -- on ne pose
+    pas deux fois la meme question."""
     a = _arbre_minimal_valide()
     a["arbre"]["noeud"]["branches"].append(
         {
@@ -265,16 +267,16 @@ def test_niveau_formulaire_doublon_culture_echoue():
                 "type_noeud": "formulaire",
                 "niveau": "culture",
                 "id": "q_culture_1",
-                "champ": "x",
+                "champ": "occupation_sol",
                 "texte": "?",
                 "branches": [
                     {
                         "valeur": "x",
                         "noeud": {
                             "type_noeud": "formulaire",
-                            "niveau": "culture",  # doublon, interdit
+                            "niveau": "culture",
                             "id": "q_culture_2",
-                            "champ": "y",
+                            "champ": "occupation_sol",  # meme niveau + meme champ : doublon
                             "texte": "?",
                             "branches": [
                                 {"valeur": "z", "regle": {"id": "r_z", "type": "libre"}}
@@ -287,7 +289,43 @@ def test_niveau_formulaire_doublon_culture_echoue():
     )
     with pytest.raises(ValidationError) as exc:
         validate_arbre(a)
-    assert any("doublon" in e or "niveau" in e for e in exc.value.errors)
+    assert any("doublon" in e for e in exc.value.errors)
+
+
+def test_niveau_doublon_avec_champ_different_tolere():
+    """Doublon de niveau tolere si les champs different (cas legitime
+    interculture : sous_culture sur la duree puis sur le type de
+    couvert)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "sous_culture",
+                "id": "q_sc_1",
+                "champ": "sous_culture",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "x",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "sous_culture",
+                            "id": "q_sc_2",
+                            "champ": "sous_culture_couvert",  # champ different
+                            "texte": "?",
+                            "branches": [
+                                {"valeur": "z", "regle": {"id": "r_z", "type": "libre"}}
+                            ],
+                        },
+                    }
+                ],
+            },
+        }
+    )
+    # Pas d'exception : ce n'est pas un doublon strict.
+    validate_arbre(a)
 
 
 def test_niveau_complement_chainable():
@@ -425,3 +463,95 @@ def test_vrai_arbre_pan_brouillon_structurellement_valide():
         print("\nWarnings semantiques sur le brouillon PAN :")
         for err in e.errors:
             print(f"  - {err}")
+
+
+# ─── Champ `regime` sur les periodes (introduit le 30/04) ───────────────────
+
+
+def _arbre_avec_periode_regime(regime: str) -> dict:
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "regle": {
+                "id": "r_regime_test",
+                "type": "interdiction",
+                "periodes": [
+                    {"du": "01/09", "au": "15/01", "regime": regime},
+                ],
+            },
+        }
+    )
+    return a
+
+
+def test_periode_regime_interdiction_accepte():
+    validate_arbre(_arbre_avec_periode_regime("interdiction"))
+
+
+def test_periode_regime_autorisation_sous_condition_accepte():
+    validate_arbre(_arbre_avec_periode_regime("autorisation_sous_condition"))
+
+
+def test_periode_regime_libre_accepte():
+    validate_arbre(_arbre_avec_periode_regime("libre"))
+
+
+def test_periode_regime_calculatrice_rejete():
+    """`calculatrice` est un type de regle, pas un regime de periode :
+    le validateur doit rejeter explicitement."""
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_periode_regime("calculatrice"))
+    assert any("regime" in e for e in exc.value.errors)
+
+
+def test_periode_regime_plafonnement_rejete():
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_periode_regime("plafonnement"))
+    assert any("regime" in e for e in exc.value.errors)
+
+
+def test_periode_regime_yolo_rejete():
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_periode_regime("yolo"))
+    assert any("regime" in e for e in exc.value.errors)
+
+
+def test_periode_sans_regime_passe_retro_compat():
+    """Une periode sans champ `regime` est toujours valide (retro-compat)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "regle": {
+                "id": "r_sans_regime",
+                "type": "interdiction",
+                "periodes": [{"du": "01/09", "au": "15/01"}],
+            },
+        }
+    )
+    validate_arbre(a)
+
+
+def test_periodes_regime_mixte_accepte():
+    """Plusieurs periodes successives avec des regimes differents
+    (cas colza Type III note_5 du 30/04)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "regle": {
+                "id": "r_regime_mixte",
+                "type": "interdiction",
+                "periodes": [
+                    {
+                        "du": "01/09",
+                        "au": "15/10",
+                        "regime": "autorisation_sous_condition",
+                    },
+                    {"du": "15/10", "au": "15/01", "regime": "interdiction"},
+                ],
+            },
+        }
+    )
+    validate_arbre(a)
