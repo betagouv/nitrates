@@ -269,8 +269,13 @@ class EditRegleView(View):
                 new_data["plafond_azote_kg_n_ha"] = float(plafond)
             except ValueError:
                 pass
+        # Checkbox a_completer : si non cochee, le navigateur ne l'envoie
+        # pas du tout dans le POST. On positionne explicitement False pour
+        # ecraser une eventuelle valeur True precedente sur la regle.
         if request.POST.get("a_completer") in ("on", "true", "1"):
             new_data["a_completer"] = True
+        else:
+            new_data["a_completer"] = False
 
         result = editor.update_regle(tree, parent_path, valeur, new_data, request.user)
         if not result.ok:

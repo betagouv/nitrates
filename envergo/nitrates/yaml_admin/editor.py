@@ -157,6 +157,10 @@ def update_regle(
     current_regle = branche["regle"]
     merged = dict(current_regle)
     merged.update(new_data)
+    # a_completer : si False, on retire la cle plutot que de stocker
+    # `a_completer: false` dans le YAML (bruit visuel).
+    if merged.get("a_completer") is False:
+        merged.pop("a_completer", None)
     # Pour l'unicite d'id on exclut le path "logique" de la regle. On
     # passe son propre id en own_path pour que l'arbre l'ignore.
     own_pseudo_path = parent_path + (current_regle.get("id", ""),)
