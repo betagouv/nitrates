@@ -719,6 +719,62 @@ class CancelAddChildView(View):
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class DeleteBrancheView(View):
+    """POST : supprime une branche entiere (et tout son contenu).
+
+    ?path=<parent_path>&valeur=<valeur>
+    """
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        result = editor.delete_branch(tree, parent_path, valeur, request.user)
+        if not result.ok:
+            return HttpResponseForbidden(
+                "; ".join(e.message for e in result.errors) or "Suppression refusee."
+            )
+        response = HttpResponse(
+            "<div class='yaml-tree__add-ok'>"
+            f"Branche {valeur!r} supprimée. Rechargement…"
+            "</div>"
+        )
+        response["HX-Refresh"] = "true"
+        return response
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class DeleteNodeView(View):
+    """POST : supprime un noeud descendant (et son sous-arbre + la branche
+    qui le porte). Ne peut pas supprimer la racine.
+
+    ?path=<node_path>
+    """
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        path = _parse_path(request.GET.get("path"))
+        result = editor.delete_node(tree, path, request.user)
+        if not result.ok:
+            return HttpResponseForbidden(
+                "; ".join(e.message for e in result.errors) or "Suppression refusee."
+            )
+        response = HttpResponse(
+            "<div class='yaml-tree__add-ok'>"
+            f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
+            "</div>"
+        )
+        response["HX-Refresh"] = "true"
+        return response
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class CancelEditNodeView(View):
     """GET : annule l'edition inline d'un noeud, renvoie la ligne en
     lecture (re-render). Pas de mutation."""

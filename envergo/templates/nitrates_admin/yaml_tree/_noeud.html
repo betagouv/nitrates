@@ -46,12 +46,20 @@
                   hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
                   hx-target="#add-zone-{{ path|slugify }}"
                   hx-swap="outerHTML">+</button>
-          <button type="button"
-                  class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-                  title="Supprimer (à venir)"
-                  data-action="delete"
-                  data-path="{{ path }}"
-                  disabled>🗑</button>
+          {% if ancestors_path %}
+            <button type="button"
+                    class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+                    title="Supprimer ce nœud et son sous-arbre"
+                    hx-post="{% url 'nitrates_admin_yaml_delete_node' tree_pk=tree.pk %}?path={{ path }}"
+                    hx-confirm="Supprimer le nœud {{ noeud.id }} et tout son sous-arbre ? Cette action peut être annulée via Retour en arrière.">
+              🗑
+            </button>
+          {% else %}
+            <button type="button"
+                    class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+                    title="La racine ne peut pas être supprimée"
+                    disabled>🗑</button>
+          {% endif %}
         </span>
       {% endif %}
     </summary>

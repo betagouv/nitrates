@@ -37,8 +37,11 @@
                 hx-swap="outerHTML">✎</button>
         <button type="button"
                 class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-                title="Supprimer cette règle (à venir)"
-                disabled>🗑</button>
+                title="Supprimer cette règle (supprime la branche)"
+                hx-post="{% url 'nitrates_admin_yaml_delete_branche' tree_pk=tree.pk %}?path={{ parent_path }}&valeur={{ valeur }}"
+                hx-confirm="Supprimer la règle {{ regle.id }} (et la branche qui la porte) ? Cette action peut être annulée via Retour en arrière.">
+          🗑
+        </button>
       </span>
     {% endif %}
   </div>
