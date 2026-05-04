@@ -283,11 +283,13 @@ class DecisionTreeRevision(models.Model):
     ACTION_ADD = "add"
     ACTION_DELETE = "delete"
     ACTION_RENAME = "rename"
+    ACTION_RESTORE = "restore"
     ACTION_CHOICES = [
         (ACTION_EDIT, "Édition"),
         (ACTION_ADD, "Ajout"),
         (ACTION_DELETE, "Suppression"),
         (ACTION_RENAME, "Renommage"),
+        (ACTION_RESTORE, "Restauration"),
     ]
 
     MAX_REVISIONS_PER_TREE = 50
@@ -360,25 +362,24 @@ class DecisionTreeRevision(models.Model):
             cls.objects.filter(pk__in=excess_pks).delete()
         return revision
 
-    def restore(self) -> None:
+    def restore(self, drop: bool = True) -> None:
         """Restaure le tree dans l'etat capture par cette revision.
 
-        L'action de restauration cree elle-meme une nouvelle revision
-        (pour pouvoir defaire la restauration). L'historique est donc
-        chronologique strict : pas de redo distinct, on revient en
-        arriere ou on continue, jamais on n'efface.
+        Si `drop=True` (defaut) : on supprime cette revision apres
+        restauration. C'est le comportement de "undo" : annuler une
+        action efface aussi sa trace de l'historique. Permet d'undo en
+        chaine sans ping-pong (la prochaine "derniere revision" est
+        l'avant-derniere reelle).
+
+        Si `drop=False` : on conserve la revision (utile si on veut
+        permettre un redo, ou pour la page d'historique qui restaure un
+        etat ancien sans casser le suivi).
         """
-        # Snapshot AVANT restauration (pour pouvoir defaire le retour-arriere).
-        DecisionTreeRevision.record(
-            self.tree,
-            action=self.ACTION_EDIT,
-            user=self.created_by,
-            target_path="",
-            description=f"Retour à l'état du {self.created_at:%d/%m/%Y %H:%M}",
-        )
         self.tree.contenu = copy.deepcopy(self.previous_contenu)
         self.tree.contenu_yaml_brut = self.previous_yaml_brut
         self.tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+        if drop:
+            self.delete()
 
 
 class MoulinetteNitrates(Moulinette):

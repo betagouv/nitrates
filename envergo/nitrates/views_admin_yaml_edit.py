@@ -52,6 +52,25 @@ def _parse_valeur(raw):
     return raw
 
 
+def _refresh_response(request, message: str) -> HttpResponse:
+    """Reponse htmx qui declenche un rechargement de la page courante en
+    preservant son URL complete (et donc tous les ?expand=...).
+
+    htmx envoie l'URL courante du navigateur dans `HX-Current-URL`, ce
+    qui permet de la rejouer en redirect (preserve fold/unfold). En
+    fallback on tente Referer, puis HX-Refresh.
+    """
+    response = HttpResponse(f"<div class='yaml-tree__add-ok'>{message}</div>")
+    current_url = request.META.get("HTTP_HX_CURRENT_URL") or request.META.get(
+        "HTTP_REFERER"
+    )
+    if current_url:
+        response["HX-Redirect"] = current_url
+    else:
+        response["HX-Refresh"] = "true"
+    return response
+
+
 def _check_editable(tree: DecisionTree, user) -> str | None:
     """Retourne un message d'erreur si l'utilisateur n'a pas le droit
     d'editer ce tree. None sinon."""
@@ -611,15 +630,7 @@ class AddChildView(View):
                 form_data=request.POST,
             )
 
-        # Succes : on renvoie un fragment qui dit "OK, recharge" -- htmx
-        # supporte HX-Refresh: true pour reload la page.
-        response = HttpResponse(
-            "<div class='yaml-tree__add-ok'>"
-            f"Branche {valeur!r} ajoutée. Rechargement…"
-            "</div>"
-        )
-        response["HX-Refresh"] = "true"
-        return response
+        return _refresh_response(request, f"Branche {valeur!r} ajoutée. Rechargement…")
 
 
 def _coerce_branch_value(raw: str):
@@ -737,13 +748,9 @@ class DeleteBrancheView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        response = HttpResponse(
-            "<div class='yaml-tree__add-ok'>"
-            f"Branche {valeur!r} supprimée. Rechargement…"
-            "</div>"
+        return _refresh_response(
+            request, f"Branche {valeur!r} supprimée. Rechargement…"
         )
-        response["HX-Refresh"] = "true"
-        return response
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -765,13 +772,9 @@ class DeleteNodeView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        response = HttpResponse(
-            "<div class='yaml-tree__add-ok'>"
-            f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
-            "</div>"
+        return _refresh_response(
+            request, f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
         )
-        response["HX-Refresh"] = "true"
-        return response
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -792,11 +795,7 @@ class UndoLastView(View):
         if last is None:
             return HttpResponseForbidden("Aucune action a annuler.")
         last.restore()
-        response = HttpResponse(
-            "<div class='yaml-tree__add-ok'>Action annulée. Rechargement…</div>"
-        )
-        response["HX-Refresh"] = "true"
-        return response
+        return _refresh_response(request, "Action annulée. Rechargement…")
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -819,12 +818,10 @@ class RestoreRevisionView(View):
         ).first()
         if revision is None:
             return HttpResponseForbidden("Revision introuvable.")
-        revision.restore()
-        response = HttpResponse(
-            "<div class='yaml-tree__add-ok'>État restauré. Rechargement…</div>"
-        )
-        response["HX-Refresh"] = "true"
-        return response
+        # On garde la trace : restore=False pour ne pas effacer la
+        # revision (utile depuis la page historique).
+        revision.restore(drop=False)
+        return _refresh_response(request, "État restauré. Rechargement…")
 
 
 @method_decorator(staff_member_required, name="dispatch")
