@@ -26,16 +26,19 @@
       <button type="submit" class="yaml-admin__btn">Sortir de l'édition</button>
     </form>
 
-    {% comment %}Placeholders pour les boutons globaux : etape 7 deep validate, etape 8 activation. Disabled pour l'instant.{% endcomment %}
     <button type="button"
             class="yaml-admin__btn"
-            disabled
-            title="Branche a l'etape 7 -- deep validate">Vérifier l'arbre</button>
+            hx-post="{% url 'nitrates_admin_yaml_validate_tree' tree_pk=tree.pk %}"
+            hx-target="#yaml-admin-validation-zone"
+            hx-swap="innerHTML"
+            title="Vérifier la cohérence globale de l'arbre">Vérifier l'arbre</button>
     <button type="button"
             class="yaml-admin__btn yaml-admin__btn--primary"
             disabled
             title="Branche a l'etape 8 -- activation">Valider et publier</button>
   </div>
+
+  <div id="yaml-admin-validation-zone"></div>
 
   {% if recent_revisions %}
     <details class="yaml-admin__history">

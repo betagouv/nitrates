@@ -31,6 +31,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditRegleView,
     RestoreRevisionView,
     UndoLastView,
+    ValidateTreeView,
 )
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
@@ -166,6 +167,11 @@ urlpatterns = [
         "yaml-browser/<int:pk>/",
         YamlBrowserDetailView.as_view(),
         name="nitrates_yaml_browser_detail",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/validate/",
+        ValidateTreeView.as_view(),
+        name="nitrates_admin_yaml_validate_tree",
     ),
     path(
         _("contact-us/"),

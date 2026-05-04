@@ -420,6 +420,54 @@
   padding: 0.2rem 0;
 }
 
+.yaml-admin__validation {
+  flex: 1 0 100%;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid;
+}
+
+.yaml-admin__validation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.yaml-admin__validation-header--ok {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.yaml-admin__validation-header--ko {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+.yaml-admin__validation-header > .yaml-admin__btn {
+  margin-left: auto;
+}
+
+.yaml-admin__validation-errors {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  background: #fff;
+  font-size: 0.85rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.yaml-admin__validation-errors li {
+  padding: 0.15rem 0;
+  border-bottom: 1px dashed #f1d4d4;
+}
+
+.yaml-admin__validation-errors li:last-child {
+  border-bottom: none;
+}
+
 .yaml-admin__toasts {
   position: fixed;
   top: 4rem;
@@ -981,4 +1029,16 @@ details[open] > summary.yaml-tree__row::before {
   > summary
   > .yaml-tree__libelle {
   display: inline-flex;
+}
+
+/* Stripes alternees par groupe de branches au meme niveau. Aide a
+   distinguer les freres dans une longue liste (ex: les 8 sous-cultures
+   de culture_principale). On colore le `<li>` entier (branche + son
+   sous-arbre) pour que la frontiere visuelle soit nette. */
+.yaml-tree__branches > .yaml-tree__item--branche:nth-child(even) {
+  background: rgb(0 0 0 / 2.5%);
+}
+
+.yaml-tree__branches > .yaml-tree__item--branche:nth-child(odd) {
+  background: transparent;
 }

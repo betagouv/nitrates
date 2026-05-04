@@ -990,6 +990,34 @@ class DeleteNodeView(View):
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class ValidateTreeView(View):
+    """POST : lance la validation deep d'un draft. Renvoie un panneau
+    HTML avec la liste des erreurs, ou un message OK si l'arbre est
+    valide. La validation ne modifie pas le draft."""
+
+    def post(self, request, tree_pk):
+        from envergo.nitrates.yaml_tree import load_tree_admin
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        if tree.status != DecisionTree.STATUS_DRAFT:
+            return HttpResponseForbidden(
+                "La validation deep n'est pertinente que sur un draft."
+            )
+        arbre = load_tree_admin(tree)
+        try:
+            validate_arbre(arbre)
+            errors: list[str] = []
+        except ValidationError as e:
+            errors = list(e.errors)
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/_validation_panel.html",
+            {"tree": tree, "errors": errors},
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class UndoLastView(View):
     """POST : annule la derniere action sur le draft. Restaure l'etat
     capture par la derniere DecisionTreeRevision et reload."""
