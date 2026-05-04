@@ -1104,6 +1104,52 @@ def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class ActivateTreeView(View):
+    """POST : valide et publie un draft. Si la validation deep echoue,
+    on refuse et on renvoie le panneau d'erreurs ; sinon le draft passe
+    en `active`, l'actif courant passe en `archive`.
+
+    L'utilisateur est ensuite redirige vers le viewer du nouvel actif.
+    """
+
+    def post(self, request, tree_pk):
+        from envergo.nitrates.yaml_tree import load_tree_admin
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        if tree.status != DecisionTree.STATUS_DRAFT:
+            return HttpResponseForbidden("Seul un draft peut etre publie.")
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        arbre = load_tree_admin(tree)
+        try:
+            validate_arbre(arbre)
+        except ValidationError as e:
+            # Refus : on renvoie le panneau de validation pour que
+            # l'utilisateur voit precisement ce qui bloque.
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [_humanize_error(arbre, err) for err in e.errors],
+                    "blocked_activation": True,
+                },
+            )
+        tree.activate()
+        # Recharge la page : le draft est maintenant actif, le bandeau
+        # change automatiquement (mode lecture sur un actif).
+        messages.info(request, f"« {tree.name} » est maintenant l'arbre actif.")
+        response = HttpResponse(
+            "<div class='yaml-admin__validation-header yaml-admin__validation-header--ok'>"
+            "✅ Activé. Rechargement…</div>"
+        )
+        response["HX-Redirect"] = f"/admin/nitrates/arbre-decision/?tree_id={tree.pk}"
+        return response
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class UndoLastView(View):
     """POST : annule la derniere action sur le draft. Restaure l'etat
     capture par la derniere DecisionTreeRevision et reload."""

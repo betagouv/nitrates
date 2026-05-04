@@ -19,6 +19,7 @@ from envergo.nitrates.views_admin_yaml import (
     YamlTreeView,
 )
 from envergo.nitrates.views_admin_yaml_edit import (
+    ActivateTreeView,
     AddChildView,
     CancelAddChildView,
     CancelEditBrancheView,
@@ -172,6 +173,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/validate/",
         ValidateTreeView.as_view(),
         name="nitrates_admin_yaml_validate_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/activate/",
+        ActivateTreeView.as_view(),
+        name="nitrates_admin_yaml_activate_tree",
     ),
     path(
         _("contact-us/"),
