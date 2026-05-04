@@ -67,11 +67,12 @@
       </span>
     </header>
 
-    {% if messages %}
-      <div class="yaml-admin__toasts" role="status" aria-live="polite">
-        {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
-      </div>
-    {% endif %}
+    <div id="yaml-admin-toast-zone"
+         class="yaml-admin__toasts"
+         role="status"
+         aria-live="polite">
+      {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
+    </div>
 
     <main>
       {% block content %}{% endblock %}
@@ -124,6 +125,32 @@
           });
         }
       });
+      // Toaster declenche par HX-Trigger:{showToast:{message:...}} sur les
+      // reponses partielles (sans reload). htmx peut dispatcher l'event
+      // au niveau document ou body, on ecoute sur les deux par securite.
+      function _handleShowToast(evt) {
+        const d = evt.detail || {};
+        const msg = (d.value && d.value.message) || d.message || '';
+        if (!msg) return;
+        let zone = document.querySelector('.yaml-admin__toasts');
+        if (!zone) {
+          zone = document.createElement('div');
+          zone.className = 'yaml-admin__toasts';
+          zone.setAttribute('role', 'status');
+          zone.setAttribute('aria-live', 'polite');
+          document.body.appendChild(zone);
+        }
+        const t = document.createElement('div');
+        t.className = 'yaml-admin__toast';
+        t.textContent = msg;
+        zone.appendChild(t);
+        setTimeout(() => {
+          t.classList.add('yaml-admin__toast--fade');
+          setTimeout(() => t.remove(), 400);
+        }, 3500);
+      }
+      document.addEventListener('showToast', _handleShowToast);
+      document.body.addEventListener('showToast', _handleShowToast);
       document.addEventListener('htmx:beforeRequest', function(evt) {
         // On sauve le scrollY juste avant les requetes qui vont
         // declencher un HX-Redirect/HX-Refresh.

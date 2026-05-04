@@ -21,6 +21,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
+from django.utils.text import slugify
 from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
@@ -52,6 +53,72 @@ def _parse_valeur(raw):
     if raw == "False":
         return False
     return raw
+
+
+def _render_partial_node_response(
+    request, tree, parent_path: tuple[str, ...], message: str
+) -> HttpResponse:
+    """Renvoie le `<li>` du noeud parent re-rendu, avec headers htmx
+    pour cibler le `<li>` existant du DOM.
+
+    Cette reponse evite un full reload : le sous-arbre du parent est
+    remis a jour en place, le scroll et le fold du reste de la page
+    ne bougent pas.
+    """
+    from envergo.nitrates.yaml_admin.tags import QUICK_FILTERS
+    from envergo.nitrates.yaml_tree import load_tree_admin
+
+    arbre = load_tree_admin(tree)
+    parent_node = editor.get_node_at(arbre, parent_path)
+    if parent_node is None:
+        # Fallback : full refresh si on ne retrouve pas le parent.
+        return _refresh_response(request, message)
+
+    # Le path du parent dans la representation du template.
+    if parent_path:
+        ancestors_str = "/".join(parent_path[:-1])
+        parent_path_str = "/".join(parent_path)
+    else:
+        ancestors_str = ""
+        parent_path_str = ""
+
+    # On veut que le parent soit deplie (l'utilisateur vient de modifier
+    # son contenu, on lui montre le resultat). On ouvre aussi tous ses
+    # ancetres directs.
+    open_paths: set[str] = set()
+    if parent_path_str:
+        open_paths.add(parent_path_str)
+        # ancetres : "a", "a/b", ..., parent_path
+        segs = parent_path_str.split("/")
+        for i in range(1, len(segs)):
+            open_paths.add("/".join(segs[:i]))
+    # On peut etre conservateur et garder ouvert tout ce qu'il y avait
+    # avant, mais le LocalStorage cote client gere deja ca au premier load.
+    # Ici on s'assure juste que le parent reste deplie.
+
+    response = render(
+        request,
+        "nitrates_admin/yaml_tree/_noeud.html",
+        {
+            "tree": tree,
+            "noeud": parent_node,
+            "ancestors_path": ancestors_str,
+            "depth": len(parent_path) - 1 if parent_path else 0,
+            "is_editing": True,
+            "open_paths": open_paths,
+            "expand": [],
+            "expand_deep": [],
+            "querystring_base": "",
+            "quick_filters": QUICK_FILTERS,
+        },
+    )
+    response["HX-Retarget"] = f"#node-{slugify(parent_path_str)}"
+    response["HX-Reswap"] = "outerHTML"
+    if message:
+        import json
+
+        response["HX-Trigger"] = json.dumps({"showToast": {"message": message}})
+    return response
 
 
 def _refresh_response(request, message: str) -> HttpResponse:
@@ -667,7 +734,9 @@ class AddChildView(View):
                 form_data=request.POST,
             )
 
-        return _refresh_response(request, f"Branche {valeur!r} ajoutée. Rechargement…")
+        return _render_partial_node_response(
+            request, tree, parent_path, f"Branche {valeur!r} ajoutée."
+        )
 
 
 def _coerce_branch_value(raw: str):
