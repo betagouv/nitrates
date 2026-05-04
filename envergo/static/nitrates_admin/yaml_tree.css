@@ -408,6 +408,47 @@
   color: #6d4c00;
 }
 
+.yaml-tree__form-advanced {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__form-advanced > summary {
+  cursor: pointer;
+  color: #888;
+  font-style: italic;
+  padding: 0.2rem 0;
+}
+
+.yaml-admin__toasts {
+  position: fixed;
+  top: 4rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.yaml-admin__toast {
+  background: #1b5e20;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
+  font-size: 0.9rem;
+  pointer-events: auto;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+
+.yaml-admin__toast--fade {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
 .yaml-tree__add-form-title {
   margin: 0 0 0.4rem;
   font-weight: 600;

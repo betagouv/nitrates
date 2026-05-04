@@ -67,6 +67,12 @@
       </span>
     </header>
 
+    {% if messages %}
+      <div class="yaml-admin__toasts" role="status" aria-live="polite">
+        {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
     <main>
       {% block content %}{% endblock %}
     </main>
@@ -96,6 +102,34 @@
             { code: '[45]..', swap: false, error: true },
             { code: '...', swap: false }
           ];
+        }
+        // Auto-hide des toasts apres 3.5s.
+        document.querySelectorAll('.yaml-admin__toast').forEach(t => {
+          setTimeout(() => {
+            t.classList.add('yaml-admin__toast--fade');
+            setTimeout(() => t.remove(), 400);
+          }, 3500);
+        });
+
+        // Restaure le scroll apres un reload htmx (HX-Redirect ou
+        // HX-Refresh). On stocke la position avant chaque requete
+        // POST/DELETE, et on la restaure au prochain load.
+        const SCROLL_KEY = 'nitrates_admin__scrollY';
+        const saved = sessionStorage.getItem(SCROLL_KEY);
+        if (saved !== null) {
+          // Use rAF pour laisser le DOM finir de monter.
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: parseInt(saved, 10), behavior: 'auto' });
+            sessionStorage.removeItem(SCROLL_KEY);
+          });
+        }
+      });
+      document.addEventListener('htmx:beforeRequest', function(evt) {
+        // On sauve le scrollY juste avant les requetes qui vont
+        // declencher un HX-Redirect/HX-Refresh.
+        const verb = (evt.detail.requestConfig?.verb || '').toLowerCase();
+        if (verb === 'post' || verb === 'delete' || verb === 'put') {
+          sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
         }
       });
     </script>

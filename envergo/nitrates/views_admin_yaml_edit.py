@@ -15,6 +15,7 @@ probable mais on est safe).
 
 from __future__ import annotations
 
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
@@ -56,10 +57,15 @@ def _refresh_response(request, message: str) -> HttpResponse:
     """Reponse htmx qui declenche un rechargement de la page courante en
     preservant son URL complete (et donc tous les ?expand=...).
 
+    Le message est passe via Django messages framework -- il sera
+    affiche en toaster sur la page rechargee.
+
     htmx envoie l'URL courante du navigateur dans `HX-Current-URL`, ce
     qui permet de la rejouer en redirect (preserve fold/unfold). En
     fallback on tente Referer, puis HX-Refresh.
     """
+    if message:
+        messages.info(request, message)
     response = HttpResponse(f"<div class='yaml-tree__add-ok'>{message}</div>")
     current_url = request.META.get("HTTP_HX_CURRENT_URL") or request.META.get(
         "HTTP_REFERER"
@@ -615,7 +621,9 @@ class AddChildView(View):
             )
 
         # 2) Insere le contenu choisi.
-        content = _build_content_data(kind, request.POST)
+        content = _build_content_data(
+            kind, request.POST, parent_path, valeur, tree.contenu
+        )
         res_content = editor.update_branch_content(
             tree, parent_path, valeur, kind, content, request.user
         )
@@ -651,14 +659,26 @@ def _coerce_branch_value(raw: str):
         return raw
 
 
-def _build_content_data(kind: str, post) -> dict:
+def _build_content_data(
+    kind: str,
+    post,
+    parent_path: tuple[str, ...] = (),
+    valeur=None,
+    arbre: dict | None = None,
+) -> dict:
     """Reconstruit le dict du contenu (noeud, regle, renvoi_vers) depuis les
     champs POST. Les noms de champs sont prefixes par `c_` pour eviter les
-    collisions avec valeur / kind / libelle."""
+    collisions avec valeur / kind / libelle.
+
+    Si `c_id` est vide, on auto-genere un id base sur le contexte
+    (parent_path + valeur), garantit unique dans l'arbre.
+    """
     data: dict = {}
     if kind.startswith("noeud_formulaire_"):
         niveau = kind.removeprefix("noeud_formulaire_")
-        data["id"] = post.get("c_id", "").strip()
+        data["id"] = post.get("c_id", "").strip() or _auto_id(
+            "q", parent_path, valeur, arbre
+        )
         data["type_noeud"] = "formulaire"
         data["niveau"] = niveau
         data["texte"] = post.get("c_texte", "").strip()
@@ -668,7 +688,9 @@ def _build_content_data(kind: str, post) -> dict:
             data["aide"] = aide
         data["branches"] = []
     elif kind == "noeud_catalogue":
-        data["id"] = post.get("c_id", "").strip()
+        data["id"] = post.get("c_id", "").strip() or _auto_id(
+            "n", parent_path, valeur, arbre
+        )
         data["type_noeud"] = "catalogue"
         data["champ"] = post.get("c_champ", "").strip()
         data["source"] = post.get("c_source", "").strip()
@@ -677,19 +699,87 @@ def _build_content_data(kind: str, post) -> dict:
             data["reference"] = ref
         data["branches"] = []
     elif kind == "regle":
-        data["id"] = post.get("c_id", "").strip()
+        data["id"] = post.get("c_id", "").strip() or _auto_id(
+            "r", parent_path, valeur, arbre
+        )
         rtype = post.get("c_type", "").strip()
         if rtype:
             data["type"] = rtype
         if post.get("c_a_completer") in ("on", "true", "1"):
             data["a_completer"] = True
-        for k in ("note", "source_juridique", "code_prescription", "message"):
+        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au
+        periodes = []
+        i = 0
+        while True:
+            du = post.get(f"c_periodes-{i}-du", "").strip()
+            au = post.get(f"c_periodes-{i}-au", "").strip()
+            if not du and not au:
+                if i == 0:
+                    break
+                break
+            if du or au:
+                periodes.append({"du": du, "au": au})
+            i += 1
+        if periodes:
+            data["periodes"] = periodes
+        plafond = post.get("c_plafond_azote_kg_n_ha", "").strip()
+        if plafond:
+            try:
+                data["plafond_azote_kg_n_ha"] = float(plafond)
+            except ValueError:
+                pass
+        for k in (
+            "note",
+            "source_juridique",
+            "code_prescription",
+            "message",
+            "texte",
+            "texte_condition",
+            "plafonnement_associe",
+        ):
             v = post.get(f"c_{k}", "").strip()
             if v:
                 data[k] = v
     elif kind == "renvoi_vers":
         data["renvoi_vers"] = post.get("c_renvoi_vers", "").strip()
     return data
+
+
+def _auto_id(prefix: str, parent_path: tuple[str, ...], valeur, arbre) -> str:
+    """Genere automatiquement un id unique pour un nouveau noeud/regle.
+
+    Strategie : `<prefix>_<short_parent>_<slug_valeur>`, avec suffixe
+    numerique si collision.
+    """
+    from envergo.nitrates.yaml_admin.grammar import _collect_ids
+
+    def _slug(s: str) -> str:
+        import re
+        import unicodedata
+
+        s = unicodedata.normalize("NFD", str(s))
+        s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+        s = re.sub(r"[^a-zA-Z0-9_]+", "_", s).strip("_").lower()
+        return s or "x"
+
+    # On prend les 1-2 derniers segments du parent_path comme contexte.
+    parent_segments: list[str] = []
+    if parent_path:
+        # Strip le prefixe q_ / n_ / r_ pour aerer l'id
+        for seg in parent_path[-2:]:
+            seg = seg.lstrip("qnr").lstrip("_")
+            parent_segments.append(_slug(seg))
+    valeur_slug = _slug(valeur) if valeur is not None else ""
+    candidate_parts = [p for p in (*parent_segments, valeur_slug) if p]
+    base = f"{prefix}_{'_'.join(candidate_parts)}" if candidate_parts else f"{prefix}_x"
+
+    existing = _collect_ids(arbre or {})
+    if base not in existing:
+        return base
+    i = 2
+    while f"{base}_{i}" in existing:
+        i += 1
+    return f"{base}_{i}"
 
 
 def _render_add_error(

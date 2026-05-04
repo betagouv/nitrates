@@ -17,9 +17,8 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
               hx-swap="outerHTML">✎</button>
       <button type="button"
               class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-              title="Supprimer cette branche et tout son contenu"
-              hx-post="{% url 'nitrates_admin_yaml_delete_branche' tree_pk=tree.pk %}?path={{ parent_path }}&valeur={{ valeur }}"
-              hx-confirm="Supprimer la branche {{ branche.valeur }} et tout son contenu ? Cette action peut être annulée via Retour en arrière.">
+              title="Supprimer cette branche et tout son contenu (annulable via ↩ Annuler)"
+              hx-post="{% url 'nitrates_admin_yaml_delete_branche' tree_pk=tree.pk %}?path={{ parent_path }}&valeur={{ valeur }}">
         🗑
       </button>
     </span>

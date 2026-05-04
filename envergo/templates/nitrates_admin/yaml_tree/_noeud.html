@@ -49,11 +49,8 @@
           {% if ancestors_path %}
             <button type="button"
                     class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
-                    title="Supprimer ce nœud et son sous-arbre"
-                    hx-post="{% url 'nitrates_admin_yaml_delete_node' tree_pk=tree.pk %}?path={{ path }}"
-                    hx-confirm="Supprimer le nœud {{ noeud.id }} et tout son sous-arbre ? Cette action peut être annulée via Retour en arrière.">
-              🗑
-            </button>
+                    title="Supprimer ce nœud et son sous-arbre (annulable via ↩ Annuler)"
+                    hx-post="{% url 'nitrates_admin_yaml_delete_node' tree_pk=tree.pk %}?path={{ path }}">🗑</button>
           {% else %}
             <button type="button"
                     class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"

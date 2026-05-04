@@ -1,28 +1,21 @@
 {% load yaml_admin_extras %}
 
 {% comment %}Champs specifiques au kind selectionne dans le formulaire d'ajout.
-Variables : kind (string), errors (FieldError list), form_data (POST repop).{% endcomment %}
+Variables : kind (string), errors (FieldError list), form_data (POST repop).
+
+L'id est masque par defaut sous "Options avancees" : il est calcule
+automatiquement par le serveur a partir du parent_path + valeur. On
+laisse l'option de le forcer manuellement pour les cas a la marge.
+{% endcomment %}
 
 {% if kind == "noeud_formulaire_culture" or kind == "noeud_formulaire_sous_culture" or kind == "noeud_formulaire_type_fertilisant" or kind == "noeud_formulaire_complement" %}
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>id (q_…)</span>
-      <input type="text"
-             name="c_id"
-             value="{{ form_data.c_id|default_if_none:'' }}"
-             placeholder="ex: q_culture_principale"
-             required>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>texte (question)</span>
       <input type="text"
              name="c_texte"
              value="{{ form_data.c_texte|default_if_none:'' }}"
+             placeholder="ex: Quel type de fertilisant utilisez-vous ?"
              required>
     </label>
     {% for err in errors %}
@@ -35,6 +28,7 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
       <input type="text"
              name="c_champ"
              value="{{ form_data.c_champ|default_if_none:'' }}"
+             placeholder="ex: type_fertilisant"
              required>
     </label>
     {% for err in errors %}
@@ -49,21 +43,23 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
              value="{{ form_data.c_aide|default_if_none:'' }}">
     </label>
   </div>
+  <details class="yaml-tree__form-advanced">
+    <summary>Options avancées (id forcé)</summary>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>id (q_…)</span>
+        <input type="text"
+               name="c_id"
+               value="{{ form_data.c_id|default_if_none:'' }}"
+               placeholder="auto-généré, ex: q_culture_principale">
+      </label>
+      {% for err in errors %}
+        {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+  </details>
 
 {% elif kind == "noeud_catalogue" %}
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>id (n_…)</span>
-      <input type="text"
-             name="c_id"
-             value="{{ form_data.c_id|default_if_none:'' }}"
-             placeholder="ex: n_zone_vulnerable"
-             required>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>champ technique</span>
@@ -97,21 +93,23 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
              value="{{ form_data.c_reference|default_if_none:'' }}">
     </label>
   </div>
+  <details class="yaml-tree__form-advanced">
+    <summary>Options avancées (id forcé)</summary>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>id (n_…)</span>
+        <input type="text"
+               name="c_id"
+               value="{{ form_data.c_id|default_if_none:'' }}"
+               placeholder="auto-généré, ex: n_zone_vulnerable">
+      </label>
+      {% for err in errors %}
+        {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+  </details>
 
 {% elif kind == "regle" %}
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>id (r_…)</span>
-      <input type="text"
-             name="c_id"
-             value="{{ form_data.c_id|default_if_none:'' }}"
-             placeholder="ex: r_colza_type_0"
-             required>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>type</span>
@@ -126,6 +124,38 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
       {% if err.field == "type" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
+
+  <fieldset class="yaml-tree__form-fieldset">
+    <legend>Période(s) (interdiction/plafonnement)</legend>
+    <p class="yaml-tree__form-hint">
+      Optionnel pour les règles libres / non applicables. Format
+      <code>JJ/MM</code> (ex: <code>15/12</code>) ou nom d'évènement
+      phénologique.
+    </p>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>du</span>
+        <input type="text" name="c_periodes-0-du" placeholder="ex: 15/12">
+      </label>
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>au</span>
+        <input type="text" name="c_periodes-0-au" placeholder="ex: 15/01">
+      </label>
+    </div>
+  </fieldset>
+
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>plafond N (kg/ha)</span>
+      <input type="text"
+             name="c_plafond_azote_kg_n_ha"
+             value="{{ form_data.c_plafond_azote_kg_n_ha|default_if_none:'' }}"
+             placeholder="ex: 50 (uniquement pour type=plafonnement)">
+    </label>
+  </div>
+
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label yaml-tree__form-label--inline">
       <input type="checkbox"
@@ -144,7 +174,7 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
   </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>code prescription (optionnel)</span>
+      <span>code prescription</span>
       <input type="text"
              name="c_code_prescription"
              value="{{ form_data.c_code_prescription|default_if_none:'' }}"
@@ -153,7 +183,7 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
   </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>source juridique (optionnel)</span>
+      <span>source juridique</span>
       <input type="text"
              name="c_source_juridique"
              value="{{ form_data.c_source_juridique|default_if_none:'' }}">
@@ -161,12 +191,27 @@ Variables : kind (string), errors (FieldError list), form_data (POST repop).{% e
   </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>message (optionnel)</span>
+      <span>message</span>
       <input type="text"
              name="c_message"
              value="{{ form_data.c_message|default_if_none:'' }}">
     </label>
   </div>
+  <details class="yaml-tree__form-advanced">
+    <summary>Options avancées (id forcé)</summary>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>id (r_…)</span>
+        <input type="text"
+               name="c_id"
+               value="{{ form_data.c_id|default_if_none:'' }}"
+               placeholder="auto-généré, ex: r_colza_type_0">
+      </label>
+      {% for err in errors %}
+        {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+  </details>
 
 {% elif kind == "renvoi_vers" %}
   <div class="yaml-tree__form-row">

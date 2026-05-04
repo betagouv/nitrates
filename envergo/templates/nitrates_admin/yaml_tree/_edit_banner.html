@@ -11,8 +11,7 @@
       <button type="button"
               class="yaml-admin__btn"
               hx-post="{% url 'nitrates_admin_yaml_undo' tree_pk=tree.pk %}"
-              hx-confirm="Annuler la dernière action ({{ recent_revisions.0.description }}) ?"
-              title="Annuler la dernière action">↩ Annuler</button>
+              title="Annuler la dernière action ({{ recent_revisions.0.description }})">↩ Annuler</button>
     {% else %}
       <button type="button"
               class="yaml-admin__btn"
