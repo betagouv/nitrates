@@ -340,6 +340,41 @@
   margin-top: 0.25rem;
 }
 
+.yaml-tree__add-form {
+  background: #e8f5e9;
+  border: 1px solid #66bb6a;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.4rem 0 0.4rem 1.2rem;
+}
+
+.yaml-tree__add-form-title {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: #1b5e20;
+  font-size: 0.9rem;
+}
+
+.yaml-tree__form-label--inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.yaml-tree__form-label--inline > span {
+  width: auto;
+  font-weight: 400;
+}
+
+.yaml-tree__add-ok {
+  background: #c8e6c9;
+  border: 1px solid #66bb6a;
+  border-radius: 3px;
+  padding: 0.5rem 0.8rem;
+  color: #1b5e20;
+  font-size: 0.9rem;
+}
+
 .yaml-admin__status-meta {
   color: #555;
   font-size: 0.85rem;
@@ -812,4 +847,37 @@ details[open] > summary.yaml-tree__row::before {
 .yaml-tree__empty {
   color: #888;
   font-style: italic;
+}
+
+/* Vue compacte : quand un noeud est ferme (details:not([open])), on
+   masque le tag de type et le libelle dans son summary. Seul reste l'id
+   (et les boutons d'edition s'il y en a). Permet d'avoir une liste plate
+   des branches d'un parent sans la surcharge des questions descendantes. */
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__tags,
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__libelle,
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta {
+  display: none;
+}
+
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__id {
+  opacity: 0.7;
+}
+
+.yaml-tree__item--noeud > details:not([open]) > summary {
+  padding: 0.05rem 0;
+  font-size: 0.85rem;
+}
+
+/* On garde la racine avec son tag (pas dans une branche) toujours visible. */
+.yaml-tree--root
+  > .yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__tags,
+.yaml-tree--root
+  > .yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__libelle {
+  display: inline-flex;
 }

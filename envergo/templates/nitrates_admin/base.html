@@ -71,8 +71,25 @@
       {% block content %}{% endblock %}
     </main>
 
-    {% comment %}htmx pour l'edition inline (charge en permanence, ~14 KB minified).{% endcomment %}
+    {% comment %}htmx pour l'edition inline (charge en permanence, ~14 KB minified).
+       responseHandling = swap aussi sur 422 (validation echouee) en plus
+       des 2xx, pour que les fragments d'erreur des endpoints d'edition
+    s'affichent dans le formulaire.{% endcomment %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script>
+      document.addEventListener('htmx:configRequest', function(){});
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.htmx) {
+          htmx.config.responseHandling = [
+            { code: '204', swap: false },
+            { code: '[23]..', swap: true },
+            { code: '422', swap: true },
+            { code: '[45]..', swap: false, error: true },
+            { code: '...', swap: false }
+          ];
+        }
+      });
+    </script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>

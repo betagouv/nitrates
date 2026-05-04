@@ -1,0 +1,79 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Formulaire d'ajout d'une branche enfant.
+   Variables : tree, parent_path_str, allowed_kinds, selected_kind,
+               errors (liste FieldError), form_data (POST en repop).
+{% endcomment %}
+<div class="yaml-tree__add-form"
+     id="add-zone-{{ parent_path_str|slugify }}">
+  <form class="yaml-tree__inline-form yaml-tree__inline-form--add"
+        hx-post="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+        hx-target="#add-zone-{{ parent_path_str|slugify }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    <p class="yaml-tree__add-form-title">Ajout d'une branche enfant</p>
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>valeur de la branche</span>
+        <input type="text"
+               name="valeur"
+               value="{{ form_data.valeur|default_if_none:'' }}"
+               placeholder="ex: colza, true, 2"
+               required>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>libelle (optionnel)</span>
+        <input type="text"
+               name="libelle"
+               value="{{ form_data.libelle|default_if_none:'' }}"
+               placeholder="Texte affiché à l'utilisateur">
+      </label>
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>type de contenu</span>
+        <select name="kind"
+                hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+                hx-trigger="change"
+                hx-target="#add-zone-{{ parent_path_str|slugify }}"
+                hx-swap="outerHTML"
+                hx-include="[name='valeur'],[name='libelle']">
+          {% for k in allowed_kinds %}
+            <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "kind" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% include "nitrates_admin/yaml_tree/forms/_add_form_kind_fields.html" with kind=selected_kind errors=errors form_data=form_data %}
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Créer la branche</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_add_child_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+              hx-target="#add-zone-{{ parent_path_str|slugify }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>

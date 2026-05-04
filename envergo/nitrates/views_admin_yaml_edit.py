@@ -23,6 +23,7 @@ from django.views import View
 
 from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.yaml_admin import editor
+from envergo.nitrates.yaml_admin.grammar import FieldError, get_allowed_child_kinds
 from envergo.nitrates.yaml_admin.tags import get_tags
 
 
@@ -470,6 +471,251 @@ class CancelEditBrancheView(View):
                 "is_editing": True,
             },
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class AddChildView(View):
+    """GET : renvoie le formulaire d'ajout d'une branche enfant a un noeud parent.
+    POST : applique la creation (branche + son contenu) et renvoie un fragment
+    de confirmation qui demande au navigateur de rafraichir la zone parente.
+
+    Parametres :
+      ?path=<parent_path>   : noeud parent dont on ajoute une branche.
+      ?kind=<content_kind>  : optionnel ; type du contenu choisi par
+                              l'utilisateur. Si absent : selectionne le
+                              premier kind autorise.
+
+    L'UX : on ouvre un formulaire qui combine :
+      - la valeur de la branche (champ texte)
+      - le libelle de la branche (optionnel)
+      - un select du kind du contenu (filtre par get_allowed_child_kinds)
+      - les champs propres au kind selectionne (id, niveau, texte, etc.)
+    Le select declenche un re-render du formulaire au change (htmx) pour
+    adapter les champs au kind choisi -- pas de JS custom.
+    """
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        parent = editor.get_node_at(tree.contenu, parent_path)
+        if parent is None:
+            return HttpResponseForbidden("Nœud parent introuvable.")
+        allowed = get_allowed_child_kinds(tree.contenu, parent_path)
+        if not allowed:
+            return HttpResponseForbidden("Aucun type d'enfant autorise sous ce noeud.")
+        kind = request.GET.get("kind") or allowed[0]
+        if kind not in allowed:
+            kind = allowed[0]
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_add_form.html",
+            {
+                "tree": tree,
+                "parent_path_str": "/".join(parent_path),
+                "allowed_kinds": allowed,
+                "selected_kind": kind,
+                "errors": [],
+                "form_data": {},
+            },
+        )
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
+        parent = editor.get_node_at(tree.contenu, parent_path)
+        if parent is None:
+            return HttpResponseForbidden("Nœud parent introuvable.")
+        allowed = get_allowed_child_kinds(tree.contenu, parent_path)
+        kind = request.POST.get("kind", "").strip()
+        if kind not in allowed:
+            return _render_add_error(
+                request,
+                tree,
+                parent_path,
+                allowed,
+                kind or (allowed[0] if allowed else ""),
+                "kind",
+                f"Type {kind!r} non autorise ici.",
+            )
+
+        # Valeur de branche
+        valeur_raw = request.POST.get("valeur", "").strip()
+        if valeur_raw == "":
+            return _render_add_error(
+                request,
+                tree,
+                parent_path,
+                allowed,
+                kind,
+                "valeur",
+                "La valeur de branche est requise.",
+                form_data=request.POST,
+            )
+        # Coercion bool / int / str
+        valeur = _coerce_branch_value(valeur_raw)
+        # Refus si collision
+        for b in parent.get("branches") or []:
+            if isinstance(b, dict) and b.get("valeur") == valeur:
+                return _render_add_error(
+                    request,
+                    tree,
+                    parent_path,
+                    allowed,
+                    kind,
+                    "valeur",
+                    f"Une branche avec la valeur {valeur!r} existe deja.",
+                    form_data=request.POST,
+                )
+
+        libelle = request.POST.get("libelle", "").strip()
+        branche_data: dict = {"valeur": valeur}
+        if libelle:
+            branche_data["libelle"] = libelle
+
+        # Construit le contenu selon le kind
+        content = _build_content_data(kind, request.POST)
+
+        # 1) Cree la branche (squelette)
+        res_branch = editor.add_branch(tree, parent_path, branche_data, request.user)
+        if not res_branch.ok:
+            return _render_add_errors(
+                request,
+                tree,
+                parent_path,
+                allowed,
+                kind,
+                res_branch.errors,
+                form_data=request.POST,
+            )
+        # 2) Insere le contenu
+        res_content = editor.update_branch_content(
+            tree, parent_path, valeur, kind, content, request.user
+        )
+        if not res_content.ok:
+            # On a deja cree la branche : on annule en la supprimant pour
+            # ne pas laisser un squelette vide.
+            editor.delete_branch(tree, parent_path, valeur, request.user)
+            return _render_add_errors(
+                request,
+                tree,
+                parent_path,
+                allowed,
+                kind,
+                res_content.errors,
+                form_data=request.POST,
+            )
+
+        # Succes : on renvoie un fragment qui dit "OK, recharge" -- htmx
+        # supporte HX-Refresh: true pour reload la page.
+        response = HttpResponse(
+            "<div class='yaml-tree__add-ok'>"
+            f"Branche {valeur!r} ajoutée. Rechargement…"
+            "</div>"
+        )
+        response["HX-Refresh"] = "true"
+        return response
+
+
+def _coerce_branch_value(raw: str):
+    """Convertit la saisie utilisateur d'une valeur de branche.
+    Reconnait True/False/oui/non comme bool, les entiers comme int,
+    sinon string."""
+    lower = raw.lower()
+    if lower in ("true", "oui"):
+        return True
+    if lower in ("false", "non"):
+        return False
+    try:
+        return int(raw)
+    except ValueError:
+        return raw
+
+
+def _build_content_data(kind: str, post) -> dict:
+    """Reconstruit le dict du contenu (noeud, regle, renvoi_vers) depuis les
+    champs POST. Les noms de champs sont prefixes par `c_` pour eviter les
+    collisions avec valeur / kind / libelle."""
+    data: dict = {}
+    if kind.startswith("noeud_formulaire_"):
+        niveau = kind.removeprefix("noeud_formulaire_")
+        data["id"] = post.get("c_id", "").strip()
+        data["type_noeud"] = "formulaire"
+        data["niveau"] = niveau
+        data["texte"] = post.get("c_texte", "").strip()
+        data["champ"] = post.get("c_champ", "").strip()
+        aide = post.get("c_aide", "").strip()
+        if aide:
+            data["aide"] = aide
+        data["branches"] = []
+    elif kind == "noeud_catalogue":
+        data["id"] = post.get("c_id", "").strip()
+        data["type_noeud"] = "catalogue"
+        data["champ"] = post.get("c_champ", "").strip()
+        data["source"] = post.get("c_source", "").strip()
+        ref = post.get("c_reference", "").strip()
+        if ref:
+            data["reference"] = ref
+        data["branches"] = []
+    elif kind == "regle":
+        data["id"] = post.get("c_id", "").strip()
+        rtype = post.get("c_type", "").strip()
+        if rtype:
+            data["type"] = rtype
+        if post.get("c_a_completer") in ("on", "true", "1"):
+            data["a_completer"] = True
+        for k in ("note", "source_juridique", "code_prescription", "message"):
+            v = post.get(f"c_{k}", "").strip()
+            if v:
+                data[k] = v
+    elif kind == "renvoi_vers":
+        data["renvoi_vers"] = post.get("c_renvoi_vers", "").strip()
+    return data
+
+
+def _render_add_error(
+    request, tree, parent_path, allowed, kind, field, message, form_data=None
+):
+    return _render_add_errors(
+        request,
+        tree,
+        parent_path,
+        allowed,
+        kind,
+        [FieldError(field, message)],
+        form_data=form_data,
+    )
+
+
+def _render_add_errors(
+    request, tree, parent_path, allowed, kind, errors, form_data=None
+):
+    return render(
+        request,
+        "nitrates_admin/yaml_tree/forms/_add_form.html",
+        {
+            "tree": tree,
+            "parent_path_str": "/".join(parent_path),
+            "allowed_kinds": allowed,
+            "selected_kind": kind,
+            "errors": errors,
+            "form_data": form_data or {},
+        },
+        status=422,
+    )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CancelAddChildView(View):
+    """GET : ferme le formulaire d'ajout (renvoie un fragment vide)."""
+
+    def get(self, request, tree_pk):
+        return HttpResponse("")
 
 
 @method_decorator(staff_member_required, name="dispatch")

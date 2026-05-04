@@ -71,6 +71,23 @@ def fold_link(querystring_base, expand_paths, expand_deep_paths, path, deep=Fals
     return "?" + "&".join(parts) if parts else "?"
 
 
+_KIND_LABELS = {
+    "noeud_formulaire_culture": "🌱 Question — culture",
+    "noeud_formulaire_sous_culture": "🌿 Question — sous-culture",
+    "noeud_formulaire_type_fertilisant": "💧 Question — type de fertilisant",
+    "noeud_formulaire_complement": "➕ Question — complément",
+    "noeud_catalogue": "📋 Catalogue (calcul / SIG / référentiel)",
+    "regle": "⚖️ Règle (interdiction, plafond, calculatrice…)",
+    "renvoi_vers": "↪️ Renvoi vers une règle existante",
+}
+
+
+@register.filter
+def kind_label(kind):
+    """Libelle humain pour un kind d'enfant autorise."""
+    return _KIND_LABELS.get(kind, kind)
+
+
 @register.simple_tag
 def reset_link(querystring_base):
     """Lien qui efface tous les expand/expand_deep mais garde vue + filtre."""

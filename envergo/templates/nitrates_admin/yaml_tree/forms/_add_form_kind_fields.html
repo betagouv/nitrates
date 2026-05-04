@@ -1,0 +1,185 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Champs specifiques au kind selectionne dans le formulaire d'ajout.
+Variables : kind (string), errors (FieldError list), form_data (POST repop).{% endcomment %}
+
+{% if kind == "noeud_formulaire_culture" or kind == "noeud_formulaire_sous_culture" or kind == "noeud_formulaire_type_fertilisant" or kind == "noeud_formulaire_complement" %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>id (q_…)</span>
+      <input type="text"
+             name="c_id"
+             value="{{ form_data.c_id|default_if_none:'' }}"
+             placeholder="ex: q_culture_principale"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>texte (question)</span>
+      <input type="text"
+             name="c_texte"
+             value="{{ form_data.c_texte|default_if_none:'' }}"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "texte" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>champ technique</span>
+      <input type="text"
+             name="c_champ"
+             value="{{ form_data.c_champ|default_if_none:'' }}"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>aide (optionnel)</span>
+      <input type="text"
+             name="c_aide"
+             value="{{ form_data.c_aide|default_if_none:'' }}">
+    </label>
+  </div>
+
+{% elif kind == "noeud_catalogue" %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>id (n_…)</span>
+      <input type="text"
+             name="c_id"
+             value="{{ form_data.c_id|default_if_none:'' }}"
+             placeholder="ex: n_zone_vulnerable"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>champ technique</span>
+      <input type="text"
+             name="c_champ"
+             value="{{ form_data.c_champ|default_if_none:'' }}"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>source</span>
+      <select name="c_source" required>
+        {% for s in "sig,mapping_referentiel,calcul"|split:"," %}
+          <option value="{{ s }}" {% if form_data.c_source == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>reference (optionnel)</span>
+      <input type="text"
+             name="c_reference"
+             value="{{ form_data.c_reference|default_if_none:'' }}">
+    </label>
+  </div>
+
+{% elif kind == "regle" %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>id (r_…)</span>
+      <input type="text"
+             name="c_id"
+             value="{{ form_data.c_id|default_if_none:'' }}"
+             placeholder="ex: r_colza_type_0"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>type</span>
+      <select name="c_type">
+        <option value="">— choisir —</option>
+        {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+          <option value="{{ t }}" {% if form_data.c_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "type" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label yaml-tree__form-label--inline">
+      <input type="checkbox"
+             name="c_a_completer"
+             {% if form_data.c_a_completer %}checked{% endif %}>
+      <span>marquer "à compléter" (laisse le type vide pour l'instant)</span>
+    </label>
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>note (optionnel)</span>
+      <input type="text"
+             name="c_note"
+             value="{{ form_data.c_note|default_if_none:'' }}">
+    </label>
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>code prescription (optionnel)</span>
+      <input type="text"
+             name="c_code_prescription"
+             value="{{ form_data.c_code_prescription|default_if_none:'' }}"
+             placeholder="ex: PC1, PC4">
+    </label>
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>source juridique (optionnel)</span>
+      <input type="text"
+             name="c_source_juridique"
+             value="{{ form_data.c_source_juridique|default_if_none:'' }}">
+    </label>
+  </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>message (optionnel)</span>
+      <input type="text"
+             name="c_message"
+             value="{{ form_data.c_message|default_if_none:'' }}">
+    </label>
+  </div>
+
+{% elif kind == "renvoi_vers" %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>id de la cible (q_, n_, r_…)</span>
+      <input type="text"
+             name="c_renvoi_vers"
+             value="{{ form_data.c_renvoi_vers|default_if_none:'' }}"
+             placeholder="ex: r_colza_type_0"
+             required>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "renvoi_vers" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+{% endif %}

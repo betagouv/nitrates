@@ -42,10 +42,10 @@
                   hx-swap="outerHTML">✎</button>
           <button type="button"
                   class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
-                  title="Ajouter un enfant (à venir)"
-                  data-action="add"
-                  data-path="{{ path }}"
-                  disabled>+</button>
+                  title="Ajouter une branche enfant"
+                  hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
+                  hx-target="#add-zone-{{ path|slugify }}"
+                  hx-swap="outerHTML">+</button>
           <button type="button"
                   class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
                   title="Supprimer (à venir)"
@@ -57,6 +57,8 @@
     </summary>
 
     {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}
+
+    {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
 
     {% if noeud.branches %}
       <ul class="yaml-tree__branches">
