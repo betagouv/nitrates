@@ -762,11 +762,23 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: #1f4789;
   background: #f5f7fb;
   padding: 0.05rem 0.35rem;
   border-radius: 3px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
+/* Ids techniques (q_, n_, r_) revealed au survol/focus de la ligne. */
+.yaml-tree__row:hover .yaml-tree__id,
+.yaml-tree__row:focus-within .yaml-tree__id,
+.yaml-tree__regle:hover .yaml-tree__id,
+.yaml-tree__regle:focus-within .yaml-tree__id,
+.yaml-tree__branche-header:hover .yaml-tree__id,
+.yaml-tree__branche-header:focus-within .yaml-tree__id {
+  opacity: 0.9;
 }
 
 .yaml-tree__libelle {
@@ -811,6 +823,10 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 .yaml-tree__regle .yaml-tree__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
   padding: 0;
 }
 
@@ -1041,4 +1057,22 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__branches > .yaml-tree__item--branche:nth-child(odd) {
   background: transparent;
+}
+
+/* Compaction des sous-blocs de regle (periodes inline, etc.). */
+.yaml-tree__regle .yaml-tree__plafond,
+.yaml-tree__regle .yaml-tree__assoc,
+.yaml-tree__regle .yaml-tree__calc,
+.yaml-tree__regle .yaml-tree__calc-inputs,
+.yaml-tree__regle .yaml-tree__message,
+.yaml-tree__regle .yaml-tree__texte,
+.yaml-tree__regle .yaml-tree__condition,
+.yaml-tree__regle .yaml-tree__source {
+  margin: 0.1rem 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.yaml-tree__regle .yaml-tree__source {
+  font-style: italic;
 }
