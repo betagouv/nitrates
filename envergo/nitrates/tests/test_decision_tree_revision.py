@@ -95,16 +95,31 @@ def test_restore_remet_le_contenu_passe(alice):
     assert tree.contenu_yaml_brut == "v1"
 
 
-def test_restore_cree_une_nouvelle_revision(alice):
+def test_restore_drop_efface_la_revision(alice):
+    """En mode drop=True (defaut), `restore` annule l'action ET efface sa
+    trace : on perd la revision restauree pour permettre l'undo en chaine
+    sans ping-pong (cf. docstring de restore())."""
     tree = _make_tree()
     rev_v1 = DecisionTreeRevision.record(tree, action="edit", user=alice)
     tree.contenu = {"arbre": {"noeud": {"id": "n_v2"}}}
     tree.save()
 
-    revisions_before = tree.revisions.count()
+    assert tree.revisions.count() == 1
     rev_v1.restore()
-    revisions_after = tree.revisions.count()
-    assert revisions_after == revisions_before + 1
+    assert tree.revisions.count() == 0
+
+
+def test_restore_no_drop_preserve_la_revision(alice):
+    """En mode drop=False (page historique), `restore` n'efface pas la
+    revision : utile pour redo / navigation dans l'historique."""
+    tree = _make_tree()
+    rev_v1 = DecisionTreeRevision.record(tree, action="edit", user=alice)
+    tree.contenu = {"arbre": {"noeud": {"id": "n_v2"}}}
+    tree.save()
+
+    assert tree.revisions.count() == 1
+    rev_v1.restore(drop=False)
+    assert tree.revisions.count() == 1
 
 
 # ─── meta ──────────────────────────────────────────────────────────────────
