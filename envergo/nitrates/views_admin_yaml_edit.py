@@ -20,6 +20,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
+from django.utils.html import escape
 from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
@@ -66,7 +67,9 @@ def _refresh_response(request, message: str) -> HttpResponse:
     """
     if message:
         messages.info(request, message)
-    response = HttpResponse(f"<div class='yaml-tree__add-ok'>{message}</div>")
+    # `message` peut transiter par les vues a partir de strings construites
+    # (ex incluant valeur de branche). On escape pour CodeQL XSS.
+    response = HttpResponse(f"<div class='yaml-tree__add-ok'>{escape(message)}</div>")
     current_url = request.META.get("HTTP_HX_CURRENT_URL") or request.META.get(
         "HTTP_REFERER"
     )
