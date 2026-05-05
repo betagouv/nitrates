@@ -57,6 +57,14 @@
       </span>
     {% endif %}
 
+    {% if regle.message %}<span class="yaml-tree__message">{{ regle.message }}</span>{% endif %}
+    {% if regle.texte %}<span class="yaml-tree__texte">{{ regle.texte }}</span>{% endif %}
+    {% if regle.texte_condition %}
+      <span class="yaml-tree__condition">Condition : {{ regle.texte_condition }}</span>
+    {% endif %}
+    {% if regle.source_juridique %}<span class="yaml-tree__source"><em>{{ regle.source_juridique }}</em></span>{% endif %}
+    {% if regle.a_completer %}<span class="yaml-tree__todo">⚠ à compléter</span>{% endif %}
+
     {% if is_editing %}
       <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
         <button type="button"
@@ -74,13 +82,4 @@
       </span>
     {% endif %}
   </div>
-  {% if regle.message %}<p class="yaml-tree__message">{{ regle.message }}</p>{% endif %}
-  {% if regle.texte %}<p class="yaml-tree__texte">{{ regle.texte }}</p>{% endif %}
-  {% if regle.texte_condition %}<p class="yaml-tree__condition">Condition : {{ regle.texte_condition }}</p>{% endif %}
-  {% if regle.source_juridique %}
-    <p class="yaml-tree__source">
-      <em>{{ regle.source_juridique }}</em>
-    </p>
-  {% endif %}
-  {% if regle.a_completer %}<p class="yaml-tree__todo">⚠ règle à compléter</p>{% endif %}
 </div>

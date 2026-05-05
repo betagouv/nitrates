@@ -1160,8 +1160,9 @@ details[open] > summary.yaml-tree__row::before {
 .yaml-tree__regle .yaml-tree__message,
 .yaml-tree__regle .yaml-tree__texte,
 .yaml-tree__regle .yaml-tree__condition,
-.yaml-tree__regle .yaml-tree__source {
-  margin: 0.1rem 0;
+.yaml-tree__regle .yaml-tree__source,
+.yaml-tree__regle .yaml-tree__todo {
+  margin: 0;
   font-size: 0.85rem;
   color: #555;
 }
