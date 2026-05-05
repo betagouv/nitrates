@@ -15,24 +15,10 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       <input type="text"
              name="c_texte"
              value="{{ form_data.c_texte|default_if_none:'' }}"
-             placeholder="ex: Quel type de fertilisant utilisez-vous ?"
-             required>
+             placeholder="auto suggéré selon le niveau (ex: Quel type de fertilisant…)">
     </label>
     {% for err in errors %}
       {% if err.field == "texte" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>champ technique</span>
-      <input type="text"
-             name="c_champ"
-             value="{{ form_data.c_champ|default_if_none:'' }}"
-             placeholder="ex: type_fertilisant"
-             required>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
   <div class="yaml-tree__form-row">
@@ -44,7 +30,13 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     </label>
   </div>
   <details class="yaml-tree__form-advanced">
-    <summary>Options avancées (id forcé)</summary>
+    <summary>Options avancées (id et champ technique forcés)</summary>
+    <p class="yaml-tree__form-hint">
+      Le <code>champ</code> technique est dérivé du niveau
+      (<code>culture</code>, <code>sous_culture</code>,
+      <code>type_fertilisant</code>). Le forcer peut casser le parser
+      de la moulinette.
+    </p>
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>id (q_…)</span>
@@ -55,6 +47,18 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       </label>
       {% for err in errors %}
         {% if err.field == "id" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>champ technique</span>
+        <input type="text"
+               name="c_champ"
+               value="{{ form_data.c_champ|default_if_none:'' }}"
+               placeholder="auto (dérivé du niveau)">
+      </label>
+      {% for err in errors %}
+        {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
       {% endfor %}
     </div>
   </details>

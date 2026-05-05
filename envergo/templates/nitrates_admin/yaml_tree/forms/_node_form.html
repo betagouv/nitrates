@@ -31,7 +31,7 @@
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>niveau</span>
-          <select name="niveau" required>
+          <select name="niveau" data-niveau-select required>
             {% for niveau in "culture,sous_culture,type_fertilisant,complement"|split:"," %}
               <option value="{{ niveau }}"
                       {% if node.niveau == niveau %}selected{% endif %}>{{ niveau }}</option>
@@ -47,6 +47,7 @@
           <span>texte (question)</span>
           <input type="text"
                  name="texte"
+                 data-niveau-texte
                  value="{{ node.texte|default_if_none:'' }}"
                  required>
         </label>
@@ -56,22 +57,54 @@
       </div>
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
-          <span>champ technique</span>
-          <input type="text"
-                 name="champ"
-                 value="{{ node.champ|default_if_none:'' }}"
-                 required>
-        </label>
-        {% for err in errors %}
-          {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-        {% endfor %}
-      </div>
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
           <span>aide (optionnel)</span>
           <input type="text" name="aide" value="{{ node.aide|default_if_none:'' }}">
         </label>
       </div>
+      <details class="yaml-tree__form-advanced">
+        <summary>Options avancées (champ technique forcé)</summary>
+        <p class="yaml-tree__form-hint">
+          Le champ technique est dérivé automatiquement du niveau
+          (<code>culture</code>, <code>sous_culture</code>,
+          <code>type_fertilisant</code>). Le forcer ici peut casser le
+          parser de la moulinette — à n'utiliser qu'avec précaution.
+        </p>
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label">
+            <span>champ technique</span>
+            <input type="text"
+                   name="champ"
+                   value="{{ node.champ|default_if_none:'' }}"
+                   placeholder="auto (dérivé du niveau)">
+          </label>
+          {% for err in errors %}
+            {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+          {% endfor %}
+        </div>
+      </details>
+      <script>
+        // Auto-suggest du texte de la question selon le niveau choisi.
+        // L'utilisateur peut surcharger : on ne touche pas a un texte
+        // deja modifie manuellement (data-touched).
+        (function () {
+          const root = document.currentScript.parentElement;
+          const select = root.querySelector('[data-niveau-select]');
+          const texte = root.querySelector('[data-niveau-texte]');
+          if (!select || !texte) return;
+          const SUGGESTIONS = {
+            culture: 'Quelle est la culture en place ?',
+            sous_culture: 'Quelle culture utilisez-vous ?',
+            type_fertilisant: 'Quel type de fertilisant est utilisé ?',
+            complement: '',
+          };
+          texte.addEventListener('input', () => texte.dataset.touched = '1');
+          select.addEventListener('change', () => {
+            if (texte.dataset.touched) return;
+            const sug = SUGGESTIONS[select.value];
+            if (sug && !texte.value) texte.value = sug;
+          });
+        })();
+      </script>
     {% elif node.type_noeud == "catalogue" %}
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">

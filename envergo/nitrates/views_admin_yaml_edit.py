@@ -147,6 +147,34 @@ def _refresh_response(request, message: str) -> HttpResponse:
     return response
 
 
+# Suggestions par niveau pour les champs canoniques d'un noeud formulaire.
+# Le `champ` (slug technique) doit etre exactement celui-la car le parser
+# de la moulinette s'en sert pour mapper a un input utilisateur.
+_NIVEAU_SUGGESTIONS = {
+    "culture": {
+        "champ": "culture",
+        "texte_suggere": "Quelle est la culture en place ?",
+    },
+    "sous_culture": {
+        "champ": "sous_culture",
+        "texte_suggere": "Quelle culture utilisez-vous ?",
+    },
+    "type_fertilisant": {
+        "champ": "type_fertilisant",
+        "texte_suggere": "Quel type de fertilisant est utilisé ?",
+    },
+    "complement": {
+        "champ": "",
+        "texte_suggere": "",
+    },
+}
+
+
+def _champ_from_niveau(niveau: str) -> str:
+    """Champ technique canonique pour un niveau formulaire."""
+    return _NIVEAU_SUGGESTIONS.get(niveau or "", {}).get("champ", "") or ""
+
+
 def _check_editable(tree: DecisionTree, user) -> str | None:
     """Retourne un message d'erreur si l'utilisateur n'a pas le droit
     d'editer ce tree. None sinon."""
@@ -200,11 +228,18 @@ class EditNodeView(View):
         # champs scalaires connus du noeud).
         new_data: dict = {"id": request.POST.get("id", "").strip() or node.get("id")}
         if node.get("type_noeud") == "formulaire":
-            new_data["niveau"] = request.POST.get("niveau", "").strip() or node.get(
-                "niveau"
-            )
+            niveau = request.POST.get("niveau", "").strip() or node.get("niveau")
+            new_data["niveau"] = niveau
             new_data["texte"] = request.POST.get("texte", "").strip()
-            new_data["champ"] = request.POST.get("champ", "").strip()
+            # `champ` est derive du niveau pour les noeuds formulaire :
+            # le parser de la moulinette compte sur cette correspondance
+            # 1:1, et l'exposer en saisie libre permet de le casser
+            # silencieusement. On accepte un override depuis le POST si
+            # fourni (cas avance), sinon on derive automatiquement.
+            posted_champ = request.POST.get("champ", "").strip()
+            new_data["champ"] = (
+                posted_champ or _champ_from_niveau(niveau) or node.get("champ")
+            )
             aide = request.POST.get("aide", "").strip()
             if aide:
                 new_data["aide"] = aide
@@ -787,8 +822,13 @@ def _build_content_data(
         )
         data["type_noeud"] = "formulaire"
         data["niveau"] = niveau
-        data["texte"] = post.get("c_texte", "").strip()
-        data["champ"] = post.get("c_champ", "").strip()
+        data["texte"] = post.get("c_texte", "").strip() or _NIVEAU_SUGGESTIONS.get(
+            niveau, {}
+        ).get("texte_suggere", "")
+        # `champ` derive du niveau (cf. EditNodeView.post). On accepte un
+        # override si l'utilisateur a ouvert "Options avancees" et l'a
+        # explicitement saisi.
+        data["champ"] = post.get("c_champ", "").strip() or _champ_from_niveau(niveau)
         aide = post.get("c_aide", "").strip()
         if aide:
             data["aide"] = aide
