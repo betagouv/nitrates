@@ -22,7 +22,10 @@ from django.utils import timezone
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.moulinette.models import Moulinette
-from envergo.nitrates.bassins import bassin_name
+from envergo.nitrates.bassins import (
+    bassin_code_from_attributes,
+    bassin_label_from_attributes,
+)
 from envergo.nitrates.forms import MoulinetteFormNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.zonage_montagne import (
@@ -127,7 +130,7 @@ class DecisionTree(models.Model):
     )
     locked_at = models.DateTimeField(null=True, blank=True)
 
-    LOCK_TIMEOUT = timedelta(minutes=15)
+    LOCK_TIMEOUT = timedelta(minutes=60)
 
     class Meta:
         constraints = [
@@ -460,9 +463,8 @@ class MoulinetteNitrates(Moulinette):
             catalog["en_zone_vulnerable"] = zv_zone is not None
             if zv_zone:
                 attrs = zv_zone.attributes or {}
-                bassin = attrs.get("CdEuBassin")
-                catalog["bassin"] = bassin
-                catalog["bassin_label"] = bassin_name(bassin, attrs.get("NomZoneVul"))
+                catalog["bassin"] = bassin_code_from_attributes(attrs)
+                catalog["bassin_label"] = bassin_label_from_attributes(attrs)
             else:
                 catalog["bassin"] = None
                 catalog["bassin_label"] = None

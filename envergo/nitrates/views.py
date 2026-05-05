@@ -8,7 +8,10 @@ from django.views.decorators.cache import cache_page
 from django.views.generic import TemplateView, View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
-from envergo.nitrates.bassins import bassin_name
+from envergo.nitrates.bassins import (
+    bassin_code_from_attributes,
+    bassin_label_from_attributes,
+)
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
@@ -61,14 +64,13 @@ class ZoneVulnerableGeoJSONView(View):
                 attrs = attributes or {}
                 if isinstance(attrs, str):
                     attrs = json.loads(attrs)
-                bassin = attrs.get("CdEuBassin")
                 features.append(
                     {
                         "type": "Feature",
                         "geometry": json.loads(geom_json),
                         "properties": {
-                            "nom": bassin_name(bassin, attrs.get("NomZoneVul")),
-                            "bassin": bassin,
+                            "nom": bassin_label_from_attributes(attrs),
+                            "bassin": bassin_code_from_attributes(attrs),
                         },
                     }
                 )
@@ -118,10 +120,9 @@ class DebugView(View):
         zv_info = None
         if zv_zone:
             attrs = zv_zone.attributes or {}
-            bassin = attrs.get("CdEuBassin")
             zv_info = {
-                "nom": bassin_name(bassin, attrs.get("NomZoneVul")),
-                "bassin": bassin,
+                "nom": bassin_label_from_attributes(attrs),
+                "bassin": bassin_code_from_attributes(attrs),
             }
 
         return JsonResponse(
