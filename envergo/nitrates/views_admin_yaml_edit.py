@@ -1236,16 +1236,24 @@ def _list_renvoi_targets(arbre: dict) -> list[dict]:
 
 
 def _collect_targets_in_node(noeud, crumbs, out):
+    """Construit la liste des cibles pour le select de renvoi.
+
+    Le breadcrumb ne contient QUE les valeurs/libelles des branches
+    traversees (les "reponses"), pas les textes des noeuds (les
+    "questions"). C'est ce qui distingue les chemins ; les questions
+    sont redondantes et rendent les options illisibles.
+
+    Ex: "Oui > Culture principale > Colza > type_II > zone_note_5"
+    au lieu de "en_zone_vulnerable > Oui > Est-ce que la culture est…"
+    """
     if not isinstance(noeud, dict):
         return
-    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
-    next_crumbs = crumbs + ([str(label)] if label else [])
     # On ajoute aussi les noeuds (utile pour renvoyer vers un sous-arbre).
     if noeud.get("id"):
         out.append(
             {
                 "id": noeud["id"],
-                "label": " > ".join(next_crumbs) if next_crumbs else noeud["id"],
+                "label": " > ".join(crumbs) if crumbs else noeud["id"],
                 "group": "arbre",
             }
         )
@@ -1253,7 +1261,7 @@ def _collect_targets_in_node(noeud, crumbs, out):
         if not isinstance(branche, dict):
             continue
         b_label = branche.get("libelle") or str(branche.get("valeur", ""))
-        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        b_crumbs = crumbs + ([b_label] if b_label else [])
         # Regle attachee a la branche
         regle = branche.get("regle")
         if isinstance(regle, dict) and regle.get("id"):
