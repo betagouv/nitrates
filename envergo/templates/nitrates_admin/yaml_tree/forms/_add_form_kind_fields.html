@@ -202,11 +202,13 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     </label>
   </div>
   <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>note (optionnel)</span>
+    <label class="yaml-tree__form-label"
+           title="Verdict court rendu à l'utilisateur (ex: « Apport interdit toute l'année »).">
+      <span>verdict</span>
       <input type="text"
-             name="c_note"
-             value="{{ form_data.c_note|default_if_none:'' }}">
+             name="c_message"
+             value="{{ form_data.c_message|default_if_none:'' }}"
+             placeholder="Phrase courte (ex: Apport interdit toute l'année)">
     </label>
   </div>
   <div class="yaml-tree__form-row">
@@ -228,10 +230,10 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>message</span>
+      <span>note (optionnel)</span>
       <input type="text"
-             name="c_message"
-             value="{{ form_data.c_message|default_if_none:'' }}">
+             name="c_note"
+             value="{{ form_data.c_note|default_if_none:'' }}">
     </label>
   </div>
   <details class="yaml-tree__form-advanced">

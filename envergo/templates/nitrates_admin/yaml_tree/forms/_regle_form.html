@@ -152,27 +152,37 @@
       </label>
     </div>
     <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>message</span>
+      <label class="yaml-tree__form-label"
+             title="Verdict court rendu à l'utilisateur de la moulinette (ex: « Apport interdit toute l'année »).">
+        <span>verdict</span>
         <input type="text"
                name="message"
-               value="{{ regle.message|default_if_none:'' }}">
+               value="{{ regle.message|default_if_none:'' }}"
+               placeholder="Phrase courte affichée à l'utilisateur (ex: Apport interdit toute l'année)">
       </label>
     </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>texte</span>
-        <input type="text" name="texte" value="{{ regle.texte|default_if_none:'' }}">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>texte_condition</span>
+    <div class="yaml-tree__form-row" data-regle-condition-row>
+      <label class="yaml-tree__form-label"
+             title="Détails de la condition à respecter pour autoriser l'épandage. Sert quand type=autorisation_sous_condition.">
+        <span>condition</span>
         <input type="text"
                name="texte_condition"
-               value="{{ regle.texte_condition|default_if_none:'' }}">
+               value="{{ regle.texte_condition|default_if_none:'' }}"
+               placeholder="Détail de la condition (ex: « Autorisation dans les conditions de la note 1 »)">
       </label>
     </div>
+    <details class="yaml-tree__form-advanced">
+      <summary>Texte libre (notes, exceptions)</summary>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label">
+          <span>texte</span>
+          <input type="text"
+                 name="texte"
+                 value="{{ regle.texte|default_if_none:'' }}"
+                 placeholder="Champ libre, rarement utilisé">
+        </label>
+      </div>
+    </details>
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>plafond N kg/ha</span>
@@ -209,24 +219,20 @@
     </div>
 
     <script>
-      // Le `regime` par periode n'a de sens que pour une regle de type
-      // `autorisation_sous_condition` (sous-cas plus restrictifs sur la
-      // fenetre). On masque les selects regime pour les autres types.
+      // `regime` par periode + champ `condition` n'ont de sens que
+      // pour `autorisation_sous_condition`. On les masque sinon.
       (function () {
         const root = document.currentScript.closest('form');
         const typeSelect = root.querySelector('[data-regle-type-select]');
-        const regimeRows = Array.from(root.querySelectorAll('[data-regime-select]')).map(s => s.closest('.yaml-tree__form-row') || s);
+        const regimeSelects = Array.from(root.querySelectorAll('[data-regime-select]'));
+        const conditionRow = root.querySelector('[data-regle-condition-row]');
         const apply = () => {
           const visible = typeSelect.value === 'autorisation_sous_condition';
-          regimeRows.forEach(el => {
-            // On masque toute la ligne (du / au / regime) ? Non, juste
-            // le select regime. On le masque + on retire sa valeur pour
-            // que le POST ne l'envoie pas.
-            const sel = el.matches('[data-regime-select]') ? el : el.querySelector('[data-regime-select]');
-            if (!sel) return;
+          regimeSelects.forEach(sel => {
             sel.style.display = visible ? '' : 'none';
             if (!visible) sel.value = '';
           });
+          if (conditionRow) conditionRow.style.display = visible ? '' : 'none';
         };
         apply();
         typeSelect.addEventListener('change', apply);
