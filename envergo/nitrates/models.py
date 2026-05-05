@@ -153,23 +153,43 @@ class DecisionTree(models.Model):
     def activate(self):
         """Active ce DecisionTree. L'actif courant passe en archive.
 
+        Renommage automatique :
+          - L'actif courant (qui devient archive) est renomme avec un
+            suffixe horodate '<canonical> – archive YYYY-MM-DD HH:MM'
+            pour distinguer les versions historiques.
+          - Le draft qui devient actif reprend le nom canonique de
+            l'archive qu'il remplace (sans suffixe '– username-N').
+
         Idempotent : re-activer un tree deja actif ne casse rien.
 
         TODO MVP : un seul tree actif global. Quand on ajoutera les
         overrides regionaux (PAR), la notion d'actif devra etre adossee
-        a un scope (national / region / departement / bassin). Modele
-        cible : champ `scope` (national | region | dept | bassin) +
+        a un scope (national | region | dept | bassin) +
         champ optionnel `scope_value` (code region/dept/bassin), avec
         contrainte unique partielle sur (status='active', scope, scope_value).
         Cette methode `activate()` devra alors n'archiver que les actifs
         du meme scope.
         """
-        DecisionTree.objects.filter(status=self.STATUS_ACTIVE).exclude(
-            pk=self.pk
-        ).update(status=self.STATUS_ARCHIVE)
+        now = timezone.now()
+        canonical_name = None
+        for current_active in DecisionTree.objects.filter(
+            status=self.STATUS_ACTIVE
+        ).exclude(pk=self.pk):
+            # Sauvegarde le nom canonique (sans suffixe d'archive) pour
+            # le passer au nouveau tree actif.
+            canonical_name = canonical_name or current_active.name
+            current_active.status = self.STATUS_ARCHIVE
+            current_active.name = (
+                f"{current_active.name} – archive {now:%Y-%m-%d %H:%M}"
+            )
+            current_active.save(update_fields=["status", "name", "updated_at"])
+        # Le nouveau tree actif reprend le nom canonique. Si plusieurs
+        # archives etaient au meme nom (peu probable), on garde le 1er.
+        if canonical_name and self.name != canonical_name:
+            self.name = canonical_name
         self.status = self.STATUS_ACTIVE
-        self.activated_at = timezone.now()
-        self.save(update_fields=["status", "activated_at", "updated_at"])
+        self.activated_at = now
+        self.save(update_fields=["status", "name", "activated_at", "updated_at"])
 
     # ─── Lock d'edition ────────────────────────────────────────────────────
 
@@ -210,15 +230,22 @@ class DecisionTree(models.Model):
             self.save(update_fields=["locked_by", "locked_at", "updated_at"])
 
     @classmethod
-    def unique_copy_name(cls, base_name: str) -> str:
-        """Genere un nom '<base> (copy)' ou '<base> (copy N)' sans collision
-        avec un nom existant."""
-        candidate = f"{base_name} (copy)"
-        if not cls.objects.filter(name=candidate).exists():
-            return candidate
-        n = 2
+    def unique_draft_name(cls, base_name: str, user=None) -> str:
+        """Genere un nom de draft '<base> – <username>-<N>' sans collision.
+
+        Quand plusieurs juristes editent en parallele, le nom du draft
+        contient leur username pour qu'on identifie qui travaille sur
+        quoi. <N> est le prochain numero libre pour cet utilisateur sur
+        cette base.
+        """
+        username = (
+            getattr(user, "username", None) or getattr(user, "email", None) or "anon"
+        )
+        # Garde une forme compacte : pas d'@ ni d'espace.
+        username = username.split("@")[0].replace(" ", "_")
+        n = 1
         while True:
-            candidate = f"{base_name} (copy {n})"
+            candidate = f"{base_name} – {username}-{n}"
             if not cls.objects.filter(name=candidate).exists():
                 return candidate
             n += 1
@@ -229,7 +256,7 @@ class DecisionTree(models.Model):
         brut sont dupliques en profondeur. Le nouveau draft pointe vers
         `source` via `parent`."""
         return cls.objects.create(
-            name=cls.unique_copy_name(source.name),
+            name=cls.unique_draft_name(source.name, user=user),
             status=cls.STATUS_DRAFT,
             contenu=copy.deepcopy(source.contenu),
             contenu_yaml_brut=source.contenu_yaml_brut,
