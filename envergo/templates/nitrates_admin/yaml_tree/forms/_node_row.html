@@ -21,6 +21,9 @@
     <span class="yaml-tree__libelle">{{ node.champ }}</span>
   {% endif %}
   {% if node.reference %}<span class="yaml-tree__meta">→ {{ node.reference }}</span>{% endif %}
+  {% if node.aide %}
+    <span class="yaml-tree__aide-inline" title="Aide affichée à l'utilisateur">💡 {{ node.aide }}</span>
+  {% endif %}
 
   <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
     <button type="button"

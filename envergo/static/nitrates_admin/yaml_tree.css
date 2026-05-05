@@ -909,6 +909,12 @@ details[open] > summary.yaml-tree__row::before {
   font-style: italic;
 }
 
+.yaml-tree__aide-inline {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
 .yaml-tree__branche-header {
   display: flex;
   align-items: center;
@@ -1197,7 +1203,11 @@ details[open] > summary.yaml-tree__row::before {
    (le juriste doit toujours voir s'il s'agit d'une question culture,
    sous-culture, complement, etc.). */
 .yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__libelle,
-.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta {
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta,
+.yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__aide-inline {
   display: none;
 }
 
