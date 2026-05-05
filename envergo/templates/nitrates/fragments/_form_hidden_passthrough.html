@@ -1,0 +1,19 @@
+{% comment %}
+Re-injecte en hidden tous les query params recus mais qui ne sont pas
+deja represents dans le form (cascade, hidden type_fertilisant, ou QC
+en cours de saisie). Garantit qu'une reponse QC donnee precedemment
+survive a une nouvelle soumission qui pose une autre QC.
+
+Le contexte fournit :
+  - data : QueryDict des parametres recus
+  - cascade_fields : noms des champs cascade et hidden type_fertilisant
+  - qc_actifs : noms des QC actuellement re-saisis
+{% endcomment %}
+
+{% for key, value in data.items %}
+  {% if value %}
+    {% if key not in cascade_fields and key not in qc_actifs %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endif %}
+  {% endif %}
+{% endfor %}

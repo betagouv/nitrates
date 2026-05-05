@@ -1,0 +1,92 @@
+{% extends "nitrates/base.html" %}
+
+{% load static leaflet_tags nitrates_tags %}
+
+{% block title %}Simulateur{% endblock %}
+
+{% block extra_css %}
+  {% leaflet_css %}
+  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
+  <link href="{% static 'nitrates/calendrier.css' %}" rel="stylesheet">
+  <link href="{% static 'nitrates/simulateur.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+  {% leaflet_js %}
+  <script>
+    window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
+    window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+    window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
+    window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    window.NITRATES_INITIAL_DATA = {
+      occupation_sol: "{{ data.occupation_sol|default:'' }}",
+      sous_culture: "{{ data.sous_culture|default:'' }}",
+      categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
+      sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
+    };
+    {% if moulinette %}
+    // Catalog deja resolu cote serveur : on l'expose pour repeupler le
+    // bandeau localisation au rechargement de page (apres "Lancer la
+    // simulation" ou "Recommencer" avec lat/lng dans l'URL).
+    window.NITRATES_CATALOG = {
+      department_code: "{{ moulinette.catalog.department_code|default:'' }}",
+      region_code: "{{ moulinette.catalog.region_code|default:'' }}",
+      region_label: "{{ moulinette.catalog.region_label|default:'' }}",
+      en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
+    };
+    {% endif %}
+  </script>
+  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {% if afficher_resultat %}
+    <script defer src="{% static 'nitrates/subsidiaires.js' %}"></script>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+
+    {# ─── Section hero (cf. maquette) ──────────────────────────────── #}
+    <div class="fr-grid-row fr-grid-row--gutters fr-grid-row--middle fr-mb-4w">
+      <div class="fr-col-12 fr-col-lg-7">
+        <h1 class="fr-h1">Les règles d'épandage qui s'appliquent à votre exploitation, en clair.</h1>
+
+        <div class="nitrates-badges">
+          <p class="fr-badge fr-badge--blue-ecume">🗺️ Zone vulnérable</p>
+          <p class="fr-badge fr-badge--blue-ecume">🗓️ Périodes autorisées</p>
+          <p class="fr-badge fr-badge--blue-ecume">🌱 Cultures et fertilisants</p>
+          <p class="fr-badge fr-badge--blue-ecume">📊 Plafonds réglementaires</p>
+        </div>
+
+        <p class="fr-text--lead fr-mt-2w">
+          Nitrates est un service public gratuit. Renseignez votre localisation et votre type de projet : obtenez une lecture claire de la réglementation applicable.
+        </p>
+        <div class="fr-mt-4w">
+          <a class="fr-btn" href="#section-localisation">Voir les règles qui s'appliquent à mes parcelles</a>
+        </div>
+        <p class="fr-text--sm fr-text-mention--grey fr-mt-2w" style="color:#666">*Champs obligatoires</p>
+      </div>
+      <div class="fr-col-12 fr-col-lg-5"
+           style="display:flex;
+                  justify-content:center">
+        <div class="nitrates-hero-illustration">
+          <img src="{% static 'nitrates/illu_nitrates.png' %}" alt="">
+        </div>
+      </div>
+    </div>
+
+    {# ─── Section formulaire + resultats ───────────────────────────── #}
+    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat %} layout--split{% endif %}"
+         style="align-items: flex-start">
+
+      {# Colonne gauche : form + carte #}
+      <div class="fr-col-12 fr-col-lg-5 form-col">{% include "nitrates/fragments/_panneau_form.html" %}</div>
+
+      {# Colonne droite : resultat (si dispo) #}
+      {% if afficher_resultat %}
+        <div class="fr-col-12 fr-col-lg-7 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

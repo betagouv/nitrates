@@ -1,0 +1,119 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Formulaire d'ajout d'une branche enfant.
+   Variables : tree, parent_path_str, allowed_kinds, selected_kind,
+               errors (liste FieldError), form_data (POST en repop).
+{% endcomment %}
+<div class="yaml-tree__add-form"
+     id="add-zone-{{ parent_path_str|slugify }}"
+     data-add-form-init="true">
+  <script>
+    // Auto-populate du libelle et de l'id quand l'utilisateur tape la valeur.
+    // On ne touche jamais a un champ deja modifie manuellement (data-touched).
+    (function () {
+      const root = document.currentScript.parentElement;
+      const slug = (s) => s
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+      const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+      const valeur = root.querySelector('[name=valeur]');
+      if (!valeur) return;
+      // Marque les champs modifies par l'utilisateur pour eviter de les ecraser.
+      root.querySelectorAll('[name=libelle], [name=c_id]').forEach(inp => {
+        inp.addEventListener('input', () => inp.dataset.touched = '1');
+      });
+      // Auto-populate sur `change` (focus out) ou Enter, PAS sur input :
+      // sinon on remplit le libelle pendant la frappe ("m" -> "M") et c'est tres
+      // perturbant. On laisse l'utilisateur finir sa saisie d'abord.
+      const autoPopulate = () => {
+        const v = valeur.value.trim();
+        if (!v) return;
+        const libelle = root.querySelector('[name=libelle]');
+        if (libelle && !libelle.dataset.touched && !libelle.value) {
+          libelle.value = cap(v);
+        }
+        const cId = root.querySelector('[name=c_id]');
+        if (cId && !cId.dataset.touched && !cId.value) {
+          const kind = root.querySelector('[name=kind]')?.value || '';
+          let prefix = '';
+          if (kind.startsWith('noeud_formulaire_')) prefix = 'q_';
+          else if (kind === 'noeud_catalogue') prefix = 'n_';
+          else if (kind === 'regle') prefix = 'r_';
+          if (prefix) cId.value = prefix + slug(v);
+        }
+      };
+      valeur.addEventListener('change', autoPopulate);
+    })();
+  </script>
+  <form class="yaml-tree__inline-form yaml-tree__inline-form--add"
+        hx-post="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+        hx-target="#add-zone-{{ parent_path_str|slugify }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    <p class="yaml-tree__add-form-title">Ajout d'une valeur (et de son contenu, si présent)</p>
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>valeur de la branche</span>
+        <input type="text"
+               name="valeur"
+               value="{{ form_data.valeur|default_if_none:'' }}"
+               placeholder="ex: colza, true, 2"
+               required>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>libelle (optionnel)</span>
+        <input type="text"
+               name="libelle"
+               value="{{ form_data.libelle|default_if_none:'' }}"
+               placeholder="Texte affiché à l'utilisateur">
+      </label>
+    </div>
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>type de contenu</span>
+        <select name="kind"
+                hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+                hx-trigger="change"
+                hx-target="#add-zone-{{ parent_path_str|slugify }}"
+                hx-swap="outerHTML"
+                hx-include="[name='valeur'],[name='libelle']">
+          {% for k in allowed_kinds %}
+            <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "kind" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% include "nitrates_admin/yaml_tree/forms/_add_form_kind_fields.html" with kind=selected_kind errors=errors form_data=form_data %}
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Créer</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_add_child_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}"
+              hx-target="#add-zone-{{ parent_path_str|slugify }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>

@@ -118,6 +118,7 @@ REGULATIONS = Choices(
     ("sites_inscrits_haie", "Sites inscrits"),
     ("sites_classes_haie", "Sites classés"),
     ("protection_captages", "Protection de captages"),
+    ("directive_nitrates", "Directive nitrates"),
 )
 
 

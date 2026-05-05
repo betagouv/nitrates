@@ -1,0 +1,195 @@
+{% load static i18n %}
+
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Outils d'administration nitrates">
+    <meta name="keywords" content="admin,nitrates">
+    <meta name="robots" content="noindex,nofollow">
+    <title>
+      {% block title %}{% endblock %}
+    — Admin nitrates</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        background: #fff;
+        color: #1d1d1d;
+      }
+
+      a {
+        color: #1f4789;
+      }
+
+      .fr-container-fluid {
+        padding: 0 1.5rem;
+      }
+
+      .fr-py-3w {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <header class="admin-topbar"
+            style="background:#1f4789;
+                   color:#fff;
+                   padding:0.5rem 1.5rem;
+                   display:flex;
+                   align-items:center;
+                   gap:1rem;
+                   font-size:0.9rem">
+      <strong>Admin nitrates</strong>
+      <nav style="display:flex;gap:1rem;">
+        <a href="{% url 'admin:index' %}" style="color:#fff;">← Django admin</a>
+        <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
+           style="color:#fff">Arbres (liste)</a>
+        <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
+      </nav>
+      <span style="margin-left:auto;color:#cdd6e4;">
+        {% if user.is_authenticated %}{{ user.email }}{% endif %}
+      </span>
+    </header>
+
+    {% if messages %}
+      <div class="yaml-admin__toasts" role="status" aria-live="polite">
+        {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    {% comment %}htmx pour l'edition inline (charge en permanence, ~14 KB minified).
+       responseHandling = swap aussi sur 422 (validation echouee) en plus
+       des 2xx, pour que les fragments d'erreur des endpoints d'edition
+    s'affichent dans le formulaire.{% endcomment %}
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script>
+      function _getCsrfToken() {
+        const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        if (m) return decodeURIComponent(m[1]);
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        return input ? input.value : '';
+      }
+      document.addEventListener('htmx:configRequest', function(evt) {
+        // Toute requete htmx unsafe (POST/PUT/DELETE) doit porter X-CSRFToken.
+        evt.detail.headers['X-CSRFToken'] = _getCsrfToken();
+      });
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.htmx) {
+          htmx.config.responseHandling = [
+            { code: '204', swap: false },
+            { code: '[23]..', swap: true },
+            { code: '422', swap: true },
+            { code: '[45]..', swap: false, error: true },
+            { code: '...', swap: false }
+          ];
+        }
+        // Auto-hide des toasts apres 3.5s.
+        document.querySelectorAll('.yaml-admin__toast').forEach(t => {
+          setTimeout(() => {
+            t.classList.add('yaml-admin__toast--fade');
+            setTimeout(() => t.remove(), 400);
+          }, 3500);
+        });
+
+        // Restaure le scroll apres un reload htmx (HX-Redirect ou
+        // HX-Refresh). On stocke la position avant chaque requete
+        // POST/DELETE, et on la restaure au prochain load.
+        const SCROLL_KEY = 'nitrates_admin__scrollY';
+        const saved = sessionStorage.getItem(SCROLL_KEY);
+        if (saved !== null) {
+          // Use rAF pour laisser le DOM finir de monter.
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: parseInt(saved, 10), behavior: 'auto' });
+            sessionStorage.removeItem(SCROLL_KEY);
+          });
+        }
+      });
+      document.addEventListener('htmx:beforeRequest', function(evt) {
+        // On sauve le scrollY juste avant les requetes qui vont
+        // declencher un HX-Redirect/HX-Refresh.
+        const verb = (evt.detail.requestConfig?.verb || '').toLowerCase();
+        if (verb === 'post' || verb === 'delete' || verb === 'put') {
+          sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
+        }
+      });
+
+      // ─── Persistance cross-session du fold ────────────────────────────
+      // Quand l'utilisateur deplie/replie un noeud (<details>), on stocke
+      // la liste des paths ouverts dans localStorage, par tree_id. Au
+      // chargement on re-applique ces paths : meme apres un reload
+      // (HX-Refresh / HX-Redirect / nav directe), l'arbre revient a
+      // l'etat precedent.
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const treeId = params.get('tree_id');
+        if (!treeId) return;
+        const KEY = 'nitrates_admin__open_paths__' + treeId;
+
+        const loadOpen = () => {
+          try { return new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); }
+          catch (e) { return new Set(); }
+        };
+        const saveOpen = (set) => {
+          localStorage.setItem(KEY, JSON.stringify([...set]));
+        };
+
+        const applyOpen = () => {
+          const open = loadOpen();
+          document.querySelectorAll('li.yaml-tree__item--noeud[data-path]').forEach(li => {
+            const path = li.getAttribute('data-path');
+            const det = li.querySelector(':scope > details');
+            if (!det) return;
+            if (open.has(path)) det.open = true;
+          });
+        };
+
+        // Capture les toggles pour les persister.
+        const wireToggles = () => {
+          document.querySelectorAll('li.yaml-tree__item--noeud[data-path]').forEach(li => {
+            const det = li.querySelector(':scope > details');
+            if (!det || det.dataset.foldWired) return;
+            det.dataset.foldWired = '1';
+            det.addEventListener('toggle', () => {
+              const path = li.getAttribute('data-path');
+              const open = loadOpen();
+              if (det.open) open.add(path);
+              else open.delete(path);
+              saveOpen(open);
+            });
+          });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+          applyOpen();
+          wireToggles();
+        });
+        // Re-apply apres un swap htmx (la page peut avoir change).
+        document.addEventListener('htmx:afterSwap', () => {
+          applyOpen();
+          wireToggles();
+        });
+      })();
+    </script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

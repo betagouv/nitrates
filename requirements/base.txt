@@ -17,7 +17,10 @@ asgiref==3.9.1
     #   django
     #   django-allauth
 attrs==25.3.0
-    # via fiona
+    # via
+    #   fiona
+    #   jsonschema
+    #   referencing
 backoff==2.2.1
     # via gql
 billiard==4.2.1
@@ -114,6 +117,10 @@ idna==3.10
     #   anyio
     #   requests
     #   yarl
+jsonschema==4.26.0
+    # via -r base.in
+jsonschema-specifications==2025.9.1
+    # via jsonschema
 kombu==5.5.4
     # via celery
 markdown==3.8.2
@@ -138,6 +145,8 @@ prompt-toolkit==3.0.51
     # via click-repl
 propcache==0.3.2
     # via yarl
+pygments==2.20.0
+    # via -r base.in
 psycopg[binary]==3.2.9
     # via -r base.in
 psycopg-binary==3.2.9
@@ -170,6 +179,10 @@ redis==6.4.0
     # via
     #   -r base.in
     #   django-redis
+referencing==0.37.0
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
 requests==2.32.4
     # via
     #   django-anymail
@@ -178,6 +191,12 @@ requests-toolbelt==1.0.0
     # via -r base.in
 rjsmin==1.2.5
     # via django-compressor
+rpds-py==0.30.0
+    # via
+    #   jsonschema
+    #   referencing
+ruamel-yaml==0.19.1
+    # via -r base.in
 scipy==1.16.1
     # via -r base.in
 shapely==2.1.1

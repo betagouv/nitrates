@@ -1,0 +1,157 @@
+{% extends "nitrates/base.html" %}
+
+{% load static leaflet_tags %}
+
+{% block title %}Simulateur{% endblock %}
+
+{% block extra_css %}
+  {% leaflet_css %}
+  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+  {% leaflet_js %}
+  <script>
+    window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
+    window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+    window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
+    window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    window.NITRATES_INITIAL_DATA = {
+      occupation_sol: "{{ data.occupation_sol|default:'' }}",
+      sous_culture: "{{ data.sous_culture|default:'' }}",
+      categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
+      sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
+    };
+  </script>
+  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-4w">
+    <h1>Simulateur nitrates</h1>
+    <p class="fr-text--lead">
+      Cliquez sur la carte pour positionner votre parcelle, puis renseignez son occupation pour obtenir le calendrier d'épandage applicable.
+    </p>
+
+    <form method="get"
+          action="{% url 'nitrates_simulateur' %}"
+          class="fr-mt-4w">
+
+      <fieldset class="fr-fieldset">
+        <legend class="fr-fieldset__legend">Position de la parcelle</legend>
+
+        <div id="nitrates-map" class="nitrates-map fr-mb-2w"></div>
+
+        <div id="nitrates-debug" class="nitrates-debug fr-mb-2w">
+          <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
+        </div>
+
+        <div class="fr-grid-row fr-grid-row--gutters">
+          <div class="fr-col-12 fr-col-md-6">
+            <div class="fr-input-group">
+              <label class="fr-label" for="id_lat">Latitude</label>
+              <input class="fr-input"
+                     type="number"
+                     step="any"
+                     name="lat"
+                     id="id_lat"
+                     value="{{ data.lat|default:'' }}"
+                     required
+                     min="-90"
+                     max="90">
+            </div>
+          </div>
+          <div class="fr-col-12 fr-col-md-6">
+            <div class="fr-input-group">
+              <label class="fr-label" for="id_lng">Longitude</label>
+              <input class="fr-input"
+                     type="number"
+                     step="any"
+                     name="lng"
+                     id="id_lng"
+                     value="{{ data.lng|default:'' }}"
+                     required
+                     min="-180"
+                     max="180">
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fr-fieldset">
+        <legend class="fr-fieldset__legend">Caractéristiques de l'épandage</legend>
+        <p class="fr-hint-text">
+          Les choix se débloquent au fur et à mesure de vos réponses, en suivant l'arbre de décision PAN.
+        </p>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_occupation_sol">Occupation du sol</label>
+            <select class="fr-select" name="occupation_sol" id="id_occupation_sol">
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_sous_culture">Type de culture</label>
+            <select class="fr-select" name="sous_culture" id="id_sous_culture" disabled>
+              <option value="">— Choisir l'occupation d'abord —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_categorie_fertilisant">Catégorie de fertilisant</label>
+            <select class="fr-select"
+                    name="categorie_fertilisant"
+                    id="id_categorie_fertilisant"
+                    disabled>
+              <option value="">— Choisir la culture d'abord —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr-fieldset__element">
+          <div class="fr-select-group">
+            <label class="fr-label" for="id_sous_fertilisant">Fertilisant précis</label>
+            <select class="fr-select"
+                    name="sous_fertilisant"
+                    id="id_sous_fertilisant"
+                    disabled>
+              <option value="">— Choisir la catégorie d'abord —</option>
+            </select>
+            <p class="fr-hint-text">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
+          </div>
+        </div>
+
+        {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
+        <input type="hidden"
+               name="type_fertilisant"
+               id="id_type_fertilisant"
+               value="{{ data.type_fertilisant|default:'' }}">
+      </fieldset>
+
+      <button type="submit" class="fr-btn fr-mt-2w">Lancer la simulation</button>
+    </form>
+
+    <div class="fr-mt-4w">
+      <h2 class="fr-h4">Liens utiles</h2>
+      <ul>
+        <li>
+          <a href="{% url 'nitrates_referentiels' %}" target="_blank">Référentiels (JSON)</a> — types de fertilisants, cultures, codes prescription, etc.
+        </li>
+        <li>
+          <a href="{% url 'nitrates_debug' %}?lng=4.0345&lat=49.2583"
+             target="_blank">Endpoint debug</a> — infos géo brutes pour un point
+        </li>
+        <li>
+          <a href="{% url 'home' %}">Carte interactive</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+{% endblock %}

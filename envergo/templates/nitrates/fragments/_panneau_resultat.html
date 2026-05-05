@@ -1,0 +1,264 @@
+{% load nitrates_tags %}
+
+{% comment %}
+Panneau droit : reglementations applicables.
+Structure inspiree de la maquette site-nitrates-maquette/index.html :
+  - Header "Réglementations applicables"
+  - Lignes "Zone vulnérable / Zone d'action renforcée / Épandage"
+    avec badges colores (CONCERNE / AUTORISE / INTERDIT)
+  - Texte de la regle
+  - Calendrier 12 mois (templatetag calendrier_epandage)
+  - Texte explicatif (codes prescription, notes) inline
+  - Accordeon DSFR "Prescriptions generales d'interdiction permanente"
+{% endcomment %}
+
+<div class="resultat-panel">
+  <h2 class="fr-h3">Réglementations applicables</h2>
+
+  {# ─── Zone vulnérable ─────────────────────────────────────────────── #}
+  <div class="resultat-row">
+    <span class="resultat-row__label">Zone vulnérable</span>
+    {% if moulinette.catalog.en_zone_vulnerable %}
+      <span class="resultat-badge resultat-badge--concerne">CONCERNÉ</span>
+    {% else %}
+      <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
+    {% endif %}
+  </div>
+
+  {% if not moulinette.catalog.en_zone_vulnerable %}
+    <div class="fr-alert fr-alert--info fr-mt-3w">
+      <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
+      <p>La directive nitrates ne s'applique pas à cette parcelle.</p>
+    </div>
+  {% else %}
+
+    {% for entry in regulations_evaluees %}
+      {% with criterion=entry.criterion ev=entry.evaluator %}
+
+        {# ─── Épandage ─────────────────────────────────────────────── #}
+        <div class="resultat-row">
+          <span class="resultat-row__label">Épandage</span>
+          {% if ev.result == "interdit" %}
+            <span class="resultat-badge resultat-badge--interdit">INTERDIT</span>
+          {% elif ev.result == "action_requise" %}
+            <span class="resultat-badge resultat-badge--conditionnel">SOUS CONDITIONS</span>
+          {% elif ev.result == "non_soumis" %}
+            <span class="resultat-badge resultat-badge--autorise">AUTORISÉ</span>
+          {% elif ev.result == "non_concerne" %}
+            <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
+          {% else %}
+            <span class="resultat-badge resultat-badge--neutre">{{ ev.result|upper }}</span>
+          {% endif %}
+        </div>
+
+        {% if ev.regle %}
+
+          {# Texte introductif #}
+          {% if ev.regle.message %}
+            <p class="fr-mt-2w">{{ ev.regle.message }}</p>
+          {% elif ev.regle.texte %}
+            <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
+          {% endif %}
+
+          {# Calendrier visuel #}
+          {% calendrier_epandage ev.regle %}
+
+          {# Periode d'interdiction (texte) #}
+          {% if ev.regle.periodes %}
+            <p>
+              <strong>Période d'interdiction :</strong>
+              {% for p in ev.regle.periodes %}
+                du {{ p.du }} au {{ p.au }}
+                {% if not forloop.last %};{% endif %}
+              {% endfor %}
+              .
+            </p>
+          {% endif %}
+
+          {# Plafond (si applicable) #}
+          {% if ev.regle.plafond_azote_kg_n_ha %}
+            <p>
+              <strong>Plafond :</strong> {{ ev.regle.plafond_azote_kg_n_ha }} kg N/ha
+            </p>
+          {% endif %}
+
+          {# Code prescription : libelle long resolu via referentiels #}
+          {% if ev.regle.code_prescription %}
+            {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
+              {% if pc %}
+                <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
+                {% if pc.texte_court %}<p>{{ pc.texte_court|linebreaksbr }}</p>{% endif %}
+              {% else %}
+                <p class="fr-text--sm">
+                  <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
+                </p>
+              {% endif %}
+            {% endwith %}
+          {% endif %}
+
+          {# Note réglementaire : libelle long resolu via referentiels #}
+          {% if ev.regle.note %}
+            {% with note=notes_referentiel|get_item:ev.regle.note %}
+              {% if note %}
+                <h4 class="fr-h6 fr-mt-2w">{{ note.libelle_court|default:ev.regle.note }}</h4>
+                {% if note.condition_declenchement %}<p>{{ note.condition_declenchement|linebreaksbr }}</p>{% endif %}
+              {% else %}
+                <p class="fr-text--sm">
+                  <strong>Note :</strong> {{ ev.regle.note }}
+                </p>
+              {% endif %}
+            {% endwith %}
+          {% endif %}
+
+          {# Marqueur a_completer #}
+          {% if ev.regle.a_completer %}
+            <p class="fr-text--sm fr-mt-2w">
+              <em>⚠ Cette règle est marquée "à compléter" dans le brouillon — résultat non finalisé.</em>
+            </p>
+          {% endif %}
+
+          {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
+          <div class="fr-accordions-group fr-mt-3w">
+            <section class="fr-accordion">
+              <h3 class="fr-accordion__title">
+                <button class="fr-accordion__btn"
+                        aria-expanded="false"
+                        aria-controls="accordion-prescriptions-permanentes">
+                  Prescriptions générales d'interdiction permanente
+                </button>
+              </h3>
+              <div class="fr-collapse" id="accordion-prescriptions-permanentes">
+                <p>
+                  Indépendamment des périodes d'interdiction saisonnières,
+                  certaines situations rendent l'épandage interdit en toutes
+                  circonstances. Ces interdictions permanentes s'appliquent
+                  quelle que soit la période de l'année et le type de
+                  fertilisant utilisé.
+                </p>
+                <ul class="fr-mb-0">
+                  <li>Épandage sur sols enneigés ou couverts de neige.</li>
+                  <li>Épandage sur sols pris en masse par le gel.</li>
+                  <li>Épandage sur sols détrempés ou inondés.</li>
+                  <li>Épandage à moins de 35 m des berges (2 m si bande enherbée).</li>
+                  <li>Épandage sur sols à forte pente (selon les conditions du PAR).</li>
+                  <li>Épandage par aspersion à moins de 10 m des cours d'eau.</li>
+                </ul>
+              </div>
+            </section>
+          </div>
+
+        {% endif %}
+
+        {# Catalogue SIG manquant #}
+        {% if ev.catalogue_manquant %}
+          <div class="fr-callout fr-callout--brown-opera fr-mt-2w">
+            <h4 class="fr-callout__title">Données SIG manquantes</h4>
+            <p>
+              Le parcours requiert la résolution d'une zone géographique
+              pour laquelle nous n'avons pas encore importé le dataset
+              nécessaire. Le résultat ne peut donc pas être finalisé.
+            </p>
+            <p class="fr-text--sm">
+              <strong>Référence demandée :</strong>
+              <code>{{ ev.catalogue_manquant.reference }}</code>
+              (champ : <code>{{ ev.catalogue_manquant.champ }}</code>,
+              source : {{ ev.catalogue_manquant.source }})
+            </p>
+          </div>
+        {% endif %}
+
+        {# Panel debug : seulement en mode developpeur (settings.DEBUG) #}
+        {% if debug %}
+          <details class="fr-mt-3w nitrates-debug-panel" open>
+            <summary>Debug parcours</summary>
+
+            <div class="nitrates-debug-panel__section">
+              <h5 class="nitrates-debug-panel__title">Resultat</h5>
+              <dl class="nitrates-debug-panel__dl">
+                <dt>result_code</dt>
+                <dd>
+                  <code>{{ ev.result_code|default:"—" }}</code>
+                </dd>
+                <dt>regle_id</dt>
+                <dd>
+                  <code>{{ ev.regle.regle_id|default:"—" }}</code>
+                </dd>
+              </dl>
+            </div>
+
+            {% if ev.chemin %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Chemin parcouru</h5>
+                <ol class="nitrates-debug-panel__path">
+                  {% for n in ev.chemin %}
+                    <li>
+                      <code>{{ n }}</code>
+                    </li>
+                  {% endfor %}
+                </ol>
+              </div>
+            {% endif %}
+
+            {% if ev.contexte %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Contexte (resolutions formulaire + catalogue)</h5>
+                <dl class="nitrates-debug-panel__dl">
+                  {% for cle, valeur in ev.contexte.items %}
+                    <dt>{{ cle }}</dt>
+                    <dd>
+                      <code>{{ valeur }}</code>
+                    </dd>
+                  {% endfor %}
+                </dl>
+              </div>
+            {% endif %}
+
+            {% if moulinette.catalog %}
+              <div class="nitrates-debug-panel__section">
+                <h5 class="nitrates-debug-panel__title">Zonages (catalog)</h5>
+                <dl class="nitrates-debug-panel__dl">
+                  <dt>en_zone_vulnerable</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.en_zone_vulnerable }}</code>
+                  </dd>
+                  <dt>zone_montagne_d113_14</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_montagne_d113_14 }}</code>
+                  </dd>
+                  <dt>zone_montagne_classification</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_montagne_classification }}</code>
+                  </dd>
+                  <dt>zone_note_5</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.zone_note_5 }}</code>
+                  </dd>
+                  <dt>code_insee</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.code_insee|default:"—" }}</code>
+                  </dd>
+                  <dt>departement</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.department_code|default:"—" }}</code>
+                  </dd>
+                  <dt>region</dt>
+                  <dd>
+                    <code>{{ moulinette.catalog.region_code|default:"—" }} ({{ moulinette.catalog.region_label|default:"—" }})</code>
+                  </dd>
+                </dl>
+              </div>
+            {% endif %}
+          </details>
+        {% endif %}
+
+      {% endwith %}
+    {% endfor %}
+
+  {% endif %}
+
+  {# Bouton Recommencer : redirige vers la home /simulateur/ sans params #}
+  <div class="fr-mt-4w">
+    <a href="{% url 'nitrates_simulateur' %}"
+       class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
+  </div>
+</div>

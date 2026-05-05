@@ -1,0 +1,24 @@
+{% load yaml_admin_extras %}
+
+{% comment %}Re-rendu d'un summary de noeud apres edition reussie.{% endcomment %}
+<summary class="yaml-tree__row" id="node-row-{{ path_str|slugify }}">
+  <span class="yaml-tree__tags">
+    {% for tag in tags %}
+      <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
+        {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
+        <span class="yaml-tag__label">{{ tag.label }}</span>
+      </span>
+    {% endfor %}
+  </span>
+  <code class="yaml-tree__id">{{ node.id }}</code>
+  {% if node.texte %}
+    <span class="yaml-tree__libelle">{{ node.texte }}</span>
+  {% elif node.champ %}
+    <span class="yaml-tree__libelle">{{ node.champ }}</span>
+  {% endif %}
+  {% if node.reference %}<span class="yaml-tree__meta">→ {{ node.reference }}</span>{% endif %}
+
+  {% comment %}Note : ce row est swapp dans le summary apres save. Les actions
+     d'edition (edit/add/delete) sont dans le _noeud.html parent (en absolute hors
+  summary), donc on n'a pas besoin de les re-rendre ici.{% endcomment %}
+</summary>

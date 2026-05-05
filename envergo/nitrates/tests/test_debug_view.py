@@ -1,4 +1,8 @@
-"""Tests de la vue debug : résout dept/région/parcelle/ZV depuis un point."""
+"""Tests de la vue debug : résout dept/région/ZV depuis un point.
+
+Le RPG a été retiré de cet endpoint en 0.0.3 (la zone d'activation
+utilise désormais le cadastre IGN, résolu côté front au clic carte).
+"""
 
 import pytest
 from django.contrib.gis.geos import MultiPolygon, Polygon
@@ -17,38 +21,6 @@ def marne_department():
         srid=4326,
     )
     return Department.objects.create(department="51", geometry=geom)
-
-
-@pytest.fixture
-def rpg_map(marne_department):
-    """Map RPG avec 1 parcelle autour de Reims."""
-    m = Map.objects.create(
-        name="RPG test",
-        map_type=MAP_TYPES.rpg_parcelle,
-        description="test",
-        expected_geometries=1,
-    )
-    Zone.objects.create(
-        map=m,
-        geometry=MultiPolygon(
-            Polygon(
-                (
-                    (4.0, 49.2),
-                    (4.1, 49.2),
-                    (4.1, 49.3),
-                    (4.0, 49.3),
-                    (4.0, 49.2),
-                )
-            ),
-            srid=4326,
-        ),
-        attributes={
-            "ID_PARCEL": "P42",
-            "CODE_CULTU": "BTH",
-            "SURF_PARC": 3.5,
-        },
-    )
-    return m
 
 
 @pytest.fixture
@@ -91,39 +63,7 @@ def test_debug_point_in_marne_resolves_department_and_region(client, marne_depar
     assert data["department_code"] == "51"
     assert data["region_code"] == "44"
     assert "Grand" in data["region_label"]
-    assert data["rpg_parcelle"] is None
     assert data["en_zone_vulnerable"] is False
-
-
-def test_debug_point_in_rpg_parcel(client, marne_department, rpg_map):
-    resp = client.get(reverse("nitrates_debug"), {"lng": 4.05, "lat": 49.25})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["department_code"] == "51"
-    assert data["rpg_parcelle"] is not None
-    assert data["rpg_parcelle"]["id_parcel"] == "P42"
-    assert data["rpg_parcelle"]["code_cultu"] == "BTH"
-    # RpgCulture pas encore importe -> libelle vide, mais le code est present
-    assert data["rpg_parcelle"]["libelle_cultu"] == ""
-
-
-def test_debug_point_in_rpg_parcel_with_culture_lookup(
-    client, marne_department, rpg_map
-):
-    """Quand la table RpgCulture est peuplee, le libelle remonte en sortie."""
-    from envergo.nitrates.models import RpgCulture
-
-    RpgCulture.objects.create(
-        code="BTH",
-        libelle="Ble tendre",
-        code_groupe="1",
-        libelle_groupe="Cereales a paille",
-    )
-    resp = client.get(reverse("nitrates_debug"), {"lng": 4.05, "lat": 49.25})
-    parcel = resp.json()["rpg_parcelle"]
-    assert parcel["code_cultu"] == "BTH"
-    assert parcel["libelle_cultu"] == "Ble tendre"
-    assert parcel["groupe_cultu"] == "Cereales a paille"
 
 
 def test_debug_point_in_zv(client, marne_department, zv_map):
@@ -137,11 +77,18 @@ def test_debug_point_in_zv(client, marne_department, zv_map):
 
 
 def test_debug_point_outside_everything(client):
-    """Point dans l'Atlantique, pas de dept, pas de parcelle, pas de ZV."""
+    """Point dans l'Atlantique, pas de dept, pas de ZV."""
     resp = client.get(reverse("nitrates_debug"), {"lng": -10.0, "lat": 45.0})
     assert resp.status_code == 200
     data = resp.json()
     assert data["department_code"] is None
     assert data["region_code"] is None
-    assert data["rpg_parcelle"] is None
     assert data["en_zone_vulnerable"] is False
+
+
+def test_debug_response_does_not_include_rpg_parcelle(client, marne_department):
+    """Le RPG a été retiré du payload en 0.0.3 (sera remonté côté front
+    via l'API IGN cadastre). Si quelqu'un le réintroduit, ce test
+    signale qu'il faut adapter le contrat avec le frontend."""
+    resp = client.get(reverse("nitrates_debug"), {"lng": 4.0, "lat": 49.2})
+    assert "rpg_parcelle" not in resp.json()

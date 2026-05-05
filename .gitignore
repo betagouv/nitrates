@@ -301,3 +301,6 @@ altis/
 
 # Local docker-compose override (ports, dev-only tweaks)
 docker-compose.override.yml
+
+# Claude Code workspace (memoire locale, plans, worktrees) -- jamais versionne
+.claude/

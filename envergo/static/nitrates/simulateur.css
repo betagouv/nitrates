@@ -1,0 +1,435 @@
+/* Layout 2 colonnes du simulateur (form gauche, resultat droite).
+   Couleurs strictement issues de la maquette
+   site-nitrates-maquette/index.html (mode light DSFR). */
+
+/* ─── Recherche commune (BAN) ──────────────────────────────────────── */
+
+.map-search-wrapper {
+  position: relative;
+  margin-bottom: 6px;
+  z-index: 10;
+}
+
+.ban-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #aaa;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ban-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #eee;
+}
+
+.ban-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.ban-suggestions li:hover {
+  background: #f0f0f0;
+}
+
+/* ─── Localisation read-only (commune / dept / region) ────────────── */
+
+.localisation-readonly {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--background-alt-grey);
+  border-left: 3px solid var(--border-action-high-blue-france);
+}
+
+.localisation-readonly__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.localisation-readonly__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey);
+  font-weight: 400;
+}
+
+.localisation-readonly__value {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+/* ─── Sections form (maquette : .form-section + .form-question-group) ─
+
+   Repris strictement de la maquette : titres 32px, textes 16px,
+   gap 10px entre titre/contenu et entre libellé/radios. */
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-section-title {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  color: var(--text-title-grey);
+  margin: 0;
+}
+
+.form-question-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* `display: flex` ne doit pas court-circuiter l'attribut `hidden`. */
+.form-section[hidden],
+.form-question-group[hidden] {
+  display: none !important;
+}
+
+.form-question-text {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--text-title-grey);
+  margin: 0;
+}
+
+/* fr-radio-group sans la marge DSFR par defaut, mais on garde un peu
+   d'air entre options pour le confort de lecture (maquette). */
+.form-question-group .fr-radio-group {
+  margin: 0;
+  min-height: unset;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* Espacement entre 2 form-question-group consecutifs dans une section */
+.form-section .form-question-group + .form-question-group {
+  margin-top: 22px;
+}
+
+/* ─── Carte ────────────────────────────────────────────────────────── */
+
+/* Leaflet pose des elements de proxy (.leaflet-proxy) hors viewport
+   pour ses animations zoom : sans `overflow: hidden`, ces elements
+   etendent la largeur du document et provoquent un scrollbar
+   horizontal qui squeeze le rendu html/body. */
+.nitrates-map {
+  width: 100%;
+  height: 380px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Filet de securite global : on garantit qu'aucun overflow horizontal
+   inattendu ne squeeze le viewport. */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* ─── Boite Questions complementaires (mauve) ─────────────────────── */
+
+.qc-box {
+  background: #cecefc;
+  padding: 30px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.qc-box__title {
+  margin: 0 0 8px;
+}
+
+.qc-box__lead {
+  font-size: 0.875rem;
+  margin: 0 0 8px;
+  color: var(--text-default-grey);
+}
+
+.qc-box .form-question-group {
+  margin: 0;
+}
+
+/* ─── Result panel sticky en desktop ──────────────────────────────── */
+
+@media (width >= 992px) {
+  .results-row.layout--split .result-col {
+    position: sticky;
+    top: 1rem;
+    align-self: flex-start;
+  }
+}
+
+/* ─── Section hero ─────────────────────────────────────────────────── */
+
+.nitrates-hero-illustration {
+  width: 480px;
+  height: 480px;
+  max-width: 100%;
+  flex-shrink: 0;
+  background: none;
+}
+
+.nitrates-hero-illustration img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nitrates-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+/* ─── Layout 2 colonnes (form / result) avec animation split ──────── */
+
+/* Centre toujours la row : le formulaire (et le couple form+result en
+   split) doit etre centre dans le container, et non aligne sur le
+   bord gauche du hero. Le hero garde sa structure 7/12 + 5/12 standard
+   DSFR ; le bloc simulateur en-dessous est plus etroit et centre. */
+.results-row {
+  flex-wrap: nowrap;
+  overflow: clip;
+  justify-content: center;
+}
+
+.results-row .form-col {
+  transition:
+    flex-basis 0.55s ease,
+    max-width 0.55s ease;
+}
+
+/* Mode solo : le form prend ~58% (~fr-col-lg-7) et reste centre. */
+@media (width >= 992px) {
+  .results-row:not(.layout--split) .form-col {
+    flex-basis: 58.3333%;
+    max-width: 58.3333%;
+  }
+}
+
+.results-row .result-col {
+  flex-shrink: 0;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(40px);
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    max-width 0.55s ease,
+    opacity 0.4s ease 0.15s,
+    transform 0.4s ease 0.15s;
+}
+
+.results-row.layout--split .result-col {
+  max-width: 700px;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* ─── Panneau resultat ─────────────────────────────────────────────── */
+
+.resultat-panel {
+  background: var(--background-alt-grey);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  color: var(--text-default-grey);
+}
+
+.resultat-panel h2,
+.resultat-panel h3,
+.resultat-panel h4 {
+  color: var(--text-title-grey);
+}
+
+.resultat-panel p {
+  color: var(--text-default-grey);
+}
+
+.resultat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.resultat-row:last-of-type {
+  border-bottom: none;
+}
+
+.resultat-row__label {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-title-grey);
+}
+
+/* ─── Badges resultat (couleurs maquette) ─────────────────────────── */
+
+.resultat-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.resultat-badge--concerne {
+  background: #dee9fd;
+  color: #0063cb;
+}
+
+.resultat-badge--autorise {
+  background: #b8fec9;
+  color: #18753c;
+}
+
+.resultat-badge--interdit {
+  background: #ffeaeb;
+  color: #e1000f;
+}
+
+.resultat-badge--conditionnel {
+  background: #ffe0b2;
+  color: #b35900;
+}
+
+.resultat-badge--neutre {
+  background: #eaeaea;
+  color: #666;
+}
+
+/* ─── Accordeons : on respecte le style DSFR par defaut ─────────────
+   - Bouton ferme (aria-expanded=false) : couleur DSFR France #000091
+   - Bouton ouvert (aria-expanded=true) : on force le noir maquette
+   - Contenu (.fr-collapse) : noir maquette aussi
+*/
+
+.resultat-panel .fr-accordion__btn[aria-expanded="true"] {
+  color: var(--text-title-grey);
+}
+
+.resultat-panel .fr-collapse {
+  color: var(--text-default-grey);
+}
+
+/* Sur petit ecran, les colonnes passent en stack vertical */
+@media (width <= 991px) {
+  .results-row {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .results-row .result-col {
+    max-width: 100%;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    overflow: visible;
+    margin-top: 2rem;
+  }
+}
+
+/* ─── Panel debug parcours (mode developpeur) ──────────────────────── */
+
+.nitrates-debug-panel {
+  background: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+}
+
+.nitrates-debug-panel > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+.nitrates-debug-panel__section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-default-grey);
+}
+
+.nitrates-debug-panel__section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.nitrates-debug-panel__title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-mention-grey);
+  margin: 0 0 6px;
+}
+
+/* Liste cle/valeur en 2 colonnes : libelle a gauche, valeur a droite,
+   les valeurs longues passent a la ligne sans deborder. */
+.nitrates-debug-panel__dl {
+  display: grid;
+  grid-template-columns: minmax(180px, max-content) 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.nitrates-debug-panel__dl dt {
+  font-weight: 600;
+  color: var(--text-default-grey);
+}
+
+.nitrates-debug-panel__dl dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.nitrates-debug-panel__dl dd code,
+.nitrates-debug-panel__path code {
+  background: var(--background-alt-grey);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Chemin parcouru : une etape par ligne, numerotee, plus lisible que
+   l'ancien rendu inline. */
+.nitrates-debug-panel__path {
+  margin: 0;
+  padding-left: 1.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nitrates-debug-panel__path li {
+  list-style: decimal;
+}

@@ -27,6 +27,8 @@ attrs==25.3.0
     # via
     #   -r base.txt
     #   fiona
+    #   jsonschema
+    #   referencing
 backoff==2.2.1
     # via
     #   -r base.txt
@@ -163,6 +165,12 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
+jsonschema==4.26.0
+    # via -r base.txt
+jsonschema-specifications==2025.9.1
+    # via
+    #   -r base.txt
+    #   jsonschema
 kombu==5.5.4
     # via
     #   -r base.txt
@@ -200,6 +208,8 @@ propcache==0.3.2
     # via
     #   -r base.txt
     #   yarl
+pygments==2.20.0
+    # via -r base.txt
 psycopg[binary]==3.2.9
     # via -r base.txt
 psycopg-binary==3.2.9
@@ -244,6 +254,11 @@ redis==6.4.0
     # via
     #   -r base.txt
     #   django-redis
+referencing==0.37.0
+    # via
+    #   -r base.txt
+    #   jsonschema
+    #   jsonschema-specifications
 requests==2.32.4
     # via
     #   -r base.txt
@@ -255,6 +270,13 @@ rjsmin==1.2.5
     # via
     #   -r base.txt
     #   django-compressor
+rpds-py==0.30.0
+    # via
+    #   -r base.txt
+    #   jsonschema
+    #   referencing
+ruamel-yaml==0.19.1
+    # via -r base.txt
 s3transfer==0.13.1
     # via boto3
 scipy==1.16.1

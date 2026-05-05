@@ -1,0 +1,138 @@
+{% comment %}
+Panneau gauche : carte + form de saisie (structure maquette).
+Pas de fr-fieldset/fr-legend qui indenteraient les titres : on utilise
+des `form-section` simples, comme dans site-nitrates-maquette/index.html.
+
+Les radios cascade sont rendus dynamiquement par cascade.js dans les
+conteneurs `[data-cascade="<champ>"]`. Lat/lng sont des hidden inputs
+remplis au clic carte (cf. simulator.js).
+{% endcomment %}
+
+<form method="get" action="{% url 'nitrates_simulateur' %}">
+
+  {# ─── Localisation ───────────────────────────────────────────────── #}
+  <div class="form-section" id="section-localisation">
+    <h2 class="form-section-title">Localisation</h2>
+
+    <div class="map-container">
+      <p class="fr-label">
+        <span style="font-weight: 700;">Localisez votre parcelle *</span>
+        <span class="fr-hint-text">Recherchez une commune, puis cliquez pour placer le marqueur.</span>
+      </p>
+
+      {# Recherche commune (BAN) #}
+      <div class="map-search-wrapper">
+        <input type="text"
+               id="map-search"
+               class="fr-input"
+               placeholder="Rechercher une commune…"
+               autocomplete="off">
+        <ul id="map-search-list" class="ban-suggestions" role="listbox" hidden>
+        </ul>
+      </div>
+
+      <div id="nitrates-map" class="nitrates-map"></div>
+    </div>
+
+    {# Affichage commune / dept / region (rempli par simulator.js) #}
+    <div id="nitrates-localisation-info" hidden>
+      <div class="localisation-readonly">
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Commune</span>
+          <span class="localisation-readonly__value" id="commune-display">—</span>
+        </div>
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Département</span>
+          <span class="localisation-readonly__value" id="departement-display">—</span>
+        </div>
+        <div class="localisation-readonly__item">
+          <span class="localisation-readonly__label">Région</span>
+          <span class="localisation-readonly__value" id="region-display">—</span>
+        </div>
+      </div>
+
+      {% if debug %}
+        {# Panel debug : ne s'affiche qu'en mode DEBUG (settings.DEBUG=True) #}
+        <details class="fr-mt-2w fr-text--sm">
+          <summary>Informations parcelle (debug)</summary>
+          <div id="nitrates-debug" class="nitrates-debug">
+            <p class="nitrates-debug__placeholder">Cliquez sur la carte pour afficher les informations.</p>
+          </div>
+        </details>
+      {% endif %}
+    </div>
+
+    {% comment %}
+    Lat / lng + code INSEE en hidden : remplis au clic carte par
+    simulator.js. Le code INSEE est utilise cote backend pour
+    resoudre la zone montagne (D113-14) via mapping sans PostGIS.
+    {% endcomment %}
+    <input type="hidden"
+           name="lat"
+           id="id_lat"
+           value="{{ data.lat|default:'' }}">
+    <input type="hidden"
+           name="lng"
+           id="id_lng"
+           value="{{ data.lng|default:'' }}">
+    <input type="hidden"
+           name="code_insee"
+           id="id_code_insee"
+           value="{{ data.code_insee|default:'' }}">
+  </div>
+
+  {# ─── Culture ────────────────────────────────────────────────────── #}
+  <div class="form-section" id="section-culture" style="margin-top: 40px;">
+    <h2 class="form-section-title">Culture</h2>
+
+    <div class="form-question-group">
+      <p class="form-question-text">Qu'est-ce qui occupe la parcelle ? *</p>
+      <div data-cascade="occupation_sol"></div>
+    </div>
+
+    <div class="form-question-group" id="sous_culture-wrapper" hidden>
+      <p class="form-question-text">Précisez le type de culture *</p>
+      <div data-cascade="sous_culture"></div>
+    </div>
+  </div>
+
+  {# ─── Fertilisant ────────────────────────────────────────────────── #}
+  <div class="form-section"
+       id="section-fertilisant"
+       style="margin-top: 40px">
+    <h2 class="form-section-title">Fertilisant</h2>
+
+    <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
+      <p class="form-question-text">Catégorie de fertilisant *</p>
+      <div data-cascade="categorie_fertilisant"></div>
+    </div>
+
+    <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
+      <p class="form-question-text">Fertilisant précis *</p>
+      <div data-cascade="sous_fertilisant"></div>
+      <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
+    </div>
+
+    {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
+    <input type="hidden"
+           name="type_fertilisant"
+           id="id_type_fertilisant"
+           value="{{ data.type_fertilisant|default:'' }}">
+  </div>
+
+  {# ─── Questions complementaires (sous le form principal) ────────── #}
+  {% if afficher_resultat %}
+    {% with ev=premier_evaluator_avec_questions %}
+      {% if ev.questions_subsidiaires %}
+        <div class="form-section questions-complementaires-box"
+             style="margin-top: 32px">{% include "nitrates/fragments/_questions_complementaires.html" %}</div>
+      {% endif %}
+    {% endwith %}
+  {% endif %}
+
+  {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
+
+  <div style="margin-top: 32px;">
+    <button type="submit" class="fr-btn">Lancer la simulation</button>
+  </div>
+</form>

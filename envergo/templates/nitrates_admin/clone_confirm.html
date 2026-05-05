@@ -1,0 +1,31 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% load static %}
+
+{% block title %}Cloner un arbre{% endblock %}
+
+{% block extra_css %}
+  <link href="{% static 'nitrates_admin/yaml_tree.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-py-3w">
+    <h1>Cloner un arbre de décision en draft</h1>
+    <p>
+      Source :
+      <strong>{{ source.name }}</strong>
+      ({{ source.get_status_display }})
+    </p>
+    <p>
+      Le draft créé portera un nom auto type <code>{{ source.name }} (copy)</code> que tu pourras renommer immédiatement après.
+    </p>
+
+    <form method="post"
+          action="{% url 'nitrates_admin_yaml_create_draft' %}?from={{ source.pk }}">
+      {% csrf_token %}
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Cloner et éditer</button>
+      <a class="yaml-admin__btn"
+         href="{% url 'admin:nitrates_decisiontree_changelist' %}">Annuler</a>
+    </form>
+  </div>
+{% endblock %}
