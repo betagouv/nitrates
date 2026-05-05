@@ -452,6 +452,11 @@ class EditBrancheView(View):
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
+                "renvoi_targets": (
+                    _list_renvoi_targets(tree.contenu)
+                    if "renvoi_vers" in branche
+                    else []
+                ),
             },
         )
 
@@ -468,6 +473,7 @@ class EditBrancheView(View):
 
         new_valeur_raw = request.POST.get("valeur_new", "").strip()
         new_libelle = request.POST.get("libelle", "").strip()
+        new_renvoi = request.POST.get("renvoi_vers_new", "").strip()
 
         # Conversion type-aware de la nouvelle valeur (preserve bool/int).
         if new_valeur_raw == "":
@@ -517,6 +523,11 @@ class EditBrancheView(View):
                 branche["libelle"] = new_libelle
             elif "libelle" in branche:
                 del branche["libelle"]
+            # Si la branche est de type renvoi_vers, on applique la
+            # nouvelle cible si fournie. On ne valide pas ici qu'elle
+            # existe dans l'arbre -- le validateur deep le fera.
+            if "renvoi_vers" in branche and new_renvoi:
+                branche["renvoi_vers"] = new_renvoi
             tree.contenu_yaml_brut = editor._dump_yaml(tree.contenu)
             tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
 
@@ -1143,6 +1154,78 @@ def _walk_for_node(noeud, target_id, crumbs):
             if res is not None:
                 return res
     return None
+
+
+def _list_renvoi_targets(arbre: dict) -> list[dict]:
+    """Liste tous les ids cibles potentiels pour un renvoi_vers, avec
+    pour chacun son label metier (chemin) pour aider a choisir.
+
+    Les cibles incluent :
+      - regles dans l'arbre (avec leur chemin metier complet)
+      - regles top-level dans plafonnements et regles_partagees
+      - noeuds (renvoi vers un noeud entier est rare mais possible)
+
+    Retourne une liste [{id, label, group}] triee par groupe puis label.
+    """
+    targets: list[dict] = []
+
+    # Regles + noeuds dans l'arbre
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if racine:
+        _collect_targets_in_node(racine, [], targets)
+
+    # Regles top-level
+    for top_key in ("plafonnements", "regles_partagees"):
+        for entry in (arbre or {}).get(top_key) or []:
+            regle = entry.get("regle") if isinstance(entry, dict) else None
+            if isinstance(regle, dict) and regle.get("id"):
+                # Petit label : le message ou l'id
+                label = regle.get("message") or regle.get("id")
+                targets.append(
+                    {
+                        "id": regle["id"],
+                        "label": label,
+                        "group": top_key,
+                    }
+                )
+
+    # Tri : groupe (arbre d'abord), puis label
+    targets.sort(key=lambda t: (t["group"], t["label"]))
+    return targets
+
+
+def _collect_targets_in_node(noeud, crumbs, out):
+    if not isinstance(noeud, dict):
+        return
+    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
+    next_crumbs = crumbs + ([str(label)] if label else [])
+    # On ajoute aussi les noeuds (utile pour renvoyer vers un sous-arbre).
+    if noeud.get("id"):
+        out.append(
+            {
+                "id": noeud["id"],
+                "label": " > ".join(next_crumbs) if next_crumbs else noeud["id"],
+                "group": "arbre",
+            }
+        )
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        # Regle attachee a la branche
+        regle = branche.get("regle")
+        if isinstance(regle, dict) and regle.get("id"):
+            out.append(
+                {
+                    "id": regle["id"],
+                    "label": " > ".join(b_crumbs),
+                    "group": "arbre",
+                }
+            )
+        # Sous-noeud
+        if isinstance(branche.get("noeud"), dict):
+            _collect_targets_in_node(branche["noeud"], b_crumbs, out)
 
 
 def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
