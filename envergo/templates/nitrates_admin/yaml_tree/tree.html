@@ -87,6 +87,12 @@
             {% reset_link querystring_base as reset_url %}
             <a href="{{ reset_url }}" class="yaml-admin__btn">↺ Réinitialiser le pli</a>
           {% endif %}
+
+          <label class="yaml-admin__toggle"
+                 title="Affiche les identifiants techniques (q_, n_, r_) dans l'arbre">
+            <input type="checkbox" id="yaml-admin-toggle-tech-ids">
+            <span>Afficher les identifiants techniques</span>
+          </label>
         </nav>
       </header>
 
@@ -104,5 +110,29 @@
         {% endif %}
       </div>
     </div>
+
+    <script>
+      // Toggle "Afficher les identifiants techniques" (q_, n_, r_).
+      // Persiste dans localStorage. Etat par defaut : OFF.
+      (function () {
+        const KEY = 'nitrates_admin__show_tech_ids';
+        const root = document.querySelector('.yaml-admin');
+        const cb = document.getElementById('yaml-admin-toggle-tech-ids');
+        if (!root || !cb) return;
+        const apply = (on) => {
+          root.classList.toggle('yaml-admin--show-tech-ids', !!on);
+          cb.checked = !!on;
+        };
+        apply(localStorage.getItem(KEY) === '1');
+        cb.addEventListener('change', () => {
+          localStorage.setItem(KEY, cb.checked ? '1' : '0');
+          apply(cb.checked);
+        });
+        // Re-applique apres chaque swap htmx (le DOM peut etre re-rendu).
+        document.addEventListener('htmx:afterSwap', () => {
+          apply(localStorage.getItem(KEY) === '1');
+        });
+      })();
+    </script>
   {% endif %}
 {% endblock %}

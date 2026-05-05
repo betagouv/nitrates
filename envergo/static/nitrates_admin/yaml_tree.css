@@ -796,6 +796,31 @@ details[open] > summary.yaml-tree__row::before {
   transition: opacity 0.15s ease;
 }
 
+/* Toggle "Afficher les identifiants techniques" : par defaut, on
+   masque les <code class="yaml-tree__id"> inline dans le listing. Le
+   toggle pose la classe `--show-tech-ids` sur le conteneur racine.
+   Les formulaires d'edition ne sont pas concernes (inputs hors de
+   .yaml-tree__id). */
+.yaml-admin:not(.yaml-admin--show-tech-ids) .yaml-tree__id {
+  display: none;
+}
+
+.yaml-admin__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
+
+.yaml-admin__toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
 /* Cible d'un renvoi vers : on la garde visible (utile au juriste pour
    suivre le flux). Pas de grisage. */
 .yaml-tree__renvoi-target {
