@@ -704,10 +704,10 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__raw {
-  background: #fafafa;
-  border: 1px solid #e0e0e0;
+  background: #272822;
+  color: #f8f8f2;
   border-radius: 4px;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   overflow: auto;
   font-size: 0.8rem;
   max-height: 80vh;
@@ -715,7 +715,15 @@ button.yaml-admin__btn {
 
 .yaml-admin__raw pre {
   margin: 0;
+  background: transparent !important;
+  color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.yaml-admin__raw .yaml-raw .linenos {
+  color: #75715e;
+  padding-right: 1rem;
+  user-select: none;
 }
 
 /* Arbre */

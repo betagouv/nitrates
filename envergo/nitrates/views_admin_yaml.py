@@ -145,7 +145,10 @@ class YamlTreeView(TemplateView):
         if vue in {"brut", "split"}:
             raw = load_tree_raw(tree)
             formatter = HtmlFormatter(
-                cssclass="yaml-raw", linenos="inline", wrapcode=True
+                cssclass="yaml-raw",
+                linenos="inline",
+                wrapcode=True,
+                style="monokai",
             )
             ctx["raw_html"] = highlight(raw, YamlLexer(), formatter)
             ctx["raw_css"] = formatter.get_style_defs(".yaml-raw")

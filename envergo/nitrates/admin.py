@@ -60,21 +60,39 @@ class DecisionTreeAdmin(admin.ModelAdmin):
 
     @admin.display(description="Aperçu YAML")
     def yaml_preview(self, obj):
-        """Rend le YAML avec coloration syntaxique Pygments."""
+        """Rend le YAML avec coloration syntaxique Pygments.
+
+        Theme `monokai` (fond sombre type Darcula). On force le theme
+        independant du dark/light mode du systeme pour garder une
+        coloration coherente.
+        """
         if not obj or not obj.contenu_yaml_brut:
             return "(vide)"
         from pygments import highlight
         from pygments.formatters import HtmlFormatter
         from pygments.lexers import YamlLexer
 
-        formatter = HtmlFormatter(cssclass="yaml-raw", linenos="inline", wrapcode=True)
+        formatter = HtmlFormatter(
+            cssclass="yaml-raw",
+            linenos="inline",
+            wrapcode=True,
+            style="monokai",
+        )
         css = formatter.get_style_defs(".yaml-raw")
         body = highlight(obj.contenu_yaml_brut, YamlLexer(), formatter)
         return format_html(
-            "<style>{}\n.yaml-raw {{ max-height: 70vh; overflow: auto; "
-            "border: 1px solid #ddd; border-radius: 3px; padding: 0.5rem; "
-            "background: #fafafa; font-family: ui-monospace, Menlo, monospace; "
-            "font-size: 0.85rem; line-height: 1.4; }}</style>{}",
+            "<style>{}\n"
+            ".yaml-raw {{ max-height: 70vh; overflow: auto; "
+            "border-radius: 4px; padding: 0.75rem 1rem; "
+            "background: #272822 !important; "
+            "color: #f8f8f2; "
+            "font-family: ui-monospace, Menlo, monospace; "
+            "font-size: 0.85rem; line-height: 1.5; }}\n"
+            ".yaml-raw pre {{ background: transparent !important; "
+            "color: inherit; margin: 0; }}\n"
+            ".yaml-raw .linenos {{ color: #75715e; padding-right: 1rem; "
+            "user-select: none; }}\n"
+            "</style>{}",
             mark_safe(css),
             mark_safe(body),
         )
