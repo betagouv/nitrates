@@ -104,9 +104,34 @@
         {% endif %}
 
         {% if vue == "split" or vue == "brut" %}
-          <section class="yaml-admin__raw" aria-label="Source YAML">
-            {{ raw_html|safe }}
-          </section>
+          {% if is_editing %}
+            <section class="yaml-admin__raw yaml-admin__raw--editable"
+                     aria-label="Source YAML (édition directe)">
+              <form method="post"
+                    action="{% url 'nitrates_admin_yaml_edit_raw' tree_pk=tree.pk %}"
+                    hx-post="{% url 'nitrates_admin_yaml_edit_raw' tree_pk=tree.pk %}"
+                    hx-target="#yaml-admin-validation-zone"
+                    hx-swap="innerHTML">
+                {% csrf_token %}
+                <p class="yaml-admin__raw-hint">
+                  ⚠ Édition directe du YAML — utile pour modifier les
+                  blocs hors arbre (<code>regles_partagees</code>,
+                  <code>plafonnements</code>, <code>metadata</code>).
+                  La structure est validée à l'enregistrement.
+                </p>
+                <textarea name="contenu_yaml_brut"
+                          class="yaml-admin__raw-textarea"
+                          spellcheck="false">{{ tree.contenu_yaml_brut }}</textarea>
+                <div class="yaml-admin__raw-actions">
+                  <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer le YAML</button>
+                </div>
+              </form>
+            </section>
+          {% else %}
+            <section class="yaml-admin__raw" aria-label="Source YAML">
+              {{ raw_html|safe }}
+            </section>
+          {% endif %}
         {% endif %}
       </div>
     </div>

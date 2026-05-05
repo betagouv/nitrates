@@ -726,6 +726,44 @@ button.yaml-admin__btn {
   user-select: none;
 }
 
+/* Edition directe du YAML brut */
+
+.yaml-admin__raw--editable {
+  background: #1e1f1c;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.yaml-admin__raw-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #fff3e0;
+  color: #6d4c00;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__raw-textarea {
+  width: 100%;
+  min-height: 60vh;
+  background: #272822;
+  color: #f8f8f2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 0.75rem 1rem;
+  border: 1px solid #3a3b35;
+  border-radius: 4px;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.yaml-admin__raw-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* Arbre */
 
 .yaml-tree {

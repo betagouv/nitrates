@@ -1341,6 +1341,117 @@ def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
 
 
 @method_decorator(staff_member_required, name="dispatch")
+class EditRawYamlView(View):
+    """POST : remplace le YAML brut entier d'un draft.
+
+    Utilisation principale : editer les blocs hors `arbre` (regles
+    partagees, plafonnements, metadata) qui n'ont pas de UI dediee.
+    On parse le YAML, on valide la structure, on ecrit. Si une etape
+    echoue, on refuse et on renvoie le panneau d'erreurs.
+    """
+
+    def post(self, request, tree_pk):
+        from io import StringIO
+
+        from ruamel.yaml import YAML
+        from ruamel.yaml.error import YAMLError
+
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        raw = request.POST.get("contenu_yaml_brut", "")
+        if not raw.strip():
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "",
+                            "message": "Le YAML ne peut pas être vide.",
+                            "raw": "",
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        # Parse YAML
+        yaml = YAML(typ="rt")
+        yaml.preserve_quotes = True
+        yaml.width = 4096
+        try:
+            arbre_dict = yaml.load(StringIO(raw))
+        except YAMLError as exc:
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "Parse YAML",
+                            "message": str(exc),
+                            "raw": str(exc),
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        if not isinstance(arbre_dict, dict):
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "",
+                            "message": "Le YAML racine doit être un dict.",
+                            "raw": "",
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        # Validation profonde
+        try:
+            validate_arbre(arbre_dict)
+        except ValidationError as exc:
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [_humanize_error(arbre_dict, e) for e in exc.errors],
+                    "blocked_activation": False,
+                },
+            )
+        # OK : on enregistre, avec une revision pour pouvoir undo.
+        from django.db import transaction
+
+        with transaction.atomic():
+            DecisionTreeRevision.record(
+                tree,
+                action=DecisionTreeRevision.ACTION_EDIT,
+                user=request.user,
+                target_path="",
+                description="Édition directe du YAML brut",
+            )
+            tree.contenu = arbre_dict
+            tree.contenu_yaml_brut = raw
+            tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+        # Renvoie un panneau succes + reload
+        return _refresh_response(request, "YAML enregistré et validé.")
+
+
+@method_decorator(staff_member_required, name="dispatch")
 class ActivateTreeView(View):
     """POST : valide et publie un draft. Si la validation deep echoue,
     on refuse et on renvoie le panneau d'erreurs ; sinon le draft passe
