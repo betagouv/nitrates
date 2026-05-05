@@ -892,25 +892,38 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 /* Branche feuille (regle terminale, pas de sous-arbre) : on aligne la
-   valeur de branche + la regle sur une seule ligne. */
+   valeur de branche + la regle sur une seule ligne, en gardant
+   exactement la meme apparence (font-size, padding, alignment) que
+   les rangees de noeud, pour que l'oeil ne percoive pas de difference
+   structurelle entre une branche et son enfant feuille. */
 .yaml-tree__item--leaf-regle {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: var(--tree-row-pad) 0;
 }
 
 .yaml-tree__item--leaf-regle > .yaml-tree__branche-header,
 .yaml-tree__item--leaf-regle > .yaml-tree__regle {
   margin: 0;
-  padding: 0.1rem 0.3rem;
+  padding: 0;
   background: transparent;
   border-left: none;
+  font-size: inherit;
 }
 
 .yaml-tree__item--leaf-regle > .yaml-tree__regle.is-todo {
-  border-left: 3px solid var(--tag-fg-warn);
   background: var(--tag-bg-warn);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+}
+
+/* Aligne aussi la row interne de la regle sur center et meme gap. */
+.yaml-tree__item--leaf-regle > .yaml-tree__regle .yaml-tree__row {
+  align-items: center;
+  gap: 0.5rem;
+  font-size: inherit;
 }
 
 /* Sur une feuille regle, les boutons d'edition de la branche sont
