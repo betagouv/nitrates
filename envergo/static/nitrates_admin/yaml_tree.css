@@ -1051,10 +1051,9 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 /* Vue compacte : quand un noeud est ferme (details:not([open])), on
-   masque le tag de type et le libelle dans son summary. Seul reste l'id
-   (et les boutons d'edition s'il y en a). Permet d'avoir une liste plate
-   des branches d'un parent sans la surcharge des questions descendantes. */
-.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__tags,
+   masque le libelle long et le meta. Le tag de type reste visible
+   (le juriste doit toujours voir s'il s'agit d'une question culture,
+   sous-culture, complement, etc.). */
 .yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__libelle,
 .yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta {
   display: none;
@@ -1067,20 +1066,6 @@ details[open] > summary.yaml-tree__row::before {
 .yaml-tree__item--noeud > details:not([open]) > summary {
   padding: 0.05rem 0;
   font-size: 0.85rem;
-}
-
-/* On garde la racine avec son tag (pas dans une branche) toujours visible. */
-.yaml-tree--root
-  > .yaml-tree__item--noeud
-  > details:not([open])
-  > summary
-  > .yaml-tree__tags,
-.yaml-tree--root
-  > .yaml-tree__item--noeud
-  > details:not([open])
-  > summary
-  > .yaml-tree__libelle {
-  display: inline-flex;
 }
 
 /* Stripes alternees par groupe de branches au meme niveau. Aide a
