@@ -32,6 +32,10 @@ from envergo.nitrates.views_admin_yaml_edit import (
     RestoreRevisionView,
     UndoLastView,
 )
+from envergo.nitrates.views_yaml_browser import (
+    YamlBrowserDetailView,
+    YamlBrowserListView,
+)
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -150,6 +154,18 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/restore/",
         RestoreRevisionView.as_view(),
         name="nitrates_admin_yaml_restore_revision",
+    ),
+    # Mini browser YAML pleine page (dev) : liste -> detail avec
+    # CodeMirror + theme Darcula. Endpoint temporaire.
+    path(
+        "yaml-browser/",
+        YamlBrowserListView.as_view(),
+        name="nitrates_yaml_browser_list",
+    ),
+    path(
+        "yaml-browser/<int:pk>/",
+        YamlBrowserDetailView.as_view(),
+        name="nitrates_yaml_browser_detail",
     ),
     path(
         _("contact-us/"),

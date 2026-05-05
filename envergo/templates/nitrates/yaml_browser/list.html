@@ -1,0 +1,121 @@
+{% extends "nitrates/base.html" %}
+
+{% block title %}Browser YAML{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .yaml-browser {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .yaml-browser__intro {
+      color: var(--text-mention-grey);
+      margin-bottom: 1.5rem;
+    }
+
+    .yaml-tree-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .yaml-tree-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border: 1px solid var(--border-default-grey);
+      border-radius: 4px;
+      background: var(--background-default-grey);
+      transition: background 0.15s;
+    }
+
+    .yaml-tree-card:hover {
+      background: var(--background-alt-grey);
+    }
+
+    .yaml-tree-card__main {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .yaml-tree-card__name {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text-title-grey);
+      text-decoration: none;
+    }
+
+    .yaml-tree-card__name:hover {
+      text-decoration: underline;
+    }
+
+    .yaml-tree-card__meta {
+      font-size: 0.85rem;
+      color: var(--text-mention-grey);
+    }
+
+    .yaml-status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .yaml-status-badge--active {
+      background: #b8fec9;
+      color: #18753c;
+    }
+
+    .yaml-status-badge--draft {
+      background: #ffe0b2;
+      color: #b35900;
+    }
+
+    .yaml-status-badge--archive {
+      background: #eaeaea;
+      color: #666;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="yaml-browser">
+    <h1>Browser YAML — arbres de décision</h1>
+    <p class="yaml-browser__intro">
+      Liste des arbres de décision en base. Cliquez sur un arbre pour
+      visualiser son YAML brut (coloration syntaxique + folding).
+    </p>
+
+    {% if not trees %}
+      <p>Aucun arbre en base.</p>
+    {% else %}
+      <ul class="yaml-tree-list">
+        {% for tree in trees %}
+          <li class="yaml-tree-card">
+            <div class="yaml-tree-card__main">
+              <a class="yaml-tree-card__name"
+                 href="{% url 'nitrates_yaml_browser_detail' pk=tree.id %}">{{ tree.name }} (#{{ tree.id }})</a>
+              <span class="yaml-tree-card__meta">
+                Créé : {{ tree.created_at|date:"Y-m-d H:i" }} —
+                {% if tree.activated_at %}Activé : {{ tree.activated_at|date:"Y-m-d H:i" }} —{% endif %}
+                Mis à jour : {{ tree.updated_at|date:"Y-m-d H:i" }}
+                {% if tree.parent %}— parent #{{ tree.parent_id }}{% endif %}
+              </span>
+            </div>
+            <span class="yaml-status-badge yaml-status-badge--{{ tree.status }}">{{ tree.get_status_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endblock %}
