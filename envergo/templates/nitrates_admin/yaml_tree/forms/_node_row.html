@@ -1,6 +1,10 @@
 {% load yaml_admin_extras %}
 
-{% comment %}Re-rendu d'un summary de noeud apres edition reussie.{% endcomment %}
+{% comment %}Re-rendu d'un summary de noeud apres edition reussie / annulation.
+
+   Doit reproduire le summary de _noeud.html (en mode edition) :
+   tag + id + libelle + reference + boutons d'action.
+{% endcomment %}
 <summary class="yaml-tree__row" id="node-row-{{ path_str|slugify }}">
   <span class="yaml-tree__tags">
     {% for tag in tags %}
@@ -18,7 +22,29 @@
   {% endif %}
   {% if node.reference %}<span class="yaml-tree__meta">→ {{ node.reference }}</span>{% endif %}
 
-  {% comment %}Note : ce row est swapp dans le summary apres save. Les actions
-     d'edition (edit/add/delete) sont dans le _noeud.html parent (en absolute hors
-  summary), donc on n'a pas besoin de les re-rendre ici.{% endcomment %}
+  <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+    <button type="button"
+            class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
+            title="Éditer ce nœud"
+            hx-get="{% url 'nitrates_admin_yaml_edit_node' tree_pk=tree.pk %}?path={{ path_str }}"
+            hx-target="#node-row-{{ path_str|slugify }}"
+            hx-swap="outerHTML">✎</button>
+    <button type="button"
+            class="yaml-tree__edit-btn yaml-tree__edit-btn--add"
+            title="Ajouter une valeur (branche enfant)"
+            hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path_str }}"
+            hx-target="#add-zone-{{ path_str|slugify }}"
+            hx-swap="outerHTML">+</button>
+    {% if path_str %}
+      <button type="button"
+              class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+              title="Supprimer ce nœud et son sous-arbre (annulable via ↩ Annuler)"
+              hx-post="{% url 'nitrates_admin_yaml_delete_node' tree_pk=tree.pk %}?path={{ path_str }}">🗑</button>
+    {% else %}
+      <button type="button"
+              class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
+              title="La racine ne peut pas être supprimée"
+              disabled>🗑</button>
+    {% endif %}
+  </span>
 </summary>
