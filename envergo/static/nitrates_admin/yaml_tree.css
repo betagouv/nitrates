@@ -906,13 +906,29 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__periodes {
   list-style: none;
-  margin: 0.3rem 0 0;
+  margin: 0;
   padding-left: 0;
   font-size: 0.85rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.yaml-tree__periodes li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
 }
 
 .yaml-tree__periodes code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.yaml-tree__plafond,
+.yaml-tree__assoc,
+.yaml-tree__calc {
+  font-size: 0.85rem;
+  color: #555;
 }
 
 .yaml-tree__plafond,
