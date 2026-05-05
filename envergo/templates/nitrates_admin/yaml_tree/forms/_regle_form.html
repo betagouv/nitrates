@@ -51,7 +51,8 @@
       </label>
     </div>
 
-    <fieldset class="yaml-tree__form-fieldset">
+    <fieldset class="yaml-tree__form-fieldset"
+              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement">
       <legend>Périodes (du / au + régime optionnel)</legend>
       {% with regle.periodes|default_if_none:"" as periodes %}
         {% for p in periodes %}
@@ -111,8 +112,8 @@
       {% endwith %}
     </fieldset>
 
-    <fieldset class="yaml-tree__form-fieldset">
-      <legend>Calculatrice (si type=calculatrice)</legend>
+    <fieldset class="yaml-tree__form-fieldset" data-type-fieldset="calculatrice">
+      <legend>Calculatrice</legend>
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>composant</span>
@@ -183,16 +184,18 @@
         </label>
       </div>
     </details>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
+    <div class="yaml-tree__form-row" data-type-row="plafonnement">
+      <label class="yaml-tree__form-label"
+             title="Plafond d'azote autorisé en kg N/ha pour cette règle.">
         <span>plafond N kg/ha</span>
         <input type="text"
                name="plafond_azote_kg_n_ha"
                value="{{ regle.plafond_azote_kg_n_ha|default_if_none:'' }}">
       </label>
     </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
+    <div class="yaml-tree__form-row" data-type-row="libre">
+      <label class="yaml-tree__form-label"
+             title="Si la règle est de type libre, on peut référencer une règle de plafonnement (id r_*) qui s'applique en parallèle.">
         <span>plafonnement_associe</span>
         <input type="text"
                name="plafonnement_associe"
@@ -219,20 +222,37 @@
     </div>
 
     <script>
-      // `regime` par periode + champ `condition` n'ont de sens que
-      // pour `autorisation_sous_condition`. On les masque sinon.
+      // Adapte les champs visibles selon le type choisi.
+      // - `regime` (par periode) + `condition` : autorisation_sous_condition uniquement
+      // - `Calculatrice` (composant + inputs_requis) : calculatrice uniquement
+      // - `plafond N kg/ha` : plafonnement uniquement
+      // - `plafonnement_associe` : libre uniquement
+      // - `Periodes` : interdiction / autorisation_sous_condition / plafonnement
       (function () {
         const root = document.currentScript.closest('form');
         const typeSelect = root.querySelector('[data-regle-type-select]');
         const regimeSelects = Array.from(root.querySelectorAll('[data-regime-select]'));
         const conditionRow = root.querySelector('[data-regle-condition-row]');
+        const fieldsets = Array.from(root.querySelectorAll('[data-type-fieldset]'));
+        const rows = Array.from(root.querySelectorAll('[data-type-row]'));
         const apply = () => {
-          const visible = typeSelect.value === 'autorisation_sous_condition';
+          const t = typeSelect.value;
+          const sousCondition = t === 'autorisation_sous_condition';
+          // regime + condition : conditionnel sur autorisation_sous_condition
           regimeSelects.forEach(sel => {
-            sel.style.display = visible ? '' : 'none';
-            if (!visible) sel.value = '';
+            sel.style.display = sousCondition ? '' : 'none';
+            if (!sousCondition) sel.value = '';
           });
-          if (conditionRow) conditionRow.style.display = visible ? '' : 'none';
+          if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
+          // fieldsets et rows marques avec data-type-fieldset/row
+          fieldsets.forEach(el => {
+            const allowed = el.dataset.typeFieldset.split(',');
+            el.style.display = allowed.includes(t) ? '' : 'none';
+          });
+          rows.forEach(el => {
+            const allowed = el.dataset.typeRow.split(',');
+            el.style.display = allowed.includes(t) ? '' : 'none';
+          });
         };
         apply();
         typeSelect.addEventListener('change', apply);
