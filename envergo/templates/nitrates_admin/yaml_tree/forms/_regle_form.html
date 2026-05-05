@@ -30,7 +30,7 @@
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>type</span>
-        <select name="type">
+        <select name="type" data-regle-type-select>
           <option value="">— (aucun, brouillon)</option>
           {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
             <option value="{{ t }}"{% if regle.type == t %} selected{% endif %}>{{ t }}</option>
@@ -68,7 +68,9 @@
                      value="{{ p.au|default_if_none:'' }}"
                      placeholder="au (JJ/MM)"
                      style="max-width:14ch">
-              <select name="periodes-{{ forloop.counter0 }}-regime" style="max-width:22ch">
+              <select name="periodes-{{ forloop.counter0 }}-regime"
+                      data-regime-select
+                      style="max-width:22ch">
                 <option value="">— régime hérité —</option>
                 {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
                   <option value="{{ r }}" {% if p.regime == r %}selected{% endif %}>{{ r }}</option>
@@ -97,6 +99,7 @@
                    placeholder="au (JJ/MM)"
                    style="max-width:14ch">
             <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
+                    data-regime-select
                     style="max-width:22ch">
               <option value="">— régime hérité —</option>
               {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
@@ -204,5 +207,30 @@
               hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
               hx-swap="outerHTML">Annuler</button>
     </div>
+
+    <script>
+      // Le `regime` par periode n'a de sens que pour une regle de type
+      // `autorisation_sous_condition` (sous-cas plus restrictifs sur la
+      // fenetre). On masque les selects regime pour les autres types.
+      (function () {
+        const root = document.currentScript.closest('form');
+        const typeSelect = root.querySelector('[data-regle-type-select]');
+        const regimeRows = Array.from(root.querySelectorAll('[data-regime-select]')).map(s => s.closest('.yaml-tree__form-row') || s);
+        const apply = () => {
+          const visible = typeSelect.value === 'autorisation_sous_condition';
+          regimeRows.forEach(el => {
+            // On masque toute la ligne (du / au / regime) ? Non, juste
+            // le select regime. On le masque + on retire sa valeur pour
+            // que le POST ne l'envoie pas.
+            const sel = el.matches('[data-regime-select]') ? el : el.querySelector('[data-regime-select]');
+            if (!sel) return;
+            sel.style.display = visible ? '' : 'none';
+            if (!visible) sel.value = '';
+          });
+        };
+        apply();
+        typeSelect.addEventListener('change', apply);
+      })();
+    </script>
   </form>
 </div>
