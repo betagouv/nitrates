@@ -1,0 +1,876 @@
+# =============================================================================
+# RÉFÉRENTIELS — listes fermées utilisées dans l'arbre de décision
+# =============================================================================
+# Modifier ce fichier uniquement si la réglementation change (nouveau type de
+# fertilisant reconnu, nouveau code PC, etc.).
+# Source : Tdb - Reglementation Nitrate - Table Correspondance codes + PDF Types fertilisants.
+# =============================================================================
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TYPES DE FERTILISANTS (selon arrêté PAN)
+# ─────────────────────────────────────────────────────────────────────────────
+# Chaque type a des règles d'épandage distinctes. Le type est déduit du
+# fertilisant saisi par l'utilisateur (voir mapping fertilisant_utilisateur → type).
+# ─────────────────────────────────────────────────────────────────────────────
+
+types_fertilisants:
+  type_0:
+    libelle_court: "Type 0"
+    libelle_public: "Boues, marcs, composts murs"
+    description: |
+      Produits organiques caractérisés par une organisation nette à moyen
+      terme de l'azote.
+    exemples:
+      - "Boues de papeterie"
+      - "Marcs de raisins frais"
+      - "Composts de déchets verts jeunes et ligneux"
+
+  type_Ia:
+    libelle_court: "Type Ia"
+    libelle_public: "Fumiers compacts, composts murs (sauf fientes de volailles)"
+    description: |
+      Produits organiques à minéralisation d'azote très lente et contenant
+      une faible quantité d'azote minéral.
+    exemples:
+      - "Fumiers compacts non susceptibles d'écoulement"
+      - "Composts d'effluents d'élevage (hors composts de fientes de volailles)"
+      - "Composts matures de déchets verts, composts d'ordures ménagères résiduelles"
+      - "Composts de marcs de raisins"
+      - "Composts de fractions solides de digestats de méthanisation"
+
+  type_Ib:
+    libelle_court: "Type Ib"
+    libelle_public: "Déjections animales avec litière (sauf fientes de volailles), composts de biodéchets"
+    description: |
+      Produits organiques à minéralisation d'azote lente et contenant une
+      quantité limitée d'azote minéral.
+    exemples:
+      - "Déjections animales avec litière ne répondant pas aux critères du type Ia"
+      - "Composts de MIATE (matières d'intérêt agronomique issues du traitement des eaux) mélangées à un support carboné"
+      - "Composts de biodéchets"
+
+  type_II:
+    libelle_court: "Type II"
+    libelle_public: "Déjections animales sans litière, farines animales, tourteaux, guanos, digestats"
+    description: |
+      Produits organiques à minéralisation d'azote rapide ou contenant une
+      quantité importante d'azote minéral.
+    exemples:
+      - "Déjections sans litière de ruminants, d'équins, de porcins et de volaille"
+      - "Fumiers de volailles"
+      - "Fientes de volailles y compris séchées"
+      - "Fractions liquides issues d'un raclage en V en élevage porcin"
+      - "Fractions liquides issues de la séparation de phase des lisiers"
+      - "Effluents peu chargés"
+      - "Vinasses de betterave"
+      - "Farines de plumes, de poisson, de sang, d'os, soies de porcs, tourteaux de ricin, guanos d'oiseaux marins"
+      - "Eaux résiduaires"
+      - "Digestats bruts de méthanisation"
+      - "Fractions liquides des digestats de méthanisation"
+
+  type_III:
+    libelle_court: "Type III"
+    libelle_public: "Engrais de synthèse"
+    description: |
+      Fertilisants azotés minéraux et uréiques de synthèse, y compris en
+      fertirrigation.
+
+  # Types "transverses" : flags qui s'ajoutent à un type principal
+  effluent_peu_charge:
+    libelle_public: "Effluent peu chargé"
+    est_un_flag: true
+    description: |
+      Effluent issu d'une dilution par les eaux de pluie, de lavage, ou de
+      traitement. Autorise des assouplissements (notes 8-11).
+
+  fertilisant_iaa:
+    libelle_public: "Fertilisant issu d'Industrie Agro-Alimentaire (IAA)"
+    est_un_flag: true
+    description: |
+      Fertilisant issu du traitement/transformation de matières premières
+      pour fabrication de produits alimentaires, aliments animaux,
+      préparation/conditionnement de vins, ou distillation d'alcools de
+      bouche d'origine agricole.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OCCUPATIONS DU SOL
+# ─────────────────────────────────────────────────────────────────────────────
+
+occupations_sol:
+  culture_principale:
+    libelle_public: "Culture principale"
+  couvert_intercultures:
+    libelle_public: "Couvert végétal d'interculture"
+  prairie:
+    libelle_public: "Prairie"
+  sol_non_cultive:
+    libelle_public: "Sol non cultivé"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SOUS-TYPES DE CULTURES / COUVERTS / PRAIRIES
+# ─────────────────────────────────────────────────────────────────────────────
+
+cultures:
+  colza:
+    libelle_public: "Colza"
+  mais:
+    libelle_public: "Maïs"
+  luzerne:
+    libelle_public: "Luzerne"
+  autre_culture:
+    libelle_public: "Autre culture (céréales, pérennes, vergers, vignes, maraîchères, porte-graines)"
+  # Liste à affiner avec le métier
+
+couverts_intercultures:
+  cie:
+    libelle_public: "CIE — Couvert d'interculture Exporté (dérobée, CIVE)"
+  cine:
+    libelle_public: "CINE — Couvert d'interculture Non Exporté (CIPAN)"
+  interculture_courte:
+    libelle_public: "Interculture courte"
+  interculture_longue_cine_detruit_avant_3112:
+    libelle_public: "Interculture longue — CINE détruit avant le 31/12"
+  interculture_longue_cine_detruit_apres_0101:
+    libelle_public: "Interculture longue — CINE détruit ou CIE exporté après le 01/01"
+
+prairies:
+  prairie_moins_6_mois:
+    libelle_public: "Prairie de moins de 6 mois"
+  prairie_plus_6_mois:
+    libelle_public: "Prairie de plus de 6 mois (dont permanente)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STATUT ICPE (installation classée protection environnement)
+# ─────────────────────────────────────────────────────────────────────────────
+
+statut_icpe:
+  non_concerne:
+    libelle_public: "Pas concerné par un plan d'épandage"
+  icpe_a:
+    libelle_court: "ICPE A"
+    libelle_public: "Soumis à autorisation (ICPE A)"
+  icpe_e:
+    libelle_court: "ICPE E"
+    libelle_public: "Soumis à enregistrement (ICPE E)"
+  icpe_d:
+    libelle_court: "ICPE D"
+    libelle_public: "Soumis à déclaration (ICPE D)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CODES DE PRESCRIPTION (PC1 à PC15)
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : Tdb - Reglementation Nitrate _table_correspondance_codes_28-04-26.pdf
+# (versions du 21/04/26 et du 28/04/26 strictement identiques — pas de
+# changement réglementaire entre les deux dates).
+#
+# Pour chaque code, deux niveaux de texte :
+#   - texte_court               : rédaction simplifiée "propositions Karine"
+#                                 destinée à l'affichage utilisateur (webapp)
+#   - texte_redaction_initiale  : version juridique brute issue de l'arrêté,
+#                                 conservée pour traçabilité réglementaire
+#                                 (à afficher en "voir détail réglementaire")
+#
+# Mention "à afficher tout le temps" (post-it Karine) : voir flag `toujours_affiche`.
+# Mention "infos de dates à enlever" sur PC2/PC3 : flag `dates_a_extraire` —
+# les dates sont à présenter via l'affichage des périodes d'interdiction, pas
+# en duplication dans le texte du PC.
+# ─────────────────────────────────────────────────────────────────────────────
+
+codes_prescription:
+
+  pc1:
+    mots_cles: "ICPE A"
+    note_reglementaire: "note_1"
+    type: "epandage_conditionne"
+    texte_court: |
+      Épandage autorisé dans la limite de 100 kg d'azote par hectare dans le
+      cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou
+      d'incidence démontrant l'innocuité de cette pratique et d'un dispositif
+      de surveillance des teneurs en azote nitrique et ammoniacal des eaux
+      lixiviées.
+    texte_redaction_initiale: |
+      L'épandage de fertilisants azotés de type 0, de type I.a et d'effluents
+      peu chargés peut être autorisé en période d'interdiction d'épandage, le
+      cas échéant, dans la limite d'une dose maximale pouvant être portée à
+      100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+      depuis la récolte de la culture précédente, dans le cadre d'un plan
+      d'épandage soumis à autorisation et à étude d'impact ou d'incidence,
+      sous réserve que cette dernière démontre l'innocuité d'une telle pratique
+      et qu'un dispositif de surveillance des teneurs en azote nitrique et
+      ammoniacal des eaux lixiviées. Par ailleurs, le couvert végétal
+      d'interculture doit être implanté précocement et maintenu au minimum
+      14 semaines. Les épandages ne sont pas possibles avant 4 semaines après
+      implantation du CI et à partir de 20 jours avant la récolte ou la
+      destruction du CI.
+
+  pc2:
+    mots_cles: "IAA + ICPE A"
+    note_reglementaire: "note_1"
+    type: "epandage_conditionne"
+    dates_a_extraire: true
+    texte_court: |
+      Épandage de fertilisants issus de processus alimentaires ou faiblement
+      dosés en azote autorisé, sous réserve d'une surveillance des reliquats.
+    texte_redaction_initiale: |
+      L'épandage de fertilisants azotés issus de traitement et transformation
+      de matières premières en vue de la fabrication de produits alimentaires
+      ou d'aliments pour animaux, de la préparation et du conditionnement de
+      vins, ou de la production par distillation d'alcools de bouche d'origine
+      agricole, qui n'entrent pas dans la définition des types 0, I.a ou
+      effluents peu chargés est possible dans les mêmes conditions, et sous
+      réserve qu'un dispositif de surveillance des reliquats azotés sous le
+      couvert installé, et avant épandage, soit mis en place dans le périmètre
+      d'épandage, dans les conditions prévues au 5° du VII de la présente annexe.
+
+  pc3:
+    mots_cles: "IAA + ICPE D ou E"
+    note_reglementaire: "note_2"
+    type: "epandage_conditionne"
+    dates_a_extraire: true
+    texte_court: |
+      Épandage de fertilisants issus de processus alimentaires autorisé dans
+      la limite de 70 kg d'azote par hectare, dans le cadre d'un plan
+      d'épandage soumis à déclaration ou enregistrement et sous réserve d'une
+      surveillance des reliquats azotés sous le couvert installé.
+    texte_redaction_initiale: |
+      L'épandage de fertilisants azotés issus de traitement et transformation
+      de matières premières en vue de la fabrication de produits alimentaires
+      ou d'aliments pour animaux, de la préparation et du conditionnement de
+      vins, ou de la production par distillation d'alcools de bouche d'origine
+      agricole, peut être autorisé en période d'interdiction, le cas échéant,
+      dans la limite d'une dose maximale pouvant être portée à 70 kg N d'azote
+      potentiellement libéré jusqu'en sortie d'hiver par hectare depuis la
+      récolte du précédent, dans le cadre d'un plan d'épandage soumis
+      déclaration ou enregistrement, sous réserve qu'un dispositif de
+      surveillance des reliquats azotés sous le couvert installé, et avant
+      épandage, soit mis en place dans le périmètre d'épandage, dans les
+      conditions prévues au 5° du VII de la présente annexe. Par ailleurs, le
+      couvert végétal d'interculture doit être implanté précocement et
+      maintenu au minimum 14 semaines. Les épandages ne sont pas possibles
+      avant 4 semaines après implantation du CI et à partir de 20 jours avant
+      la récolte ou la destruction du CI.
+
+  pc4:
+    mots_cles: "non ICPE A"
+    note_reglementaire: "note_3"
+    type: "epandage_conditionne"
+    texte_court: |
+      Épandage autorisé selon les conditions du programme d'actions régional,
+      avec un suivi des reliquats azotés avant épandage.
+    texte_redaction_initiale: |
+      L'épandage d'effluents d'élevage de type I.a, I.b et II autre que les
+      effluents peu chargés en période d'interdiction est possible jusqu'à
+      20 jours avant la récolte ou la destruction du CI, et dans des conditions
+      définies par le programme d'actions régional, notamment sur la durée et
+      la période de présence du couvert et sur le plafonnement des apports à
+      cette période, en vue de limiter les fuites de composés azotés dans
+      l'eau. Dans ce cas, un dispositif de suivi des reliquats azotés avant
+      épandage est mis en place, dans les conditions prévues au 5° du VII de
+      la présente annexe.
+
+  pc5:
+    mots_cles: "culture irriguée"
+    note_reglementaire: "note_4"
+    type: "epandage_conditionne"
+    texte_court: |
+      Apport d'engrais minéraux autorisé.
+    texte_redaction_initiale: |
+      En présence d'une culture irriguée, l'apport de fertilisants azotés de
+      type III est autorisé jusqu'au 15 juillet et, sur maïs irrigué, jusqu'au
+      stade du brunissement des soies du maïs.
+
+  pc6:
+    mots_cles: "effluent peu chargé fertirrigation"
+    note_reglementaire: "note_8"
+    type: "epandage_conditionne"
+    toujours_affiche: true   # Mesure 6 — à afficher tout le temps (post-it Karine)
+    texte_court: |
+      Fertirrigation avec des effluents faiblement dosés en azote autorisée
+      dans la limite de 50 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      En présence d'une culture, l'épandage d'effluents peu chargés en
+      fertirrigation est autorisé jusqu'au 31 août, dans la limite de 50 kg
+      d'azote efficace en été par hectare à compter du 1er juillet. L'azote
+      efficace en été est défini comme la somme de l'azote présent dans
+      l'effluent peu chargé sous forme minérale et sous forme organique
+      minéralisable entre le 1er juillet et le 31 août.
+
+  pc7:
+    mots_cles: "effluent peu chargé"
+    note_reglementaire: "note_9"
+    type: "epandage_conditionne"
+    texte_court: |
+      Épandage des effluents faiblement dosés en azote autorisé dans la
+      limite de 20 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      L'épandage des effluents peu chargés est autorisé dans cette période
+      dans la limite de 20 kg d'azote potentiellement libéré jusqu'en sortie
+      d'hiver par hectare à compter du 15 novembre. L'azote potentiellement
+      libéré jusqu'en sortie d'hiver est défini comme la somme de l'azote
+      présent dans l'effluent peu chargé sous forme minérale et sous forme
+      organique minéralisable entre le 15 novembre et le 15 janvier.
+
+  pc8:
+    mots_cles: "effluent peu chargé élevage + non ICPE A"
+    note_reglementaire: "note_10"
+    type: "epandage_conditionne"
+    toujours_affiche: true   # Mesure 8 — à afficher tout le temps (post-it Karine)
+    texte_court: |
+      Épandage d'effluents faiblement dosés en azote issus d'élevages dans la
+      limite de 20 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      L'épandage après le 15 octobre d'effluents peu chargés issus d'élevages
+      est possible jusqu'au 15 novembre. Ces apports sont limités à 20 kg
+      d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare. Ces
+      apports rentrent dans le calcul du plafonnement des apports à compter
+      de la récolte du précédent du CI, fixé à 70 kg N potentiellement libéré
+      jusqu'en sortie d'hiver.
+
+  pc9:
+    mots_cles: "effluent peu chargé élevage + non ICPE A"
+    note_reglementaire: "note_11"
+    type: "epandage_conditionne"
+    texte_court: |
+      Épandage d'effluents faiblement dosés en azote issus d'élevages dans la
+      limite de 20 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      L'épandage après le 15 octobre d'effluents peu chargés issus d'élevages
+      est possible jusqu'à 20 jours avant la récolte ou la destruction du CI.
+      Ces apports sont limités à 20 kg d'azote potentiellement libéré jusqu'en
+      sortie d'hiver par hectare. Ces apports rentrent dans le calcul du
+      plafonnement des apports à compter de la récolte du précédent du CI,
+      fixé à 70 kg N potentiellement libéré jusqu'en sortie d'hiver.
+
+  pc10:
+    mots_cles: "IAA luzerne + ICPE A"
+    note_reglementaire: "note_12"
+    type: "epandage_conditionne"
+    note_seconde_partie_a_clarifier: true   # Voir post-it Karine sur note 12
+    texte_court: |
+      Épandage de fertilisants issus de processus alimentaires autorisé dans
+      le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact
+      ou d'incidence démontrant l'innocuité de cette pratique et d'un
+      dispositif de surveillance des reliquats azotés.
+    texte_redaction_initiale: |
+      L'épandage de fertilisants azotés issus de traitement et transformation
+      des matières premières en vue de la fabrication de produits alimentaires
+      ou d'aliments pour animaux peut être autorisé sur luzerne après la
+      dernière coupe de l'année, dans le cadre d'un plan d'épandage soumis à
+      autorisation et à étude d'impact ou d'incidence, sous réserve que cette
+      dernière démontre l'innocuité d'une telle pratique et qu'un dispositif
+      de surveillance des reliquats azotés avant épandage, soit mis en place
+      dans le périmètre d'épandage.
+
+      Le dispositif de surveillance des reliquats azotés est précisé par le
+      programme d'actions régional. Les îlots culturaux concernés par ces
+      épandages font l'objet d'un suivi d'indicateurs de risque de lixiviation
+      des composés azotés. Les résultats des indicateurs sont transmis à
+      l'administration. Le programme d'actions régional précise les
+      informations à indiquer par l'agriculteur lors de la transmission à
+      l'administration. Le cas échéant, l'agriculteur tient à disposition les
+      justificatifs prévus par le programme d'actions régional. Dans le cas
+      de sols impropres à la réalisation de reliquats au début de la période
+      de drainage ou post-récolte, l'indicateur de risque de lixiviation est
+      le bilan azoté post-récolte. Les sols impropres à la réalisation de
+      reliquats sont définis par le programme d'actions régional. Dans le cas
+      contraire, l'indicateur de risque de lixiviation est le reliquat azoté
+      avant épandage. Le programme d'actions régional définit le protocole à
+      respecter pour la réalisation de ces analyses. Une analyse est réalisée
+      pour chaque îlot cultural représentatif. Les îlots culturaux sont
+      définis par le programme d'actions régional. Les îlots culturaux
+      représentatifs sont définis de sorte que le nombre d'analyses à réaliser
+      par exploitation soit au moins supérieur ou égal à la surface de
+      l'exploitation concernée par les épandages divisée par 20.
+
+  # ⚠️ MAJ 2026-05-04 : insertion d'un nouveau pc11 "colza" + décalage
+  # de tous les plafonnements (ex-pc11 → pc12, ex-pc12 → pc13, etc.) et
+  # ajout d'un nouveau pc16 "Plafond prairies".
+  # Source : Tdb - Reglementation Nitrate_table_correspondance_codes_2026-05-04.csv
+  # Ce changement est cohérent avec l'arbre où pc11 est utilisé sur le Type III
+  # colza (cf. r_colza_type_III_note5 et r_colza_type_III_autres).
+  # Note 13 a été redéfinie en parallèle (cf. plus bas) : elle décrit la
+  # condition d'apport conditionnel +30 unités d'azote sous forme minérale,
+  # stade 4 feuilles, entre le 1er septembre et le 15 octobre.
+
+  pc11:
+    mots_cles: "colza"
+    note_reglementaire: "note_13"
+    type: "epandage_conditionne"
+    texte_court: |
+      Apport supplémentaire de 30 unités d'azote sous forme minérale autorisé
+      en végétation sur colza à partir du stade « 4 feuilles », entre le
+      1er septembre et le 15 octobre, dans les conditions précisées par
+      la note 13.
+    texte_redaction_initiale: |
+      Un apport d'un maximum de 30 unités d'azote supplémentaires sous forme
+      minérale, en végétation à partir du stade « 4 feuilles » est possible
+      entre le 1er septembre et le 15 octobre, dans les situations où la
+      disponibilité en azote du sol pendant l'automne est limitée, c'est-à-dire
+      dans les cas où :
+        – il n'est pas réalisé d'apport de fertilisant azoté de types 0,
+          I.a, I.b et II avant le 1er septembre correspondant à plus de
+          30 unités d'azote efficaces,
+        – et où le semis du colza est réalisé avant le 25 août,
+        – et où au moins une des conditions suivantes est respectée :
+            – implantation du colza après un précédent céréale à pailles
+              avec résidus de culture enfouis et fréquence historique
+              d'apport de fertilisants de types 0, I.a, I.b et II
+              inférieure à une année sur trois,
+            – ou sols à faible disponibilité en azote (précisés par le
+              programme d'actions régional).
+
+  pc12:
+    mots_cles: "Plafond CI post 31/12"
+    type: "plafonnement_apports"
+    texte_court: |
+      Cumul de 70 kg d'azote par hectare durant l'année de l'implantation du
+      couvert d'interculture.
+    texte_redaction_initiale: |
+      Apports réalisés durant l'année de l'implantation du CI, et à compter
+      de la récolte du précédent, plafonnés à 70 kg N potentiellement libéré
+      jusqu'en sortie d'hiver, en cumulant les apports de type 0, I.a, I.b
+      et II. Si le couvert est récolté suffisamment tard l'année suivante,
+      permettant un apport de fertilisant de type III en sortie d'hiver, ce
+      plafond d'apport inclut les apports de type III.
+
+  pc13:
+    mots_cles: "Plafond CINE détruit avant 31/12"
+    type: "plafonnement_apports"
+    texte_court: |
+      Cumul de 70 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      Apports réalisés à compter de la récolte du précédent plafonnés à
+      70 kg N potentiellement libéré jusqu'en sortie d'hiver, en cumulant les
+      apports de type 0, I.a, et I.b, et II.
+
+  pc14:
+    mots_cles: "Plafond CI longue exporté avant 31/12"
+    type: "plafonnement_apports"
+    texte_court: |
+      Cumul de 70 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      Apports réalisés à compter de la récolte du précédent plafonnés à
+      70 kg N potentiellement libéré jusqu'en sortie d'hiver, en cumulant les
+      apports de type 0, I.a, et I.b, II et III.
+
+  pc15:
+    mots_cles: "Plafond CIE courte"
+    type: "plafonnement_apports"
+    texte_court: |
+      Cumul de 70 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      Apports à compter de la récolte du précédent plafonnés à 70 kg N
+      potentiellement libéré jusqu'en sortie d'hiver, en cumulant les apports
+      de type 0, I.a, et I.b.
+
+  pc16:
+    mots_cles: "Plafond prairies"
+    type: "plafonnement_apports"
+    texte_court: |
+      Cumul de 70 kg d'azote par hectare.
+    texte_redaction_initiale: |
+      Pour les prairies permanentes, apports à compter du 1er septembre
+      limités à 70 kg N potentiellement libéré jusqu'en sortie d'hiver par
+      hectare en cumulant les apports de type 0, I, II et III.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DÉFINITIONS GLOSSAIRE (à afficher dans une page d'aide)
+# ─────────────────────────────────────────────────────────────────────────────
+# Issu du post-it Karine "définitions à ajouter sur une page" du PDF table de
+# correspondance.
+# ─────────────────────────────────────────────────────────────────────────────
+
+definitions:
+  azote_potentiellement_libere_jusqu_en_sortie_hiver:
+    libelle_public: "Azote potentiellement libéré jusqu'en sortie d'hiver"
+    description: |
+      Somme de l'azote présent sous forme minérale et sous forme organique
+      minéralisable entre le 15 novembre et le 15 janvier.
+
+  azote_efficace_en_ete:
+    libelle_public: "Azote efficace en été"
+    description: |
+      Somme de l'azote présent sous forme minérale et sous forme organique
+      minéralisable entre le 1er juillet et le 31 août.
+
+  effluent_peu_charge_glossaire:
+    libelle_public: "Effluent peu chargé"
+    description: |
+      Effluent faiblement dosé en azote (post-it Karine : à confirmer comme
+      synonyme dans la rédaction grand public).
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTES DE BAS DE PAGE (conditions complémentaires)
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : arbre de décision CSV, zone "infos à connaître pour attribuer les
+# notes de bas de page".
+# ─────────────────────────────────────────────────────────────────────────────
+
+notes:
+  note_1:
+    libelle_court: "ICPE A + type de fertilisant + IAA"
+    condition_declenchement: |
+      Parcelle soumise à plan d'épandage ICPE Autorisation
+      ET fertilisant de type IAA.
+
+  note_2:
+    libelle_court: "ICPE E ou D + fertilisants IAA"
+    condition_declenchement: |
+      Parcelle soumise à plan d'épandage ICPE Enregistrement ou Déclaration
+      ET fertilisant IAA.
+
+  note_3:
+    libelle_court: "non ICPE A"
+    condition_declenchement: |
+      Parcelle non soumise à plan d'épandage ICPE Autorisation.
+
+  note_4:
+    libelle_court: "culture irriguée"
+    condition_declenchement: "Culture irriguée."
+
+  note_5:
+    libelle_court: "Localisation Sud-Ouest + PACA/Occitanie"
+    condition_declenchement: |
+      Parcelle en régions PACA, Occitanie
+      ou départements : Dordogne (24), Gironde (33), Landes (40),
+      Lot-et-Garonne (47), Pyrénées-Atlantiques (64).
+    codes_geographiques:
+      regions: ["R93", "R76"]
+      departements: ["24", "33", "40", "47", "64"]
+
+  note_6:
+    libelle_court: "Autre localisation"
+    condition_declenchement: "Autre région/département que note 5."
+
+  note_7:
+    libelle_court: "Localisation zone de montagne"
+    condition_declenchement: |
+      Îlot cultural en zone de montagne (article D113-14 du code rural et
+      de la pêche).
+
+  note_8:
+    libelle_court: "Effluents peu chargés en fertirrigation"
+    condition_declenchement: |
+      Effluent peu chargé utilisé en fertirrigation (culture irriguée).
+
+  note_9:
+    libelle_court: "Effluents peu chargés"
+    condition_declenchement: "Effluent peu chargé, hors fertirrigation."
+
+  note_10:
+    libelle_court: "Non ICPE A et effluents peu chargés"
+    condition_declenchement: |
+      Parcelle non ICPE A ET fertilisant effluent peu chargé.
+
+  note_11:
+    libelle_court: "Non ICPE A et effluents peu chargés (variante)"
+    condition_declenchement: |
+      Variante de la note 10, cas couvert CIE/CINE.
+
+  note_12:
+    libelle_court: "Luzerne"
+    condition_declenchement: |
+      Culture luzerne + ICPE A + type de fertilisant IAA.
+
+  note_13:
+    libelle_court: "Apport conditionnel colza stade 4 feuilles (1er sept – 15 oct)"
+    # MAJ 2026-05-04 : note 13 redéfinie d'après nouveau export juriste
+    # (Tdb - Reglementation Nitrate_table_correspondance_codes_2026-05-04.csv).
+    # Avant cette date elle était marquée "à priori ne s'applique pas".
+    condition_declenchement: |
+      Un apport d'un maximum de 30 unités d'azote supplémentaires sous forme
+      minérale, en végétation à partir du stade « 4 feuilles » est possible
+      entre le 1er septembre et le 15 octobre, dans les situations où la
+      disponibilité en azote du sol pendant l'automne est limitée, c'est-à-dire
+      dans les cas où :
+        – il n'est pas réalisé d'apport de fertilisant azoté de types 0,
+          I.a, I.b et II avant le 1er septembre correspondant à plus de
+          30 unités d'azote efficaces,
+        – et où le semis du colza est réalisé avant le 25 août,
+        – et où au moins une des conditions suivantes est respectée :
+            – implantation du colza après un précédent céréale à pailles
+              avec résidus de culture enfouis et fréquence historique
+              d'apport de fertilisants de types 0, I.a, I.b et II
+              inférieure à une année sur trois,
+            – ou sols à faible disponibilité en azote (précisés par le
+              programme d'actions régional).
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RÉGIONS (codes INSEE)
+# ─────────────────────────────────────────────────────────────────────────────
+# Pour référencer des régions dans les conditions géographiques.
+
+regions:
+  R11: "Île-de-France"
+  R24: "Centre-Val de Loire"
+  R27: "Bourgogne-Franche-Comté"
+  R28: "Normandie"
+  R32: "Hauts-de-France"
+  R44: "Grand Est"
+  R52: "Pays de la Loire"
+  R53: "Bretagne"
+  R75: "Nouvelle-Aquitaine"
+  R76: "Occitanie"
+  R84: "Auvergne-Rhône-Alpes"
+  R93: "Provence-Alpes-Côte d'Azur"
+  R94: "Corse"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ÉVÉNEMENTS PHÉNOLOGIQUES (pour les règles à dates relatives)
+# ─────────────────────────────────────────────────────────────────────────────
+# Utilisés dans les règles où la période d'interdiction dépend du cycle de la
+# plante plutôt que de dates fixes.
+
+evenements_phenologiques:
+  semis:
+    libelle_public: "Semis"
+  implantation_couvert:
+    libelle_public: "Implantation du couvert"
+  destruction_couvert:
+    libelle_public: "Destruction du couvert"
+  recolte:
+    libelle_public: "Récolte"
+  brunissement_soies:
+    libelle_public: "Brunissement des soies (maïs)"
+  derniere_coupe_luzerne:
+    libelle_public: "Dernière coupe de la luzerne"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CATÉGORIES UTILISATEUR DE FERTILISANTS (Étape 1 du formulaire)
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : Miro juristes "Tdb - Reglementation Nitrate_type_fertilisant"
+# (PDF archivé dans specs/Tdb - Reglementation Nitrate_type_fertilisant_2026-04-28.pdf).
+#
+# L'utilisateur saisit en deux niveaux dans le formulaire :
+#   1. catégorie de fertilisant (orange dans le Miro)
+#   2. sous-fertilisant (blanc dans le Miro)
+#
+# Le moteur résout ensuite la catégorie + sous-fertilisant en un type
+# réglementaire (type_0, type_Ia, type_Ib, type_II, type_III) via le mapping
+# `mapping_sous_fertilisant_vers_type` ci-dessous, avant de descendre dans
+# l'arbre de décision (qui raisonne uniquement sur les types réglementaires).
+#
+# IMPORTANT — cohérence avec la grammaire :
+#   Les valeurs cibles du mapping (`type_0`, `type_Ia`, `type_Ib`, `type_II`,
+#   `type_III`) sont strictement celles utilisées dans `arbre_decision_national.yaml`
+#   sur les nœuds `formulaire/type_fertilisant`. Pas de mismatch possible.
+# ─────────────────────────────────────────────────────────────────────────────
+
+categories_fertilisants:
+
+  fumiers:
+    libelle_public: "Fumiers"
+    sous_fertilisants:
+      - "fumier_volaille"
+      - "fumier_compact_non_susceptible_ecoulement"
+      - "fumier_mou_susceptible_ecoulement"
+
+  lisiers:
+    libelle_public: "Lisiers"
+    sous_fertilisants:
+      - "dejection_sans_litiere"
+      - "fientes_volailles"
+      - "fraction_liquide_separation_lisiers"
+      - "fraction_liquide_raclage_v_porcin"
+
+  composts:
+    libelle_public: "Composts"
+    sous_fertilisants:
+      - "compost_dechets_verts_jeunes_ligneux"
+      - "compost_dechets_verts_matures"
+      - "compost_effluents_elevage"
+      - "compost_fientes_volailles"
+      - "compost_ordures_menageres"
+      - "compost_marcs_raisins"
+      - "compost_fractions_solides_digestats"
+      - "compost_biodechets"
+      - "compost_miate"
+
+  digestats:
+    libelle_public: "Digestats"
+    sous_fertilisants:
+      - "digestat_brut_methanisation"
+      - "fraction_liquide_digestat_methanisation"
+      - "compost_fractions_solides_digestats"
+
+  engrais_mineral:
+    libelle_public: "Engrais minéral"
+    sous_fertilisants:
+      - "engrais_azote_mineral"
+
+  boues:
+    libelle_public: "Boues"
+    sous_fertilisants:
+      - "boues_papeterie"
+      - "eaux_residuaires"
+
+  autre:
+    libelle_public: "Autre"
+    description: |
+      Catégorie fourre-tout pour les fertilisants non listés dans les
+      catégories spécifiques. L'utilisateur peut soit saisir un sous-fertilisant
+      précis (marc de raisins frais, vinasses…), soit déclarer directement
+      le type réglementaire qu'il connaît, soit choisir l'option fallback
+      "type inconnu" qui résout en type_II par défaut conservateur.
+    sous_fertilisants:
+      - "marcs_raisins_frais"
+      - "effluents_peu_charges_autre"
+      - "farines_animales"
+      - "vinasses_betterave"
+      - "type_0_declare"
+      - "type_Ia_declare"
+      - "type_Ib_declare"
+      - "type_II_ou_inconnu"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SOUS-FERTILISANTS (libellés affichés dans le formulaire)
+# ─────────────────────────────────────────────────────────────────────────────
+
+sous_fertilisants:
+
+  # ── Fumiers ────────────────────────────────────────────────────────────────
+  fumier_volaille:
+    libelle_public: "Fumiers de volailles"
+  fumier_compact_non_susceptible_ecoulement:
+    libelle_public: "Fumiers compacts non susceptibles d'écoulement"
+    description: |
+      Fumiers compacts d'herbivores, de porcins et de lapins, non susceptibles
+      d'écoulement (contenant un matériau absorbant de type paille, sciure...
+      et stockés au minimum 2 mois). [note Miro (i)]
+  fumier_mou_susceptible_ecoulement:
+    libelle_public: "Fumiers mous d'herbivores, de porcins et de lapins, susceptibles d'écoulement"
+
+  # ── Lisiers ────────────────────────────────────────────────────────────────
+  dejection_sans_litiere:
+    libelle_public: "Déjections sans litière de ruminants, d'équins, de porcins et de volaille"
+  fientes_volailles:
+    libelle_public: "Fientes de volailles y compris séchées"
+  fraction_liquide_separation_lisiers:
+    libelle_public: "Fractions liquides issues de la séparation de phase des lisiers"
+  fraction_liquide_raclage_v_porcin:
+    libelle_public: "Fractions liquides issues d'un raclage en V en élevage porcin"
+
+  # ── Composts ───────────────────────────────────────────────────────────────
+  compost_dechets_verts_jeunes_ligneux:
+    libelle_public: "Composts de déchets verts jeunes et ligneux"
+  compost_dechets_verts_matures:
+    libelle_public: "Composts matures de déchets verts (autres que jeunes et ligneux)"
+  compost_effluents_elevage:
+    libelle_public: "Composts d'effluents d'élevage (hors composts de fientes de volailles)"
+  compost_fientes_volailles:
+    libelle_public: "Composts de fientes de volailles"
+  compost_ordures_menageres:
+    libelle_public: "Composts d'ordures ménagères résiduelles"
+  compost_marcs_raisins:
+    libelle_public: "Composts de marcs de raisins"
+  compost_fractions_solides_digestats:
+    libelle_public: "Composts de fractions solides de digestats de méthanisation"
+  compost_biodechets:
+    libelle_public: "Composts de biodéchets"
+  compost_miate:
+    libelle_public: "Composts de MIATE (matières d'intérêt agronomique issues du traitement des eaux) mélangées à un support carboné"
+
+  # ── Digestats ──────────────────────────────────────────────────────────────
+  digestat_brut_methanisation:
+    libelle_public: "Digestats bruts de méthanisation"
+  fraction_liquide_digestat_methanisation:
+    libelle_public: "Fractions liquides des digestats de méthanisation"
+
+  # ── Engrais minéral ────────────────────────────────────────────────────────
+  engrais_azote_mineral:
+    libelle_public: "Engrais azoté minéral (ammonitrates...)"
+
+  # ── Boues ──────────────────────────────────────────────────────────────────
+  boues_papeterie:
+    libelle_public: "Boues de papeterie"
+  eaux_residuaires:
+    libelle_public: "Eaux résiduaires"
+
+  # ── Autre ──────────────────────────────────────────────────────────────────
+  marcs_raisins_frais:
+    libelle_public: "Marcs de raisins frais"
+  effluents_peu_charges_autre:
+    libelle_public: "Effluents peu chargés"
+    description: |
+      Marqué "Effluents peu chargés" dans la catégorie Autre du Miro. Le flag
+      transverse `effluent_peu_charge` (cf. types_fertilisants) reste utilisé
+      par l'arbre pour les assouplissements notes 8-11.
+  farines_animales:
+    libelle_public: "Farines de plumes, de poisson, de sang, d'os, soies de porcs, tourteaux de ricin, guanos d'oiseaux marins"
+  vinasses_betterave:
+    libelle_public: "Vinasses de betterave"
+  type_0_declare:
+    libelle_public: "Type 0 (déclaré directement par l'utilisateur)"
+  type_Ia_declare:
+    libelle_public: "Type Ia (déclaré directement par l'utilisateur)"
+  type_Ib_declare:
+    libelle_public: "Type Ib (déclaré directement par l'utilisateur)"
+  type_II_ou_inconnu:
+    libelle_public: "Type II ou fertilisant organique de type inconnu"
+    description: |
+      Fallback conservateur : si l'utilisateur ne sait pas ou si le fertilisant
+      ne rentre dans aucune catégorie listée, le moteur considère type_II.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAPPING SOUS-FERTILISANT → TYPE RÉGLEMENTAIRE
+# ─────────────────────────────────────────────────────────────────────────────
+# Source unique de vérité pour la résolution catégorie utilisateur → type
+# réglementaire utilisé par l'arbre de décision.
+#
+# Référencé par les nœuds catalogue de type `mapping_referentiel` dans
+# l'arbre, ou directement par le moteur entre la phase "formulaire" (catégorie
+# + sous-fertilisant saisis) et la phase "évaluation" (descente dans l'arbre).
+#
+# Les VALEURS du mapping (à droite) sont strictement les identifiants utilisés
+# par l'arbre dans les `valeur:` des nœuds `formulaire/type_fertilisant` :
+#   "type_0" | "type_Ia" | "type_Ib" | "type_II" | "type_III"
+# Validé par grep sur arbre_decision_national.yaml le 2026-04-28.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mapping_sous_fertilisant_vers_type:
+
+  # ── Fumiers ────────────────────────────────────────────────────────────────
+  fumier_volaille: "type_II"
+  fumier_compact_non_susceptible_ecoulement: "type_Ia"
+  fumier_mou_susceptible_ecoulement: "type_Ib"
+
+  # ── Lisiers ────────────────────────────────────────────────────────────────
+  dejection_sans_litiere: "type_II"
+  fientes_volailles: "type_II"
+  fraction_liquide_separation_lisiers: "type_II"
+  fraction_liquide_raclage_v_porcin: "type_II"
+
+  # ── Composts ───────────────────────────────────────────────────────────────
+  compost_dechets_verts_jeunes_ligneux: "type_0"
+  compost_dechets_verts_matures: "type_Ia"
+  compost_effluents_elevage: "type_Ia"
+  compost_fientes_volailles: "type_II"
+  compost_ordures_menageres: "type_Ia"
+  compost_marcs_raisins: "type_Ia"
+  compost_fractions_solides_digestats: "type_Ia"
+  compost_biodechets: "type_Ib"
+  compost_miate: "type_Ib"
+
+  # ── Digestats ──────────────────────────────────────────────────────────────
+  digestat_brut_methanisation: "type_II"
+  fraction_liquide_digestat_methanisation: "type_II"
+  # NB : compost_fractions_solides_digestats apparaît AUSSI dans la catégorie
+  # "digestats" dans le Miro (typé Type Ia) — déjà mappé ci-dessus, pas de
+  # duplication nécessaire (clé YAML unique).
+
+  # ── Engrais minéral ────────────────────────────────────────────────────────
+  engrais_azote_mineral: "type_III"
+
+  # ── Boues ──────────────────────────────────────────────────────────────────
+  boues_papeterie: "type_0"
+  eaux_residuaires: "type_II"
+
+  # ── Autre ──────────────────────────────────────────────────────────────────
+  marcs_raisins_frais: "type_0"
+  effluents_peu_charges_autre: "type_II"
+  farines_animales: "type_II"
+  vinasses_betterave: "type_II"
+  type_0_declare: "type_0"
+  type_Ia_declare: "type_Ia"
+  type_Ib_declare: "type_Ib"
+  type_II_ou_inconnu: "type_II"
