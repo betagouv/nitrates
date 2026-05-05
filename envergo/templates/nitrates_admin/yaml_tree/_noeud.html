@@ -25,7 +25,7 @@
           </span>
         {% endfor %}
       </span>
-      {% if is_editing %}<code class="yaml-tree__id" title="Identifiant technique">{{ noeud.id }}</code>{% endif %}
+      <code class="yaml-tree__id" title="Identifiant technique">{{ noeud.id }}</code>
       {% if noeud.texte %}
         <span class="yaml-tree__libelle">{{ noeud.texte }}</span>
       {% elif noeud.champ %}

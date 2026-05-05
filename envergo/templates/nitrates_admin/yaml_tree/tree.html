@@ -138,25 +138,24 @@
 
     <script>
       // Toggle "Afficher les identifiants techniques" (q_, n_, r_).
-      // Persiste dans localStorage. Etat par defaut : OFF.
+      // Persiste dans localStorage. Defaut : ON (afficher).
       (function () {
         const KEY = 'nitrates_admin__show_tech_ids';
         const root = document.querySelector('.yaml-admin');
         const cb = document.getElementById('yaml-admin-toggle-tech-ids');
         if (!root || !cb) return;
+        const isOn = () => localStorage.getItem(KEY) !== '0';
         const apply = (on) => {
           root.classList.toggle('yaml-admin--show-tech-ids', !!on);
           cb.checked = !!on;
         };
-        apply(localStorage.getItem(KEY) === '1');
+        apply(isOn());
         cb.addEventListener('change', () => {
           localStorage.setItem(KEY, cb.checked ? '1' : '0');
           apply(cb.checked);
         });
         // Re-applique apres chaque swap htmx (le DOM peut etre re-rendu).
-        document.addEventListener('htmx:afterSwap', () => {
-          apply(localStorage.getItem(KEY) === '1');
-        });
+        document.addEventListener('htmx:afterSwap', () => apply(isOn()));
       })();
     </script>
   {% endif %}
