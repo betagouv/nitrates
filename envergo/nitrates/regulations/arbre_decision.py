@@ -42,6 +42,7 @@ from envergo.nitrates.yaml_tree import (
 )
 from envergo.nitrates.zonage_montagne import (
     est_zone_montagne_d113_14,
+    note_7_vs_note_6_pour_commune,
     zonage_montagne_pour_commune,
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
@@ -76,22 +77,38 @@ REFERENCE_TO_MAP_TYPE = {
 REFERENCES_ZONE_NOTE_5 = {"zone_note_5"}
 
 # References YAML resolues via le mapping commune INSEE -> zone
-# montagne (cf. envergo.nitrates.zonage_montagne). Elles partagent la
-# meme semantique (montagne_note_7 / montagne_note_6 / non_montagne)
-# et sont resolues sans PostGIS, juste sur le code INSEE pousse par
-# le front.
+# montagne (cf. envergo.nitrates.zonage_montagne). Selon le contexte,
+# la fonction de resolution et les valeurs retournees different :
 #
-# `zonage_prairie_III` -> noeud catalogue prairie+6 type_III dans
-#   l'arbre PAN (2 ou 3 valeurs selon version : note_7 / note_6 /
-#   non_montagne).
-# `zone_note_7_vs_note_6` (renommee 30/04) -> noeud catalogue
-#   imbrique apres un 1er catalogue zone montagne D113-14 : tranche
-#   entre note_7 et note_6 quand on sait deja qu'on est en montagne.
-# `zone_note_7_montagne` -> ancien nom (compatibilite descendante).
+# REFERENCES_ZONE_MONTAGNE (resolveur `zonage_montagne_pour_commune`) :
+#   classification 3 valeurs (montagne_note_7 / montagne_note_6 /
+#   non_montagne) en un appel.
+#   `zonage_prairie_III` -> noeud catalogue prairie+6 type_III. Spec
+#     Miro : variante "pyrenees_atl" (PACA + Occitanie + dept 64 seul).
+#   `zone_note_7_montagne` -> ancien nom (retro-compat). Variante
+#     "elargie".
+#
+# REFERENCES_NOTE_7_VS_NOTE_6 (resolveur `note_7_vs_note_6_pour_commune`) :
+#   utilise quand un catalogue parent `zone_montagne_d113_14` (bool) a
+#   deja filtre les communes montagne, et qu'on doit ensuite trancher
+#   entre `note_7` et `note_6` (sans prefixe `montagne_` -- d'ou un
+#   resolveur dedie qui s'aligne sur les valeurs de branches YAML).
+#   `zone_note_7_vs_note_6` -> luzerne III IAA + montagne. Variante
+#     "elargie".
+#
+# Note 7 : 2 variantes JURIDIQUES distinctes
+#   - "elargie"      -> regions PACA + Occitanie OU 5 dept Sud-Ouest
+#                       (24/33/40/47/64).
+#   - "pyrenees_atl" -> regions PACA + Occitanie OU 64 seul.
+# Si tu ajoutes une nouvelle reference YAML, declare ici explicitement
+# quelle variante de Note 7 elle utilise.
 REFERENCES_ZONE_MONTAGNE = {
-    "zonage_prairie_III",
-    "zone_note_7_vs_note_6",
-    "zone_note_7_montagne",
+    "zonage_prairie_III": "pyrenees_atl",
+    "zone_note_7_montagne": "elargie",
+}
+
+REFERENCES_NOTE_7_VS_NOTE_6 = {
+    "zone_note_7_vs_note_6": "elargie",
 }
 
 # `zone_montagne_d113_14` -> noeud catalogue qui branche sur bool
@@ -241,11 +258,25 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         # Resolution speciale pour la zone montagne (D113-14) : on a un
         # mapping commune INSEE -> classification (note_6 / note_7 / non),
         # pas besoin de PostGIS. Le code INSEE est pousse par le front au
-        # clic carte (cf. simulator.js).
+        # clic carte (cf. simulator.js). La variante de Note 7
+        # (elargie / pyrenees_atl) depend de la reference YAML --
+        # cf. REFERENCES_ZONE_MONTAGNE pour le mapping reference -> variante.
         if besoin.reference in REFERENCES_ZONE_MONTAGNE:
             raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
             code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
-            return zonage_montagne_pour_commune(code_insee)
+            variante = REFERENCES_ZONE_MONTAGNE[besoin.reference]
+            return zonage_montagne_pour_commune(code_insee, variante=variante)
+
+        # Resolution dediee pour la reference `zone_note_7_vs_note_6` :
+        # on est dans un catalogue imbrique apres un 1er catalogue
+        # `zone_montagne_d113_14` (bool) qui a deja filtre les communes
+        # montagne. On retourne strictement "note_7" ou "note_6" (sans
+        # prefixe `montagne_`) pour matcher les valeurs de branches YAML.
+        if besoin.reference in REFERENCES_NOTE_7_VS_NOTE_6:
+            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
+            variante = REFERENCES_NOTE_7_VS_NOTE_6[besoin.reference]
+            return note_7_vs_note_6_pour_commune(code_insee, variante=variante)
 
         # Resolution bool pour zone_montagne_d113_14 (oui/non commune
         # en zone montagne au sens D113-14, peu importe la note).

@@ -29,6 +29,7 @@ from django.db import transaction
 from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.regulations.arbre_decision import (
     REFERENCE_TO_MAP_TYPE,
+    REFERENCES_NOTE_7_VS_NOTE_6,
     REFERENCES_ZONE_MONTAGNE,
     REFERENCES_ZONE_MONTAGNE_BOOL,
     REFERENCES_ZONE_NOTE_5,
@@ -105,7 +106,8 @@ class Command(BaseCommand):
         #     (envergo.nitrates.zonage_montagne), pas de PostGIS.
         refs_supportees = (
             set(REFERENCE_TO_MAP_TYPE)
-            | REFERENCES_ZONE_MONTAGNE
+            | set(REFERENCES_ZONE_MONTAGNE)
+            | set(REFERENCES_NOTE_7_VS_NOTE_6)
             | REFERENCES_ZONE_MONTAGNE_BOOL
             | REFERENCES_ZONE_NOTE_5
         )

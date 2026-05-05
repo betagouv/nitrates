@@ -99,27 +99,28 @@ def test_culture_post_0101_type_0_interdiction(setup):
     15/01."""
     mou = _moulinette(
         occupation_sol="culture_principale",
-        sous_culture="culture_recoltee_apres_0101_hors_colza",
+        sous_culture="culture_hiver_hors_colza",
         type_fertilisant="type_0",
     )
     ev = _evaluator(mou)
     assert ev.result == RESULTS.interdit
-    assert ev.result_code == "r_post_0101_type_0"
-    assert ev.regle.code_prescription == "pc4"
+    assert ev.result_code == "r_hiver_hors_colza_type_0"
+    # Periode standard culture d'hiver hors colza : 15/12 -> 15/01
+    assert ev.regle.periodes == [{"du": "15/12", "au": "15/01"}]
 
 
 def test_chemin_trace_dans_evaluator(setup):
     """Le chemin doit etre accessible pour debug juriste."""
     mou = _moulinette(
         occupation_sol="culture_principale",
-        sous_culture="culture_recoltee_apres_0101_hors_colza",
+        sous_culture="culture_hiver_hors_colza",
         type_fertilisant="type_0",
     )
     ev = _evaluator(mou)
     # chemin = ids des noeuds traverses
     assert "n_zvn" in ev.chemin
     assert "q_occupation_sol" in ev.chemin
-    assert "r_post_0101_type_0" in ev.chemin
+    assert "r_hiver_hors_colza_type_0" in ev.chemin
 
 
 # ─── Resolution catalogue zone_note_5 (Sud-Ouest + PACA/Occitanie) ────────
