@@ -96,7 +96,7 @@ def _render_partial_node_response(
     # avant, mais le LocalStorage cote client gere deja ca au premier load.
     # Ici on s'assure juste que le parent reste deplie.
 
-    response = render(
+    rendered = render(
         request,
         "nitrates_admin/yaml_tree/_noeud.html",
         {
@@ -111,13 +111,29 @@ def _render_partial_node_response(
             "querystring_base": "",
             "quick_filters": QUICK_FILTERS,
         },
-    )
+    ).content.decode("utf-8")
+
+    # Toast inline via hx-swap-oob : htmx injecte ce fragment dans
+    # `#yaml-admin-toast-zone` (defini dans base.html) en plus du swap
+    # principal. Plus fiable que HX-Trigger qui ne se declenche pas
+    # toujours apres un swap retargete.
+    if message:
+        import time
+
+        from django.utils.html import escape as html_escape
+
+        toast_id = f"toast-{int(time.time() * 1000)}"
+        toast_html = (
+            f'<div hx-swap-oob="afterbegin:#yaml-admin-toast-zone">'
+            f'<div class="yaml-admin__toast" id="{toast_id}">'
+            f"{html_escape(message)}</div>"
+            f"</div>"
+        )
+        rendered = rendered + toast_html
+
+    response = HttpResponse(rendered)
     response["HX-Retarget"] = f"#node-{slugify(parent_path_str)}"
     response["HX-Reswap"] = "outerHTML"
-    if message:
-        import json
-
-        response["HX-Trigger"] = json.dumps({"showToast": {"message": message}})
     return response
 
 
