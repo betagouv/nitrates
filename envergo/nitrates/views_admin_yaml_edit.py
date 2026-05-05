@@ -240,17 +240,18 @@ class EditNodeView(View):
             new_data["champ"] = (
                 posted_champ or _champ_from_niveau(niveau) or node.get("champ")
             )
-            aide = request.POST.get("aide", "").strip()
-            if aide:
-                new_data["aide"] = aide
+            # `aide` est optionnel : on l'envoie toujours (meme vide)
+            # pour que update_node retire la cle si l'utilisateur l'a
+            # effacee (cf. convention "" = delete dans editor.update_node).
+            new_data["aide"] = request.POST.get("aide", "").strip()
         elif node.get("type_noeud") == "catalogue":
             new_data["champ"] = request.POST.get("champ", "").strip()
             new_data["source"] = request.POST.get("source", "").strip() or node.get(
                 "source"
             )
-            ref = request.POST.get("reference", "").strip()
-            if ref:
-                new_data["reference"] = ref
+            # `reference` est optionnel : envoye toujours pour permettre
+            # la suppression (cf. convention update_node).
+            new_data["reference"] = request.POST.get("reference", "").strip()
 
         result = editor.update_node(tree, path, new_data, request.user)
         if not result.ok:
