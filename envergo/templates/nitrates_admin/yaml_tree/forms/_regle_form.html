@@ -68,11 +68,12 @@
                      value="{{ p.au|default_if_none:'' }}"
                      placeholder="au (JJ/MM)"
                      style="max-width:14ch">
-              <input type="text"
-                     name="periodes-{{ forloop.counter0 }}-regime"
-                     value="{{ p.regime|default_if_none:'' }}"
-                     placeholder="regime (optionnel)"
-                     style="max-width:18ch">
+              <select name="periodes-{{ forloop.counter0 }}-regime" style="max-width:22ch">
+                <option value="">— régime hérité —</option>
+                {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+                  <option value="{{ r }}" {% if p.regime == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
             </label>
             {% for err in errors %}
               {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
@@ -95,11 +96,13 @@
                    value=""
                    placeholder="au (JJ/MM)"
                    style="max-width:14ch">
-            <input type="text"
-                   name="periodes-{{ regle.periodes|length|default:0 }}-regime"
-                   value=""
-                   placeholder="regime (optionnel)"
-                   style="max-width:18ch">
+            <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
+                    style="max-width:22ch">
+              <option value="">— régime hérité —</option>
+              {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+                <option value="{{ r }}">{{ r }}</option>
+              {% endfor %}
+            </select>
           </label>
         </div>
       {% endwith %}

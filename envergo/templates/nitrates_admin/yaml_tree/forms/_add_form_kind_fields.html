@@ -151,9 +151,12 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>regime</span>
-        <input type="text"
-               name="c_periodes-0-regime"
-               placeholder="ex: autorise (optionnel)">
+        <select name="c_periodes-0-regime">
+          <option value="">— régime hérité du type ci-dessus —</option>
+          {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+            <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
       </label>
     </div>
   </fieldset>
