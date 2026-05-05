@@ -891,6 +891,37 @@ details[open] > summary.yaml-tree__row::before {
   padding: 0;
 }
 
+/* Branche feuille (regle terminale, pas de sous-arbre) : on aligne la
+   valeur de branche + la regle sur une seule ligne. */
+.yaml-tree__item--leaf-regle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.yaml-tree__item--leaf-regle > .yaml-tree__branche-header,
+.yaml-tree__item--leaf-regle > .yaml-tree__regle {
+  margin: 0;
+  padding: 0.1rem 0.3rem;
+  background: transparent;
+  border-left: none;
+}
+
+.yaml-tree__item--leaf-regle > .yaml-tree__regle.is-todo {
+  border-left: 3px solid var(--tag-fg-warn);
+  background: var(--tag-bg-warn);
+}
+
+/* Sur une feuille regle, les boutons d'edition de la branche sont
+   redondants avec ceux de la regle (supprimer la branche = supprimer
+   la regle, et inversement). On masque ceux de la branche pour aerer. */
+.yaml-tree__item--leaf-regle
+  > .yaml-tree__branche-header
+  > .yaml-tree__edit-actions {
+  display: none;
+}
+
 .yaml-tree__pc code {
   background: #eef;
   padding: 0.05rem 0.3rem;
