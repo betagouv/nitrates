@@ -120,13 +120,11 @@ def _render_partial_node_response(
     if message:
         import time
 
-        from django.utils.html import escape as html_escape
-
         toast_id = f"toast-{int(time.time() * 1000)}"
         toast_html = (
             f'<div hx-swap-oob="afterbegin:#yaml-admin-toast-zone">'
             f'<div class="yaml-admin__toast" id="{toast_id}">'
-            f"{html_escape(message)}</div>"
+            f"{escape(message)}</div>"
             f"</div>"
         )
         rendered = rendered + toast_html
