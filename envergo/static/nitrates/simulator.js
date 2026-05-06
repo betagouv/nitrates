@@ -247,19 +247,40 @@
   }
 
   // Si lat/lng deja saisis (form pre-rempli depuis URL apres "Lancer
-  // la simulation"), on positionne le marker et on repeuple le bandeau
-  // localisation (commune / dept / region) sans attendre un nouveau
-  // clic. Le serveur nous a deja envoye le catalog dans
-  // window.NITRATES_CATALOG (cf. template) ; on fetch juste le nom de
-  // commune via la BAN.
+  // la simulation"), on positionne le marker, on repeuple le bandeau
+  // localisation ET le panneau debug sans attendre un nouveau clic. Le
+  // serveur nous a deja envoye le catalog dans window.NITRATES_CATALOG
+  // (cf. template) ; on fetch juste commune (BAN) + parcelle (IGN).
   const initialLng = parseFloat(lngInput.value);
   const initialLat = parseFloat(latInput.value);
   if (!isNaN(initialLng) && !isNaN(initialLat)) {
     marker = L.marker([initialLat, initialLng]).addTo(map);
     map.setView([initialLat, initialLng], 13);
     if (window.NITRATES_CATALOG) {
-      fetchCommuneInfo(initialLat, initialLng).then((communeInfo) => {
+      Promise.all([
+        fetchCommuneInfo(initialLat, initialLng),
+        fetchParcelInfo(initialLat, initialLng),
+      ]).then(([communeInfo, parcelInfo]) => {
         updateLocalisationReadonly(window.NITRATES_CATALOG, communeInfo.nom);
+        // Reconstruit le payload attendu par renderDebug a partir du
+        // catalog serveur + lng/lat. Le bassin/bassin_label arrive sous
+        // forme de zv_info pour matcher la structure de l'endpoint debug.
+        const cat = window.NITRATES_CATALOG;
+        renderDebug(
+          {
+            lng: initialLng,
+            lat: initialLat,
+            department_code: cat.department_code,
+            region_code: cat.region_code,
+            region_label: cat.region_label,
+            en_zone_vulnerable: cat.en_zone_vulnerable,
+            zv_info: cat.en_zone_vulnerable
+              ? { nom: cat.bassin_label, bassin: cat.bassin }
+              : null,
+          },
+          communeInfo,
+          parcelInfo
+        );
       });
     }
   }
