@@ -21,8 +21,12 @@ Usage :
     docker compose run --rm django python manage.py import_nitrates_zv \\
         --file /path/to/ZoneVuln_delimitation_EU.shp
 
-Resumable : un Map nitrates_zv avec le meme nom est reutilise, les
-Zone deja importees sont skippees.
+Idempotent : un Map nitrates_zv avec le meme nom est reutilise, les
+Zone sont identifiees par leur code naturel CdEuZoneVu (Code EU
+ZoneVulnerable, identifiant officiel stable). Rejouer la commande N
+fois donne le meme resultat qu'une seule fois : les zones deja en DB
+sont mises a jour, les nouvelles sont creees, celles qui ont disparu
+de la source officielle Sandre sont supprimees (DB miroir source).
 """
 
 import shutil
@@ -145,7 +149,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Shapefile trouve : {shp_path.name}")
         return tmpdir, shp_path
 
-    # ─── Import (logique deja existante, factorisee) ───────────────────────
+    # ─── Import idempotent par code naturel CdEuZoneVu ─────────────────────
 
     def _import_shapefile(self, shp_path: Path) -> None:
         ds = DataSource(str(shp_path))
@@ -169,39 +173,82 @@ class Command(BaseCommand):
         verb = "Créée" if created else "Réutilisée"
         self.stdout.write(f"{verb} : Map id={map_obj.id} name={map_obj.name}")
 
-        already = map_obj.zones.count()
-        if already >= total:
-            self.stdout.write(self.style.SUCCESS(f"Déjà importé ({already} zones)."))
-            return
+        # Index code naturel -> Zone.id pour les zones deja en DB.
+        # Les zones sans CdEuZoneVu (cas pathologique : creees a la main avant
+        # l'idempotence) sont ignorees par l'index, donc ni matchees ni prunees.
+        existing_by_code = {
+            z.attributes.get("CdEuZoneVu"): z.id
+            for z in map_obj.zones.all()
+            if z.attributes and z.attributes.get("CdEuZoneVu")
+        }
 
-        self.stdout.write(f"Import en cours — {already} déjà présentes sur {total}")
-        imported = already
+        seen_codes: set[str] = set()
+        created_count = 0
+        updated_count = 0
+        skipped_no_code = 0
+
         with transaction.atomic():
-            for i, feature in enumerate(layer):
-                if i < already:
+            for feature in layer:
+                attributes = {f: feature.get(f) for f in feature.fields}
+                attributes = {
+                    k: (v.isoformat() if hasattr(v, "isoformat") else v)
+                    for k, v in attributes.items()
+                }
+                code = attributes.get("CdEuZoneVu")
+                if not code:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Feature sans CdEuZoneVu, skip : "
+                            f"{attributes.get('NomZoneVul', '?')}"
+                        )
+                    )
+                    skipped_no_code += 1
                     continue
+                seen_codes.add(code)
+
                 geom = GEOSGeometry(feature.geom.wkt, srid=feature.geom.srid or 4326)
                 if geom.geom_type == "Polygon":
                     geom = MultiPolygon(geom, srid=geom.srid)
                 if geom.srid and geom.srid != 4326:
                     geom.transform(4326)
-                attributes = {f: feature.get(f) for f in feature.fields}
-                # Sérialisation dates → ISO pour JSON
-                attributes = {
-                    k: (v.isoformat() if hasattr(v, "isoformat") else v)
-                    for k, v in attributes.items()
-                }
-                Zone.objects.create(
-                    map=map_obj,
-                    geometry=geom,
-                    attributes=attributes,
-                )
-                imported += 1
-                if imported % 10 == 0 or imported == total:
+
+                if code in existing_by_code:
+                    Zone.objects.filter(id=existing_by_code[code]).update(
+                        geometry=geom,
+                        attributes=attributes,
+                    )
+                    updated_count += 1
+                else:
+                    Zone.objects.create(
+                        map=map_obj,
+                        geometry=geom,
+                        attributes=attributes,
+                    )
+                    created_count += 1
+
+                processed = created_count + updated_count
+                if processed % 50 == 0 or processed == total:
                     self.stdout.write(
-                        f"  {imported}/{total} ({100 * imported // total}%)"
+                        f"  {processed}/{total} ({100 * processed // total}%)"
                     )
 
-        map_obj.imported_geometries = imported
+            # Prune : Zones presentes en DB mais absentes du shapefile (zones
+            # supprimees par Sandre dans une mise a jour). DB en miroir source.
+            orphan_codes = set(existing_by_code) - seen_codes
+            deleted_count = 0
+            if orphan_codes:
+                deleted_count, _ = Zone.objects.filter(
+                    map=map_obj,
+                    attributes__CdEuZoneVu__in=orphan_codes,
+                ).delete()
+
+        map_obj.imported_geometries = created_count + updated_count
         map_obj.save(update_fields=["imported_geometries"])
-        self.stdout.write(self.style.SUCCESS(f"OK : {imported} zones importées."))
+
+        summary = (
+            f"OK : {created_count} crees, {updated_count} mis a jour, "
+            f"{deleted_count} supprimes"
+        )
+        if skipped_no_code:
+            summary += f", {skipped_no_code} skip (sans CdEuZoneVu)"
+        self.stdout.write(self.style.SUCCESS(summary + "."))
