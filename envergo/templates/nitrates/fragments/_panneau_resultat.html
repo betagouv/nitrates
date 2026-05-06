@@ -117,6 +117,24 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             </p>
           {% endif %}
 
+          {% comment %}
+          Plafonnement PC16 prairie permanente : affiche systematiquement
+          quand l'utilisateur a coche "Prairie permanente" en sous-categorie,
+          peu importe le type de fertilisant. Cf. PDF mapping form ->
+          arbres : "pour les prairies permanentes, il faut afficher la
+          PC16 'plafond prairie' (peu importe le type de fertilisant)".
+          {% endcomment %}
+          {% if data.prairie_permanente == "True" %}
+            {% with pc16=codes_prescription|get_item:"pc16" %}
+              {% if pc16 %}
+                <div class="fr-callout fr-mt-3w">
+                  <h4 class="fr-callout__title">{{ pc16.mots_cles|default:"Plafond prairies" }} (PC16)</h4>
+                  {% if pc16.texte_court %}<p>{{ pc16.texte_court|linebreaksbr }}</p>{% endif %}
+                </div>
+              {% endif %}
+            {% endwith %}
+          {% endif %}
+
           {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
           <div class="fr-accordions-group fr-mt-3w">
             <section class="fr-accordion">
