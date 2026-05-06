@@ -4,10 +4,13 @@
 
 /* ─── Recherche commune (BAN) ──────────────────────────────────────── */
 
+/* z-index assez haut pour passer au-dessus des panes Leaflet (max ~700
+   pour les tooltips). Sans ca, la dropdown de l'autocomplete commune
+   est cachee par le SVG GeoJSON des zones ZV. */
 .map-search-wrapper {
   position: relative;
   margin-bottom: 6px;
-  z-index: 10;
+  z-index: 1000;
 }
 
 .ban-suggestions {
