@@ -26,7 +26,11 @@ from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
-from envergo.nitrates.yaml_admin.grammar import FieldError, get_allowed_child_kinds
+from envergo.nitrates.yaml_admin.grammar import (
+    FieldError,
+    collect_champs_by_niveau,
+    get_allowed_child_kinds,
+)
 from envergo.nitrates.yaml_admin.tags import get_tags
 
 
@@ -164,9 +168,11 @@ def _refresh_response(request, message: str) -> HttpResponse:
 # Suggestions par niveau pour les champs canoniques d'un noeud formulaire.
 # Le `champ` (slug technique) doit etre exactement celui-la car le parser
 # de la moulinette s'en sert pour mapper a un input utilisateur.
+# NB pour `culture` le champ canonique dans l'arbre national est
+# `occupation_sol` (pas `culture`) -- la racine de la classification.
 _NIVEAU_SUGGESTIONS = {
     "culture": {
-        "champ": "culture",
+        "champ": "occupation_sol",
         "texte_suggere": "Quelle est la culture en place ?",
     },
     "sous_culture": {
@@ -225,6 +231,7 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "errors": [],
+                "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
             },
         )
 
@@ -280,6 +287,7 @@ class EditNodeView(View):
                     "path": path,
                     "path_str": "/".join(path),
                     "errors": result.errors,
+                    "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 },
                 status=422,
             )
@@ -702,6 +710,7 @@ class AddChildView(View):
                 "selected_kind": kind,
                 "errors": [],
                 "form_data": form_data,
+                "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
             },
         )
 
@@ -987,6 +996,7 @@ def _render_add_errors(
             "selected_kind": kind,
             "errors": errors,
             "form_data": form_data or {},
+            "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
         },
         status=422,
     )

@@ -400,6 +400,37 @@ def _niveaux_formulaire_sur_chemin(arbre: dict, path: tuple[str, ...]) -> list[s
     return niveaux
 
 
+def collect_champs_by_niveau(arbre: dict) -> dict[str, list[str]]:
+    """Retourne {niveau: [champs uniques deja utilises dans l'arbre]}.
+
+    Sert de datalist pour l'edition d'un noeud formulaire : le juriste
+    peut reutiliser un `champ` deja employe ailleurs (au lieu d'inventer
+    un slug random qui casserait le parser de la moulinette).
+
+    Le champ est plus parlant pour `complement` (questions annexes
+    sans nom canonique : `plan_epandage`, `fertilisant_iaa`, etc.).
+    """
+    result: dict[str, set[str]] = {n: set() for n in NIVEAUX_FORMULAIRE_ORDRE}
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if racine:
+        _walk_collect_champs(racine, result)
+    # Tri stable
+    return {k: sorted(v) for k, v in result.items()}
+
+
+def _walk_collect_champs(noeud: dict, out: dict[str, set]) -> None:
+    if not isinstance(noeud, dict):
+        return
+    if noeud.get("type_noeud") == "formulaire":
+        niveau = noeud.get("niveau")
+        champ = noeud.get("champ")
+        if niveau in out and champ:
+            out[niveau].add(champ)
+    for branche in noeud.get("branches") or []:
+        if isinstance(branche, dict) and isinstance(branche.get("noeud"), dict):
+            _walk_collect_champs(branche["noeud"], out)
+
+
 def _collect_ids(arbre: dict) -> set[str]:
     """Tous les ids de noeuds et regles dans l'arbre."""
     ids: set[str] = set()

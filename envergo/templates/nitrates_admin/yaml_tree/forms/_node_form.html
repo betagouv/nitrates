@@ -61,47 +61,60 @@
           <input type="text" name="aide" value="{{ node.aide|default_if_none:'' }}">
         </label>
       </div>
-      <details class="yaml-tree__form-advanced">
-        <summary>Options avancées (champ technique forcé)</summary>
-        <p class="yaml-tree__form-hint">
-          Le champ technique est dérivé automatiquement du niveau
-          (<code>culture</code>, <code>sous_culture</code>,
-          <code>type_fertilisant</code>). Le forcer ici peut casser le
-          parser de la moulinette — à n'utiliser qu'avec précaution.
-        </p>
-        <div class="yaml-tree__form-row">
-          <label class="yaml-tree__form-label">
-            <span>champ technique</span>
-            <input type="text"
-                   name="champ"
-                   value="{{ node.champ|default_if_none:'' }}"
-                   placeholder="auto (dérivé du niveau)">
-          </label>
-          {% for err in errors %}
-            {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-          {% endfor %}
-        </div>
-      </details>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Slug technique cle pour le parser. Pour culture/sous_culture/type_fertilisant : derive auto. Pour complement : choisir parmi les champs deja utilises (datalist) ou en creer un nouveau si la question est nouvelle.">
+          <span>champ technique</span>
+          <input type="text"
+                 name="champ"
+                 list="yaml-tree__champs-list"
+                 value="{{ node.champ|default_if_none:'' }}"
+                 placeholder="auto (dérivé du niveau)"
+                 data-niveau-champ>
+        </label>
+        {% for err in errors %}
+          {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+        {% endfor %}
+      </div>
+      <datalist id="yaml-tree__champs-list">
+        {% for niveau, champs in champs_by_niveau.items %}
+          {% for c in champs %}<option value="{{ c }}" label="(niveau: {{ niveau }})"></option>{% endfor %}
+        {% endfor %}
+      </datalist>
       <script>
-        // Auto-suggest du texte de la question selon le niveau choisi.
-        // L'utilisateur peut surcharger : on ne touche pas a un texte
+        // Auto-suggest du texte + champ selon le niveau choisi.
+        // Pour complement : on laisse vide, le datalist guide.
+        // L'utilisateur peut surcharger : on ne touche pas a un input
         // deja modifie manuellement (data-touched).
         (function () {
           const root = document.currentScript.parentElement;
           const select = root.querySelector('[data-niveau-select]');
           const texte = root.querySelector('[data-niveau-texte]');
+          const champ = root.querySelector('[data-niveau-champ]');
           if (!select || !texte) return;
-          const SUGGESTIONS = {
+          const TEXTES = {
             culture: 'Quelle est la culture en place ?',
             sous_culture: 'Quelle culture utilisez-vous ?',
             type_fertilisant: 'Quel type de fertilisant est utilisé ?',
             complement: '',
           };
+          const CHAMPS = {
+            culture: 'occupation_sol',
+            sous_culture: 'sous_culture',
+            type_fertilisant: 'type_fertilisant',
+            complement: '',  // libre, pas de slug canonique
+          };
           texte.addEventListener('input', () => texte.dataset.touched = '1');
+          if (champ) champ.addEventListener('input', () => champ.dataset.touched = '1');
           select.addEventListener('change', () => {
-            if (texte.dataset.touched) return;
-            const sug = SUGGESTIONS[select.value];
-            if (sug && !texte.value) texte.value = sug;
+            if (!texte.dataset.touched) {
+              const sug = TEXTES[select.value];
+              if (sug && !texte.value) texte.value = sug;
+            }
+            if (champ && !champ.dataset.touched) {
+              const slug = CHAMPS[select.value];
+              if (slug !== undefined) champ.value = slug;
+            }
           });
         })();
       </script>
