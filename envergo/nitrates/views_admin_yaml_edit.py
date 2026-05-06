@@ -26,6 +26,7 @@ from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
+from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS
 from envergo.nitrates.yaml_admin.grammar import (
     FieldError,
     collect_champs_by_niveau,
@@ -232,6 +233,7 @@ class EditNodeView(View):
                 "path_str": "/".join(path),
                 "errors": [],
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                "catalogue_refs": CATALOGUE_RESOLVERS,
             },
         )
 
@@ -711,6 +713,7 @@ class AddChildView(View):
                 "errors": [],
                 "form_data": form_data,
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                "catalogue_refs": CATALOGUE_RESOLVERS,
             },
         )
 

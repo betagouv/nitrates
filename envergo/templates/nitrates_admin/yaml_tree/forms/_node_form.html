@@ -120,10 +120,26 @@
       </script>
     {% elif node.type_noeud == "catalogue" %}
       <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Référence du résolveur backend. Sélectionner une référence pré-remplit aussi le champ technique.">
+          <span>référence catalogue</span>
+          <select name="reference" data-catalogue-ref-select>
+            <option value="">— libre / non listée —</option>
+            {% for ref in catalogue_refs %}
+              <option value="{{ ref.reference }}"
+                      data-champ="{{ ref.champ }}"
+                      title="{{ ref.description }}"
+                      {% if node.reference == ref.reference %}selected{% endif %}>{{ ref.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>champ technique</span>
           <input type="text"
                  name="champ"
+                 data-catalogue-champ-input
                  value="{{ node.champ|default_if_none:'' }}"
                  required>
         </label>
@@ -144,14 +160,18 @@
           {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
         {% endfor %}
       </div>
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>reference (optionnel)</span>
-          <input type="text"
-                 name="reference"
-                 value="{{ node.reference|default_if_none:'' }}">
-        </label>
-      </div>
+      <script>
+        (function () {
+          const select = document.querySelector('[data-catalogue-ref-select]');
+          const champInput = document.querySelector('[data-catalogue-champ-input]');
+          if (!select || !champInput) return;
+          select.addEventListener('change', () => {
+            const opt = select.options[select.selectedIndex];
+            const slug = opt && opt.dataset.champ;
+            if (slug) champInput.value = slug;
+          });
+        })();
+      </script>
     {% endif %}
 
     <div class="yaml-tree__form-actions">
