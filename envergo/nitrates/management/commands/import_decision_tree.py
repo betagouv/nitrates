@@ -27,13 +27,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from envergo.nitrates.models import DecisionTree
-from envergo.nitrates.regulations.arbre_decision import (
-    REFERENCE_TO_MAP_TYPE,
-    REFERENCES_NOTE_7_VS_NOTE_6,
-    REFERENCES_ZONE_MONTAGNE,
-    REFERENCES_ZONE_MONTAGNE_BOOL,
-    REFERENCES_ZONE_NOTE_5,
-)
+from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS
 from envergo.nitrates.yaml_tree.loader import load_referentiels
 from envergo.nitrates.yaml_tree.validator import (
     ValidationError,
@@ -100,17 +94,10 @@ class Command(BaseCommand):
         # Le runtime affichera "non disponible" sur ces branches ; ici on
         # liste juste les trous pour traque.
         refs_sig = collect_references_sig(arbre)
-        # Le backend resoud 2 familles de references SIG :
-        #   - REFERENCE_TO_MAP_TYPE : via PostGIS sur les Map+Zone importes.
-        #   - REFERENCES_ZONE_MONTAGNE : via le mapping commune INSEE
-        #     (envergo.nitrates.zonage_montagne), pas de PostGIS.
-        refs_supportees = (
-            set(REFERENCE_TO_MAP_TYPE)
-            | set(REFERENCES_ZONE_MONTAGNE)
-            | set(REFERENCES_NOTE_7_VS_NOTE_6)
-            | REFERENCES_ZONE_MONTAGNE_BOOL
-            | REFERENCES_ZONE_NOTE_5
-        )
+        # Le backend resoud les references SIG via le registre
+        # `catalogue_refs.CATALOGUE_RESOLVERS` (PostGIS, mapping commune
+        # INSEE, etc., suivant le resolveur).
+        refs_supportees = {r.reference for r in CATALOGUE_RESOLVERS}
         non_supportees = sorted(
             {ref for _, ref in refs_sig if ref not in refs_supportees}
         )
@@ -118,8 +105,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(
                     "References SIG utilisees par l'arbre mais non supportees "
-                    "par le backend (dataset Map+Zone manquant ou mapping a "
-                    "ajouter dans REFERENCE_TO_MAP_TYPE) :\n  - "
+                    "par le backend (resolveur a ajouter dans "
+                    "catalogue_refs.CATALOGUE_RESOLVERS) :\n  - "
                     + "\n  - ".join(non_supportees)
                 )
             )

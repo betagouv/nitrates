@@ -44,7 +44,7 @@ def validate_arbre(
     code_prescription / note / evenements_phenologiques referencees existent.
 
     references_sig_supportees (optionnel) : set des references SIG que le
-    backend sait resoudre (cf. ArbreDecisionEvaluator.REFERENCE_TO_MAP_TYPE).
+    backend sait resoudre (cf. catalogue_refs.CATALOGUE_RESOLVERS).
     Si fourni, on signale les noeuds catalogue source=sig dont la
     reference n'est pas couverte par le backend (= dataset SIG manquant).
     Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
@@ -338,7 +338,7 @@ def _check_references_sig_supportees(
             errors.append(
                 f"[sig] noeud '{obj.get('id')}' (champ='{obj.get('champ')}') : "
                 f"reference SIG '{ref}' non supportee par le backend (dataset "
-                f"manquant ou mapping a ajouter dans REFERENCE_TO_MAP_TYPE)"
+                f"manquant ou resolveur a ajouter dans catalogue_refs.CATALOGUE_RESOLVERS)"
             )
     return errors
 
