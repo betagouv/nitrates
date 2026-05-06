@@ -86,15 +86,43 @@ remplis au clic carte (cf. simulator.js).
     <h2 class="form-section-title">Culture</h2>
 
     <div class="form-question-group">
-      <p class="form-question-text">Qu'est-ce qui occupe la parcelle ? *</p>
-      <div data-cascade="occupation_sol"></div>
+      <p class="form-question-text">Catégorie de culture ou couvert *</p>
+      <div data-cascade="categorie_culture"></div>
     </div>
 
-    <div class="form-question-group" id="sous_culture-wrapper" hidden>
+    <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
       <p class="form-question-text">Précisez le type de culture *</p>
-      <div data-cascade="sous_culture"></div>
+      <div data-cascade="sous_culture_form"></div>
     </div>
   </div>
+
+  {% comment %}
+  Hidden inputs : occupation_sol + sous_culture sont resolus cote front
+  via mapping_sous_culture_vers_branche, et envoyes au backend pour
+  piloter le parcours d'arbre. Les `flags` (ex culture_irriguee_type
+  pour mais, prairie_permanente pour PC16, sous_culture_couvert pour
+  intercultures) sont aussi injectes en hidden au moment du submit.
+  {% endcomment %}
+  <input type="hidden"
+         name="occupation_sol"
+         id="id_occupation_sol"
+         value="{{ data.occupation_sol|default:'' }}">
+  <input type="hidden"
+         name="sous_culture"
+         id="id_sous_culture"
+         value="{{ data.sous_culture|default:'' }}">
+  <input type="hidden"
+         name="culture_irriguee_type"
+         id="id_culture_irriguee_type"
+         value="{{ data.culture_irriguee_type|default:'' }}">
+  <input type="hidden"
+         name="prairie_permanente"
+         id="id_prairie_permanente"
+         value="{{ data.prairie_permanente|default:'' }}">
+  <input type="hidden"
+         name="sous_culture_couvert"
+         id="id_sous_culture_couvert"
+         value="{{ data.sous_culture_couvert|default:'' }}">
 
   {# ─── Fertilisant ────────────────────────────────────────────────── #}
   <div class="form-section"

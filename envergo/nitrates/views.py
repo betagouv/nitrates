@@ -208,11 +208,16 @@ class MoulinetteView(View):
             "lat",
             "lng",
             "code_insee",
+            "categorie_culture",
+            "sous_culture_form",
             "occupation_sol",
             "sous_culture",
             "categorie_fertilisant",
             "sous_fertilisant",
             "type_fertilisant",
+            "culture_irriguee_type",
+            "prairie_permanente",
+            "sous_culture_couvert",
         ]
 
         ctx = {

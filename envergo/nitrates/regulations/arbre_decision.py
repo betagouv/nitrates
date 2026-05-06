@@ -139,7 +139,9 @@ CHAMPS_EXCLUS_CONTEXTE = {
     "lat",
     "lng",
     "code_insee",  # utilise pour resoudre la zone montagne, pas un champ d'arbre
-    "categorie_fertilisant",
+    "categorie_culture",  # tracabilite front (cf. mapping_sous_culture_vers_branche)
+    "sous_culture_form",  # tracabilite front (libelle UI)
+    "categorie_fertilisant",  # tracabilite front (cf. mapping_sous_fertilisant_vers_type)
     "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
 }
 
