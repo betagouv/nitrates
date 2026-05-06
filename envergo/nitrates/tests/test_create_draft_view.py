@@ -63,7 +63,11 @@ def test_clone_active_par_defaut(client, url, staff_user):
     drafts = DecisionTree.objects.filter(status=DecisionTree.STATUS_DRAFT)
     assert drafts.count() == 1
     draft = drafts.get()
-    assert draft.name == "active_v1 (copy)"
+    # Le naming utilise username, ou email.split('@')[0] si pas d'username.
+    expected_user = (
+        getattr(staff_user, "username", None) or staff_user.email.split("@")[0]
+    )
+    assert draft.name == f"active_v1 – {expected_user}-1"
     assert draft.parent_id == active.pk
     assert draft.contenu == active.contenu
     assert draft.contenu_yaml_brut == active.contenu_yaml_brut
@@ -78,7 +82,10 @@ def test_clone_from_param_quel_que_soit_le_statut(client, url, staff_user):
     assert resp.status_code == 302
     draft = DecisionTree.objects.get(status=DecisionTree.STATUS_DRAFT)
     assert draft.parent_id == archive.pk
-    assert draft.name == "old_v0 (copy)"
+    expected_user = (
+        getattr(staff_user, "username", None) or staff_user.email.split("@")[0]
+    )
+    assert draft.name == f"old_v0 – {expected_user}-1"
 
 
 def test_clone_meme_source_2_fois_genere_suffixe(client, url, staff_user):
@@ -91,7 +98,13 @@ def test_clone_meme_source_2_fois_genere_suffixe(client, url, staff_user):
             "name", flat=True
         )
     )
-    assert names == {"x (copy)", "x (copy 2)"}
+    expected_user = (
+        getattr(staff_user, "username", None) or staff_user.email.split("@")[0]
+    )
+    assert names == {
+        f"x – {expected_user}-1",
+        f"x – {expected_user}-2",
+    }
     # source intacte
     active.refresh_from_db()
     assert active.status == DecisionTree.STATUS_ACTIVE
