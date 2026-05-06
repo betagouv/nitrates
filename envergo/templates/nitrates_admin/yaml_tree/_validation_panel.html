@@ -1,3 +1,5 @@
+{% load yaml_admin_extras %}
+
 {% comment %}Resultat de la validation deep de l'arbre.{% endcomment %}
 <div class="yaml-admin__validation" id="yaml-admin-validation-panel">
   {% if errors %}
@@ -19,7 +21,14 @@
           {% if err.kind %}
             <span class="yaml-admin__validation-kind yaml-admin__validation-kind--{{ err.kind }}">{{ err.kind }}</span>
           {% endif %}
-          {% if err.label %}<strong>{{ err.label }}</strong> —{% endif %}
+          {% if err.label %}
+            <span class="yaml-admin__validation-breadcrumb">
+              {% for crumb in err.label|split:" > " %}
+                {% if not forloop.first %}<span class="yaml-admin__validation-breadcrumb-sep">›</span>{% endif %}
+                <span class="yaml-admin__validation-breadcrumb-crumb">{{ crumb }}</span>
+              {% endfor %}
+            </span>
+          {% endif %}
           <span class="yaml-admin__validation-msg">{{ err.message }}</span>
         </li>
       {% endfor %}

@@ -471,12 +471,40 @@
 }
 
 .yaml-admin__validation-errors li {
-  padding: 0.15rem 0;
+  padding: 0.4rem 0;
   border-bottom: 1px dashed #f1d4d4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1.5;
 }
 
 .yaml-admin__validation-errors li:last-child {
   border-bottom: none;
+}
+
+.yaml-admin__validation-breadcrumb {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  flex: 1 1 100%;
+}
+
+.yaml-admin__validation-breadcrumb-crumb {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.8rem;
+  color: #333;
+}
+
+.yaml-admin__validation-breadcrumb-sep {
+  color: #b0b0b0;
+  font-weight: 700;
+  user-select: none;
 }
 
 .yaml-admin__validation-kind {
