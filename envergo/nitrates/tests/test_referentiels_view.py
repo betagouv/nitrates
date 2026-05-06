@@ -28,12 +28,15 @@ def test_referentiels_contient_listes_fermees(client, nitrates_site):
     for key in (
         "types_fertilisants",
         "occupations_sol",
-        "cultures",
+        "categories_cultures",
+        "sous_cultures",
+        "mapping_sous_culture_vers_branche",
+        "categories_fertilisants",
+        "sous_fertilisants",
+        "mapping_sous_fertilisant_vers_type",
         "codes_prescription",
         "notes",
         "evenements_phenologiques",
-        "sous_fertilisants",
-        "mapping_sous_fertilisant_vers_type",
     ):
         assert key in data, f"Cle {key!r} manquante dans referentiels.json"
 

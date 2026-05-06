@@ -107,37 +107,252 @@ occupations_sol:
     libelle_public: "Sol non cultivé"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SOUS-TYPES DE CULTURES / COUVERTS / PRAIRIES
+# CATÉGORIES DE CULTURE / COUVERT (cf. PDF mapping form -> arbres)
+# ─────────────────────────────────────────────────────────────────────────────
+# Source : Tdb_mapping_form_culture_couvert_2026-05-06.pdf
+#
+# Logique cascade frontend (3 niveaux comme pour les fertilisants) :
+#   1. Catégorie de culture/couvert (visible)        : ex "Culture d'hiver"
+#   2. Sous-catégorie (visible)                      : ex "Colza"
+#   3. Branche d'arbre cible (caché, envoyé backend) : ex sous_culture=colza
+#
+# Le 3e niveau est résolu par `mapping_sous_culture_vers_branche` ci-dessous.
+# Les valeurs cibles (`occupation_sol`, `sous_culture`) sont strictement
+# celles utilisées dans `arbre_decision_national.yaml` sur les nœuds
+# `formulaire/occupation_sol` puis `formulaire/sous_culture`.
 # ─────────────────────────────────────────────────────────────────────────────
 
-cultures:
+categories_cultures:
+
+  sol_non_cultive:
+    libelle_public: "Sol non cultivé"
+    sous_cultures: []  # cas direct, pas de sous-catégorie
+
+  culture_hiver:
+    libelle_public: "Culture d'hiver (culture principale implantée l'année civile en cours et récoltée l'année suivante)"
+    sous_cultures:
+      - "colza"
+      - "culture_principale_hiver_autre_que_colza"
+
+  culture_printemps:
+    libelle_public: "Culture de printemps (culture principale implantée et récoltée pendant la même année civile)"
+    sous_cultures:
+      - "mais"
+      - "culture_principale_printemps_autre_que_mais"
+
+  prairies_ou_luzerne:
+    libelle_public: "Prairies ou luzerne"
+    sous_cultures:
+      - "luzerne"
+      - "prairie_plus_6_mois"
+      - "prairie_permanente"
+      - "prairie_moins_6_mois_printemps"
+      - "prairie_moins_6_mois_automne"
+
+  autres_cultures_principales:
+    libelle_public: "Autres cultures principales (cultures pérennes, vergers, vignes, cultures maraîchères et cultures porte-graines)"
+    sous_cultures:
+      - "cultures_florales_aromatiques"
+      - "cultures_maraicheres_legumieres"
+      - "cultures_porte_graines"
+      - "cultures_perennes_vergers_vignes"
+
+  couvert_intercultures_longue:
+    libelle_public: "Couvert d'interculture longue"
+    sous_cultures:
+      - "couvert_recolte_plus_en_place_apres_3112"
+      - "couvert_recolte_toujours_en_place_apres_0101"
+      - "couvert_non_recolte_plus_en_place_apres_3112"
+      - "couvert_non_recolte_toujours_en_place_apres_0101"
+
+  couvert_intercultures_courte:
+    libelle_public: "Couvert d'interculture courte"
+    sous_cultures:
+      - "couvert_courte_recolte"
+      - "couvert_courte_non_recolte"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SOUS-CULTURES (libellés affichés dans le formulaire)
+# ─────────────────────────────────────────────────────────────────────────────
+
+sous_cultures:
+
+  # ── Culture d'hiver ────────────────────────────────────────────────────────
   colza:
     libelle_public: "Colza"
+  culture_principale_hiver_autre_que_colza:
+    libelle_public: "Culture principale d'hiver autre que colza"
+
+  # ── Culture de printemps ───────────────────────────────────────────────────
   mais:
     libelle_public: "Maïs"
+  culture_principale_printemps_autre_que_mais:
+    libelle_public: "Culture principale de printemps autre que maïs"
+
+  # ── Prairies ou luzerne ────────────────────────────────────────────────────
   luzerne:
     libelle_public: "Luzerne"
-  autre_culture:
-    libelle_public: "Autre culture (céréales, pérennes, vergers, vignes, maraîchères, porte-graines)"
-  # Liste à affiner avec le métier
-
-couverts_intercultures:
-  cie:
-    libelle_public: "CIE — Couvert d'interculture Exporté (dérobée, CIVE)"
-  cine:
-    libelle_public: "CINE — Couvert d'interculture Non Exporté (CIPAN)"
-  interculture_courte:
-    libelle_public: "Interculture courte"
-  interculture_longue_cine_detruit_avant_3112:
-    libelle_public: "Interculture longue — CINE détruit avant le 31/12"
-  interculture_longue_cine_detruit_apres_0101:
-    libelle_public: "Interculture longue — CINE détruit ou CIE exporté après le 01/01"
-
-prairies:
-  prairie_moins_6_mois:
-    libelle_public: "Prairie de moins de 6 mois"
   prairie_plus_6_mois:
-    libelle_public: "Prairie de plus de 6 mois (dont permanente)"
+    libelle_public: "Prairie implantée depuis plus de 6 mois"
+  prairie_permanente:
+    libelle_public: "Prairie permanente"
+    description: |
+      Sous-catégorie distincte pour pouvoir afficher le code prescription
+      PC16 "plafond prairie" (peu importe le type de fertilisant).
+      cf. PDF mapping_form_culture_couvert.
+  prairie_moins_6_mois_printemps:
+    libelle_public: "Prairie de moins de 6 mois implantée au printemps"
+  prairie_moins_6_mois_automne:
+    libelle_public: "Prairie de moins de 6 mois implantée à l'automne ou en fin d'été"
+
+  # ── Autres cultures principales (vergers, vignes, etc.) ────────────────────
+  cultures_florales_aromatiques:
+    libelle_public: "Cultures florales et aromatiques"
+  cultures_maraicheres_legumieres:
+    libelle_public: "Cultures maraîchères et légumières de plein champ"
+  cultures_porte_graines:
+    libelle_public: "Cultures porte-graines"
+  cultures_perennes_vergers_vignes:
+    libelle_public: "Cultures pérennes (vergers, vignes)"
+
+  # ── Couvert d'interculture longue ──────────────────────────────────────────
+  couvert_recolte_plus_en_place_apres_3112:
+    libelle_public: "Couvert récolté, fauché ou pâturé (dérobée, CIVE...) plus en place après le 31 décembre"
+  couvert_recolte_toujours_en_place_apres_0101:
+    libelle_public: "Couvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier"
+  couvert_non_recolte_plus_en_place_apres_3112:
+    libelle_public: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...) plus en place après le 31 décembre"
+  couvert_non_recolte_toujours_en_place_apres_0101:
+    libelle_public: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...) toujours en place après le 1er janvier"
+
+  # ── Couvert d'interculture courte ──────────────────────────────────────────
+  couvert_courte_recolte:
+    libelle_public: "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)"
+  couvert_courte_non_recolte:
+    libelle_public: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAPPING SOUS-CULTURE -> BRANCHE ARBRE
+# ─────────────────────────────────────────────────────────────────────────────
+# Résout côté frontend l'appartenance d'une sous-culture à une branche de
+# l'arbre. Retourne un dict :
+#   - occupation_sol : valeur de la branche niveau 1 de l'arbre
+#                      (sol_non_cultive / culture_principale / couvert_intercultures)
+#   - sous_culture   : valeur de la branche niveau 2 (colza / culture_printemps /
+#                      culture_hiver_hors_colza / etc.)
+#   - flags          : champs supplémentaires à pré-remplir dans le contexte
+#                      pour court-circuiter une question subsidiaire (ex
+#                      `culture_irriguee_type=mais` quand l'user a déjà choisi
+#                      maïs en sous-catégorie ; PC16 prairie permanente).
+#
+# Validé par grep sur arbre_decision_national.yaml le 2026-05-06.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mapping_sous_culture_vers_branche:
+
+  # ── Culture d'hiver ────────────────────────────────────────────────────────
+  colza:
+    occupation_sol: "culture_principale"
+    sous_culture: "colza"
+  culture_principale_hiver_autre_que_colza:
+    occupation_sol: "culture_principale"
+    sous_culture: "culture_hiver_hors_colza"
+
+  # ── Culture de printemps ───────────────────────────────────────────────────
+  mais:
+    occupation_sol: "culture_principale"
+    sous_culture: "culture_printemps"
+    # Pré-remplit la question subsidiaire culture_irriguee_type pour
+    # court-circuiter sa redemande à l'arbre (cf. r_printemps_III_mais_irrigue).
+    flags:
+      culture_irriguee_type: "mais"
+  culture_principale_printemps_autre_que_mais:
+    occupation_sol: "culture_principale"
+    sous_culture: "culture_printemps"
+
+  # ── Prairies ou luzerne ────────────────────────────────────────────────────
+  luzerne:
+    occupation_sol: "culture_principale"
+    sous_culture: "luzerne"
+  prairie_plus_6_mois:
+    occupation_sol: "culture_principale"
+    sous_culture: "prairie_plus_6_mois"
+  prairie_permanente:
+    occupation_sol: "culture_principale"
+    sous_culture: "prairie_plus_6_mois"
+    # Flag PC16 plafond prairie (cf. PDF mapping). Le code de prescription
+    # PC16 doit être affiché côté résultat peu importe le type fertilisant
+    # quand ce flag est present. Logique d'affichage à implémenter côté
+    # template.
+    flags:
+      prairie_permanente: true
+  prairie_moins_6_mois_printemps:
+    occupation_sol: "culture_principale"
+    sous_culture: "culture_printemps"
+  prairie_moins_6_mois_automne:
+    occupation_sol: "culture_principale"
+    sous_culture: "culture_hiver_hors_colza"
+
+  # ── Autres cultures principales ────────────────────────────────────────────
+  cultures_florales_aromatiques:
+    occupation_sol: "culture_principale"
+    sous_culture: "autres_cultures"
+  cultures_maraicheres_legumieres:
+    occupation_sol: "culture_principale"
+    sous_culture: "autres_cultures"
+  cultures_porte_graines:
+    occupation_sol: "culture_principale"
+    sous_culture: "autres_cultures"
+  cultures_perennes_vergers_vignes:
+    occupation_sol: "culture_principale"
+    sous_culture: "autres_cultures"
+
+  # ── Couvert d'interculture longue ──────────────────────────────────────────
+  # 4 cas du PDF -> 4 branches d'arbre existantes (cf. q_interculture_longue_type).
+  couvert_recolte_plus_en_place_apres_3112:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_longue"
+    flags:
+      sous_culture_couvert: "cie_avant_3112"
+  couvert_recolte_toujours_en_place_apres_0101:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_longue"
+    flags:
+      sous_culture_couvert: "cine_apres_0101"
+  couvert_non_recolte_plus_en_place_apres_3112:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_longue"
+    flags:
+      sous_culture_couvert: "cine_avant_3112"
+  couvert_non_recolte_toujours_en_place_apres_0101:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_longue"
+    flags:
+      sous_culture_couvert: "cine_apres_0101"
+
+  # ── Couvert d'interculture courte ──────────────────────────────────────────
+  couvert_courte_recolte:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_courte"
+    flags:
+      sous_culture_couvert: "cie_courte"
+  couvert_courte_non_recolte:
+    occupation_sol: "couvert_intercultures"
+    sous_culture: "interculture_courte"
+    flags:
+      sous_culture_couvert: "cine_courte"
+
+  # ── Sol non cultivé (cas direct sans sous-catégorie) ───────────────────────
+  # Pas dans la cascade niveau 2, traité au niveau 1 directement.
+  # L'utilisateur sélectionne "Sol non cultivé" en catégorie -> on saute le
+  # select sous-catégorie et on envoie sous_culture=sol_non_cultive direct.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OCCUPATIONS DU SOL — DEPRECATED (utiliser categories_cultures ci-dessus)
+# ─────────────────────────────────────────────────────────────────────────────
+# Conservé pour rétrocompat avec le formulaire actuel le temps du switch.
+# À retirer quand la cascade `categorie_culture` + `sous_culture` est active
+# sur tous les flow.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STATUT ICPE (installation classée protection environnement)
