@@ -53,10 +53,10 @@ test.describe('Branche culture_de_printemps : 8 feuilles via URL', () => {
     },
     {
       label:
-        'type_II + fertirrigation=oui -> r_printemps_II_peu_charge_fertirrig (pc6)',
+        'type_II + fertirrigation=oui -> r_printemps_II_fertirrig (pc6)',
       params:
-        'type_fertilisant=type_II_effluents_peu_charges&fertirrigation=true',
-      regle: 'r_printemps_II_peu_charge_fertirrig',
+        'type_fertilisant=type_II&fertirrigation=true',
+      regle: 'r_printemps_II_fertirrig',
       // Le label long de pc6 est "effluent peu chargé fertirrigation"
       // (referentiels.yaml). On matche la regle_id + dates ; le code
       // de prescription brut (pc6) n'apparait pas en mode user.
@@ -64,10 +64,10 @@ test.describe('Branche culture_de_printemps : 8 feuilles via URL', () => {
     },
     {
       label:
-        'type_II + fertirrigation=non -> r_printemps_II_peu_charge_sans_fertirrig',
+        'type_II + fertirrigation=non -> r_printemps_II_sans_fertirrig',
       params:
-        'type_fertilisant=type_II_effluents_peu_charges&fertirrigation=false',
-      regle: 'r_printemps_II_peu_charge_sans_fertirrig',
+        'type_fertilisant=type_II&fertirrigation=false',
+      regle: 'r_printemps_II_sans_fertirrig',
       contains: ['01/07', '31/01'],
     },
     {
@@ -122,20 +122,11 @@ test.describe('Branche culture_de_printemps : flow question complementaire', () 
     // Cas le plus dur du screenshot : 2 etapes (form principal puis
     // question subsidiaire `fertirrigation`), regle a 2 periodes avec
     // regimes mixtes (autorisation_sous_condition + interdiction), pc6.
-    //
-    // NB : le mapping front sous_fertilisant -> type_fertilisant resout
-    // les effluents peu charges en `type_II` (referentiels.yaml ligne
-    // 870), mais l'arbre printemps attend la valeur
-    // `type_II_effluents_peu_charges` (incoherence a clarifier avec
-    // Louise). On bypass le bug en passant directement
-    // type_fertilisant=type_II_effluents_peu_charges via l'URL :
-    // l'objectif du test est de valider le flow QC subsidiaire
-    // fertirrigation, pas le mapping front.
     await page.goto(
       `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
         '&occupation_sol=culture_principale' +
         '&sous_culture=culture_printemps' +
-        '&type_fertilisant=type_II_effluents_peu_charges'
+        '&type_fertilisant=type_II'
     );
 
     // Page resultat affiche la question complementaire (radio buttons DSFR
@@ -151,7 +142,7 @@ test.describe('Branche culture_de_printemps : flow question complementaire', () 
     await page.waitForLoadState('networkidle');
 
     const body = page.locator('body');
-    await expect(body).toContainText('r_printemps_II_peu_charge_fertirrig');
+    await expect(body).toContainText('r_printemps_II_fertirrig');
     // 2 periodes : 01/07-31/08 (autorisation sous condition) puis 31/08-31/01.
     await expect(body).toContainText('01/07');
     await expect(body).toContainText('31/08');

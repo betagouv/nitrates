@@ -9,8 +9,8 @@ Cas couverts :
   1. type_0                                 -> r_printemps_type_0
   2. type_Ia                                -> r_printemps_type_Ia
   3. type_Ib                                -> r_printemps_type_Ib
-  4. type_II + fertirrigation oui           -> r_printemps_II_peu_charge_fertirrig
-  5. type_II + fertirrigation non           -> r_printemps_II_peu_charge_sans_fertirrig
+  4. type_II + fertirrigation oui           -> r_printemps_II_fertirrig
+  5. type_II + fertirrigation non           -> r_printemps_II_sans_fertirrig
   6. type_III + irriguee oui + mais         -> r_printemps_III_mais_irrigue
   7. type_III + irriguee oui + autre        -> r_printemps_III_autre_irrigue
   8. type_III + irriguee non                -> r_printemps_III_non_irrigue
@@ -131,12 +131,12 @@ def test_printemps_type_II_fertirrigation_oui(setup):
     + code_prescription pc6."""
     ev = _evaluator(
         _moulinette(
-            type_fertilisant="type_II_effluents_peu_charges",
+            type_fertilisant="type_II",
             fertirrigation="true",
         )
     )
     assert ev.result == RESULTS.interdit
-    assert ev.regle.regle_id == "r_printemps_II_peu_charge_fertirrig"
+    assert ev.regle.regle_id == "r_printemps_II_fertirrig"
     assert ev.regle.code_prescription == "pc6"
     assert ev.regle.periodes == [
         {
@@ -156,12 +156,12 @@ def test_printemps_type_II_fertirrigation_non(setup):
     de code prescription)."""
     ev = _evaluator(
         _moulinette(
-            type_fertilisant="type_II_effluents_peu_charges",
+            type_fertilisant="type_II",
             fertirrigation="false",
         )
     )
     assert ev.result == RESULTS.interdit
-    assert ev.regle.regle_id == "r_printemps_II_peu_charge_sans_fertirrig"
+    assert ev.regle.regle_id == "r_printemps_II_sans_fertirrig"
     assert ev.regle.code_prescription is None
     assert ev.regle.periodes == [{"du": "01/07", "au": "31/01"}]
 
