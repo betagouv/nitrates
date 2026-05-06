@@ -11,6 +11,13 @@ python manage.py migrate
 if [ "$IS_REVIEW_APP" == "True" ]
 then
   python manage.py deploy_environment $APP.$REGION_NAME.scalingo.io
+else
+  # Import idempotent des zones vulnerables nitrates depuis Sandre.
+  # Bloquant : si Sandre est down, le deploy echoue. C'est intentionnel
+  # — on ne tourne pas l'app sans ZV. Patcher manuellement avec --file
+  # si Sandre est durablement indisponible.
+  echo ">>> Importing nitrates ZV from Sandre"
+  python manage.py import_nitrates_zv
 fi
 
 
