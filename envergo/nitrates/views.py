@@ -16,6 +16,29 @@ from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 
+# Mapping pour le recap des QC repondues (rendu dans le panneau gauche apres
+# que l'utilisateur a repondu via le mini-form du panneau droit). Donne le
+# texte de la question et le libelle humain de chaque valeur.
+# Si on ajoute de nouveaux champs subsidiaires dans l'arbre, les ajouter ici.
+_QC_LIBELLES = {
+    "plan_epandage": {
+        "texte": "Plan d'épandage",
+        "choix": {
+            "icpe_a": "À autorisation (ICPE A)",
+            "icpe_e": "À enregistrement (ICPE E)",
+            "icpe_d": "À déclaration (ICPE D)",
+            "non_concerne": "Non concerné",
+        },
+    },
+    "effluents_peu_charges": {
+        "texte": "Effluents peu chargés",
+        "choix": {
+            "oui": "Oui",
+            "non": "Non",
+        },
+    },
+}
+
 
 class HomeView(TemplateView):
     template_name = "nitrates/home.html"
@@ -230,6 +253,7 @@ class MoulinetteView(View):
             "debug": settings.DEBUG,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
+            "qc_repondues_champs": [],
         }
 
         # Sans lat/lng -> on rend juste le panneau form (pas de resultat).
@@ -271,6 +295,25 @@ class MoulinetteView(View):
         if premier_qc and getattr(premier_qc, "questions_subsidiaires", None):
             qc_actifs = list(premier_qc.questions_subsidiaires.champs_set)
 
+        # Recap des QC deja repondues : champs subsidiaires connus presents
+        # dans request.GET ET qui ne sont plus en cours de saisie (sinon le
+        # walker les redemanderait). Le libelle est resolu via _QC_LIBELLES.
+        qc_repondues = []
+        for champ, meta in _QC_LIBELLES.items():
+            if champ in qc_actifs:
+                continue
+            valeur = request.GET.get(champ)
+            if not valeur:
+                continue
+            qc_repondues.append(
+                {
+                    "champ": champ,
+                    "valeur": valeur,
+                    "texte": meta["texte"],
+                    "libelle": meta["choix"].get(valeur, valeur),
+                }
+            )
+
         ctx.update(
             {
                 "afficher_resultat": True,
@@ -278,6 +321,8 @@ class MoulinetteView(View):
                 "regulations_evaluees": regulations_evaluees,
                 "premier_evaluator_avec_questions": premier_qc,
                 "qc_actifs": qc_actifs,
+                "qc_repondues": qc_repondues,
+                "qc_repondues_champs": [e["champ"] for e in qc_repondues],
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)

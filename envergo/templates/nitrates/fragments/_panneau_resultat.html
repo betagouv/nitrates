@@ -35,8 +35,13 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% for entry in regulations_evaluees %}
       {% with criterion=entry.criterion ev=entry.evaluator %}
 
-        {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
-        {% if ev.regle %}
+        {% if ev.questions_subsidiaires %}
+          {# Parcours en pause sur une question subsidiaire : on remplace tout le
+             rendu resultat (header / calendrier / texte) par le mini-form de QC
+             qui partage le form principal via form="form-simulateur". #}
+          {% include "nitrates/fragments/_resultat_questions.html" %}
+        {% elif ev.regle %}
+          {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
           {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
           {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
           {% epandage_header ev.regle %}

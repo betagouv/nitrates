@@ -1,0 +1,22 @@
+{% load nitrates_tags %}
+
+{% comment %}
+Recap des reponses aux questions complementaires, sous le form principal
+(colonne gauche). S'affiche apres que l'utilisateur a repondu aux QC posees
+dans le panneau resultat. Permet de garder visible la cascade complete des
+reponses pour la prochaine simulation.
+
+Inputs : qc_repondues = liste de {champ, valeur, libelle}.
+{% endcomment %}
+
+<h2 class="form-section-title">Questions complémentaires</h2>
+<ul class="qc-recap__list">
+  {% for entry in qc_repondues %}
+    <li class="qc-recap__item">
+      <span class="qc-recap__label">{{ entry.texte }}</span>
+      <span class="qc-recap__value"><strong>{{ entry.libelle|default:entry.valeur }}</strong></span>
+      {# Hidden input pour preserver la valeur a la prochaine soumission #}
+      <input type="hidden" name="{{ entry.champ }}" value="{{ entry.valeur }}">
+    </li>
+  {% endfor %}
+</ul>

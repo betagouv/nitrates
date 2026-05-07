@@ -8,7 +8,9 @@ conteneurs `[data-cascade="<champ>"]`. Lat/lng sont des hidden inputs
 remplis au clic carte (cf. simulator.js).
 {% endcomment %}
 
-<form method="get" action="{% url 'nitrates_simulateur' %}">
+<form id="form-simulateur"
+      method="get"
+      action="{% url 'nitrates_simulateur' %}">
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
   <div class="form-section" id="section-localisation">
@@ -148,14 +150,12 @@ remplis au clic carte (cf. simulator.js).
            value="{{ data.type_fertilisant|default:'' }}">
   </div>
 
-  {# ─── Questions complementaires (sous le form principal) ────────── #}
-  {% if afficher_resultat %}
-    {% with ev=premier_evaluator_avec_questions %}
-      {% if ev.questions_subsidiaires %}
-        <div class="form-section questions-complementaires-box"
-             style="margin-top: 32px">{% include "nitrates/fragments/_questions_complementaires.html" %}</div>
-      {% endif %}
-    {% endwith %}
+  {# Questions complementaires en cours de saisie : rendues dans le panneau
+     resultat (a droite). Quand toutes repondues, le recap s'affiche en
+     dessous du form via _qc_recap.html. #}
+  {% if afficher_resultat and qc_repondues %}
+    <div class="form-section questions-complementaires-box"
+         style="margin-top: 32px">{% include "nitrates/fragments/_qc_recap.html" %}</div>
   {% endif %}
 
   {% include "nitrates/fragments/_form_hidden_passthrough.html" %}

@@ -173,6 +173,48 @@ body {
   margin: 0;
 }
 
+/* ─── Recap QC repondues (sous le form principal, colonne gauche) ─── */
+
+.qc-recap__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qc-recap__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: #f5f5fc;
+  border-left: 3px solid #6a6af4;
+  border-radius: 2px;
+}
+
+.qc-recap__label {
+  font-size: 0.85rem;
+  color: var(--text-mention-grey);
+}
+
+.qc-recap__value {
+  font-size: 0.95rem;
+}
+
+/* ─── Mini-form question subsidiaire dans le panneau resultat ─────── */
+
+.resultat-panel--questions {
+  background: #cecefc;
+  padding: 30px;
+  border-radius: 4px;
+}
+
+.resultat-panel--questions .form-question-group {
+  margin-top: 18px;
+}
+
 /* ─── Result panel sticky en desktop ──────────────────────────────── */
 
 @media (width >= 992px) {
