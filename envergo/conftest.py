@@ -9,6 +9,29 @@ from envergo.users.models import User
 from envergo.users.tests.factories import UserFactory
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _enforce_test_database(django_db_setup, django_db_blocker):
+    """Garde-fou : refuse de tourner si la DB n'est pas une DB de test.
+
+    Si pour une raison X (mauvaise variable d'env, conf qui dérape,
+    pytest-django cassé) les tests pointent sur la DB de dev/prod, on
+    explose ici plutôt que de purger des données réelles. Une DB de test
+    a obligatoirement un nom préfixé par `test_` (convention Django) ou
+    contient `:memory:` (sqlite).
+    """
+    from django.db import connection
+
+    with django_db_blocker.unblock():
+        db_name = connection.settings_dict.get("NAME") or ""
+        is_test_db = db_name.startswith("test_") or ":memory:" in str(db_name)
+        if not is_test_db:
+            raise RuntimeError(
+                f"REFUS DE TOURNER : la DB connectée est {db_name!r}, ce qui "
+                "ne ressemble pas à une DB de test (préfixe 'test_' attendu). "
+                "Vérifier DJANGO_SETTINGS_MODULE et la conf pytest-django."
+            )
+
+
 @pytest.fixture(autouse=True)
 def media_storage(settings, tmpdir):
     settings.MEDIA_ROOT = tmpdir.strpath
