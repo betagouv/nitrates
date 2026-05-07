@@ -1,8 +1,6 @@
 import logging
 
-from django.conf import settings
 from django.contrib.sites.models import Site
-from django.http import HttpResponseRedirect
 
 logger = logging.getLogger(__name__)
 
@@ -10,11 +8,14 @@ logger = logging.getLogger(__name__)
 class SetUrlConfBasedOnSite:
     """Route every request to the nitrates urlconf.
 
-    REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
-    MVP nitrates: the fork only serves the nitrates site. The
-    amenagement and haie urlconfs remain in the repo as inactive
-    code to ease a future remerge with MTES-MCT/envergo upstream,
-    but the middleware no longer routes to them.
+    Le fork ne sert que le site nitrates. Les urlconfs amenagement et
+    haie restent dans le repo en code dormant pour faciliter un futur
+    remerge avec MTES-MCT/envergo upstream, mais le middleware ne route
+    plus vers eux.
+
+    Si le Host: HTTP entrant ne matche aucun Site en DB, on ne redirige
+    pas (le routing est deja force vers nitrates) : on log juste un
+    warning pour tracer les hits avec un domaine inattendu.
     """
 
     def __init__(self, get_response):
@@ -22,20 +23,17 @@ class SetUrlConfBasedOnSite:
 
     def __call__(self, request):
         request.urlconf = "config.urls_nitrates"
-        try:
-            site = Site.objects.get_current(request)
-        except Site.DoesNotExist:
-            logger.warning(
-                f"Found url with bad domain in the wild: {request.get_host()}{request.get_full_path()}"
-            )
-            new_url = (
-                f"https://{settings.ENVERGO_NITRATES_DOMAIN}{request.get_full_path()}"
-            )
-            return HttpResponseRedirect(new_url)
-
-        request.site = site
         request.base_template = "nitrates/base.html"
-
-        response = self.get_response(request)
-
-        return response
+        try:
+            request.site = Site.objects.get_current(request)
+        except Site.DoesNotExist:
+            # Host: ne matche aucun Site en DB. On ne redirige pas (routing
+            # deja force vers nitrates). Fallback sur le Site nitrates fixe
+            # pour que le code aval qui lit request.site.domain ne crash pas.
+            logger.warning(
+                "Request on unknown domain: %s%s",
+                request.get_host(),
+                request.get_full_path(),
+            )
+            request.site = Site.objects.filter(id=3).first()
+        return self.get_response(request)
