@@ -27,6 +27,11 @@ from django.views import View
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
 from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS
+from envergo.nitrates.yaml_admin.forms import (
+    BrancheForm,
+    NoeudFormulaireForm,
+    RegleForm,
+)
 from envergo.nitrates.yaml_admin.grammar import (
     FieldError,
     collect_champs_by_niveau,
@@ -251,22 +256,43 @@ class EditNodeView(View):
         # champs scalaires connus du noeud).
         new_data: dict = {"id": request.POST.get("id", "").strip() or node.get("id")}
         if node.get("type_noeud") == "formulaire":
-            niveau = request.POST.get("niveau", "").strip() or node.get("niveau")
+            form = NoeudFormulaireForm(request.POST)
+            if not form.is_valid():
+                form_errors = [
+                    FieldError(field, " / ".join(msgs))
+                    for field, msgs in form.errors.items()
+                ]
+                return render(
+                    request,
+                    "nitrates_admin/yaml_tree/forms/_node_form.html",
+                    {
+                        "tree": tree,
+                        "node": {**node, **dict(request.POST.items())},
+                        "path": path,
+                        "path_str": "/".join(path),
+                        "errors": form_errors,
+                        "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                        "catalogue_refs": CATALOGUE_RESOLVERS,
+                    },
+                    status=422,
+                )
+            cd = form.to_new_data()
+            niveau = cd["niveau"] or node.get("niveau")
+            new_data["id"] = cd["id"] or node.get("id")
             new_data["niveau"] = niveau
-            new_data["texte"] = request.POST.get("texte", "").strip()
+            new_data["texte"] = cd["texte"]
             # `champ` est derive du niveau pour les noeuds formulaire :
             # le parser de la moulinette compte sur cette correspondance
             # 1:1, et l'exposer en saisie libre permet de le casser
             # silencieusement. On accepte un override depuis le POST si
             # fourni (cas avance), sinon on derive automatiquement.
-            posted_champ = request.POST.get("champ", "").strip()
             new_data["champ"] = (
-                posted_champ or _champ_from_niveau(niveau) or node.get("champ")
+                cd["champ"] or _champ_from_niveau(niveau) or node.get("champ")
             )
             # `aide` est optionnel : on l'envoie toujours (meme vide)
             # pour que update_node retire la cle si l'utilisateur l'a
             # effacee (cf. convention "" = delete dans editor.update_node).
-            new_data["aide"] = request.POST.get("aide", "").strip()
+            new_data["aide"] = cd["aide"]
         elif node.get("type_noeud") == "catalogue":
             new_data["champ"] = request.POST.get("champ", "").strip()
             new_data["source"] = request.POST.get("source", "").strip() or node.get(
@@ -353,77 +379,32 @@ class EditRegleView(View):
         if branche is None or "regle" not in branche:
             return HttpResponseForbidden("Règle introuvable.")
 
-        # Reconstruit new_data depuis le POST.
-        new_data: dict = {}
-        new_id = request.POST.get("id", "").strip()
-        if new_id:
-            new_data["id"] = new_id
-        rtype = request.POST.get("type", "").strip()
-        if rtype:
-            new_data["type"] = rtype
-        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au /
-        # periodes-{i}-regime (optionnel).
-        periodes = []
-        i = 0
-        while True:
-            du = request.POST.get(f"periodes-{i}-du", "").strip()
-            au = request.POST.get(f"periodes-{i}-au", "").strip()
-            regime = request.POST.get(f"periodes-{i}-regime", "").strip()
-            if not du and not au and not regime:
-                if i == 0:
-                    break
-                # Ligne suivante vide -> on s'arrete
-                break
-            if du or au or regime:
-                p: dict = {}
-                if du:
-                    p["du"] = du
-                if au:
-                    p["au"] = au
-                if regime:
-                    p["regime"] = regime
-                periodes.append(p)
-            i += 1
-        if periodes:
-            new_data["periodes"] = periodes
-        elif "periodes" in branche["regle"]:
-            # L'utilisateur a vide les periodes -> on les retire
-            new_data["periodes"] = []
-        # Calculatrice : composant + inputs_requis
-        composant = request.POST.get("composant", "").strip()
-        if composant:
-            new_data["composant"] = composant
-        inputs_raw = request.POST.get("inputs_requis", "").strip()
-        if inputs_raw:
-            new_data["inputs_requis"] = [
-                x.strip() for x in inputs_raw.split(",") if x.strip()
+        # Parsing + validation locale via RegleForm. La validation
+        # sémantique (collisions d'id, etc.) reste dans editor.
+        form = RegleForm(request.POST)
+        if not form.is_valid():
+            form_errors = [
+                FieldError(field, " / ".join(msgs))
+                for field, msgs in form.errors.items()
             ]
-        # Champs optionnels scalaires
-        for key in (
-            "code_prescription",
-            "note",
-            "source_juridique",
-            "message",
-            "texte",
-            "texte_condition",
-            "plafonnement_associe",
-        ):
-            val = request.POST.get(key, "").strip()
-            if val:
-                new_data[key] = val
-        plafond = request.POST.get("plafond_azote_kg_n_ha", "").strip()
-        if plafond:
-            try:
-                new_data["plafond_azote_kg_n_ha"] = float(plafond)
-            except ValueError:
-                pass
-        # Checkbox a_completer : si non cochee, le navigateur ne l'envoie
-        # pas du tout dans le POST. On positionne explicitement False pour
-        # ecraser une eventuelle valeur True precedente sur la regle.
-        if request.POST.get("a_completer") in ("on", "true", "1"):
-            new_data["a_completer"] = True
-        else:
-            new_data["a_completer"] = False
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/forms/_regle_form.html",
+                {
+                    "tree": tree,
+                    "regle": {**branche["regle"]},
+                    "parent_path_str": "/".join(parent_path),
+                    "valeur": valeur,
+                    "errors": form_errors,
+                },
+                status=422,
+            )
+        new_data = form.to_new_data()
+        # Si la règle d'origine n'avait pas de périodes et que l'utilisateur
+        # n'en a pas saisies, on retire `periodes` de new_data : pas la peine
+        # de pousser une liste vide qui retirerait une clé déjà absente.
+        if not new_data.get("periodes") and "periodes" not in branche["regle"]:
+            new_data.pop("periodes", None)
 
         result = editor.update_regle(tree, parent_path, valeur, new_data, request.user)
         if not result.ok:
@@ -531,9 +512,24 @@ class EditBrancheView(View):
         if branche is None:
             return HttpResponseForbidden("Branche introuvable.")
 
-        new_valeur_raw = request.POST.get("valeur_new", "").strip()
-        new_libelle = request.POST.get("libelle", "").strip()
-        new_renvoi = request.POST.get("renvoi_vers_new", "").strip()
+        form = BrancheForm(request.POST)
+        if not form.is_valid():
+            # Une seule erreur structurelle possible aujourd'hui : id de
+            # renvoi non-slug. On rend le 1er message comme "renvoi".
+            field, msgs = next(iter(form.errors.items()))
+            return _render_branche_error(
+                request,
+                tree,
+                branche,
+                parent_path,
+                valeur,
+                field.replace("_new", ""),
+                " / ".join(msgs),
+            )
+        cd = form.to_new_data()
+        new_valeur_raw = cd["valeur_new_raw"]
+        new_libelle = cd["libelle"]
+        new_renvoi = cd["renvoi_vers_new"]
 
         # Conversion type-aware de la nouvelle valeur (preserve bool/int).
         if new_valeur_raw == "":
