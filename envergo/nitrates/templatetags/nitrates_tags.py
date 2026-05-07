@@ -143,6 +143,206 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
     ]
 
 
+_JOURS_SEMAINE_FR = [
+    "lundi",
+    "mardi",
+    "mercredi",
+    "jeudi",
+    "vendredi",
+    "samedi",
+    "dimanche",
+]
+_MOIS_LONGS_FR = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+
+
+def _periode_couvre_today(periode: dict, today: date) -> bool:
+    """Indique si la date `today` tombe dans la periode `du -> au`.
+
+    Gere le cas pivot d'annee (ex 15/12 -> 15/01 traverse le 31/12).
+    Periodes non parsables (evenements phenologiques) -> False (on ne sait
+    pas projeter).
+    """
+    du = _parse_jjmm(periode.get("du", ""))
+    au = _parse_jjmm(periode.get("au", ""))
+    if du is None or au is None:
+        return False
+    j_du = _day_of_year(*du)  # annee agricole 0-indexe
+    j_au = _day_of_year(*au)
+    j_today = _day_of_year(today.day, today.month)
+    if j_du <= j_au:
+        return j_du <= j_today <= j_au
+    # Pivot annee : couvre [j_du, fin] U [debut, j_au]
+    return j_today >= j_du or j_today <= j_au
+
+
+def statut_aujourdhui(regle, today: date | None = None) -> dict:
+    """Calcule le statut effectif d'epandage a la date `today`.
+
+    Pour chaque periode de la regle, regarde si `today` tombe dedans.
+    Si oui, retourne le `regime` de la periode (ou fallback sur
+    `regle.type`). Si dans aucune periode, retourne 'libre' (vert,
+    autorise par defaut hors periode d'interdiction).
+
+    Helper testable independamment de la date courante : pour les tests
+    unitaires, passer `today=date(2026, 5, 7)`. En production, le
+    templatetag passe `today=date.today()`.
+    """
+    if today is None:
+        today = date.today()
+    if regle is None:
+        return {
+            "code": "libre",
+            "couleur": "vert",
+            "libelle": "Autorisé",
+            "periode_active": None,
+        }
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    for p in periodes:
+        if _periode_couvre_today(p, today):
+            regime = p.get("regime") or regle_type
+            return {
+                "code": regime,
+                "couleur": _COULEUR_BADGE.get(regime, "gris"),
+                "libelle": _LIBELLE_BADGE.get(regime, regime),
+                "periode_active": {"du": p.get("du"), "au": p.get("au")},
+            }
+    # Hors de toute periode : on est en autorise par defaut.
+    # Sauf si la regle est un type "global" (libre / non_applicable / etc.)
+    # auquel cas le statut reflete le type global.
+    if regle_type in ("libre", "non_applicable", "calculatrice", "a_completer"):
+        return {
+            "code": regle_type,
+            "couleur": _COULEUR_BADGE.get(regle_type, "gris"),
+            "libelle": _LIBELLE_BADGE.get(regle_type, regle_type),
+            "periode_active": None,
+        }
+    return {
+        "code": "libre",
+        "couleur": "vert",
+        "libelle": "Autorisé",
+        "periode_active": None,
+    }
+
+
+_COULEUR_BADGE = {
+    "interdiction": "rouge",
+    "autorisation_sous_condition": "orange",
+    "plafonnement": "orange",
+    "libre": "vert",
+    "non_applicable": "gris",
+    "calculatrice": "orange",
+    "a_completer": "gris",
+}
+_LIBELLE_BADGE = {
+    "interdiction": "Interdit",
+    "autorisation_sous_condition": "Autorisé sous condition",
+    "plafonnement": "Plafonnement",
+    "libre": "Autorisé",
+    "non_applicable": "Ne s'applique pas",
+    "calculatrice": "Calcul nécessaire",
+    "a_completer": "À compléter",
+}
+
+
+def construire_phrase_explicative(regle) -> str:
+    """Construit une phrase auto a partir des periodes + regimes.
+
+    Cas couverts :
+    - 1 periode interdiction : "L'epandage est interdit du <du> au <au>."
+    - 2 periodes meme regime : "... du X au Y et du Z au W."
+    - Regimes mixtes (ex colza Type III note5) : phrase chainee
+    - Aucune periode (regle libre / non_applicable) : phrase fallback
+    """
+    if regle is None:
+        return ""
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    if not periodes:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    # Parse periodes en (regime, du, au) en filtrant les non-parsables.
+    parsed = []
+    for p in periodes:
+        if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
+            regime = p.get("regime") or regle_type
+            parsed.append((regime, p["du"], p["au"]))
+    if not parsed:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    # Cas simple : tous regimes identiques -> agrege en "du X au Y et du Z au W".
+    regimes = {r for r, _, _ in parsed}
+    if len(regimes) == 1:
+        regime = next(iter(regimes))
+        verbe = {
+            "interdiction": "L'épandage est interdit",
+            "autorisation_sous_condition": "L'épandage est autorisé sous condition",
+            "plafonnement": "L'épandage est plafonné",
+        }.get(regime, "L'épandage")
+        morceaux = [f"du {du} au {au}" for _, du, au in parsed]
+        if len(morceaux) == 1:
+            return f"{verbe} {morceaux[0]}."
+        return f"{verbe} {' et '.join(morceaux)}."
+
+    # Regimes mixtes : on chaine "autorise sous condition du X au Y, puis interdit du Z au W."
+    parts = []
+    for regime, du, au in parsed:
+        v = {
+            "interdiction": "interdit",
+            "autorisation_sous_condition": "autorisé sous condition",
+            "plafonnement": "plafonné",
+            "libre": "autorisé",
+        }.get(regime, regime)
+        parts.append(f"{v} du {du} au {au}")
+    return "L'épandage est " + ", puis ".join(parts) + "."
+
+
+def _formatter_date_fr(d: date) -> str:
+    """Format 'mercredi 6 mai 2026' (jour de la semaine + jour + mois long
+    + annee). Locales independent : on construit a la main pour garantir
+    le rendu fr."""
+    weekday = _JOURS_SEMAINE_FR[d.weekday()]
+    mois = _MOIS_LONGS_FR[d.month - 1]
+    return f"{weekday} {d.day} {mois} {d.year}"
+
+
+@register.inclusion_tag("nitrates/fragments/_epandage_header.html")
+def epandage_header(regle):
+    """Rend le header du panneau resultat avec :
+    - badge dynamique (rouge / orange / vert) selon le statut effectif
+      a la date du jour
+    - "en date du <jour de la semaine> <jour> <mois> <annee>"
+    - phrase explicative auto-generee
+    - 3 variantes UX swappables (test interactif), choix utilisateur
+      stocke en localStorage. Le bouton de switch est temporaire,
+      a retirer apres validation design.
+
+    Cf. issue #28.
+    """
+    today = date.today()
+    statut = statut_aujourdhui(regle, today=today)
+    return {
+        "regle": regle,
+        "statut": statut,
+        "today": today,
+        "today_fr": _formatter_date_fr(today),
+        "phrase": construire_phrase_explicative(regle),
+    }
+
+
 @register.inclusion_tag("nitrates/fragments/_calendrier.html")
 def calendrier_epandage(regle):
     """Rend un calendrier 12 mois colore avec les periodes interdites/
@@ -194,19 +394,36 @@ def calendrier_epandage(regle):
     today = date.today()
     today_pct = _day_of_year(today.day, today.month) / _TOTAL_DAYS * 100
 
-    # Texte des dates limites a afficher sous la barre (ex: "15/12", "15/01")
-    bornes = []
+    # Texte des dates limites a afficher sous la barre (ex: "15/12", "15/01").
+    # Fusion des bornes pivot : si 2 periodes contiguës partagent une date
+    # (ex 01/07->31/08 puis 31/08->31/01), on n'affiche qu'une fois "31/08".
+    # Sans ca le rendu duplique le label avec une legere superposition.
+    bornes_brutes = []
     for p in periodes:
         if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
-            bornes.append({"label": p["du"], "pct": _segment_interdit(p)[0][0]})
-            # Position de fin du dernier segment
             seg = _segment_interdit(p)
+            bornes_brutes.append({"label": p["du"], "pct": seg[0][0]})
             if len(seg) == 1:
                 end_pct = seg[0][0] + seg[0][1]
             else:
                 # Cas pivot : la fin est sur le 2e segment
                 end_pct = seg[1][0] + seg[1][1]
-            bornes.append({"label": p["au"], "pct": end_pct})
+            bornes_brutes.append({"label": p["au"], "pct": end_pct})
+
+    # Deduplication par couple (label, pct~). 2 bornes a moins de 1% de
+    # distance avec le meme label sont fusionnees en une seule.
+    bornes = []
+    for b in bornes_brutes:
+        deja = next(
+            (
+                x
+                for x in bornes
+                if x["label"] == b["label"] and abs(x["pct"] - b["pct"]) < 1.0
+            ),
+            None,
+        )
+        if not deja:
+            bornes.append(b)
 
     return {
         "vide": False,

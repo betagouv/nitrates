@@ -1,0 +1,59 @@
+{% comment %}
+Header du panneau resultat (issue #28).
+
+3 variantes UX swappables via dropdown temporaire (data-variant). Le
+choix est persiste en localStorage par epandage_aujourdhui.js.
+A nettoyer apres validation design.
+
+Inputs (cf. epandage_header templatetag) :
+  - regle : Resultat
+  - statut : dict {code, couleur (rouge/orange/vert), libelle, periode_active}
+  - today : date.today() (Europe/Paris)
+  - today_fr : str "mercredi 6 mai 2026"
+  - phrase : str phrase explicative auto-generee
+{% endcomment %}
+
+<div class="epandage-header"
+     data-variant="A"
+     data-statut-code="{{ statut.code }}"
+     data-statut-couleur="{{ statut.couleur }}">
+
+  {# ─── Variante A : "Épandage en date du <jour> [BADGE]" ─── #}
+  <div class="epandage-header__variant epandage-header__variant--A">
+    <div class="epandage-header__row">
+      <span class="epandage-header__title">Épandage</span>
+      <span class="epandage-header__date">en date du {{ today_fr }}</span>
+      <span class="epandage-header__badge epandage-header__badge--{{ statut.couleur }}">{{ statut.libelle|upper }}</span>
+    </div>
+  </div>
+
+  {# ─── Variante B : "Épandage aujourd'hui [BADGE] (date)" ─── #}
+  <div class="epandage-header__variant epandage-header__variant--B" hidden>
+    <div class="epandage-header__row">
+      <span class="epandage-header__title">Épandage <strong>aujourd'hui</strong></span>
+      <span class="epandage-header__badge epandage-header__badge--{{ statut.couleur }}">{{ statut.libelle|upper }}</span>
+    </div>
+    <p class="epandage-header__date-light">{{ today_fr|capfirst }}</p>
+  </div>
+
+  {# ─── Variante C : Bandeau composite "[BADGE] le <date> | Épandage" ─── #}
+  <div class="epandage-header__variant epandage-header__variant--C" hidden>
+    <div class="epandage-header__row">
+      <span class="epandage-header__badge epandage-header__badge--{{ statut.couleur }}">{{ statut.libelle|upper }}</span>
+      <span class="epandage-header__date-emphased">le {{ today_fr|capfirst }}</span>
+    </div>
+    <p class="epandage-header__title-light">Épandage</p>
+  </div>
+
+  {# ─── Variantes UX : selecteur temporaire (a retirer apres choix design) ─── #}
+  <div class="epandage-header__variant-switcher">
+    <label for="ux-variant-select" class="fr-text--xs">UX variante :</label>
+    <select id="ux-variant-select" class="fr-select fr-select--sm">
+      <option value="A">A — "en date du …"</option>
+      <option value="B">B — "aujourd'hui" + date claire</option>
+      <option value="C">C — Badge + date en avant</option>
+    </select>
+  </div>
+
+  {% if phrase %}<p class="epandage-header__phrase">{{ phrase }}</p>{% endif %}
+</div>

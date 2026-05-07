@@ -35,28 +35,32 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% for entry in regulations_evaluees %}
       {% with criterion=entry.criterion ev=entry.evaluator %}
 
-        {# ─── Épandage ─────────────────────────────────────────────── #}
-        <div class="resultat-row">
-          <span class="resultat-row__label">Épandage</span>
-          {% if ev.result == "interdit" %}
-            <span class="resultat-badge resultat-badge--interdit">INTERDIT</span>
-          {% elif ev.result == "action_requise" %}
-            <span class="resultat-badge resultat-badge--conditionnel">SOUS CONDITIONS</span>
-          {% elif ev.result == "non_soumis" %}
-            <span class="resultat-badge resultat-badge--autorise">AUTORISÉ</span>
-          {% elif ev.result == "non_concerne" %}
-            <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
-          {% else %}
-            <span class="resultat-badge resultat-badge--neutre">{{ ev.result|upper }}</span>
-          {% endif %}
-        </div>
+        {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
+        {% if ev.regle %}
+          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
+          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
+          {% epandage_header ev.regle %}
+        {% else %}
+          {# Fallback ancien rendu si pas de regle (cas edge non_disponible). #}
+          <div class="resultat-row">
+            <span class="resultat-row__label">Épandage</span>
+            {% if ev.result == "interdit" %}
+              <span class="resultat-badge resultat-badge--interdit">INTERDIT</span>
+            {% elif ev.result == "action_requise" %}
+              <span class="resultat-badge resultat-badge--conditionnel">SOUS CONDITIONS</span>
+            {% elif ev.result == "non_soumis" %}
+              <span class="resultat-badge resultat-badge--autorise">AUTORISÉ</span>
+            {% elif ev.result == "non_concerne" %}
+              <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
+            {% else %}
+              <span class="resultat-badge resultat-badge--neutre">{{ ev.result|upper }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
 
         {% if ev.regle %}
 
-          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
-          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
-
-          {# Texte introductif #}
+          {# Texte introductif (message specifique a la regle, ex maïs brunissement) #}
           {% if ev.regle.message %}
             <p class="fr-mt-2w">{{ ev.regle.message }}</p>
           {% elif ev.regle.texte %}
@@ -65,6 +69,14 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
           {# Calendrier visuel #}
           {% calendrier_epandage ev.regle %}
+
+          {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
+          {% if ev.regle.texte_condition %}
+            <div class="fr-callout fr-callout--blue-ecume fr-mt-3w">
+              <h4 class="fr-callout__title">Condition d'autorisation</h4>
+              <p>{{ ev.regle.texte_condition }}</p>
+            </div>
+          {% endif %}
 
           {# Periode d'interdiction (texte) #}
           {% if ev.regle.periodes %}

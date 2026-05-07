@@ -49,6 +49,7 @@
   position: absolute;
   top: -1px;
   bottom: -1px;
+  cursor: help;
 }
 
 .calendrier-epandage__zone--rouge {
@@ -104,4 +105,168 @@
 .calendrier-epandage__phenologique {
   margin-top: 0.5rem;
   color: #666;
+}
+
+/* ─── Légende couleurs (issue #28) ──────────────────────────────────── */
+.calendrier-epandage__legende {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-default-grey);
+}
+
+.calendrier-epandage__legende li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendrier-epandage__legende-puce {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgb(0 0 0 / 15%);
+}
+
+.calendrier-epandage__legende-puce--rouge {
+  background: #ffc4c4;
+}
+
+.calendrier-epandage__legende-puce--orange {
+  background: #ffd6a1;
+}
+
+.calendrier-epandage__legende-puce--vert {
+  background: #c2e8c2;
+}
+
+/* ─── Header epandage dynamique (issue #28) ─────────────────────────── */
+
+.epandage-header {
+  border-top: 1px solid var(--border-default-grey);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.epandage-header__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.epandage-header__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+.epandage-header__title-light {
+  font-size: 0.95rem;
+  color: var(--text-mention-grey);
+  margin: 4px 0 0;
+}
+
+.epandage-header__date {
+  flex: 1;
+  text-align: center;
+  color: var(--text-mention-grey);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.epandage-header__date-light {
+  color: var(--text-mention-grey);
+  font-size: 0.875rem;
+  margin: 6px 0 0;
+}
+
+.epandage-header__date-emphased {
+  color: var(--text-title-grey);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.epandage-header__badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.epandage-header__badge--rouge {
+  background: #ffeaeb;
+  color: #e1000f;
+}
+
+.epandage-header__badge--orange {
+  background: #ffe0b2;
+  color: #b35900;
+}
+
+.epandage-header__badge--vert {
+  background: #b8fec9;
+  color: #18753c;
+}
+
+.epandage-header__badge--gris {
+  background: #eaeaea;
+  color: #666;
+}
+
+.epandage-header__phrase {
+  margin: 12px 0 0;
+  color: var(--text-default-grey);
+  line-height: 1.5;
+}
+
+/* Selecteur de variante UX (temporaire, a retirer apres choix design) */
+.epandage-header__variant-switcher {
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: rgb(255 235 0 / 15%);
+  border: 1px dashed #b35900;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.epandage-header__variant-switcher select {
+  font-size: 12px;
+  padding: 2px 6px;
+  width: auto;
+  min-width: 200px;
+}
+
+/* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */
+.calendrier-epandage__tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(33 33 33 / 92%);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 100;
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 8px));
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.calendrier-epandage__tooltip[data-visible="true"] {
+  opacity: 1;
 }

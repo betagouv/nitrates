@@ -58,5 +58,18 @@ Inputs (cf. templatetag calendrier_epandage) :
         {% endfor %}
       </ul>
     {% endif %}
+
+    {# Legende couleurs (issue #28) #}
+    <ul class="calendrier-epandage__legende">
+      <li>
+        <span class="calendrier-epandage__legende-puce calendrier-epandage__legende-puce--rouge"></span> Interdit
+      </li>
+      <li>
+        <span class="calendrier-epandage__legende-puce calendrier-epandage__legende-puce--orange"></span> Autorisé sous condition
+      </li>
+      <li>
+        <span class="calendrier-epandage__legende-puce calendrier-epandage__legende-puce--vert"></span> Autorisé
+      </li>
+    </ul>
   </div>
 {% endif %}
