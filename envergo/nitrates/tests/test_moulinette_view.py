@@ -76,14 +76,16 @@ def test_form_inclut_carte_et_simulator_js(client, nitrates_site):
 
 
 def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata):
-    """Point en ZV, sans reponses cascade : on doit voir des questions
-    subsidiaires."""
+    """Point en ZV, sans reponses cascade : on doit voir une question
+    subsidiaire (rendue maintenant dans le panneau resultat a droite,
+    cf. issue #28)."""
     response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
     assert response.status_code == 200
     # Header du panneau resultat
     assert b"glementations applicables" in response.content
-    # Questions complementaires affichees
-    assert b"Questions compl" in response.content
+    # Question subsidiaire rendue dans le panneau resultat
+    assert b"resultat-panel--questions" in response.content
+    assert b"Une question compl" in response.content
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):

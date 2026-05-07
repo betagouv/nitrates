@@ -102,8 +102,14 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             </p>
           {% endif %}
 
-          {# Code prescription : libelle long resolu via referentiels #}
-          {% if ev.regle.code_prescription %}
+          {% comment %}
+          Code prescription : libelle long resolu via referentiels.
+          On ne l'affiche QUE si la regle n'a pas deja un `message` narratif :
+          le `texte_court` du PC est volontairement minimaliste (ex pc5
+          "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
+          avec un message regle qui dit deja la meme chose en plus contextuel.
+          {% endcomment %}
+          {% if ev.regle.code_prescription and not ev.regle.message %}
             {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
               {% if pc %}
                 <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
