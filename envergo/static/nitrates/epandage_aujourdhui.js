@@ -3,12 +3,8 @@
 // Le statut effectif "aujourd'hui" est calcule cote serveur par le
 // templatetag epandage_header() (helper Python statut_aujourdhui),
 // pour rester testable independamment de la date courante. Ce JS
-// s'occupe uniquement des enrichissements UX :
-//
-//   1. Switcher de variante UX (A/B/C) avec persistance localStorage
-//      -- temporaire, a retirer apres validation design
-//   2. Tooltip au survol des zones du calendrier (zones rouges /
-//      oranges / vertes -> info "Interdit du X au Y" etc.)
+// s'occupe des enrichissements UX : tooltip au survol des zones du
+// calendrier.
 //
 // La regle est exposee en JSON dans <script id="regle-actuelle"> par
 // le template (cf. Resultat.to_json_dict). Ce JS la lit pour
@@ -27,40 +23,6 @@
     } catch (err) {
       console.error("epandage_aujourdhui: regle JSON invalide", err);
     }
-  }
-
-  // ─── Switcher variantes UX ───────────────────────────────────────────
-
-  const STORAGE_KEY = "nitrates_epandage_ux_variant";
-
-  function appliquerVariante(name) {
-    const header = document.querySelector(".epandage-header");
-    if (!header) return;
-    header.dataset.variant = name;
-    header
-      .querySelectorAll(".epandage-header__variant")
-      .forEach((el) => {
-        const isActive = el.classList.contains(
-          `epandage-header__variant--${name}`
-        );
-        el.hidden = !isActive;
-      });
-  }
-
-  const switcher = document.getElementById("ux-variant-select");
-  if (switcher) {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && ["A", "B", "C"].includes(saved)) {
-      switcher.value = saved;
-      appliquerVariante(saved);
-    } else {
-      appliquerVariante("A");
-    }
-    switcher.addEventListener("change", (e) => {
-      const name = e.target.value;
-      localStorage.setItem(STORAGE_KEY, name);
-      appliquerVariante(name);
-    });
   }
 
   // ─── Tooltip au survol des zones du calendrier ───────────────────────
