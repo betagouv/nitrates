@@ -258,15 +258,111 @@ _LIBELLE_BADGE = {
 }
 
 
-def construire_phrase_explicative(regle) -> str:
-    """Construit une phrase auto a partir des periodes + regimes.
+def _format_jjmm_long(jjmm: str) -> str:
+    """Convertit '15/12' en '15 décembre' (et '01/07' en '1er juillet').
+    Retourne la chaîne brute si non parsable."""
+    parsed = _parse_jjmm(jjmm)
+    if parsed is None:
+        return jjmm
+    jour, mois = parsed
+    jour_fmt = "1er" if jour == 1 else str(jour)
+    return f"{jour_fmt} {_MOIS_LONGS_FR[mois - 1]}"
 
-    Cas couverts :
-    - 1 periode interdiction : "L'epandage est interdit du <du> au <au>."
-    - 2 periodes meme regime : "... du X au Y et du Z au W."
-    - Regimes mixtes (ex colza Type III note5) : phrase chainee
-    - Aucune periode (regle libre / non_applicable) : phrase fallback
+
+def construire_phrase_explicative(regle, today: date | None = None) -> str:
+    """Construit une phrase auto contextuelle "aujourd'hui" a partir des
+    periodes + regimes.
+
+    Cas safe (gere ici) :
+    - Regle libre / non_applicable / pas de periode : phrase generique.
+    - 1 ou 2 periodes du meme regime, toutes parsables (JJ/MM) : phrase
+      contextuelle qui indique le statut effectif du jour ET ce qui arrive
+      ensuite. Format en mois longs ("15 décembre") plus naturel que "15/12".
+
+    Cas non-safe (fallback sur _construire_phrase_brute) :
+    - Regimes mixtes dans la meme regle (ex maïs irrigue borne souple, a
+      clarifier dans la grammaire en backlog 2026-05-11).
+    - Periodes avec evenement phenologique (du/au non parsable JJ/MM).
+
+    Le parametre `today` est injectable pour les tests (defaut date.today()).
     """
+    if regle is None:
+        return ""
+    if today is None:
+        today = date.today()
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+
+    # Cas trivial : aucune periode -> on s'appuie sur le type global.
+    if not periodes:
+        if regle_type == "libre":
+            return "L'épandage est autorisé toute l'année."
+        if regle_type == "non_applicable":
+            return "La directive nitrates ne s'applique pas."
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    parsed = []
+    has_phenologique = False
+    for p in periodes:
+        if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
+            regime = p.get("regime") or regle_type
+            parsed.append((regime, p["du"], p["au"]))
+        else:
+            has_phenologique = True
+
+    # Fallback brut si phenologique ou regimes mixtes : a traiter avec la
+    # grammaire des bornes souples (backlog 2026-05-11).
+    regimes = {r for r, _, _ in parsed}
+    if has_phenologique or len(regimes) > 1:
+        return _construire_phrase_brute(regle)
+
+    if not parsed:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    regime = next(iter(regimes))
+    today_in_periode = any(
+        _periode_couvre_today({"du": du, "au": au, "regime": r}, today)
+        for r, du, au in parsed
+    )
+
+    morceaux = [
+        f"du {_format_jjmm_long(du)} au {_format_jjmm_long(au)}" for _, du, au in parsed
+    ]
+    liste = " et ".join(morceaux)
+
+    if regime == "interdiction":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est interdit. "
+                f"Cette période d'interdiction court {liste}."
+            )
+        return f"Aujourd'hui, l'épandage est autorisé. " f"Il sera interdit {liste}."
+    if regime == "autorisation_sous_condition":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est autorisé sous condition. "
+                f"Régime applicable {liste}."
+            )
+        return (
+            f"Aujourd'hui, l'épandage est autorisé. "
+            f"Il sera soumis à conditions {liste}."
+        )
+    if regime == "plafonnement":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est plafonné. " f"Plafond applicable {liste}."
+            )
+        return f"Aujourd'hui, l'épandage est autorisé. " f"Il sera plafonné {liste}."
+
+    # Cas libre ou autre : phrase neutre, on liste les periodes connues.
+    return f"L'épandage est autorisé. Périodes connues {liste}."
+
+
+def _construire_phrase_brute(regle) -> str:
+    """Phrase auto sans contexte temporel "aujourd'hui" -- fallback pour les
+    cas non-safe (regimes mixtes ou periodes phenologiques). A enrichir
+    quand la grammaire des bornes souples sera implementee (backlog
+    2026-05-11)."""
     if regle is None:
         return ""
     regle_type = getattr(regle, "type", None) or ""
@@ -274,7 +370,6 @@ def construire_phrase_explicative(regle) -> str:
     if not periodes:
         return _LIBELLE_BADGE.get(regle_type, "")
 
-    # Parse periodes en (regime, du, au) en filtrant les non-parsables.
     parsed = []
     for p in periodes:
         if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
@@ -283,7 +378,6 @@ def construire_phrase_explicative(regle) -> str:
     if not parsed:
         return _LIBELLE_BADGE.get(regle_type, "")
 
-    # Cas simple : tous regimes identiques -> agrege en "du X au Y et du Z au W".
     regimes = {r for r, _, _ in parsed}
     if len(regimes) == 1:
         regime = next(iter(regimes))
@@ -297,7 +391,6 @@ def construire_phrase_explicative(regle) -> str:
             return f"{verbe} {morceaux[0]}."
         return f"{verbe} {' et '.join(morceaux)}."
 
-    # Regimes mixtes : on chaine "autorise sous condition du X au Y, puis interdit du Z au W."
     parts = []
     for regime, du, au in parsed:
         v = {
@@ -339,7 +432,7 @@ def epandage_header(regle):
         "statut": statut,
         "today": today,
         "today_fr": _formatter_date_fr(today),
-        "phrase": construire_phrase_explicative(regle),
+        "phrase": construire_phrase_explicative(regle, today=today),
     }
 
 
