@@ -28,13 +28,35 @@ def _polygon_to_geom(wkt_polygon: str) -> dict:
 
 
 def make_zv_shapefile(path, features):
-    """Génère un .shp WGS84 avec les champs ZV attendus."""
+    """Génère un .shp WGS84 avec l'ancien schéma Sandre (delimitation_FXX)."""
     schema = {
         "geometry": "Polygon",
         "properties": {
             "CdEuZoneVu": "str",
             "NomZoneVul": "str",
             "CdEuBassin": "str",
+        },
+    }
+    with fiona.open(
+        str(path), "w", driver="ESRI Shapefile", crs=CRS.from_epsg(4326), schema=schema
+    ) as dst:
+        for wkt, props in features:
+            dst.write(
+                {
+                    "geometry": _polygon_to_geom(wkt),
+                    "properties": props,
+                }
+            )
+
+
+def make_zv_shapefile_eu(path, features):
+    """Génère un .shp WGS84 avec le schéma Sandre actuel (delimitation_EU,
+    inspireid + name)."""
+    schema = {
+        "geometry": "Polygon",
+        "properties": {
+            "name": "str",
+            "inspireid": "str",
         },
     }
     with fiona.open(
@@ -264,6 +286,85 @@ def test_import_zv_skips_features_without_natural_key(tmp_path):
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 1
     assert zones.first().attributes["CdEuZoneVu"] == "FRA_1"
+
+
+def test_import_zv_handles_eu_schema(tmp_path):
+    """Schema actuel Sandre (delimitation_EU): inspireid + name. Doit
+    creer les zones et les indexer par inspireid."""
+    shp = tmp_path / "zv_eu.shp"
+    make_zv_shapefile_eu(
+        shp,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Bassin Loire-Bretagne"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"inspireid": "FRH_ZV_2021_3", "name": "ZV Bassin Seine-Normandie"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 2
+    ids = sorted(z.attributes["inspireid"] for z in zones)
+    assert ids == ["FRG_ZV_2021_2", "FRH_ZV_2021_3"]
+
+
+def test_import_zv_eu_schema_is_idempotent(tmp_path):
+    """Schema EU : rejeu N fois = meme resultat qu'1 fois."""
+    shp = tmp_path / "zv_eu.shp"
+    make_zv_shapefile_eu(
+        shp,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--file", str(shp))
+    assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 1
+
+
+def test_import_zv_eu_schema_prunes_orphans(tmp_path):
+    """Schema EU : zone disparue de la nouvelle version est supprimee."""
+    shp1 = tmp_path / "zv1.shp"
+    make_zv_shapefile_eu(
+        shp1,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"inspireid": "FRH_ZV_2021_3", "name": "ZV Seine-Normandie"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp1))
+    assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
+
+    shp2 = tmp_path / "zv2.shp"
+    make_zv_shapefile_eu(
+        shp2,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp2))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 1
+    assert zones.first().attributes["inspireid"] == "FRG_ZV_2021_2"
 
 
 # ---------- tests import départements ----------

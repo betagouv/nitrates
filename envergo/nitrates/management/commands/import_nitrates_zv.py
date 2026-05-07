@@ -22,11 +22,11 @@ Usage :
         --file /path/to/ZoneVuln_delimitation_EU.shp
 
 Idempotent : un Map nitrates_zv avec le meme nom est reutilise, les
-Zone sont identifiees par leur code naturel CdEuZoneVu (Code EU
-ZoneVulnerable, identifiant officiel stable). Rejouer la commande N
-fois donne le meme resultat qu'une seule fois : les zones deja en DB
-sont mises a jour, les nouvelles sont creees, celles qui ont disparu
-de la source officielle Sandre sont supprimees (DB miroir source).
+Zone sont identifiees par leur code naturel (cf. _natural_key, supporte
+les 2 schemas Sandre). Rejouer la commande N fois donne le meme
+resultat qu'une seule fois : zones deja en DB mises a jour, nouvelles
+creees, celles qui ont disparu de la source supprimees (DB miroir
+source).
 """
 
 import shutil
@@ -39,8 +39,16 @@ from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 
 from envergo.geodata.models import MAP_TYPES, Map, Zone
+
+# Champs candidats pour la cle naturelle Sandre, dans l'ordre de
+# preference. Le premier non-vide gagne. Permet de gerer 2 schemas :
+# - delimitation_EU (actuel, depuis 2021) : `inspireid` (ex
+#   `FRG_ZV_2021_2`).
+# - delimitation_FXX (ancien, fixtures historiques) : `CdEuZoneVu`.
+NATURAL_KEY_FIELDS = ("inspireid", "CdEuZoneVu")
 
 MAP_NAME = "ZV nitrates — national"
 
@@ -174,13 +182,14 @@ class Command(BaseCommand):
         self.stdout.write(f"{verb} : Map id={map_obj.id} name={map_obj.name}")
 
         # Index code naturel -> Zone.id pour les zones deja en DB.
-        # Les zones sans CdEuZoneVu (cas pathologique : creees a la main avant
-        # l'idempotence) sont ignorees par l'index, donc ni matchees ni prunees.
-        existing_by_code = {
-            z.attributes.get("CdEuZoneVu"): z.id
-            for z in map_obj.zones.all()
-            if z.attributes and z.attributes.get("CdEuZoneVu")
-        }
+        # Les zones sans cle naturelle (cas pathologique : creees a la main
+        # avant l'idempotence) sont ignorees par l'index, donc ni matchees
+        # ni prunees.
+        existing_by_code = {}
+        for z in map_obj.zones.all():
+            code = self._natural_key(z.attributes)
+            if code:
+                existing_by_code[code] = z.id
 
         seen_codes: set[str] = set()
         created_count = 0
@@ -194,12 +203,15 @@ class Command(BaseCommand):
                     k: (v.isoformat() if hasattr(v, "isoformat") else v)
                     for k, v in attributes.items()
                 }
-                code = attributes.get("CdEuZoneVu")
+                code = self._natural_key(attributes)
                 if not code:
+                    label = (
+                        attributes.get("name") or attributes.get("NomZoneVul") or "?"
+                    )
                     self.stdout.write(
                         self.style.WARNING(
-                            f"Feature sans CdEuZoneVu, skip : "
-                            f"{attributes.get('NomZoneVul', '?')}"
+                            f"Feature sans cle naturelle "
+                            f"({'/'.join(NATURAL_KEY_FIELDS)}), skip : {label}"
                         )
                     )
                     skipped_no_code += 1
@@ -234,12 +246,15 @@ class Command(BaseCommand):
 
             # Prune : Zones presentes en DB mais absentes du shapefile (zones
             # supprimees par Sandre dans une mise a jour). DB en miroir source.
+            # On filtre sur tous les champs candidats (ancien + nouveau schema).
             orphan_codes = set(existing_by_code) - seen_codes
             deleted_count = 0
             if orphan_codes:
+                code_filter = Q()
+                for field in NATURAL_KEY_FIELDS:
+                    code_filter |= Q(**{f"attributes__{field}__in": orphan_codes})
                 deleted_count, _ = Zone.objects.filter(
-                    map=map_obj,
-                    attributes__CdEuZoneVu__in=orphan_codes,
+                    code_filter, map=map_obj
                 ).delete()
 
         map_obj.imported_geometries = created_count + updated_count
@@ -250,5 +265,17 @@ class Command(BaseCommand):
             f"{deleted_count} supprimes"
         )
         if skipped_no_code:
-            summary += f", {skipped_no_code} skip (sans CdEuZoneVu)"
+            summary += f", {skipped_no_code} skip (sans cle naturelle)"
         self.stdout.write(self.style.SUCCESS(summary + "."))
+
+    @staticmethod
+    def _natural_key(attributes):
+        """Cle naturelle stable d'une zone, premier champ non-vide parmi
+        NATURAL_KEY_FIELDS. None si rien ne match."""
+        if not attributes:
+            return None
+        for field in NATURAL_KEY_FIELDS:
+            val = attributes.get(field)
+            if val:
+                return val
+        return None
