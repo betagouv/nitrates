@@ -53,6 +53,9 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
         {% if ev.regle %}
 
+          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
+          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
+
           {# Texte introductif #}
           {% if ev.regle.message %}
             <p class="fr-mt-2w">{{ ev.regle.message }}</p>

@@ -48,6 +48,24 @@ class Resultat:
     parametres: dict | None = None
     a_completer: bool = False
 
+    def to_json_dict(self) -> dict:
+        """Serialise pour exposition JSON cote front (json_script Django).
+
+        Utilise par le module epandage_aujourdhui.js pour calculer le
+        statut effectif a la date du jour : besoin uniquement des champs
+        regle_id / type / periodes (avec regime) / texte_condition.
+        On expose aussi message / code_prescription pour info debug, mais
+        le calcul de statut ne s'en sert pas.
+        """
+        return {
+            "regle_id": self.regle_id,
+            "type": self.type,
+            "periodes": self.periodes or [],
+            "texte_condition": self.texte_condition,
+            "message": self.message,
+            "code_prescription": self.code_prescription,
+        }
+
 
 @dataclass
 class QuestionFormulaire:
