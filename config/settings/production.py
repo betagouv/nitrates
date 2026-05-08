@@ -293,6 +293,7 @@ SECURE_CSP_REPORT_ONLY = {
         CSP.SELF,
         "https://data.geopf.fr",  # New address autocomplete api
         "https://*.data.gouv.fr",  # Address autocomplete api
+        "https://geo.api.gouv.fr",  # Reverse geocode commune (nitrates simulateur)
         "https://*.beta.gouv.fr",  # Stats
         "https://sentry.incubateur.net",
         "https://*.crisp.chat",
