@@ -28,6 +28,8 @@ ALLOWED_HOSTS = [
     "envergo.local",
     "haie.local",
     "nitrates.local",
+    "django",  # nom de service docker compose, acces depuis container node
+    "envergo_django",
     ENVERGO_AMENAGEMENT_DOMAIN,
     ENVERGO_HAIE_DOMAIN,
     ENVERGO_NITRATES_DOMAIN,  # noqa F405
