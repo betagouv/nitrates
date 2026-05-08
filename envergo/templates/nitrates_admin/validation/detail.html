@@ -1,0 +1,183 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block title %}Validation {{ branche.regle_id }}{% endblock %}
+
+{% block content %}
+  <div class="fr-container-fluid fr-py-3w">
+    <p>
+      <a href="{% url 'nitrates_admin_validation_index' %}">← Retour au tableau</a>
+    </p>
+
+    <h1>{{ branche.regle_id }}</h1>
+    <p style="color:#666;">
+      <strong>Chemin :</strong> {{ branche.branche_label }}
+    </p>
+
+    <div class="vd-grid">
+      {# Colonne 1 : Miro #}
+      <div class="vd-col">
+        <h2>📐 Miro juriste</h2>
+        {% if branche.screenshot_miro %}
+          <a href="{{ branche.screenshot_miro.url }}" target="_blank">
+            <img src="{{ branche.screenshot_miro.url }}" alt="Miro" class="vd-img">
+          </a>
+        {% else %}
+          <p style="color:#999">Aucun screenshot Miro uploadé.</p>
+        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_upload_miro' pk=branche.pk %}"
+              enctype="multipart/form-data"
+              class="vd-form">
+          {% csrf_token %}
+          <label>
+            Uploader screenshot Miro :
+            <input type="file" name="screenshot_miro" accept="image/*">
+          </label>
+          <button type="submit" class="vc-btn">Uploader</button>
+        </form>
+      </div>
+
+      {# Colonne 2 : YAML snapshot #}
+      <div class="vd-col">
+        <h2>📝 YAML</h2>
+        {% if branche.yaml_snapshot %}
+          <pre class="vd-pre">{{ branche.yaml_snapshot }}</pre>
+        {% else %}
+          <p style="color:#999">Snapshot YAML manquant -- relancer le seed.</p>
+        {% endif %}
+      </div>
+
+      {# Colonne 3 : Simulateur #}
+      <div class="vd-col">
+        <h2>🌍 Simulateur</h2>
+        {% if branche.url_simulateur %}
+          <p>
+            <a href="{{ branche.url_simulateur }}" target="_blank" class="vc-btn">Ouvrir simulateur ↗</a>
+          </p>
+          <p style="word-break:break-all; font-size:0.8rem; color:#666;">
+            <code>{{ branche.url_simulateur }}</code>
+          </p>
+        {% else %}
+          <p style="color:#999">Pas d'URL deeplink.</p>
+        {% endif %}
+      </div>
+
+      {# Colonne 4 : Playwright #}
+      <div class="vd-col">
+        <h2>📸 Playwright</h2>
+        {% if branche.screenshot_playwright %}
+          <a href="{{ branche.screenshot_playwright.url }}" target="_blank">
+            <img src="{{ branche.screenshot_playwright.url }}"
+                 alt="Playwright"
+                 class="vd-img">
+          </a>
+          <p style="font-size:0.8rem; color:#666;">Capturé le {{ branche.playwright_run_at|date:"d/m/Y H:i" }}</p>
+        {% else %}
+          <p style="color:#999">Aucun screenshot Playwright auto-capturé.</p>
+          <p style="font-size:0.85rem; color:#666;">
+            Relancer la commande management
+            <code>capture_playwright_screenshots</code>.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Validation #}
+    <h2 style="margin-top:2rem">✅ Validation</h2>
+    <form method="post"
+          action="{% url 'nitrates_admin_validation_set_statut' pk=branche.pk %}"
+          class="vd-form vd-form--validation">
+      {% csrf_token %}
+      <div>
+        <label>
+          Statut :
+          <select name="statut">
+            <option value="non_valide"
+                    {% if branche.statut == 'non_valide' %}selected{% endif %}>⬜ Non validé</option>
+            <option value="valide" {% if branche.statut == 'valide' %}selected{% endif %}>✅ Validé par moi</option>
+            <option value="a_corriger"
+                    {% if branche.statut == 'a_corriger' %}selected{% endif %}>⚠️ À corriger</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>
+          Commentaire :
+          <textarea name="commentaire" rows="3" style="width:100%; max-width:60ch;">{{ branche.commentaire }}</textarea>
+        </label>
+      </div>
+      {% if branche.valide_par %}
+        <p style="font-size:0.85rem; color:#666;">
+          Validé par <strong>{{ branche.valide_par }}</strong> le
+          {{ branche.valide_at|date:"d/m/Y H:i" }}
+        </p>
+      {% endif %}
+      <button type="submit" class="vc-btn">Enregistrer</button>
+    </form>
+  </div>
+
+  <style>
+    .vd-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    @media (width >=1400px) {
+      .vd-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .vd-col {
+      background: #fafafa;
+      border: 1px solid #e1e1e1;
+      border-radius: 4px;
+      padding: 1rem;
+    }
+
+    .vd-col h2 {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+
+    .vd-img {
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+
+    .vd-pre {
+      background: #fff;
+      border: 1px solid #e1e1e1;
+      padding: 0.5rem;
+      font-size: 0.8rem;
+      overflow: auto;
+      max-height: 320px;
+    }
+
+    .vd-form {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .vd-form--validation {
+      max-width: 60ch;
+    }
+
+    .vc-btn {
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 3px;
+      background: #1f4789;
+      color: #fff !important;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+  </style>
+{% endblock %}

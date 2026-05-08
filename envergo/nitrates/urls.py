@@ -10,6 +10,12 @@ from envergo.nitrates.views import (
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_validation import (
+    validation_detail,
+    validation_index,
+    validation_set_statut,
+    validation_upload_miro,
+)
 from envergo.nitrates.views_admin_yaml import (
     CancelEditView,
     CloneConfirmView,
@@ -189,5 +195,26 @@ urlpatterns = [
         _("contact-us/"),
         TemplateView.as_view(template_name="nitrates/contact_us.html"),
         name="contact_us",
+    ),
+    # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)
+    path(
+        "admin/nitrates/validation/",
+        validation_index,
+        name="nitrates_admin_validation_index",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/",
+        validation_detail,
+        name="nitrates_admin_validation_detail",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/statut/",
+        validation_set_statut,
+        name="nitrates_admin_validation_set_statut",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-miro/",
+        validation_upload_miro,
+        name="nitrates_admin_validation_upload_miro",
     ),
 ]

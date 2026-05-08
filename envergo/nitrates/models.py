@@ -586,3 +586,99 @@ class MoulinetteNitrates(Moulinette):
             "bassin": self.catalog.get("bassin"),
             "bassin_label": self.catalog.get("bassin_label"),
         }
+
+
+# ─── Validation manuelle des feuilles de l'arbre ───────────────────────────
+
+
+def _branche_screenshot_path(instance, filename):
+    """Stockage des screenshots Miro / Playwright sous media/nitrates_validation/."""
+    return f"nitrates_validation/{instance.regle_id}/{filename}"
+
+
+class BrancheValidation(models.Model):
+    """Une ligne de validation manuelle pour une feuille de l'arbre nitrates.
+
+    Cf. issue #28 / sprint MVP-1 fin : Max veut valider exhaustivement
+    chaque feuille `culture_principale` de l'arbre en croisant 4 sources :
+      1. screenshot du Miro juriste (uploade par Max)
+      2. extrait YAML de la regle (calcule au seed)
+      3. URL simulateur deeplink avec lat/lng + cascade pre-remplie
+      4. screenshot Playwright auto-capture du resultat simulateur
+
+    Pas de FK vers `DecisionTree` exprès : l'arbre actif change quand on
+    re-import, et on veut garder l'historique des validations passees
+    associees a leurs `regle_id` (qui sont stables a travers les imports).
+    """
+
+    STATUT_NON_VALIDE = "non_valide"
+    STATUT_VALIDE = "valide"
+    STATUT_A_CORRIGER = "a_corriger"
+    STATUT_CHOICES = [
+        (STATUT_NON_VALIDE, "Non validé"),
+        (STATUT_VALIDE, "Validé"),
+        (STATUT_A_CORRIGER, "À corriger"),
+    ]
+
+    # Identifiants stables a travers les re-imports d'arbre.
+    regle_id = models.CharField(max_length=200, unique=True)
+    branche_label = models.CharField(
+        max_length=500,
+        help_text="Chemin metier lisible (ex: 'culture_principale > colza > type_III > note_5')",
+    )
+
+    # Snapshot YAML de la regle au moment du seed. Permet de detecter une
+    # divergence entre la regle qu'on a validee et la regle actuelle.
+    yaml_snapshot = models.TextField(
+        blank=True,
+        help_text="Extrait YAML de la regle au moment du seed (round-trip)",
+    )
+
+    # Deeplink simulateur calcule au seed (lat/lng + cascade pour atteindre
+    # la feuille). Format URL relative (sans host) pour rester portable
+    # entre local / staging / prod.
+    url_simulateur = models.CharField(
+        max_length=2000,
+        blank=True,
+        help_text="URL relative du simulateur pre-rempli pour cette feuille",
+    )
+
+    # Screenshots
+    screenshot_miro = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture du Miro juriste pour cette branche (uploade par Max)",
+    )
+    screenshot_playwright = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture auto Playwright du resultat simulateur",
+    )
+    playwright_run_at = models.DateTimeField(blank=True, null=True)
+
+    # Validation
+    statut = models.CharField(
+        max_length=20, choices=STATUT_CHOICES, default=STATUT_NON_VALIDE
+    )
+    commentaire = models.TextField(blank=True)
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="branches_validees",
+    )
+    valide_at = models.DateTimeField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["branche_label"]
+        verbose_name = "Validation de branche"
+        verbose_name_plural = "Validations de branches"
+
+    def __str__(self):
+        return f"{self.regle_id} ({self.get_statut_display()})"
