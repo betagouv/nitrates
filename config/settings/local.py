@@ -14,7 +14,11 @@ SECRET_KEY = env(
 
 ENVERGO_AMENAGEMENT_DOMAIN = "envergo.local"
 ENVERGO_HAIE_DOMAIN = "haie.local"
-ENVERGO_NITRATES_DOMAIN = "nitrates.local"
+# ENVERGO_NITRATES_DOMAIN n'est plus hardcode ici : on le pilote via
+# l'env var DJANGO_ENVERGO_NITRATES_DOMAIN (cf. docker-compose.override.yml)
+# pour pouvoir taper le simulateur sur 127.0.0.1:8042 sans se manger la
+# redirection vers nitrates.local imposee par SetUrlConfBasedOnSite.
+# Le default lu dans base.py reste "nitrates.beta.gouv.fr".
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
@@ -26,7 +30,7 @@ ALLOWED_HOSTS = [
     "nitrates.local",
     ENVERGO_AMENAGEMENT_DOMAIN,
     ENVERGO_HAIE_DOMAIN,
-    ENVERGO_NITRATES_DOMAIN,
+    ENVERGO_NITRATES_DOMAIN,  # noqa F405
 ]
 
 # CACHES
