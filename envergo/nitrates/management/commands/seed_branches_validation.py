@@ -74,6 +74,38 @@ TYPE_FERTILISANT_MIRO_TO_YAML = {
     "Types 0, Ia, Ib, II et III": "*",
 }
 
+# Mapping inverse sous_culture (resolu) -> (categorie_culture, sous_culture_form)
+# pour pre-remplir le formulaire cascade. Choisit un sous_culture_form
+# representatif quand plusieurs formes resolvent vers la meme.
+SOUS_CULTURE_RESOLU_VERS_FORM = {
+    "colza": ("culture_hiver", "colza"),
+    "culture_hiver_hors_colza": (
+        "culture_hiver",
+        "culture_principale_hiver_autre_que_colza",
+    ),
+    "culture_printemps": (
+        "culture_printemps",
+        "culture_principale_printemps_autre_que_mais",
+    ),
+    "luzerne": ("prairies_ou_luzerne", "luzerne"),
+    "prairie_plus_6_mois": ("prairies_ou_luzerne", "prairie_plus_6_mois"),
+    "autres_cultures": (
+        "autres_cultures_principales",
+        "cultures_maraicheres_legumieres",
+    ),
+}
+
+# Mapping type_fertilisant (resolu) -> (categorie_fertilisant, sous_fertilisant)
+# pour pre-remplir la cascade fertilisant. Choisit un representant.
+TYPE_FERTILISANT_RESOLU_VERS_FORM = {
+    "type_0": ("engrais_mineral", "engrais_azote_mineral"),
+    "type_I": ("fumiers", "fumier_compact_pailleux"),
+    "type_Ia": ("fumiers", "fumier_compact_pailleux"),
+    "type_Ib": ("fumiers", "fumier_compact_pailleux"),
+    "type_II": ("lisiers", "lisier_porc"),
+    "type_III": ("engrais_mineral", "engrais_azote_mineral"),
+}
+
 
 def _build_url(contexte: dict, lat=LAT_DEFAULT, lng=LNG_DEFAULT) -> str:
     from urllib.parse import urlencode
@@ -85,6 +117,23 @@ def _build_url(contexte: dict, lat=LAT_DEFAULT, lng=LNG_DEFAULT) -> str:
         if isinstance(v, bool):
             v = "True" if v else "False"
         params[CASCADE_TO_FORM_KEY[k]] = str(v)
+
+    # Enrichit avec les champs FORM (categorie_culture, sous_culture_form,
+    # categorie_fertilisant, sous_fertilisant) pour que la cascade JS
+    # pre-remplisse les radios du formulaire au load. Sans ces champs, le
+    # form reste vide bien qu'on ait le resultat correct cote serveur.
+    sous_culture = contexte.get("sous_culture")
+    form_culture = SOUS_CULTURE_RESOLU_VERS_FORM.get(sous_culture or "")
+    if form_culture:
+        params["categorie_culture"] = form_culture[0]
+        params["sous_culture_form"] = form_culture[1]
+
+    type_fert = contexte.get("type_fertilisant")
+    form_fert = TYPE_FERTILISANT_RESOLU_VERS_FORM.get(type_fert or "")
+    if form_fert:
+        params["categorie_fertilisant"] = form_fert[0]
+        params["sous_fertilisant"] = form_fert[1]
+
     return "/simulateur/?" + urlencode(params)
 
 
