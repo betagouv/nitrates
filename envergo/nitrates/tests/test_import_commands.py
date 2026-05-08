@@ -28,13 +28,35 @@ def _polygon_to_geom(wkt_polygon: str) -> dict:
 
 
 def make_zv_shapefile(path, features):
-    """Génère un .shp WGS84 avec les champs ZV attendus."""
+    """Génère un .shp WGS84 avec l'ancien schéma Sandre (delimitation_FXX)."""
     schema = {
         "geometry": "Polygon",
         "properties": {
             "CdEuZoneVu": "str",
             "NomZoneVul": "str",
             "CdEuBassin": "str",
+        },
+    }
+    with fiona.open(
+        str(path), "w", driver="ESRI Shapefile", crs=CRS.from_epsg(4326), schema=schema
+    ) as dst:
+        for wkt, props in features:
+            dst.write(
+                {
+                    "geometry": _polygon_to_geom(wkt),
+                    "properties": props,
+                }
+            )
+
+
+def make_zv_shapefile_eu(path, features):
+    """Génère un .shp WGS84 avec le schéma Sandre actuel (delimitation_EU,
+    inspireid + name)."""
+    schema = {
+        "geometry": "Polygon",
+        "properties": {
+            "name": "str",
+            "inspireid": "str",
         },
     }
     with fiona.open(
@@ -140,20 +162,209 @@ def test_import_zv_creates_map_and_zones(tmp_path):
     assert names == ["ZV test 1", "ZV test 2"]
 
 
-def test_import_zv_is_resumable(tmp_path):
+def test_import_zv_is_idempotent(tmp_path):
+    """Rejouer N fois la commande sur le meme shapefile = meme resultat qu'1 fois."""
     shp = tmp_path / "zv.shp"
     make_zv_shapefile(
         shp,
         [
             (
                 "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
-                {"CdEuZoneVu": "FRA_1", "NomZoneVul": "ZV test", "CdEuBassin": "FRA"},
+                {"CdEuZoneVu": "FRA_1", "NomZoneVul": "ZV test 1", "CdEuBassin": "FRA"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"CdEuZoneVu": "FRB_2", "NomZoneVul": "ZV test 2", "CdEuBassin": "FRB"},
             ),
         ],
     )
     call_command("import_nitrates_zv", "--file", str(shp))
-    call_command("import_nitrates_zv", "--file", str(shp))  # second run
+    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--file", str(shp))
+    assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
+
+
+def test_import_zv_updates_existing_zone_on_attribute_change(tmp_path):
+    """Une zone existante (meme CdEuZoneVu) voit ses attributs mis a jour."""
+    shp1 = tmp_path / "zv1.shp"
+    make_zv_shapefile(
+        shp1,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {
+                    "CdEuZoneVu": "FRA_1",
+                    "NomZoneVul": "Ancien nom",
+                    "CdEuBassin": "FRA",
+                },
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp1))
+
+    # Sandre publie une nouvelle version : meme CdEuZoneVu, nom different.
+    shp2 = tmp_path / "zv2.shp"
+    make_zv_shapefile(
+        shp2,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {
+                    "CdEuZoneVu": "FRA_1",
+                    "NomZoneVul": "Nouveau nom",
+                    "CdEuBassin": "FRA",
+                },
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp2))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 1
+    assert zones.first().attributes["NomZoneVul"] == "Nouveau nom"
+
+
+def test_import_zv_prunes_zones_removed_from_shapefile(tmp_path):
+    """Une zone presente en DB mais absente du shapefile mis a jour est supprimee."""
+    shp1 = tmp_path / "zv1.shp"
+    make_zv_shapefile(
+        shp1,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"CdEuZoneVu": "FRA_1", "NomZoneVul": "ZV 1", "CdEuBassin": "FRA"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"CdEuZoneVu": "FRB_2", "NomZoneVul": "ZV 2", "CdEuBassin": "FRB"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp1))
+    assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
+
+    # Sandre supprime FRB_2 dans la nouvelle version.
+    shp2 = tmp_path / "zv2.shp"
+    make_zv_shapefile(
+        shp2,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"CdEuZoneVu": "FRA_1", "NomZoneVul": "ZV 1", "CdEuBassin": "FRA"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp2))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 1
+    assert zones.first().attributes["CdEuZoneVu"] == "FRA_1"
+
+
+def test_import_zv_skips_features_without_natural_key(tmp_path):
+    """Feature sans CdEuZoneVu : warning + skip, pas de Zone creee."""
+    shp = tmp_path / "zv.shp"
+    make_zv_shapefile(
+        shp,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {
+                    "CdEuZoneVu": "FRA_1",
+                    "NomZoneVul": "ZV avec code",
+                    "CdEuBassin": "FRA",
+                },
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"CdEuZoneVu": "", "NomZoneVul": "ZV sans code", "CdEuBassin": "FRB"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 1
+    assert zones.first().attributes["CdEuZoneVu"] == "FRA_1"
+
+
+def test_import_zv_handles_eu_schema(tmp_path):
+    """Schema actuel Sandre (delimitation_EU): inspireid + name. Doit
+    creer les zones et les indexer par inspireid."""
+    shp = tmp_path / "zv_eu.shp"
+    make_zv_shapefile_eu(
+        shp,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Bassin Loire-Bretagne"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"inspireid": "FRH_ZV_2021_3", "name": "ZV Bassin Seine-Normandie"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 2
+    ids = sorted(z.attributes["inspireid"] for z in zones)
+    assert ids == ["FRG_ZV_2021_2", "FRH_ZV_2021_3"]
+
+
+def test_import_zv_eu_schema_is_idempotent(tmp_path):
+    """Schema EU : rejeu N fois = meme resultat qu'1 fois."""
+    shp = tmp_path / "zv_eu.shp"
+    make_zv_shapefile_eu(
+        shp,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--file", str(shp))
     assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 1
+
+
+def test_import_zv_eu_schema_prunes_orphans(tmp_path):
+    """Schema EU : zone disparue de la nouvelle version est supprimee."""
+    shp1 = tmp_path / "zv1.shp"
+    make_zv_shapefile_eu(
+        shp1,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+            (
+                "POLYGON((2 2, 3 2, 3 3, 2 3, 2 2))",
+                {"inspireid": "FRH_ZV_2021_3", "name": "ZV Seine-Normandie"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp1))
+    assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
+
+    shp2 = tmp_path / "zv2.shp"
+    make_zv_shapefile_eu(
+        shp2,
+        [
+            (
+                "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))",
+                {"inspireid": "FRG_ZV_2021_2", "name": "ZV Loire-Bretagne"},
+            ),
+        ],
+    )
+    call_command("import_nitrates_zv", "--file", str(shp2))
+
+    zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
+    assert zones.count() == 1
+    assert zones.first().attributes["inspireid"] == "FRG_ZV_2021_2"
 
 
 # ---------- tests import départements ----------

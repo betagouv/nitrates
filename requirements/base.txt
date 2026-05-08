@@ -169,6 +169,13 @@ python-stdnum==2.1
     # via django-localflavor
 pytz==2025.2
     # via -r base.in
+pyyaml==6.0.2
+    # via -r base.in
+py7zr==1.1.0
+    # via -r base.in
+    # transitive deps (texttable, pycryptodomex, brotli, psutil,
+    # backports.zstd, pyppmd, pybcj, multivolumefile, inflate64)
+    # auto-installees par pip lors du build
 qrcode==8.2
     # via django-otp
 rcssmin==1.2.2

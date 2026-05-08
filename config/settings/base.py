@@ -145,6 +145,11 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Staging nitrates ferme : tant qu'on n'ouvre pas le simulateur au
+    # public, lockdown derriere auth Django admin. A retirer le jour de
+    # la mise en ligne publique.
+    "envergo.contrib.middleware.RequireLoginEverywhere",
     "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     # "django.middleware.common.BrokenLinkEmailsMiddleware",
@@ -411,6 +416,12 @@ ENVERGO_HAIE_DOMAIN = env("DJANGO_ENVERGO_HAIE_DOMAIN", default="haie.beta.gouv.
 ENVERGO_NITRATES_DOMAIN = env(
     "DJANGO_ENVERGO_NITRATES_DOMAIN", default="nitrates.beta.gouv.fr"
 )
+
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+# Lockdown staging : si True, RequireLoginEverywhere middleware redirige
+# toute requete anonyme vers /admin/login/. A retirer (avec le middleware)
+# le jour de l'ouverture publique.
+LOCKDOWN_BEHIND_LOGIN = env.bool("DJANGO_LOCKDOWN_BEHIND_LOGIN", default=False)
 # Repertoire des specs YAML de l'arbre nitrates (grammaire, referentiels, arbres
 # PAN/PAR). En dev local on monte les specs externes via docker-compose.override
 # avec NITRATES_SPECS_DIR=/specs. Quand les specs seront stables et committees

@@ -242,6 +242,10 @@ python-stdnum==2.1
     #   django-localflavor
 pytz==2025.2
     # via -r base.txt
+pyyaml==6.0.2
+    # via -r base.txt
+py7zr==1.1.0
+    # via -r base.txt
 qrcode==8.2
     # via
     #   -r base.txt

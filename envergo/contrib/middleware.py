@@ -2,7 +2,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.sites.models import Site
-from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 
 logger = logging.getLogger(__name__)
 
@@ -10,11 +10,14 @@ logger = logging.getLogger(__name__)
 class SetUrlConfBasedOnSite:
     """Route every request to the nitrates urlconf.
 
-    REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
-    MVP nitrates: the fork only serves the nitrates site. The
-    amenagement and haie urlconfs remain in the repo as inactive
-    code to ease a future remerge with MTES-MCT/envergo upstream,
-    but the middleware no longer routes to them.
+    Le fork ne sert que le site nitrates. Les urlconfs amenagement et
+    haie restent dans le repo en code dormant pour faciliter un futur
+    remerge avec MTES-MCT/envergo upstream, mais le middleware ne route
+    plus vers eux.
+
+    Si le Host: HTTP entrant ne matche aucun Site en DB, on ne redirige
+    pas (le routing est deja force vers nitrates) : on log juste un
+    warning pour tracer les hits avec un domaine inattendu.
     """
 
     def __init__(self, get_response):
@@ -22,20 +25,60 @@ class SetUrlConfBasedOnSite:
 
     def __call__(self, request):
         request.urlconf = "config.urls_nitrates"
-        try:
-            site = Site.objects.get_current(request)
-        except Site.DoesNotExist:
-            logger.warning(
-                f"Found url with bad domain in the wild: {request.get_host()}{request.get_full_path()}"
-            )
-            new_url = (
-                f"https://{settings.ENVERGO_NITRATES_DOMAIN}{request.get_full_path()}"
-            )
-            return HttpResponseRedirect(new_url)
-
-        request.site = site
         request.base_template = "nitrates/base.html"
+        try:
+            request.site = Site.objects.get_current(request)
+        except Site.DoesNotExist:
+            # Host: ne matche aucun Site en DB. On ne redirige pas (routing
+            # deja force vers nitrates). Fallback sur le Site nitrates fixe
+            # pour que le code aval qui lit request.site.domain ne crash pas.
+            logger.warning(
+                "Request on unknown domain: %s%s",
+                request.get_host(),
+                request.get_full_path(),
+            )
+            request.site = Site.objects.filter(id=3).first()
+        return self.get_response(request)
 
-        response = self.get_response(request)
 
-        return response
+class RequireLoginEverywhere:
+    """Verrouille toutes les URL derriere une auth Django admin.
+
+    REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    Staging nitrates ferme : tant qu'on n'ouvre pas le simulateur au
+    public, toute requete anonyme est redirigee vers le login Django
+    admin. A retirer (du settings et du fichier) le jour de la mise
+    en ligne publique.
+
+    Active si `settings.LOCKDOWN_BEHIND_LOGIN` est truthy. Sinon
+    no-op : utile pour les tests et le dev local qui veulent acceder
+    librement aux pages.
+
+    Exempts (servis sans auth) :
+      - tout chemin sous /{DJANGO_ADMIN_URL}/ (Django admin a sa
+        propre auth, login inclus)
+      - /static/*  (assets servis par whitenoise)
+      - /healthcheck/  (sonde Scalingo, si on en ajoute une)
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def _is_exempt(self, path):
+        admin_url = getattr(settings, "ADMIN_URL", None)
+        if admin_url and path.startswith("/" + admin_url.lstrip("/")):
+            return True
+        if path.startswith("/static/"):
+            return True
+        if path.startswith("/healthcheck/"):
+            return True
+        return False
+
+    def __call__(self, request):
+        if not getattr(settings, "LOCKDOWN_BEHIND_LOGIN", False):
+            return self.get_response(request)
+        if request.user.is_authenticated or self._is_exempt(request.path):
+            return self.get_response(request)
+        admin_url = getattr(settings, "ADMIN_URL", "admin/")
+        login_url = "/" + admin_url.lstrip("/").rstrip("/") + "/login/"
+        return redirect(f"{login_url}?next={request.get_full_path()}")

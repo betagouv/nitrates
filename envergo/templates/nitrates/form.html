@@ -12,6 +12,9 @@
 {% block extra_js %}
   {% leaflet_js %}
   <script>
+    // Force le path des marker icons Leaflet : sans ca, Leaflet derive
+    // le path a partir du JS courant (hashe par whitenoise) -> 404.
+    L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
     window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
