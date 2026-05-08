@@ -1,0 +1,135 @@
+# Snapshot Miro — correspondance cultures/couverts du formulaire ↔ branche de l'arbre
+#
+# Date de l'export : 2026-05-08 (SVG exporté du Miro à cette date)
+# Date inscrite dans le board : "Types de cultures/couverts -> Ok pour dev"
+#                               (pas de date explicite à côté du titre, donc on
+#                               horodate à la date d'export)
+#
+# /!\ FIABILITÉ /!\
+# Cet export Miro est NON FIABLE en l'état :
+#   - les libellés peuvent diverger légèrement de ceux des PNG snapshots
+#     (casse, espaces fins, "et" vs ",", etc.) — Miro réagence à chaque export ;
+#   - la source de vérité pour le résultat attendu reste le snapshot PNG horodaté
+#     de la branche concernée (cf. ../culture_principale/2026-05-08/).
+#
+# Ce que ce snapshot APPORTE :
+#   - la liste des LIBELLÉS DE CULTURE/COUVERT à afficher dans le formulaire
+#     utilisateur ;
+#   - leur regroupement par CATÉGORIE (orange) — la catégorie est le 1er niveau
+#     de question, la sous-catégorie est le choix utilisateur final ;
+#   - le MAPPING vers la branche correspondante de l'arbre de décision
+#     (libellé violet — invisible côté utilisateur, sert au routage).
+#
+# Code couleur du board (rappel) :
+#   orange  = catégorie de culture ou couvert
+#   blanc   = sous-catégorie (= libellé affiché à l'utilisateur)
+#   violet  = intitulé de la branche d'arbre correspondante (NON affiché)
+
+snapshot_date: 2026-05-08
+source_export: cultures_formulaire.svg
+source_miro_titre: "Types de cultures/couverts -> Ok pour dev"
+fiabilite: non_fiable_recouper_avec_snapshot_branche
+
+# =============================================================================
+# CULTURE PRINCIPALE
+# =============================================================================
+cultures_principales:
+
+  - categorie: "Culture d'hiver"
+    description_categorie: "Culture principale implantée l'année civile en cours et récoltée l'année suivante"
+    sous_categories:
+      - libelle_formulaire: "Culture principale d'hiver autre que colza"
+        branche_arbre: "Culture d'hiver autre que colza"
+        screenshot_reference: "../culture_principale/2026-05-08/culture_hiver_autre_que_colza.png"
+      - libelle_formulaire: "Colza"
+        branche_arbre: "colza"  # /!\ casse divergente : SVG = "colza" minuscule, snapshot 08/05 = "Colza" majuscule. Snapshot fait foi.
+        screenshot_reference: "../culture_principale/2026-05-08/colza.png"
+
+  - categorie: "Culture de printemps"
+    description_categorie: "Culture principale implantée et récoltée pendant la même année civile"
+    sous_categories:
+      - libelle_formulaire: "Culture principale de printemps autre que maïs"
+        branche_arbre: "Culture de printemps"
+        screenshot_reference: "../culture_principale/2026-05-08/culture_de_printemps.png"
+      - libelle_formulaire: "Maïs"
+        branche_arbre: "Culture de printemps"
+        screenshot_reference: "../culture_principale/2026-05-08/culture_de_printemps.png"
+        note: "Le maïs route vers Culture de printemps puis emprunte la sous-branche Q4 culture irriguée = Oui / Maïs (PC5)."
+
+  - categorie: "Prairies ou luzerne"
+    sous_categories:
+      - libelle_formulaire: "Luzerne"
+        branche_arbre: "Luzerne"
+        screenshot_reference: "../culture_principale/2026-05-08/luzerne_partie1.png"
+      - libelle_formulaire: "Prairie implantée depuis plus de 6 mois (dont prairie permanente)"
+        branche_arbre: "Prairies implantées depuis plus de six mois dont prairie permanente"
+        screenshot_reference: "../culture_principale/2026-05-08/prairies_implantees_plus_de_6_mois.png"
+        note_metier: "Pour les prairies PERMANENTES spécifiquement, afficher PC16 \"plafond prairie\" quel que soit le type de fertilisant. À distinguer des prairies non-permanentes implantées >6 mois."
+      - libelle_formulaire: "Prairie de moins de 6 mois implantée à l'automne ou en fin d'été"
+        branche_arbre: null  # pas de PNG snapshot dédié au 08/05 — branche non couverte par les snapshots culture principale
+        screenshot_reference: null
+        note: "Branche absente du snapshot culture_principale/2026-05-08. À snapshoter quand le board sera stabilisé."
+      - libelle_formulaire: "Prairie de moins de 6 mois implantée au printemps"
+        branche_arbre: null
+        screenshot_reference: null
+        note: "Idem ci-dessus."
+
+  - categorie: "Autres cultures principales"
+    description_categorie: "Cultures pérennes, vergers, vignes, cultures maraîchères et cultures porte-graines"
+    sous_categories:
+      - libelle_formulaire: "Cultures florales et aromatiques"
+        branche_arbre: "Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)"
+        screenshot_reference: "../culture_principale/2026-05-08/autres_cultures.png"
+      - libelle_formulaire: "Cultures maraîchères et légumières de plein champ"
+        branche_arbre: "Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)"
+        screenshot_reference: "../culture_principale/2026-05-08/autres_cultures.png"
+      - libelle_formulaire: "Cultures porte-graines"
+        branche_arbre: "Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)"
+        screenshot_reference: "../culture_principale/2026-05-08/autres_cultures.png"
+      - libelle_formulaire: "Culture pérennes (vergers, vignes)"
+        branche_arbre: "Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)"
+        screenshot_reference: "../culture_principale/2026-05-08/autres_cultures.png"
+        note: "Le SVG écrit 'Culture pérennes' au singulier — probable coquille Miro pour 'Cultures pérennes'."
+
+# =============================================================================
+# COUVERT D'INTERCULTURE — HORS PÉRIMÈTRE DES SNAPSHOTS culture_principale
+# =============================================================================
+# Présent ici uniquement pour exhaustivité du formulaire utilisateur.
+# Aucune branche snapshotée à ce stade (cf. ../arbre_complet/ pour la vue d'ensemble).
+
+couverts_interculture:
+
+  - categorie: "Couvert d'interculture longue"
+    sous_categories:
+      - libelle_formulaire: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...) toujours en place après le 1er janvier"
+        type_couvert: "CINE détruit ou CIE exporté après le 01/01 (dont cultures énergétiques CIVE)"
+      - libelle_formulaire: "Couvert récolté, fauché ou pâturé (dérobée, CIVE...) plus en place après le 31 décembre"
+        type_couvert: "CIE récolté avant le 31/12"
+      - libelle_formulaire: "Couvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier"
+        type_couvert: "CINE détruit ou CIE exporté après le 01/01 (dont cultures énergétiques CIVE)"
+      - libelle_formulaire: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...) plus en place après le 31 décembre"
+        type_couvert: "CINE détruit avant le 31/12"
+
+  - categorie: "Couvert d'interculture courte"
+    sous_categories:
+      - libelle_formulaire: "Couvert récolté, fauché ou pâturé (Dérobée, CIVE, …)"
+        type_couvert: "Couvert d'interculture exporté (Dérobée, CIVE) — CIE"
+      - libelle_formulaire: "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert, ...)"
+        type_couvert: "Couvert d'interculture non exporté — CINE"
+
+# =============================================================================
+# SOL NON CULTIVÉ
+# =============================================================================
+sol_non_cultive:
+  presence_dans_formulaire: true
+  branche_arbre: "Sol non cultivé"
+  resultat_attendu: "Interdiction du 01/01 au 31/12"
+  note: "Cas trivial — non snapshoté en feuille."
+
+# =============================================================================
+# NOTES À RECOUPER À LA PROCHAINE ITÉRATION
+# =============================================================================
+points_a_clarifier:
+  - "Les 4 sous-catégories 'Autres cultures principales' routent toutes vers la même branche d'arbre 'Autres cultures' avec la même règle (Interdit du 15/12 au 15/01, types 0/Ia/Ib/II/III). Vérifier si on garde 4 entrées distinctes côté UI ou si on factorise."
+  - "Distinction prairie permanente vs prairie >6 mois non permanente : la PC16 'plafond prairie' s'applique uniquement aux permanentes. Le formulaire doit-il poser une question supplémentaire ou est-ce déduit ?"
+  - "Les 2 sous-catégories 'Prairie de moins de 6 mois' (automne/été vs printemps) ne sont pas dans le snapshot culture_principale/2026-05-08. À snapshoter quand juriste validera ces branches."

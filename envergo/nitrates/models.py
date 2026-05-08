@@ -592,23 +592,30 @@ class MoulinetteNitrates(Moulinette):
 
 
 def _branche_screenshot_path(instance, filename):
-    """Stockage des screenshots Miro / Playwright sous media/nitrates_validation/."""
-    return f"nitrates_validation/{instance.regle_id}/{filename}"
+    """Stockage des screenshots Miro / Playwright / YAML sous
+    media/nitrates_validation/<regle_id_or_pk>/<filename>.
+
+    On utilise regle_id si dispo (court et lisible), sinon pk. Pas le
+    chemin_yaml complet : trop long pour le max_length du ImageField
+    apres slugification."""
+    folder = instance.regle_id or f"id-{instance.pk or 'new'}"
+    return f"nitrates_validation/{folder}/{filename}"
 
 
 class BrancheValidation(models.Model):
     """Une ligne de validation manuelle pour une feuille de l'arbre nitrates.
 
-    Cf. issue #28 / sprint MVP-1 fin : Max veut valider exhaustivement
-    chaque feuille `culture_principale` de l'arbre en croisant 4 sources :
-      1. screenshot du Miro juriste (uploade par Max)
-      2. extrait YAML de la regle (calcule au seed)
-      3. URL simulateur deeplink avec lat/lng + cascade pre-remplie
-      4. screenshot Playwright auto-capture du resultat simulateur
+    Cf. issue #28 / sprint MVP-1 fin : Max valide exhaustivement chaque
+    feuille `culture_principale` en croisant 5 sources :
+      1. PNG Miro juriste (auto-attach depuis snapshot_miro/<branche>.png)
+      2. Screenshot admin YAML viewer (uploade par Max, devops local)
+      3. Screenshot admin YAML editor (cas tricky type colza Type III)
+      4. URL simulateur deeplink avec lat/lng + cascade pre-remplie
+      5. Screenshot Playwright du resultat simulateur (uploade par Max)
 
-    Pas de FK vers `DecisionTree` exprès : l'arbre actif change quand on
-    re-import, et on veut garder l'historique des validations passees
-    associees a leurs `regle_id` (qui sont stables a travers les imports).
+    Cle naturelle : `chemin_yaml` (path d'IDs YAML, ex
+    "n_zvn/q_occupation_sol/q_culture_principale_type/q_colza_fertilisant/r_colza_type_0").
+    Stable a travers les re-imports tant que les IDs YAML ne changent pas.
     """
 
     STATUT_NON_VALIDE = "non_valide"
@@ -620,45 +627,79 @@ class BrancheValidation(models.Model):
         (STATUT_A_CORRIGER, "À corriger"),
     ]
 
-    # Identifiants stables a travers les re-imports d'arbre.
-    regle_id = models.CharField(max_length=200, unique=True)
+    # Cle naturelle : path d'ids YAML separes par "/".
+    chemin_yaml = models.CharField(
+        max_length=1000,
+        unique=True,
+        help_text="Path d'ids YAML depuis la racine vers la feuille",
+    )
+    # Dernier segment du chemin = id de la regle (ou "renvoi_vers:..." si
+    # la branche pointe ailleurs sans regle directe).
+    regle_id = models.CharField(max_length=200, blank=True)
     branche_label = models.CharField(
         max_length=500,
-        help_text="Chemin metier lisible (ex: 'culture_principale > colza > type_III > note_5')",
+        help_text="Chemin metier lisible (ex: 'sous_culture=colza / type_fertilisant=type_III')",
     )
 
-    # Snapshot YAML de la regle au moment du seed. Permet de detecter une
-    # divergence entre la regle qu'on a validee et la regle actuelle.
+    # ─── Source 1 : YAML codé ────────────────────────────────────────────
     yaml_snapshot = models.TextField(
         blank=True,
         help_text="Extrait YAML de la regle au moment du seed (round-trip)",
     )
 
-    # Deeplink simulateur calcule au seed (lat/lng + cascade pour atteindre
-    # la feuille). Format URL relative (sans host) pour rester portable
-    # entre local / staging / prod.
+    # ─── Source 2 : Miro juriste ─────────────────────────────────────────
+    branche_miro = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Slug branche cote Miro (colza, luzerne, ...)",
+    )
+    type_fertilisant_miro = models.CharField(max_length=50, blank=True)
+    condition_miro = models.CharField(max_length=200, blank=True)
+    zonage_miro = models.CharField(max_length=200, blank=True)
+    resultat_miro = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
+    )
+    code_pc_miro = models.CharField(max_length=20, blank=True)
+    screenshot_miro = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="PNG Miro auto-attache depuis snapshot_miro/.../<branche>.png",
+    )
+
+    # ─── Source 3 : Admin YAML viewer / form (uploade manuellement) ──────
+    screenshot_yaml_viewer = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture admin YAML viewer scrolle sur la feuille",
+    )
+    screenshot_yaml_form = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture du form d'edition du noeud (cas tricky)",
+    )
+
+    # ─── Source 4 : URL simulateur ───────────────────────────────────────
     url_simulateur = models.CharField(
         max_length=2000,
         blank=True,
         help_text="URL relative du simulateur pre-rempli pour cette feuille",
     )
 
-    # Screenshots
-    screenshot_miro = models.ImageField(
-        upload_to=_branche_screenshot_path,
-        blank=True,
-        null=True,
-        help_text="Capture du Miro juriste pour cette branche (uploade par Max)",
-    )
+    # ─── Source 5 : Screenshot Playwright (devops manuel) ────────────────
     screenshot_playwright = models.ImageField(
         upload_to=_branche_screenshot_path,
         blank=True,
         null=True,
-        help_text="Capture auto Playwright du resultat simulateur",
+        help_text="Capture du resultat simulateur (devops manuel)",
     )
     playwright_run_at = models.DateTimeField(blank=True, null=True)
 
-    # Validation
+    # ─── Validation ──────────────────────────────────────────────────────
     statut = models.CharField(
         max_length=20, choices=STATUT_CHOICES, default=STATUT_NON_VALIDE
     )
@@ -676,9 +717,9 @@ class BrancheValidation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["branche_label"]
+        ordering = ["chemin_yaml"]
         verbose_name = "Validation de branche"
         verbose_name_plural = "Validations de branches"
 
     def __str__(self):
-        return f"{self.regle_id} ({self.get_statut_display()})"
+        return f"{self.regle_id or self.chemin_yaml} ({self.get_statut_display()})"

@@ -4,15 +4,15 @@
 
 {% block content %}
   <div class="fr-container-fluid fr-py-3w">
-    <h1>Validation manuelle des feuilles de l'arbre</h1>
+    <h1>Validation manuelle des feuilles culture_principale</h1>
 
-    <p style="color: #666; max-width: 75ch;">
-      Tableau de validation croisée Miro / YAML / Simulateur / Playwright pour
-      chaque feuille atteignable sous <code>culture_principale</code>. Chaque ligne est
-      validable individuellement.
+    <p style="color: #666; max-width: 80ch;">
+      Tableau de validation croisée pour chaque feuille atteignable sous
+      <code>culture_principale</code>. Chaque ligne croise 5 sources : PNG Miro,
+      YAML codé, admin YAML viewer/form, deeplink simulateur, screenshot Playwright.
     </p>
 
-    <div style="display: flex; gap: 1rem; margin: 1rem 0">
+    <div class="vc-stats">
       <span class="vc-pill" style="background:#eafbe7; color:#18753c">
         ✅ {{ stats.valide }} validé{{ stats.valide|pluralize:"s" }}
       </span>
@@ -28,7 +28,10 @@
         <tr>
           <th>Statut</th>
           <th>Règle</th>
-          <th>Chemin métier</th>
+          <th>Branche Miro</th>
+          <th>Type fert.</th>
+          <th>Résultat Miro attendu</th>
+          <th>PC</th>
           <th>Miro</th>
           <th>Playwright</th>
           <th></th>
@@ -39,33 +42,44 @@
           <tr class="vc-row vc-row--{{ branche.statut }}">
             <td>
               {% if branche.statut == 'valide' %}
-                <span class="vc-pill vc-pill--ok">✅ Validé</span>
+                <span class="vc-pill vc-pill--ok">✅</span>
               {% elif branche.statut == 'a_corriger' %}
-                <span class="vc-pill vc-pill--warn">⚠️ À corriger</span>
+                <span class="vc-pill vc-pill--warn">⚠️</span>
               {% else %}
-                <span class="vc-pill vc-pill--neutre">⬜ Non validé</span>
+                <span class="vc-pill vc-pill--neutre">⬜</span>
               {% endif %}
             </td>
             <td>
-              <code>{{ branche.regle_id }}</code>
+              <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
             </td>
-            <td class="vc-row__label">{{ branche.branche_label }}</td>
+            <td>{{ branche.branche_miro|default:"—" }}</td>
+            <td>{{ branche.type_fertilisant_miro|default:"—" }}</td>
+            <td class="vc-row__resultat">{{ branche.resultat_miro|default:"—" }}</td>
+            <td>
+              {% if branche.code_pc_miro %}
+                <span class="vc-pc">{{ branche.code_pc_miro }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
             <td class="vc-row__media">
               {% if branche.screenshot_miro %}
-                <a href="{{ branche.screenshot_miro.url }}" target="_blank">
-                  <img src="{{ branche.screenshot_miro.url }}" alt="Miro" class="vc-thumb">
-                </a>
+                <img src="{{ branche.screenshot_miro.url }}"
+                     alt="Miro"
+                     class="vc-thumb vc-clickable"
+                     data-lightbox
+                     data-src="{{ branche.screenshot_miro.url }}">
               {% else %}
                 <span style="color:#999">—</span>
               {% endif %}
             </td>
             <td class="vc-row__media">
               {% if branche.screenshot_playwright %}
-                <a href="{{ branche.screenshot_playwright.url }}" target="_blank">
-                  <img src="{{ branche.screenshot_playwright.url }}"
-                       alt="Playwright"
-                       class="vc-thumb">
-                </a>
+                <img src="{{ branche.screenshot_playwright.url }}"
+                     alt="Playwright"
+                     class="vc-thumb vc-clickable"
+                     data-lightbox
+                     data-src="{{ branche.screenshot_playwright.url }}">
               {% else %}
                 <span style="color:#999">—</span>
               {% endif %}
@@ -80,7 +94,15 @@
     </table>
   </div>
 
+  {% include "nitrates_admin/validation/_lightbox.html" %}
+
   <style>
+    .vc-stats {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
     .vc-pill {
       display: inline-block;
       padding: 4px 10px;
@@ -104,10 +126,20 @@
       color: #666;
     }
 
+    .vc-pc {
+      background: #f5f5fc;
+      border: 1px solid #cecefc;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6a6af4;
+    }
+
     .vc-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .vc-table th,
@@ -123,20 +155,29 @@
       font-weight: 600;
     }
 
-    .vc-row__label {
-      max-width: 50ch;
+    .vc-regle-id {
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .vc-row__resultat {
+      max-width: 40ch;
       color: #444;
     }
 
     .vc-row__media {
-      width: 110px;
+      width: 100px;
     }
 
     .vc-thumb {
-      max-width: 100px;
-      max-height: 60px;
+      max-width: 90px;
+      max-height: 50px;
       border: 1px solid #ddd;
       border-radius: 3px;
+    }
+
+    .vc-clickable {
+      cursor: zoom-in;
     }
 
     .vc-btn {

@@ -86,10 +86,53 @@ def validation_set_statut(request, pk):
 @require_POST
 @staff_member_required
 def validation_upload_miro(request, pk):
-    """Upload du screenshot Miro pour une branche."""
+    """Upload du screenshot Miro (override du PNG auto-attache)."""
     branche = get_object_or_404(BrancheValidation, pk=pk)
     f = request.FILES.get("screenshot_miro")
     if f:
         branche.screenshot_miro = f
         branche.save(update_fields=["screenshot_miro", "updated_at"])
+    return redirect("nitrates_admin_validation_detail", pk=pk)
+
+
+@require_POST
+@staff_member_required
+def validation_upload_yaml_viewer(request, pk):
+    """Upload du screenshot admin YAML viewer scrolle sur la feuille."""
+    branche = get_object_or_404(BrancheValidation, pk=pk)
+    f = request.FILES.get("screenshot_yaml_viewer")
+    if f:
+        branche.screenshot_yaml_viewer = f
+        branche.save(update_fields=["screenshot_yaml_viewer", "updated_at"])
+    return redirect("nitrates_admin_validation_detail", pk=pk)
+
+
+@require_POST
+@staff_member_required
+def validation_upload_yaml_form(request, pk):
+    """Upload du screenshot admin form d'edition (cas tricky)."""
+    branche = get_object_or_404(BrancheValidation, pk=pk)
+    f = request.FILES.get("screenshot_yaml_form")
+    if f:
+        branche.screenshot_yaml_form = f
+        branche.save(update_fields=["screenshot_yaml_form", "updated_at"])
+    return redirect("nitrates_admin_validation_detail", pk=pk)
+
+
+@require_POST
+@staff_member_required
+def validation_upload_playwright(request, pk):
+    """Upload du screenshot Playwright resultat simulateur (devops manuel)."""
+    branche = get_object_or_404(BrancheValidation, pk=pk)
+    f = request.FILES.get("screenshot_playwright")
+    if f:
+        branche.screenshot_playwright = f
+        branche.playwright_run_at = timezone.now()
+        branche.save(
+            update_fields=[
+                "screenshot_playwright",
+                "playwright_run_at",
+                "updated_at",
+            ]
+        )
     return redirect("nitrates_admin_validation_detail", pk=pk)

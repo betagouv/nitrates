@@ -1,0 +1,156 @@
+# Snapshot Miro — correspondance libellés fertilisant ↔ type réglementaire
+#
+# Date inscrite dans le board : 2026-04-28
+# Source : "Tdb - Reglementation Nitrate_type_fertilisant_2026-04-28.pdf"
+# Titre du board : "Types de fertilisants -> OK pour dev"
+#
+# /!\ FIABILITÉ /!\
+# Cet export Miro est NON FIABLE en l'état :
+#   - les libellés peuvent comporter des coquilles d'export (ex: "ttyyppee IIbI"
+#     dans la version raw du PDF, à lire "type Ib") ;
+#   - quelques entrées présentent un type AMBIGU (deux types listés à côté de
+#     la même sous-catégorie) — à arbitrer avec un juriste avant de coder.
+#
+# Ce que ce snapshot APPORTE :
+#   - la liste des LIBELLÉS DE FERTILISANT (sous-catégorie blanche) à proposer
+#     à l'utilisateur ;
+#   - leur regroupement par CATÉGORIE (orange) — fumiers, lisiers, composts,
+#     digestats, boues, engrais minéral, autre ;
+#   - le MAPPING vers le TYPE RÉGLEMENTAIRE (violet, NON affiché à l'utilisateur)
+#     qui sert ensuite à router dans l'arbre de décision (cf. culture_principale/).
+#
+# Code couleur du board (rappel) :
+#   orange  = catégorie de fertilisant
+#   blanc   = sous-catégorie (= libellé affiché à l'utilisateur)
+#   violet  = type réglementaire (Type 0, Type Ia, Type Ib, Type II, Type III)
+#             — NE PAS AFFICHER à l'utilisateur, sert au routage interne.
+#
+# Notation des types (constants) :
+#   Type 0   = engrais à minéralisation lente ou produits assimilés
+#   Type Ia  = sous-type I solide (composts matures, fumiers compacts...)
+#   Type Ib  = sous-type I plus humide (fumiers mous, biodéchets...)
+#   Type II  = effluents type II (lisiers, fientes, digestats bruts...)
+#   Type III = engrais minéraux azotés de synthèse
+
+snapshot_date: 2026-04-28
+source_export: types_fertilisant.pdf
+source_miro_titre: "Types de fertilisants -> OK pour dev"
+fiabilite: non_fiable_recouper_avec_juriste
+
+# =============================================================================
+# Note (i) — précision sur fumiers compacts
+# =============================================================================
+note_fumiers_compacts: >
+  Fumiers compacts d'herbivores, de porcins et de lapins, non susceptibles
+  d'écoulement (contenant un matériau absorbant de type paille, sciure...
+  et stockés au minimum 2 mois).
+
+# =============================================================================
+# CATÉGORIES DE FERTILISANT
+# =============================================================================
+categories:
+
+  - categorie: "fumiers"
+    sous_categories:
+      - libelle_formulaire: "fumiers de volailles"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Fumiers compacts non susceptibles d'écoulement (i)"
+        type_reglementaire: "Type Ia"
+        renvoi_note: "(i)"
+      - libelle_formulaire: "Fumiers mous d'herbivores, de porcins et de lapins, susceptibles d'écoulement"
+        type_reglementaire: "Type Ib"
+
+  - categorie: "lisiers"
+    sous_categories:
+      - libelle_formulaire: "déjections sans litière de ruminants, d'équins, de porcins et de volaille"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "fientes de volailles y compris séchées"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Fractions liquides issues de la séparation de phase des lisiers"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Fractions liquides issues d'un raclage en V en élevage porcin"
+        type_reglementaire: "Type II"
+
+  - categorie: "Composts"
+    sous_categories:
+      - libelle_formulaire: "Composts de déchets verts jeunes et ligneux"
+        type_reglementaire: "Type 0"
+      - libelle_formulaire: "Composts matures de déchets verts (autres de jeunes et ligneux)"
+        type_reglementaire: "Type Ia"
+      - libelle_formulaire: "Composts d'effluents d'élevage (hors composts de fientes de volailles)"
+        type_reglementaire: "Type Ia"
+      - libelle_formulaire: "Composts de fientes de volailles"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Composts d'ordures ménagères résiduelles"
+        type_reglementaire: "Type Ia"
+      - libelle_formulaire: "Composts de marcs de raisins"
+        type_reglementaire: "Type Ia"
+      - libelle_formulaire: "Composts de fractions solides de digestats de méthanisation"
+        type_reglementaire: "Type Ia"
+        note_doublon: "Cette entrée apparaît aussi dans la catégorie 'Digestats' avec le même type Ia. Probable redondance Miro à dédupliquer côté UI."
+      - libelle_formulaire: "Composts de biodéchets"
+        type_reglementaire: "Type Ib"
+      - libelle_formulaire: "Composts de MIATE (matières d'intérêt agronomique issues du traitement des eaux) mélangées à un support carboné"
+        type_reglementaire: "Type Ib"
+
+  - categorie: "Digestats"
+    sous_categories:
+      - libelle_formulaire: "Digestats bruts de méthanisation"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Fractions liquides des digestats de méthanisation"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Composts de fractions solides de digestats de méthanisation"
+        type_reglementaire: "Type Ia"
+        note_doublon: "Doublon de l'entrée du même nom dans 'Composts'. À dédupliquer."
+
+  - categorie: "Boues"
+    sous_categories:
+      - libelle_formulaire: "Boues de papeterie"
+        type_reglementaire: "Type 0"
+      - libelle_formulaire: "Eaux résiduaires"
+        type_reglementaire: "Type II"
+
+  - categorie: "Engrais minéral"
+    sous_categories:
+      - libelle_formulaire: "Engrais azoté minéral (ammonitrates ...)"
+        type_reglementaire: "Type III"
+
+  - categorie: "Autre"
+    sous_categories:
+      - libelle_formulaire: "Marcs de raisins frais"
+        type_reglementaire: "Type 0"
+      - libelle_formulaire: "Effluents peu chargés"
+        type_reglementaire: "Type II"
+        note: "Le statut 'effluent peu chargé' déclenche aussi une question secondaire dans plusieurs branches d'arbre (Q3 fertirrigation pour culture de printemps, etc.) avec PC6/PC7. Routage non trivial — voir les snapshots culture_principale."
+      - libelle_formulaire: "Farines de plumes, de poisson, de sang, d'os, soies de porcs, tourteaux de ricin, guanos d'oiseaux marins"
+        type_reglementaire: "Type II"
+      - libelle_formulaire: "Vinasses de betterave"
+        type_reglementaire: "Type II"
+
+# =============================================================================
+# Entrées en bas du board, sans rattachement à une catégorie orange explicite
+# (apparaissent en bas à droite du PDF)
+# =============================================================================
+# Ces entrées ressemblent à des "shortcuts" où l'utilisateur sait déjà quel
+# type il a sans connaître le libellé fin. À confirmer avec le juriste : est-ce
+# un cas d'usage formulaire ou un artefact de fabrication du board ?
+entrees_directes_a_clarifier:
+  - libelle: "Type 0"
+    type_reglementaire: "Type 0"
+  - libelle: "Type Ia"
+    type_reglementaire: "Type Ia"
+  - libelle: "Type IB"
+    type_reglementaire: "Type Ib"
+    note: "Casse divergente 'IB' au lieu de 'Ib' — coquille Miro probable."
+  - libelle: "Type II ou fertilisant organique de type inconnu"
+    type_reglementaire: "Type II"
+    note: "Cas fallback : si l'agriculteur ne sait pas, on l'aiguille vers Type II par défaut. À valider juriste."
+
+# =============================================================================
+# POINTS À CLARIFIER AVANT DE FIGER LE FORMULAIRE
+# =============================================================================
+points_a_clarifier:
+  - "Composts de fractions solides de digestats de méthanisation : présent à la fois dans 'Composts' et dans 'Digestats'. Quelle catégorie côté UI ?"
+  - "Faut-il proposer les 'entrees_directes_a_clarifier' (Type 0/Ia/Ib direct + 'fertilisant organique inconnu') comme fallbacks formulaire, ou est-ce uniquement de la cuisine interne juriste ?"
+  - "Type III : le board ne liste qu'UNE entrée (engrais azoté minéral / ammonitrates). Y a-t-il d'autres engrais Type III à ajouter ?"
+  - "Aucun fertilisant 'Type I' simple (sans suffixe a/b) n'apparaît dans ce mapping. Pourtant l'arbre de décision culture_principale 2026-05-08 référence 'Type I' (sur colza, prairies) en plus de Type Ia/Ib (culture de printemps, luzerne). Cohérence à valider : Type I = union de Ia+Ib ?"

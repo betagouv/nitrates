@@ -1,0 +1,78 @@
+{% comment %}
+Lightbox simple : toute image avec [data-lightbox] devient cliquable et
+s'agrandit en plein ecran. Click hors image ou Esc pour fermer. Pas de
+dependance externe.
+{% endcomment %}
+
+<div id="vc-lightbox" class="vc-lightbox" hidden>
+  <div class="vc-lightbox__backdrop"></div>
+  <img class="vc-lightbox__img" alt="">
+  <button class="vc-lightbox__close" aria-label="Fermer">×</button>
+</div>
+
+<style>
+  .vc-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vc-lightbox[hidden] {
+    display: none;
+  }
+
+  .vc-lightbox__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 85%);
+    cursor: zoom-out;
+  }
+
+  .vc-lightbox__img {
+    position: relative;
+    max-width: 95vw;
+    max-height: 95vh;
+    box-shadow: 0 4px 24px rgb(0 0 0 / 50%);
+    border-radius: 4px;
+  }
+
+  .vc-lightbox__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgb(255 255 255 / 90%);
+    color: #000;
+    font-size: 1.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 1;
+  }
+</style>
+
+<script>
+  (function () {
+    const lb = document.getElementById("vc-lightbox");
+    if (!lb) return;
+    const img = lb.querySelector(".vc-lightbox__img");
+    const close = () => { lb.hidden = true; img.src = ""; };
+    lb.querySelector(".vc-lightbox__backdrop").addEventListener("click", close);
+    lb.querySelector(".vc-lightbox__close").addEventListener("click", close);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+    document.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-lightbox]");
+      if (!t) return;
+      const src = t.dataset.src || t.src;
+      if (!src) return;
+      img.src = src;
+      lb.hidden = false;
+    });
+  })();
+</script>

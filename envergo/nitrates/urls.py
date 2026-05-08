@@ -15,6 +15,9 @@ from envergo.nitrates.views_admin_validation import (
     validation_index,
     validation_set_statut,
     validation_upload_miro,
+    validation_upload_playwright,
+    validation_upload_yaml_form,
+    validation_upload_yaml_viewer,
 )
 from envergo.nitrates.views_admin_yaml import (
     CancelEditView,
@@ -216,5 +219,20 @@ urlpatterns = [
         "admin/nitrates/validation/<int:pk>/upload-miro/",
         validation_upload_miro,
         name="nitrates_admin_validation_upload_miro",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-yaml-viewer/",
+        validation_upload_yaml_viewer,
+        name="nitrates_admin_validation_upload_yaml_viewer",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-yaml-form/",
+        validation_upload_yaml_form,
+        name="nitrates_admin_validation_upload_yaml_form",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-playwright/",
+        validation_upload_playwright,
+        name="nitrates_admin_validation_upload_playwright",
     ),
 ]
