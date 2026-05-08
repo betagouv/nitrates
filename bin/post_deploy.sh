@@ -24,22 +24,18 @@ else
   fi
 
   # Import idempotent des departements ADMIN EXPRESS.
-  # Source IGN distribuee en .7z (236 Mo metropole) - notre commande ne
-  # sait que .zip. On ne tape donc pas l'IGN directement.
-  # En CI/staging : SKIP_NITRATES_DEPARTMENTS_IMPORT=1 + import manuel via
-  # scalingo run --file ADMIN_EXPRESS.zip.
-  # En prod : DJANGO_NITRATES_DEPARTMENTS_URL pointant sur un mirror .zip.
+  # Default : URL stable IGN (data.geopf.fr, .7z 250 Mo metropole).
+  # Pour debloquer ponctuellement (IGN down, mirror prive) :
+  # SKIP_NITRATES_DEPARTMENTS_IMPORT=1 (puis import manuel via --file).
   if [ "$SKIP_NITRATES_DEPARTMENTS_IMPORT" == "1" ]; then
     echo ">>> SKIP_NITRATES_DEPARTMENTS_IMPORT=1, departments import skipped (manual run required)"
-  elif [ -n "$DJANGO_NITRATES_DEPARTMENTS_URL" ]; then
-    echo ">>> Importing nitrates departments from $DJANGO_NITRATES_DEPARTMENTS_URL"
-    python manage.py import_nitrates_departments --url "$DJANGO_NITRATES_DEPARTMENTS_URL"
   else
-    echo ">>> No DJANGO_NITRATES_DEPARTMENTS_URL set and SKIP_NITRATES_DEPARTMENTS_IMPORT != 1"
-    echo ">>> Refuse to deploy without departments. Set one of:"
-    echo ">>>   - DJANGO_NITRATES_DEPARTMENTS_URL=<mirror_url.zip>"
-    echo ">>>   - SKIP_NITRATES_DEPARTMENTS_IMPORT=1 (then manual import)"
-    exit 1
+    echo ">>> Importing nitrates departments from IGN ADMIN EXPRESS"
+    if [ -n "$DJANGO_NITRATES_DEPARTMENTS_URL" ]; then
+      python manage.py import_nitrates_departments --url "$DJANGO_NITRATES_DEPARTMENTS_URL"
+    else
+      python manage.py import_nitrates_departments
+    fi
   fi
 fi
 

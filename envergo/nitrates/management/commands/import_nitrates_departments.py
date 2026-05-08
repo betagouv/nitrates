@@ -3,20 +3,25 @@
 Source officielle IGN ADMIN EXPRESS COG (Licence Etalab) :
 https://geoservices.ign.fr/adminexpress
 
+Distribuee en .7z par l'IGN (~250 Mo metropole). Le download stable
+2024 :
+https://data.geopf.fr/telechargement/download/ADMIN-EXPRESS-COG/ADMIN-EXPRESS-COG_3-2__SHP_LAMB93_FXX_2024-02-22/ADMIN-EXPRESS-COG_3-2__SHP_LAMB93_FXX_2024-02-22.7z
+
 Usage :
 
-    # Avec une URL .zip (ex : mirror, archive perso) :
+    # Telechargement direct depuis IGN (defaut, recommandee) :
+    docker compose run --rm django python manage.py import_nitrates_departments
+
+    # Avec une URL custom (.7z ou .zip) :
     docker compose run --rm django python manage.py import_nitrates_departments \\
-        --url https://example.com/admin-express-cog.zip
+        --url https://example.com/admin-express-cog.7z
 
     # Avec un fichier .shp local deja decompresse :
     docker compose run --rm django python manage.py import_nitrates_departments \\
         --file /path/to/DEPARTEMENT.shp
 
-NB : l'IGN distribue ADMIN EXPRESS en .7z (236 Mo metropole). Cette
-commande ne sait extraire que .zip, elle ne tape donc pas l'IGN
-directement. Pour usage IGN : decompresser localement, puis --file ou
-re-zipper et exposer sur un mirror .zip.
+Format du conteneur deduit de l'extension de l'URL : .7z via py7zr,
+.zip via stdlib zipfile.
 
 Idempotent : update_or_create sur le code INSEE du département.
 """
@@ -33,12 +38,18 @@ from django.core.management.base import BaseCommand, CommandError
 
 from envergo.geodata.models import Department
 
+DEFAULT_IGN_URL = (
+    "https://data.geopf.fr/telechargement/download/ADMIN-EXPRESS-COG/"
+    "ADMIN-EXPRESS-COG_3-2__SHP_LAMB93_FXX_2024-02-22/"
+    "ADMIN-EXPRESS-COG_3-2__SHP_LAMB93_FXX_2024-02-22.7z"
+)
+
 
 class Command(BaseCommand):
     help = "Importe les départements depuis le shapefile ADMIN EXPRESS."
 
     def add_arguments(self, parser):
-        group = parser.add_mutually_exclusive_group(required=True)
+        group = parser.add_mutually_exclusive_group()
         group.add_argument(
             "--file",
             type=Path,
@@ -49,23 +60,22 @@ class Command(BaseCommand):
         )
         group.add_argument(
             "--url",
+            default=DEFAULT_IGN_URL,
             help=(
-                "URL d'un .zip contenant DEPARTEMENT.shp (et fichiers "
-                "associes). On telecharge dans un tempdir, on decompresse, "
-                "on cherche DEPARTEMENT.shp recursivement."
+                "URL d'un .7z ou .zip contenant DEPARTEMENT.shp et fichiers "
+                "associes (defaut : IGN ADMIN-EXPRESS-COG 2024-02-22)."
             ),
         )
 
     def handle(self, *args, **options):
         shp_path: Path | None = options.get("file")
-        url: str | None = options.get("url")
 
         tmpdir: Path | None = None
         try:
-            if url and not shp_path:
-                tmpdir, shp_path = self._download_and_extract(url)
+            if shp_path is None:
+                tmpdir, shp_path = self._download_and_extract(options["url"])
 
-            if not shp_path or not shp_path.exists():
+            if not shp_path.exists():
                 raise CommandError(f"Fichier introuvable : {shp_path}")
 
             self._import_shapefile(shp_path)
@@ -76,14 +86,16 @@ class Command(BaseCommand):
     # ─── Download + unzip ──────────────────────────────────────────────────
 
     def _download_and_extract(self, url: str) -> tuple[Path, Path]:
-        """Telecharge `url` (zip) en streaming dans un tempdir et
-        retourne (tmpdir, chemin_du_DEPARTEMENT.shp_trouve)."""
+        """Telecharge `url` (.7z ou .zip) en streaming dans un tempdir,
+        decompresse, retourne (tmpdir, chemin_DEPARTEMENT.shp)."""
         tmpdir = Path(tempfile.mkdtemp(prefix="nitrates_dep_"))
-        zip_path = tmpdir / "download.zip"
+
+        ext = ".7z" if url.lower().endswith(".7z") else ".zip"
+        archive_path = tmpdir / f"download{ext}"
 
         self.stdout.write(f"Telechargement : {url}")
         req = Request(url, headers={"User-Agent": "envergo-nitrates/1.0"})
-        with urlopen(req) as resp, open(zip_path, "wb") as out:
+        with urlopen(req) as resp, open(archive_path, "wb") as out:
             total = int(resp.headers.get("Content-Length") or 0)
             downloaded = 0
             chunk_size = 1024 * 1024  # 1 MiB
@@ -102,17 +114,24 @@ class Command(BaseCommand):
                     )
         self.stdout.write("")
 
-        self.stdout.write(f"Decompression : {zip_path} -> {tmpdir}")
-        with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(tmpdir)
-        zip_path.unlink()
+        self.stdout.write(f"Decompression : {archive_path} -> {tmpdir}")
+        if ext == ".7z":
+            # py7zr est une lib Python pure, pas de dep apt cote dyno
+            import py7zr
+
+            with py7zr.SevenZipFile(archive_path, mode="r") as z:
+                z.extractall(path=tmpdir)
+        else:
+            with zipfile.ZipFile(archive_path) as zf:
+                zf.extractall(tmpdir)
+        archive_path.unlink()
 
         shp_files = [
             p for p in tmpdir.rglob("*.shp") if "DEPARTEMENT" in p.name.upper()
         ]
         if not shp_files:
             raise CommandError(
-                f"Aucun DEPARTEMENT.shp trouve dans le zip telecharge ({tmpdir})."
+                f"Aucun DEPARTEMENT.shp trouve dans l'archive telechargee ({tmpdir})."
             )
         if len(shp_files) > 1:
             self.stdout.write(

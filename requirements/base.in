@@ -38,4 +38,5 @@ python-magic
 jsonschema
 ruamel.yaml
 pyyaml
+py7zr
 Pygments
