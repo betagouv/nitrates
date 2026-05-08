@@ -468,16 +468,22 @@ def test_vrai_arbre_pan_brouillon_structurellement_valide():
 # ─── Champ `regime` sur les periodes (introduit le 30/04) ───────────────────
 
 
-def _arbre_avec_periode_regime(regime: str) -> dict:
+def _arbre_avec_type_et_regime(type_regle: str, regime_periode: str) -> dict:
+    """Helper pour tester combinaisons type / regime.
+
+    Convention 2026-05-08 : type = regime principal, periode peut raffiner
+    vers PLUS RESTRICTIF uniquement.
+    Severite : interdiction > plafonnement > autorisation_sous_condition > libre
+    """
     a = _arbre_minimal_valide()
     a["arbre"]["noeud"]["branches"].append(
         {
             "valeur": True,
             "regle": {
                 "id": "r_regime_test",
-                "type": "interdiction",
+                "type": type_regle,
                 "periodes": [
-                    {"du": "01/09", "au": "15/01", "regime": regime},
+                    {"du": "01/09", "au": "15/01", "regime": regime_periode},
                 ],
             },
         }
@@ -485,36 +491,59 @@ def _arbre_avec_periode_regime(regime: str) -> dict:
     return a
 
 
-def test_periode_regime_interdiction_accepte():
-    validate_arbre(_arbre_avec_periode_regime("interdiction"))
+def test_regime_periode_idempotent_passe():
+    """Une periode peut repeter le type parent (idempotent)."""
+    validate_arbre(_arbre_avec_type_et_regime("interdiction", "interdiction"))
+    validate_arbre(
+        _arbre_avec_type_et_regime(
+            "autorisation_sous_condition", "autorisation_sous_condition"
+        )
+    )
 
 
-def test_periode_regime_autorisation_sous_condition_accepte():
-    validate_arbre(_arbre_avec_periode_regime("autorisation_sous_condition"))
+def test_regime_periode_raffine_vers_plus_restrictif_passe():
+    """Le regime de periode peut etre PLUS restrictif que le type parent."""
+    # autorisation_sous_condition raffine vers interdiction : OK (plus restrictif)
+    validate_arbre(
+        _arbre_avec_type_et_regime("autorisation_sous_condition", "interdiction")
+    )
+    # plafonnement raffine vers interdiction : OK (plus restrictif)
+    validate_arbre(_arbre_avec_type_et_regime("plafonnement", "interdiction"))
 
 
-def test_periode_regime_libre_accepte():
-    validate_arbre(_arbre_avec_periode_regime("libre"))
-
-
-def test_periode_regime_calculatrice_rejete():
-    """`calculatrice` est un type de regle, pas un regime de periode :
-    le validateur doit rejeter explicitement."""
+def test_regime_periode_raffine_vers_plus_permissif_rejete():
+    """Une periode plus PERMISSIVE que le type parent est refusee
+    (convention grammaire 2026-05-08)."""
+    # interdiction → autorisation_sous_condition : refus (plus permissif)
     with pytest.raises(ValidationError) as exc:
-        validate_arbre(_arbre_avec_periode_regime("calculatrice"))
-    assert any("regime" in e for e in exc.value.errors)
+        validate_arbre(
+            _arbre_avec_type_et_regime("interdiction", "autorisation_sous_condition")
+        )
+    assert any("plus permissif" in e for e in exc.value.errors)
 
-
-def test_periode_regime_plafonnement_rejete():
+    # interdiction → libre : refus (encore plus permissif)
     with pytest.raises(ValidationError) as exc:
-        validate_arbre(_arbre_avec_periode_regime("plafonnement"))
-    assert any("regime" in e for e in exc.value.errors)
+        validate_arbre(_arbre_avec_type_et_regime("interdiction", "libre"))
+    assert any("plus permissif" in e for e in exc.value.errors)
 
-
-def test_periode_regime_yolo_rejete():
+    # plafonnement → autorisation_sous_condition : refus (plus permissif)
     with pytest.raises(ValidationError) as exc:
-        validate_arbre(_arbre_avec_periode_regime("yolo"))
-    assert any("regime" in e for e in exc.value.errors)
+        validate_arbre(
+            _arbre_avec_type_et_regime("plafonnement", "autorisation_sous_condition")
+        )
+    assert any("plus permissif" in e for e in exc.value.errors)
+
+
+def test_regime_periode_inconnu_rejete():
+    """Un regime inconnu (typo, valeur libre) est refuse."""
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_type_et_regime("interdiction", "yolo"))
+    assert any("regime" in e and "inconnu" in e for e in exc.value.errors)
+
+    # `calculatrice` est un type de regle, pas un regime de periode.
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_type_et_regime("interdiction", "calculatrice"))
+    assert any("regime" in e and "inconnu" in e for e in exc.value.errors)
 
 
 def test_periode_sans_regime_passe_retro_compat():
@@ -534,15 +563,15 @@ def test_periode_sans_regime_passe_retro_compat():
 
 
 def test_periodes_regime_mixte_accepte():
-    """Plusieurs periodes successives avec des regimes differents
-    (cas colza Type III note_5 du 30/04)."""
+    """Cas colza Type III note_5 (post-bascule 2026-05-08) :
+    type=autorisation_sous_condition + une periode raffinee vers interdiction."""
     a = _arbre_minimal_valide()
     a["arbre"]["noeud"]["branches"].append(
         {
             "valeur": True,
             "regle": {
                 "id": "r_regime_mixte",
-                "type": "interdiction",
+                "type": "autorisation_sous_condition",
                 "periodes": [
                     {
                         "du": "01/09",

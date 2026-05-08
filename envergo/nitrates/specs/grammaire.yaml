@@ -151,26 +151,43 @@ exemple_regle_interdiction:
 
 
 # ── Périodes à régime mixte (optionnel) ──────────────────────────────────────
-# Quand une feuille combine plusieurs régimes successifs (ex: colza Type III :
-# autorisation sous condition du 01/09 au 15/10 PUIS interdiction stricte du
-# 15/10 au 15/01), chaque période peut porter un champ optionnel `regime` qui
-# précise sa nature. Si `regime` est absent, on retombe sur le `type` global
-# de la règle.
+# Convention grammaire (2026-05-08) :
+#
+#   `type` = régime PRINCIPAL autorisé par la règle (le plus permissif).
+#   `regime` (par période) = raffinement OPTIONNEL vers PLUS RESTRICTIF.
+#
+# Sévérité (du plus restrictif au plus permissif) :
+#   interdiction > plafonnement > autorisation_sous_condition > libre
+#
+# Une période ne peut PAS être plus permissive que le type parent. Si on
+# veut décrire "autorisation sous condition au début, puis interdiction
+# ensuite" (cas colza Type III, fertirrigation effluents peu chargés),
+# le type doit être `autorisation_sous_condition` (le régime "le plus
+# permissif" effectivement appliqué), et la période interdite est
+# raffinée explicitement.
+#
+# Le validator refuse les combinaisons absurdes (plus permissives que
+# le parent). Voir `_check_regimes_coherents` dans validator.py.
+#
+# Si `regime` est absent sur une période, on hérite du `type` parent.
 #
 # Valeurs possibles pour `regime` :
-#   "interdiction" | "autorisation_sous_condition" | "libre"
+#   "interdiction" | "plafonnement" | "autorisation_sous_condition" | "libre"
 
 exemple_regle_periodes_mixtes:
   regle:
     id: "r_colza_type_III_note5"
-    type: "interdiction"          # type "principal" / le plus restrictif
+    # autorisation_sous_condition = le régime PRINCIPAL, le plus permissif
+    # effectivement appliqué (cf. PC11 colza). Une sous-période bascule
+    # en interdiction stricte ensuite.
+    type: "autorisation_sous_condition"
     periodes:
       - du: "01/09"
         au: "15/10"
         regime: "autorisation_sous_condition"
       - du: "15/10"
         au: "15/01"
-        regime: "interdiction"
+        regime: "interdiction"   # raffinement plus restrictif : OK
     code_prescription: "pc11"
     note: "note_5"
 

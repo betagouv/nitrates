@@ -63,6 +63,7 @@ def validate_arbre(
     errors.extend(_check_renvois_vers(arbre, ids_definis))
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
+    errors.extend(_check_regimes_coherents(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -219,6 +220,74 @@ def _is_valid_date(s: str) -> bool:
         return 1 <= j <= 31 and 1 <= m <= 12
     except (ValueError, AttributeError):
         return False
+
+
+# ─── Coherence type / regime par periode ────────────────────────────────────
+
+
+def _check_regimes_coherents(arbre: dict) -> list[str]:
+    """Refuse les combinaisons type / regime intra-regle absurdes.
+
+    Convention grammaire 2026-05-08 : `type` est le regime principal
+    autorise par la regle. Les sous-periodes peuvent UNIQUEMENT raffiner
+    vers PLUS RESTRICTIF. Une regle `type=interdiction` ne peut donc
+    pas avoir de periode `regime=autorisation_sous_condition` (ce serait
+    plus permissif que le type parent).
+
+    Ordre de severite (plus restrictif en haut) :
+        interdiction > plafonnement > autorisation_sous_condition > libre
+
+    Permissions :
+      type=libre               : aucun raffinement utile (regle libre = pas
+                                 de periode contrainte normalement). Si on
+                                 met un regime, ce serait incoherent. Refus.
+      type=autorisation_sous_condition : peut raffiner vers `interdiction`,
+                                 `plafonnement`, ou `autorisation_sous_condition`
+                                 (idempotent). Refuse `libre` (plus permissif).
+      type=plafonnement        : peut raffiner vers `interdiction`. Refuse
+                                 `autorisation_sous_condition` et `libre`.
+      type=interdiction        : ne peut PAS etre raffine vers plus permissif.
+                                 Tolere `regime=interdiction` (idempotent).
+                                 Refuse autorisation_sous_condition / plafonnement
+                                 / libre.
+
+    Le `non_applicable` / `calculatrice` / `a_completer` n'ont pas de
+    periodes typiquement, on ne valide rien (laisse passer si pas de regime).
+    """
+    errors: list[str] = []
+    # Plus le rang est BAS, plus le regime est RESTRICTIF.
+    severite = {
+        "interdiction": 0,
+        "plafonnement": 1,
+        "autorisation_sous_condition": 2,
+        "libre": 3,
+    }
+    for obj in _walk_objects(arbre):
+        rtype = obj.get("type")
+        if rtype not in severite:
+            continue
+        rang_type = severite[rtype]
+        for i, periode in enumerate(obj.get("periodes", []) or [], start=1):
+            preg = periode.get("regime")
+            if preg is None:
+                continue
+            if preg not in severite:
+                errors.append(
+                    f"[regime] regle '{obj.get('id')}' periode #{i} : "
+                    f"regime={preg!r} inconnu (attendu : "
+                    f"interdiction / plafonnement / autorisation_sous_condition / libre)"
+                )
+                continue
+            if severite[preg] > rang_type:
+                errors.append(
+                    f"[regime] regle '{obj.get('id')}' periode #{i} : "
+                    f"regime={preg!r} est plus permissif que le type "
+                    f"parent {rtype!r}. Une periode ne peut raffiner que "
+                    f"vers PLUS RESTRICTIF (convention grammaire 2026-05-08). "
+                    f"Si l'intention est d'avoir un regime mixte, declarer "
+                    f"type='autorisation_sous_condition' au niveau regle."
+                )
+    return errors
 
 
 # ─── Ordre des niveaux formulaire ───────────────────────────────────────────

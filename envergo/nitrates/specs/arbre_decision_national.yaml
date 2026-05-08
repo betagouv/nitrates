@@ -151,7 +151,12 @@ arbre:
                                 libelle: "Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)"
                                 regle:
                                   id: "r_colza_type_III_note5"
-                                  type: "interdiction"
+                                  # Convention grammaire 2026-05-08 : type =
+                                  # regime principal autorise. Les sous-periodes
+                                  # raffinent vers plus restrictif. PC11 colza :
+                                  # autorise sous condition 01/09→15/10 (apport
+                                  # additionnel 30 unites N), interdit ensuite.
+                                  type: "autorisation_sous_condition"
                                   periodes:
                                     - du: "01/09"
                                       au: "15/10"
@@ -165,7 +170,8 @@ arbre:
                                 libelle: "Pas concerné par la note 5"
                                 regle:
                                   id: "r_colza_type_III_autres"
-                                  type: "interdiction"
+                                  # Cf r_colza_type_III_note5 ci-dessus.
+                                  type: "autorisation_sous_condition"
                                   periodes:
                                     - du: "01/09"
                                       au: "15/10"
@@ -320,7 +326,13 @@ arbre:
                                 libelle: "Oui"
                                 regle:
                                   id: "r_printemps_II_fertirrig"
-                                  type: "interdiction"
+                                  # Convention grammaire 2026-05-08 : type =
+                                  # regime principal autorise. Les sous-periodes
+                                  # raffinent vers plus restrictif. PC6 :
+                                  # fertirrigation effluents peu charges
+                                  # autorisee sous condition 01/07→31/08, puis
+                                  # interdiction stricte 31/08→31/01.
+                                  type: "autorisation_sous_condition"
                                   periodes:
                                     - du: "01/07"
                                       au: "31/08"
