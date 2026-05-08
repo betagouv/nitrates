@@ -238,10 +238,16 @@
         const apply = () => {
           const t = typeSelect.value;
           const sousCondition = t === 'autorisation_sous_condition';
-          // regime + condition : conditionnel sur autorisation_sous_condition
+          // regime par periode + condition : visibles uniquement quand
+          // type=autorisation_sous_condition. Convention grammaire : la
+          // regle ne peut raffiner que VERS PLUS RESTRICTIF (sous condition
+          // → interdit), pas l'inverse. Donc le selecteur regime n'a de
+          // sens que sur une regle parente "autorisation_sous_condition".
+          // On NE PURGE JAMAIS sel.value : un switch de type ne doit pas
+          // detruire silencieusement les regimes par-periode existants.
+          // Le validator backend assure la coherence au save.
           regimeSelects.forEach(sel => {
             sel.style.display = sousCondition ? '' : 'none';
-            if (!sousCondition) sel.value = '';
           });
           if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
           // fieldsets et rows marques avec data-type-fieldset/row
