@@ -113,7 +113,16 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
               {% if pc %}
                 <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
-                {% if pc.texte_court %}<p>{{ pc.texte_court|linebreaksbr }}</p>{% endif %}
+                {% if pc.texte_court %}
+                  <p>
+                    {{ pc.texte_court|linebreaksbr }}
+                    {% if pc.texte_redaction_initiale %}
+                      <a href="#accordion-texte-init-{{ ev.regle.code_prescription }}"
+                         class="fr-link fr-link--sm nitrates-voir-plus"
+                         data-target="accordion-texte-init-{{ ev.regle.code_prescription }}">voir plus</a>
+                    {% endif %}
+                  </p>
+                {% endif %}
               {% else %}
                 <p class="fr-text--sm">
                   <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
@@ -189,6 +198,27 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                 </ul>
               </div>
             </section>
+
+            {# Texte reglementaire initial du PC (cible des liens "voir plus") #}
+            {% if ev.regle.code_prescription %}
+              {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
+                {% if pc.texte_redaction_initiale %}
+                  <section class="fr-accordion">
+                    <h3 class="fr-accordion__title">
+                      <button class="fr-accordion__btn"
+                              aria-expanded="false"
+                              aria-controls="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:ev.regle.code_prescription }})
+                      </button>
+                    </h3>
+                    <div class="fr-collapse"
+                         id="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                      <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
+                    </div>
+                  </section>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
           </div>
 
         {% endif %}
@@ -305,4 +335,21 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     <a href="{% url 'nitrates_simulateur' %}"
        class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
   </div>
+
+  <script>
+    (function () {
+      document.addEventListener("click", function (e) {
+        var a = e.target.closest(".nitrates-voir-plus");
+        if (!a) return;
+        e.preventDefault();
+        var id = a.getAttribute("data-target");
+        var btn = document.querySelector('[aria-controls="' + id + '"]');
+        if (btn && btn.getAttribute("aria-expanded") !== "true") {
+          btn.click();
+        }
+        var panel = document.getElementById(id);
+        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    })();
+  </script>
 </div>
