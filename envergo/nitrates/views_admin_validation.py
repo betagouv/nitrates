@@ -75,7 +75,7 @@ def validation_set_statut(request, pk):
     # Denormalise le statut sur la branche pour faciliter le filtrage SQL.
     branche.statut = statut
     branche.save(update_fields=["statut", "updated_at"])
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect("nitrates_admin_validation_index")
 
 
 @require_POST
@@ -111,6 +111,34 @@ def validation_upload_yaml_form(request, pk):
     if f:
         branche.screenshot_yaml_form = f
         branche.save(update_fields=["screenshot_yaml_form", "updated_at"])
+    return redirect("nitrates_admin_validation_detail", pk=pk)
+
+
+@require_POST
+@staff_member_required
+def validation_edit_meta(request, pk):
+    """Edition manuelle des champs textuels (URL simulateur, snapshot YAML,
+    résultat Miro attendu, code PC).
+
+    Permet a Max de corriger ce que le seed a mal genere sans repasser
+    par un re-seed complet (qui peut casser les autres lignes deja
+    validees)."""
+    branche = get_object_or_404(BrancheValidation, pk=pk)
+    fields_allowed = {
+        "url_simulateur": 2000,
+        "yaml_snapshot": 50000,
+        "resultat_miro": 500,
+        "code_pc_miro": 20,
+    }
+    updated = []
+    for f, max_len in fields_allowed.items():
+        if f in request.POST:
+            val = request.POST.get(f, "")[:max_len]
+            setattr(branche, f, val)
+            updated.append(f)
+    if updated:
+        updated.append("updated_at")
+        branche.save(update_fields=updated)
     return redirect("nitrates_admin_validation_detail", pk=pk)
 
 

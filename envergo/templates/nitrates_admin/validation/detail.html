@@ -48,6 +48,24 @@
           </p>
         {% endif %}
         <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <label class="vd-edit-label">
+            Résultat attendu (texte juriste)
+            <textarea name="resultat_miro" rows="2" class="vd-edit-input">{{ branche.resultat_miro }}</textarea>
+          </label>
+          <label class="vd-edit-label">
+            Code PC
+            <input type="text"
+                   name="code_pc_miro"
+                   value="{{ branche.code_pc_miro }}"
+                   class="vd-edit-input"
+                   maxlength="20">
+          </label>
+          <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
+        </form>
+        <form method="post"
               action="{% url 'nitrates_admin_validation_upload_miro' pk=branche.pk %}"
               enctype="multipart/form-data"
               class="vd-form">
@@ -60,11 +78,13 @@
       {# 2. YAML codé #}
       <div class="vd-col">
         <h2>📝 YAML codé</h2>
-        {% if branche.yaml_snapshot %}
-          <pre class="vd-pre">{{ branche.yaml_snapshot }}</pre>
-        {% else %}
-          <p style="color:#999">Pas de snapshot YAML (renvoi_vers ?).</p>
-        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <textarea name="yaml_snapshot" rows="14" class="vd-edit-textarea-yaml">{{ branche.yaml_snapshot }}</textarea>
+          <button type="submit" class="vc-btn">Enregistrer YAML</button>
+        </form>
       </div>
 
       {# 3. Admin YAML viewer #}
@@ -122,12 +142,19 @@
           <p>
             <a href="{{ branche.url_simulateur }}" target="_blank" class="vc-btn">Ouvrir simulateur ↗</a>
           </p>
-          <p style="word-break:break-all; font-size:0.75rem; color:#666;">
-            <code>{{ branche.url_simulateur }}</code>
-          </p>
-        {% else %}
-          <p style="color:#999">Pas d'URL deeplink.</p>
         {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <label class="vd-edit-label">
+            URL simulateur (corrigeable manuellement)
+            <textarea name="url_simulateur"
+                      rows="4"
+                      class="vd-edit-input vd-edit-input--mono">{{ branche.url_simulateur }}</textarea>
+          </label>
+          <button type="submit" class="vc-btn">Enregistrer URL</button>
+        </form>
       </div>
 
       {# 6. Playwright simulateur #}
@@ -301,6 +328,45 @@
       font-size: 0.78rem;
       overflow: auto;
       max-height: 280px;
+    }
+
+    .vd-form--edit {
+      background: #fff;
+      border: 1px dashed #bbb;
+      padding: 0.5rem;
+      border-radius: 3px;
+    }
+
+    .vd-edit-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .vd-edit-input {
+      width: 100%;
+      font-size: 0.82rem;
+      padding: 0.3rem;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      font-family: inherit;
+    }
+
+    .vd-edit-input--mono {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.72rem;
+      word-break: break-all;
+    }
+
+    .vd-edit-textarea-yaml {
+      width: 100%;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.76rem;
+      padding: 0.4rem;
+      border: 1px solid #ccc;
+      border-radius: 2px;
     }
 
     .vd-form {

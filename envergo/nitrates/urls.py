@@ -12,6 +12,7 @@ from envergo.nitrates.views import (
 )
 from envergo.nitrates.views_admin_validation import (
     validation_detail,
+    validation_edit_meta,
     validation_index,
     validation_set_statut,
     validation_upload_miro,
@@ -234,5 +235,10 @@ urlpatterns = [
         "admin/nitrates/validation/<int:pk>/upload-playwright/",
         validation_upload_playwright,
         name="nitrates_admin_validation_upload_playwright",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/edit-meta/",
+        validation_edit_meta,
+        name="nitrates_admin_validation_edit_meta",
     ),
 ]
