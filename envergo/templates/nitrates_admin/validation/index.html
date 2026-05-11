@@ -48,6 +48,13 @@
               {% else %}
                 <span class="vc-pill vc-pill--neutre">⬜</span>
               {% endif %}
+              {% with users=branche.actions_par_user %}
+                {% if users %}
+                  <div class="vc-validators" title="Contributeurs validation">
+                    {% for a in users %}<span class="vc-validators__pill">{{ a.user|default:"?" }}</span>{% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
             </td>
             <td>
               <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
@@ -196,6 +203,22 @@
 
     .vc-row--a_corriger {
       background: #fffaf2;
+    }
+
+    .vc-validators {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: 4px;
+    }
+
+    .vc-validators__pill {
+      font-size: 0.7rem;
+      padding: 1px 5px;
+      border-radius: 8px;
+      background: #e1ecff;
+      color: #1f4789;
+      white-space: nowrap;
     }
   </style>
 {% endblock %}

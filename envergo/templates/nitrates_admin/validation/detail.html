@@ -157,35 +157,69 @@
     {# Validation #}
     <div class="vd-validation">
       <h2>✅ Validation</h2>
+
+      {# Historique des actions deja enregistrees #}
+      {% with actions=branche.actions.all %}
+        {% if actions %}
+          <div class="vd-actions">
+            <p style="font-size:0.9rem; color:#666; margin:0 0 0.5rem;">
+              <strong>{{ actions|length }}</strong> action{{ actions|length|pluralize }} de validation
+              ({{ branche.actions_par_user|length }} contributeur{{ branche.actions_par_user|length|pluralize }})
+            </p>
+            <ul class="vd-actions__list">
+              {% for action in actions %}
+                <li class="vd-actions__item vd-actions__item--{{ action.statut }}">
+                  <span class="vd-actions__pill">
+                    {% if action.statut == 'valide' %}
+                      ✅
+                    {% elif action.statut == 'a_corriger' %}
+                      ⚠️
+                    {% else %}
+                      ⬜
+                    {% endif %}
+                    {{ action.get_statut_display }}
+                  </span>
+                  <span class="vd-actions__who">
+                    par <strong>{{ action.user|default:"?" }}</strong>
+                    le {{ action.created_at|date:"d/m/Y à H:i" }}
+                  </span>
+                  {% if action.commentaire %}<p class="vd-actions__commentaire">{{ action.commentaire|linebreaksbr }}</p>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p style="color:#999; font-size:0.9rem;">Aucune validation enregistrée pour cette branche.</p>
+        {% endif %}
+      {% endwith %}
+
+      {# Form pour ajouter une nouvelle action #}
       <form method="post"
             action="{% url 'nitrates_admin_validation_set_statut' pk=branche.pk %}"
             class="vd-form vd-form--validation">
         {% csrf_token %}
+        <h3 style="font-size:0.95rem; margin-top:1rem;">Ajouter ma validation</h3>
         <div>
           <label>
             Statut :
             <select name="statut">
-              <option value="non_valide"
-                      {% if branche.statut == 'non_valide' %}selected{% endif %}>⬜ Non validé</option>
-              <option value="valide" {% if branche.statut == 'valide' %}selected{% endif %}>✅ Validé par moi</option>
-              <option value="a_corriger"
-                      {% if branche.statut == 'a_corriger' %}selected{% endif %}>⚠️ À corriger</option>
+              <option value="valide">✅ Je valide</option>
+              <option value="a_corriger">⚠️ À corriger</option>
+              <option value="non_valide">⬜ Non validé</option>
             </select>
           </label>
         </div>
         <div>
           <label>
-            Commentaire :
-            <textarea name="commentaire" rows="3" style="width:100%; max-width:60ch;">{{ branche.commentaire }}</textarea>
+            Commentaire (optionnel) :
+            <textarea name="commentaire"
+                      rows="3"
+                      style="width:100%;
+                             max-width:60ch"
+                      placeholder="Note libre pour cette validation"></textarea>
           </label>
         </div>
-        {% if branche.valide_par %}
-          <p style="font-size:0.85rem; color:#666;">
-            Validé par <strong>{{ branche.valide_par }}</strong> le
-            {{ branche.valide_at|date:"d/m/Y H:i" }}
-          </p>
-        {% endif %}
-        <button type="submit" class="vc-btn">Enregistrer</button>
+        <button type="submit" class="vc-btn">Enregistrer ma validation</button>
       </form>
     </div>
   </div>
@@ -288,6 +322,56 @@
       margin-top: 2rem;
       padding-top: 1rem;
       border-top: 2px solid #1f4789;
+    }
+
+    .vd-actions__list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .vd-actions__item {
+      padding: 0.6rem 0.9rem;
+      border-radius: 4px;
+      background: #f4f6f9;
+      border-left: 3px solid #ccc;
+      font-size: 0.9rem;
+    }
+
+    .vd-actions__item--valide {
+      background: #eafbe7;
+      border-left-color: #18753c;
+    }
+
+    .vd-actions__item--a_corriger {
+      background: #fff3e0;
+      border-left-color: #b35900;
+    }
+
+    .vd-actions__item--non_valide {
+      background: #eaeaea;
+      border-left-color: #666;
+    }
+
+    .vd-actions__pill {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+
+    .vd-actions__who {
+      color: #555;
+      font-size: 0.85rem;
+    }
+
+    .vd-actions__commentaire {
+      margin: 0.4rem 0 0;
+      padding-left: 1rem;
+      color: #444;
+      border-left: 2px solid rgb(0 0 0 / 10%);
+      font-size: 0.88rem;
     }
 
     .vc-btn {

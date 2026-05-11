@@ -699,19 +699,19 @@ class BrancheValidation(models.Model):
     )
     playwright_run_at = models.DateTimeField(blank=True, null=True)
 
-    # ─── Validation ──────────────────────────────────────────────────────
+    # ─── Validation ─────────────────────────────────────────────────────
+    # Plusieurs personnes peuvent valider la meme branche. Chaque action
+    # (valide / a_corriger / re-non_valide) est enregistree dans
+    # BrancheValidationAction. Le statut courant = derniere action en date.
+    # On garde un champ statut denormalise sur cette table pour pouvoir
+    # filtrer/ordonner en SQL sans join, mais c'est mis a jour par la vue
+    # quand une action est ajoutee.
     statut = models.CharField(
-        max_length=20, choices=STATUT_CHOICES, default=STATUT_NON_VALIDE
+        max_length=20,
+        choices=STATUT_CHOICES,
+        default=STATUT_NON_VALIDE,
+        help_text="Statut courant : derniere action enregistree",
     )
-    commentaire = models.TextField(blank=True)
-    valide_par = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="branches_validees",
-    )
-    valide_at = models.DateTimeField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -723,3 +723,47 @@ class BrancheValidation(models.Model):
 
     def __str__(self):
         return f"{self.regle_id or self.chemin_yaml} ({self.get_statut_display()})"
+
+    def derniere_action(self):
+        return self.actions.order_by("-created_at").first()
+
+    def actions_par_user(self):
+        """Pour chaque user qui a deja valide cette branche, sa derniere
+        action. Permet d'afficher 'Max valide le X, Emma valide le Y'."""
+        seen = {}
+        for a in self.actions.order_by("created_at"):
+            seen[a.user_id] = a
+        return list(seen.values())
+
+
+class BrancheValidationAction(models.Model):
+    """Une action de validation enregistree pour une BrancheValidation.
+
+    Permet a plusieurs personnes (Max, Emma, Louise...) de valider la meme
+    branche independamment. L'historique complet est conserve. Le statut
+    courant de la BrancheValidation = statut de la derniere action.
+    """
+
+    branche = models.ForeignKey(
+        BrancheValidation,
+        on_delete=models.CASCADE,
+        related_name="actions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="branches_validation_actions",
+    )
+    statut = models.CharField(max_length=20, choices=BrancheValidation.STATUT_CHOICES)
+    commentaire = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Action de validation"
+        verbose_name_plural = "Actions de validation"
+
+    def __str__(self):
+        user_disp = self.user.email if self.user_id else "?"
+        return f"{user_disp} -> {self.statut} ({self.created_at:%d/%m/%Y %H:%M})"

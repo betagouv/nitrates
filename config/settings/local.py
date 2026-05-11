@@ -68,6 +68,18 @@ if env("USE_DEBUG_TOOLBAR", default="yes") == "yes":
         "debug_toolbar.middleware.DebugToolbarMiddleware",
         *MIDDLEWARE,  # noqa F405
     ]
+
+    def _show_debug_toolbar(request):
+        # Masque la toolbar sur le simulateur public (sinon elle empeche
+        # de voir la moitie gauche du resultat sur les screenshots Playwright
+        # de validation et sur les demos juriste).
+        if request.path.startswith("/simulateur/"):
+            return False
+        # Comportement classique : visible uniquement depuis INTERNAL_IPS.
+        from debug_toolbar.middleware import show_toolbar
+
+        return show_toolbar(request)
+
     DEBUG_TOOLBAR_CONFIG = {
         "DISABLE_PANELS": [
             "debug_toolbar.panels.redirects.RedirectsPanel",
@@ -79,6 +91,7 @@ if env("USE_DEBUG_TOOLBAR", default="yes") == "yes":
         ],
         "SHOW_TEMPLATE_CONTEXT": True,
         "RESULTS_CACHE_SIZE": 50,
+        "SHOW_TOOLBAR_CALLBACK": _show_debug_toolbar,
     }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1", "10.0.2.2"]

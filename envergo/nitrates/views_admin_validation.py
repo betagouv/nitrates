@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from envergo.nitrates.models import BrancheValidation
+from envergo.nitrates.models import BrancheValidation, BrancheValidationAction
 
 
 @staff_member_required
@@ -55,31 +55,26 @@ def validation_detail(request, pk):
 @require_POST
 @staff_member_required
 def validation_set_statut(request, pk):
-    """Action HTMX : update statut + commentaire."""
+    """Ajoute une action de validation par l'utilisateur courant.
+
+    Multi-validation : on n'ecrase pas les validations precedentes des
+    autres users. Chaque action est conservee. Le statut courant de la
+    BrancheValidation = celui de la derniere action (en date).
+    """
     branche = get_object_or_404(BrancheValidation, pk=pk)
     statut = request.POST.get("statut", "").strip()
     if statut not in dict(BrancheValidation.STATUT_CHOICES):
         return redirect("nitrates_admin_validation_detail", pk=pk)
-    branche.statut = statut
-    branche.commentaire = request.POST.get("commentaire", "").strip()
-    if statut == BrancheValidation.STATUT_VALIDE:
-        branche.valide_par = request.user
-        branche.valide_at = timezone.now()
-    else:
-        # On garde l'historique du dernier "valide" mais on n'efface pas
-        # tant qu'on n'invalide pas explicitement.
-        if statut == BrancheValidation.STATUT_NON_VALIDE:
-            branche.valide_par = None
-            branche.valide_at = None
-    branche.save(
-        update_fields=[
-            "statut",
-            "commentaire",
-            "valide_par",
-            "valide_at",
-            "updated_at",
-        ]
+    commentaire = request.POST.get("commentaire", "").strip()
+    BrancheValidationAction.objects.create(
+        branche=branche,
+        user=request.user,
+        statut=statut,
+        commentaire=commentaire,
     )
+    # Denormalise le statut sur la branche pour faciliter le filtrage SQL.
+    branche.statut = statut
+    branche.save(update_fields=["statut", "updated_at"])
     return redirect("nitrates_admin_validation_detail", pk=pk)
 
 
