@@ -39,6 +39,54 @@ from envergo.nitrates.yaml_tree.loader_db import load_active_tree, load_active_t
 LAT_DEFAULT = 49.2583
 LNG_DEFAULT = 4.0345
 
+# Points GPS test choisis pour que la resolution PostGIS donne la bonne
+# combinaison (en_zone_vulnerable, zone_note_5, zone_montagne, region).
+# Chaque point a ete verifie en DB (intersect ZV + departement). Cf.
+# .playwright-mcp/validation_screens/_diff_urls.py pour l'audit.
+POINT_REIMS = {  # default : ZV, hors note_5, hors montagne (Marne)
+    "lat": 49.2583,
+    "lng": 4.0345,
+    "code_insee": "51454",
+}
+POINT_TOULOUSE = {  # ZV + Occitanie -> note_5=True, hors montagne
+    "lat": 43.6047,
+    "lng": 1.4442,
+    "code_insee": "31555",
+}
+POINT_FOIX = {  # ZV + Occitanie + montagne -> note_7 elargie & pyrenees_atl
+    "lat": 42.9667,
+    "lng": 1.6044,
+    "code_insee": "09122",
+}
+POINT_CUSSET = {  # ZV + Auv-RhAlpes + montagne -> montagne hors note_7
+    "lat": 46.1340,
+    "lng": 3.4567,
+    "code_insee": "03095",
+}
+
+
+def _choisir_point_gps(contexte: dict) -> dict:
+    """Choisit lat/lng/code_insee selon les flags geo du contexte de
+    feuille. Garantit que la resolution serveur produit le bon zonage."""
+    # Priorite : flags montagne d'abord (plus contraignants).
+    zonage_prairie = contexte.get("zonage_prairie_III")
+    zonage_montagne_reg = contexte.get("zonage_montagne_regional")
+    zone_montagne_d113 = contexte.get("zone_montagne_d113_14")
+    zone_note_5 = contexte.get("zone_note_5")
+
+    if zonage_prairie == "montagne_note_7" or zonage_montagne_reg == "note_7":
+        return POINT_FOIX
+    if zonage_prairie == "montagne_note_6" or zonage_montagne_reg == "note_6":
+        return POINT_CUSSET
+    if zone_montagne_d113 is True:
+        # variante luzerne : on tombe ici si la regle veut juste montagne sans
+        # prefer le sous-zonage. Privilegie Foix (couvre note_7).
+        return POINT_FOIX
+    if zone_note_5 is True:
+        return POINT_TOULOUSE
+    return POINT_REIMS
+
+
 CASCADE_TO_FORM_KEY = {
     "occupation_sol": "occupation_sol",
     "sous_culture": "sous_culture",
@@ -88,43 +136,137 @@ TYPE_FERTILISANT_MIRO_TO_YAML = {
     "Types 0, Ia, Ib, II et III": "*",
 }
 
-# Mapping inverse sous_culture (resolu) -> (categorie_culture, sous_culture_form)
-# pour pre-remplir le formulaire cascade. Choisit un sous_culture_form
-# representatif quand plusieurs formes resolvent vers la meme.
-SOUS_CULTURE_RESOLU_VERS_FORM = {
-    "colza": ("culture_hiver", "colza"),
-    "culture_hiver_hors_colza": (
-        "culture_hiver",
-        "culture_principale_hiver_autre_que_colza",
-    ),
-    "culture_printemps": (
-        "culture_printemps",
-        "culture_principale_printemps_autre_que_mais",
-    ),
-    "luzerne": ("prairies_ou_luzerne", "luzerne"),
-    "prairie_plus_6_mois": ("prairies_ou_luzerne", "prairie_plus_6_mois"),
-    "autres_cultures": (
+# Mapping type_I -> (type_Ia, type_Ib) : l'arbre groupe parfois Ia+Ib sous
+# `type_I` (cf. spec metier 2026-04, fallback parcours). Pour pre-remplir
+# le form on choisit Ia comme representant.
+TYPE_I_FALLBACK = "type_Ia"
+
+# Categorie de culture par defaut quand le mapping referentiel ne tranche
+# pas (le referentiel attache sous_culture_form -> sous_culture, mais pas
+# sous_culture_form -> categorie_culture). On code en dur les categories
+# parce qu'elles sont structurelles du formulaire, pas du parcours.
+SOUS_CULTURE_FORM_VERS_CATEGORIE = {
+    "colza": "culture_hiver",
+    "culture_principale_hiver_autre_que_colza": "culture_hiver",
+    "mais": "culture_printemps",
+    "culture_principale_printemps_autre_que_mais": "culture_printemps",
+    "luzerne": "prairies_ou_luzerne",
+    "prairie_plus_6_mois": "prairies_ou_luzerne",
+    "prairie_permanente": "prairies_ou_luzerne",
+    "prairie_moins_6_mois_printemps": "prairies_ou_luzerne",
+    "prairie_moins_6_mois_automne": "prairies_ou_luzerne",
+    "cultures_florales_aromatiques": "autres_cultures_principales",
+    "cultures_maraicheres_legumieres": "autres_cultures_principales",
+    "cultures_porte_graines": "autres_cultures_principales",
+    "cultures_perennes_vergers_vignes": "autres_cultures_principales",
+}
+
+
+def _build_form_mapping_from_referentiel() -> tuple[dict, dict]:
+    """Derive deux dicts depuis `referentiels.yaml` (source de verite) :
+
+    - `sous_culture_vers_form` : { sous_culture_resolu: (categorie, form) }
+      Choisit le premier sous_culture_form qui resout en ce sous_culture.
+    - `type_fertilisant_vers_form` : { type: (categorie, sous_fertilisant) }
+      Choisit le premier (categorie, sous_fertilisant) qui resout vers ce type
+      via `mapping_sous_fertilisant_vers_type`.
+
+    Avantage : si le referentiel change, le seed s'adapte automatiquement.
+    Pas de couples inventes (le bug du seed precedent etait des couples
+    hardcodes qui resolvaient en fait vers un autre type).
+    """
+    from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+    ref = load_referentiels()
+
+    sous_culture_vers_form: dict[str, tuple[str, str]] = {}
+    for form_key, target in (
+        ref.get("mapping_sous_culture_vers_branche") or {}
+    ).items():
+        # On ne s'interesse qu'aux clefs qui mappent sur culture_principale
+        # avec un `sous_culture` direct ; le pre-remplissage couvert/luzerne
+        # passe par les memes champs.
+        if not isinstance(target, dict):
+            continue
+        if target.get("occupation_sol") != "culture_principale":
+            continue
+        sous_culture = target.get("sous_culture")
+        if not sous_culture:
+            continue
+        categorie = SOUS_CULTURE_FORM_VERS_CATEGORIE.get(form_key)
+        if not categorie:
+            continue
+        # Preferer un form_key SANS flags (= cas "neutre" pour l'utilisateur).
+        # Sinon le premier mappage avec flags contamine le pre-remplissage
+        # (cas mais qui force culture_irriguee_type=mais).
+        existing = sous_culture_vers_form.get(sous_culture)
+        has_flags = bool(target.get("flags"))
+        if existing is None:
+            sous_culture_vers_form[sous_culture] = (categorie, form_key)
+        elif has_flags:
+            # On garde l'existant (premier sans flag, ou premier wins de toutes
+            # facons).
+            continue
+        else:
+            # Le nouveau n'a pas de flag : prend la priorite seulement si
+            # l'actuel en avait.
+            existing_form_key = existing[1]
+            existing_target = ref["mapping_sous_culture_vers_branche"].get(
+                existing_form_key, {}
+            )
+            if existing_target.get("flags"):
+                sous_culture_vers_form[sous_culture] = (categorie, form_key)
+
+    # autres_cultures : on prefere `cultures_maraicheres_legumieres` comme
+    # representant (parle plus a un utilisateur agri). Le first-wins du
+    # mapping referentiel choisirait `cultures_florales_aromatiques` qui
+    # est moins commun. Override explicite.
+    sous_culture_vers_form["autres_cultures"] = (
         "autres_cultures_principales",
         "cultures_maraicheres_legumieres",
-    ),
-}
+    )
 
-# Mapping type_fertilisant (resolu) -> (categorie_fertilisant, sous_fertilisant)
-# pour pre-remplir la cascade fertilisant. Choisit un representant.
-TYPE_FERTILISANT_RESOLU_VERS_FORM = {
-    "type_0": ("engrais_mineral", "engrais_azote_mineral"),
-    "type_I": ("fumiers", "fumier_compact_pailleux"),
-    "type_Ia": ("fumiers", "fumier_compact_pailleux"),
-    "type_Ib": ("fumiers", "fumier_compact_pailleux"),
-    "type_II": ("lisiers", "lisier_porc"),
-    "type_III": ("engrais_mineral", "engrais_azote_mineral"),
-}
+    # Inverse mapping fertilisant : pour chaque type, trouver un couple
+    # (categorie, sous_fertilisant) qui resout vers ce type via le mapping
+    # officiel. On parcourt categories_fertilisants pour garder le couple
+    # categorie + sous_fertilisant valide.
+    type_vers_form: dict[str, tuple[str, str]] = {}
+    mapping = ref.get("mapping_sous_fertilisant_vers_type") or {}
+    categories = ref.get("categories_fertilisants") or {}
+    for cat_slug, cat_data in categories.items():
+        if cat_slug == "autre":
+            # On evite "autre" comme representant : peu lisible cote screenshot.
+            continue
+        for sf in cat_data.get("sous_fertilisants") or []:
+            type_resolu = mapping.get(sf)
+            if not type_resolu:
+                continue
+            if type_resolu in type_vers_form:
+                continue
+            type_vers_form[type_resolu] = (cat_slug, sf)
+
+    # Compatibilite type_I (l'arbre l'utilise comme regroupement Ia+Ib mais
+    # le mapping referentiel ne genere que les variantes precises).
+    if "type_I" not in type_vers_form and TYPE_I_FALLBACK in type_vers_form:
+        type_vers_form["type_I"] = type_vers_form[TYPE_I_FALLBACK]
+
+    return sous_culture_vers_form, type_vers_form
 
 
-def _build_url(contexte: dict, lat=LAT_DEFAULT, lng=LNG_DEFAULT) -> str:
+SOUS_CULTURE_RESOLU_VERS_FORM, TYPE_FERTILISANT_RESOLU_VERS_FORM = (
+    _build_form_mapping_from_referentiel()
+)
+
+
+def _build_url(contexte: dict, lat=None, lng=None) -> str:
     from urllib.parse import urlencode
 
-    params = {"lat": lat, "lng": lng}
+    point = _choisir_point_gps(contexte)
+    params = {
+        "lat": lat if lat is not None else point["lat"],
+        "lng": lng if lng is not None else point["lng"],
+        "code_insee": point["code_insee"],
+    }
     for k, v in contexte.items():
         if k not in CASCADE_TO_FORM_KEY:
             continue
@@ -138,6 +280,13 @@ def _build_url(contexte: dict, lat=LAT_DEFAULT, lng=LNG_DEFAULT) -> str:
     # form reste vide bien qu'on ait le resultat correct cote serveur.
     sous_culture = contexte.get("sous_culture")
     form_culture = SOUS_CULTURE_RESOLU_VERS_FORM.get(sous_culture or "")
+    # Cas special : si l'arbre est descendu via culture_irriguee_type=mais
+    # (cf. mapping_sous_culture_vers_branche.mais.flags), le form doit
+    # presenter "mais" comme sous_culture_form pour preserver le sens
+    # utilisateur (sinon il voit "culture de printemps autre que mais"
+    # alors que la regle parle bien du mais).
+    if contexte.get("culture_irriguee_type") == "mais":
+        form_culture = ("culture_printemps", "mais")
     if form_culture:
         params["categorie_culture"] = form_culture[0]
         params["sous_culture_form"] = form_culture[1]
