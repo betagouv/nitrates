@@ -62,6 +62,20 @@ BRANCHE_MIRO_TO_YAML = {
     "autres_cultures": "autres_cultures",
 }
 
+# Ordre d'affichage canonique dans la mini-app de validation (Max 2026-05-11).
+# Sert a parcourir le tableau dans le meme ordre que la lecture Miro
+# (haut en bas). Le `index.yaml` du snapshot ne respecte pas forcement cet
+# ordre (le snapshot suit l'ordre d'export juriste), donc on le re-impose
+# au seed.
+ORDRE_BRANCHES_MIRO = [
+    "culture_hiver_autre_que_colza",
+    "colza",
+    "culture_de_printemps",
+    "prairies_implantees_plus_de_6_mois",
+    "luzerne",
+    "autres_cultures",
+]
+
 # Libelles type_fertilisant Miro -> slug YAML.
 TYPE_FERTILISANT_MIRO_TO_YAML = {
     "Type 0": "type_0",
@@ -195,15 +209,35 @@ def _load_miro_index() -> dict:
 
 def _build_miro_lookup(miro: dict) -> dict:
     """Construit un dict keye sur (branche_yaml, type_fert_yaml, has_cond, has_zonage)
-    -> liste de feuilles Miro. Permet de matcher une feuille YAML par signature."""
+    -> liste de feuilles Miro. Permet de matcher une feuille YAML par signature.
+
+    L'`ordre_miro` est attribue par compteur global qui suit l'ordre
+    d'apparition dans index.yaml (i.e. l'ordre canonique du juriste,
+    haut en bas dans le Miro). Permet de trier les BrancheValidation
+    dans le tableau de validation selon le meme ordre."""
     lookup: dict[tuple, list] = {}
-    for b in miro.get("branches", []) or []:
+    ordre = 0
+    # Re-trie les branches Miro selon ORDRE_BRANCHES_MIRO (haut en bas
+    # dans la mini-app de validation). Branches inconnues -> a la fin.
+    branches_miro = miro.get("branches", []) or []
+    branches_miro_par_nom = {b.get("branche", ""): b for b in branches_miro}
+    branches_triees = [
+        branches_miro_par_nom[n]
+        for n in ORDRE_BRANCHES_MIRO
+        if n in branches_miro_par_nom
+    ]
+    # Ajoute les branches absentes de la liste canonique (au cas ou).
+    for b in branches_miro:
+        if b not in branches_triees:
+            branches_triees.append(b)
+    for b in branches_triees:
         branche_miro = b.get("branche", "")
         branche_yaml = BRANCHE_MIRO_TO_YAML.get(branche_miro)
         screenshot = b.get("screenshot")
         if not branche_yaml:
             continue
         for f in b.get("feuilles", []) or []:
+            ordre += 1
             type_miro = f.get("type_fertilisant", "")
             type_yaml = TYPE_FERTILISANT_MIRO_TO_YAML.get(type_miro)
             if not type_yaml:
@@ -220,6 +254,7 @@ def _build_miro_lookup(miro: dict) -> dict:
                     "resultat": f.get("resultat") or "",
                     "code_pc": f.get("code_pc") or "",
                     "screenshot": screenshot,
+                    "ordre_miro": ordre,
                 }
             )
     return lookup
@@ -327,6 +362,8 @@ class Command(BaseCommand):
                 "branche_label": feuille["label"][:500],
                 "url_simulateur": url[:2000],
                 "yaml_snapshot": snapshot,
+                # Sans match Miro : ordre 9999 (a la fin du tableau).
+                "ordre": 9999,
             }
             if miro_match:
                 defaults.update(
@@ -337,6 +374,7 @@ class Command(BaseCommand):
                         "zonage_miro": miro_match["zonage"][:200],
                         "resultat_miro": miro_match["resultat"][:500],
                         "code_pc_miro": miro_match["code_pc"][:20],
+                        "ordre": miro_match["ordre_miro"],
                     }
                 )
 

@@ -633,6 +633,10 @@ class BrancheValidation(models.Model):
         unique=True,
         help_text="Path d'ids YAML depuis la racine vers la feuille",
     )
+    # Ordre d'affichage canonique du Miro juriste (haut en bas).
+    # Rempli au seed dans l'ordre d'apparition dans index.yaml. Permet de
+    # parcourir la liste de validation dans le meme ordre que le Miro.
+    ordre = models.PositiveIntegerField(default=0, db_index=True)
     # Dernier segment du chemin = id de la regle (ou "renvoi_vers:..." si
     # la branche pointe ailleurs sans regle directe).
     regle_id = models.CharField(max_length=200, blank=True)
@@ -717,7 +721,7 @@ class BrancheValidation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["chemin_yaml"]
+        ordering = ["ordre", "chemin_yaml"]
         verbose_name = "Validation de branche"
         verbose_name_plural = "Validations de branches"
 
