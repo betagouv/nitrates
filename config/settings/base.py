@@ -147,8 +147,9 @@ if PROCONNECT_ENABLED:
     OIDC_OP_USER_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/userinfo"
     OIDC_OP_JWKS_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/jwks"
     OIDC_OP_LOGOUT_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/session/end"
-    # Apres login OIDC reussi, on retombe sur l'admin Django.
-    LOGIN_REDIRECT_URL = "/admin/"
+    # Apres login OIDC reussi, on retombe sur l'admin Django. Le chemin
+    # exact (incluant le prefixe secret en prod) est calcule plus bas une
+    # fois ADMIN_URL connu, cf. section ADMIN.
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -293,6 +294,11 @@ EMAIL_TIMEOUT = 5
 # ------------------------------------------------------------------------------
 # Django Admin URL.
 ADMIN_URL = "admin/"
+
+# ProConnect : redirige sur l'admin (chemin secret en prod) apres login OIDC.
+# Doit etre defini APRES ADMIN_URL (override eventuel par production.py).
+if PROCONNECT_ENABLED:
+    LOGIN_REDIRECT_URL = "/" + ADMIN_URL.lstrip("/")
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
 ADMINS = [x.split(":") for x in env.list("DJANGO_ADMINS", default=[])]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
