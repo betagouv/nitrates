@@ -112,6 +112,44 @@ HAIE_LOGIN_REDIRECT_URL = "petition_project_list"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
 LOGIN_URL = "login"
 
+# PROCONNECT (SSO admin nitrates)
+# ------------------------------------------------------------------------------
+# Active si :
+#   - PROCONNECT_CLIENT_ID + PROCONNECT_CLIENT_SECRET sont definis, ET
+#   - DJANGO_PROCONNECT_DISABLED n'est pas a True.
+# Sinon no-op total : la lib n'est meme pas installee dans INSTALLED_APPS,
+# et la connexion admin retombe sur le form user/pass Django classique.
+# Le toggle DJANGO_PROCONNECT_DISABLED permet de bypasser ProConnect en
+# local meme si on a accidentellement charge des credentials staging.
+# Cf. https://partenaires.proconnect.gouv.fr/
+PROCONNECT_CLIENT_ID = env("PROCONNECT_CLIENT_ID", default="")
+PROCONNECT_CLIENT_SECRET = env("PROCONNECT_CLIENT_SECRET", default="")
+PROCONNECT_DOMAIN = env("PROCONNECT_DOMAIN", default="fca.integ01.dev-agentconnect.fr")
+PROCONNECT_ENABLED = bool(
+    PROCONNECT_CLIENT_ID and PROCONNECT_CLIENT_SECRET
+) and not env.bool("DJANGO_PROCONNECT_DISABLED", default=False)
+
+if PROCONNECT_ENABLED:
+    INSTALLED_APPS += ["mozilla_django_oidc"]
+    AUTHENTICATION_BACKENDS = [
+        "envergo.nitrates.auth.ProConnectBackend",
+    ] + AUTHENTICATION_BACKENDS
+
+    # mozilla-django-oidc settings derives de PROCONNECT_DOMAIN.
+    # Endpoints ProConnect : voir
+    # https://{PROCONNECT_DOMAIN}/api/v2/.well-known/openid-configuration
+    OIDC_RP_CLIENT_ID = PROCONNECT_CLIENT_ID
+    OIDC_RP_CLIENT_SECRET = PROCONNECT_CLIENT_SECRET
+    OIDC_RP_SIGN_ALGO = "RS256"
+    OIDC_RP_SCOPES = "openid given_name usual_name email"
+    OIDC_OP_AUTHORIZATION_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/authorize"
+    OIDC_OP_TOKEN_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/token"
+    OIDC_OP_USER_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/userinfo"
+    OIDC_OP_JWKS_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/jwks"
+    OIDC_OP_LOGOUT_ENDPOINT = f"https://{PROCONNECT_DOMAIN}/api/v2/session/end"
+    # Apres login OIDC reussi, on retombe sur l'admin Django.
+    LOGIN_REDIRECT_URL = "/admin/"
+
 # PASSWORDS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers

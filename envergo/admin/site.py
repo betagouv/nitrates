@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.admin.forms import AdminAuthenticationForm
+from django.urls import reverse
 from django_otp.admin import OTPAdminAuthenticationForm, OTPAdminSite
 
 # Exclude those models from the main list, but don't disable the admin module entirely
@@ -19,6 +20,11 @@ def get_login_form():
 def get_login_template():
     """Choose the login template used to authenticate users in the admin site."""
 
+    # Si ProConnect est active, on injecte le bouton SSO via un template
+    # qui wrap le stock admin/login.html (un fichier nomme differemment
+    # pour eviter la recursion d'extends).
+    if getattr(settings, "PROCONNECT_ENABLED", False):
+        return "admin/login_with_proconnect.html"
     if settings.ADMIN_OTP_REQUIRED:
         template = "otp/admin111/login.html"
     else:
@@ -31,6 +37,15 @@ class EnvergoAdminSite(OTPAdminSite):
     # We need to dynamically deactivate the otp verification depending on the settings
     login_form = get_login_form()
     login_template = get_login_template()
+
+    def each_context(self, request):
+        """Inject ProConnect context for templates (notably login)."""
+        context = super().each_context(request)
+        proconnect_enabled = getattr(settings, "PROCONNECT_ENABLED", False)
+        context["proconnect_enabled"] = proconnect_enabled
+        if proconnect_enabled:
+            context["proconnect_login_url"] = reverse("oidc_authentication_init")
+        return context
 
     def get_app_list(self, request, app_label=None):
         """Reorder the apps in the admin site.

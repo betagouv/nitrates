@@ -59,12 +59,17 @@ cffi==1.17.1
     # via
     #   -r base.txt
     #   argon2-cffi-bindings
+    #   cryptography
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.2
     # via
     #   -r base.txt
     #   requests
+cryptography==45.0.7
+    # via
+    #   -r base.txt
+    #   mozilla-django-oidc
 click==8.2.1
     # via
     #   -r base.txt
@@ -255,6 +260,8 @@ mccabe==0.7.0
     # via
     #   flake8
     #   pylint
+mozilla-django-oidc==5.0.2
+    # via -r base.txt
 multidict==6.6.3
     # via
     #   -r base.txt
@@ -333,6 +340,10 @@ pycparser==2.22
     #   cffi
 pyflakes==3.4.0
     # via flake8
+pyjwt==2.10.1
+    # via
+    #   -r base.txt
+    #   mozilla-django-oidc
 pygments==2.20.0
     # via
     #   -r base.txt
