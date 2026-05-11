@@ -1,13 +1,19 @@
 {% comment %}
-Lightbox simple : toute image avec [data-lightbox] devient cliquable et
-s'agrandit en plein ecran. Click hors image ou Esc pour fermer. Pas de
-dependance externe.
+Lightbox avec zoom : toute image avec [data-lightbox] s'agrandit en plein
+ecran avec zoom (clic / ctrl+scroll), pan (drag souris), fermeture (Esc /
+clic hors). Pas de dependance externe.
 {% endcomment %}
 
 <div id="vc-lightbox" class="vc-lightbox" hidden>
   <div class="vc-lightbox__backdrop"></div>
-  <img class="vc-lightbox__img" alt="">
+  <div class="vc-lightbox__viewport">
+    <img class="vc-lightbox__img" alt="">
+  </div>
   <button class="vc-lightbox__close" aria-label="Fermer">×</button>
+  <div class="vc-lightbox__hint">
+    Clic pour zoomer · Ctrl + molette pour zoom progressif · Glisser pour déplacer · Esc pour fermer
+  </div>
+  <div class="vc-lightbox__zoom-indicator">1×</div>
 </div>
 
 <style>
@@ -15,9 +21,6 @@ dependance externe.
     position: fixed;
     inset: 0;
     z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .vc-lightbox[hidden] {
@@ -27,16 +30,41 @@ dependance externe.
   .vc-lightbox__backdrop {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 85%);
-    cursor: zoom-out;
+    background: rgb(0 0 0 / 90%);
+  }
+
+  .vc-lightbox__viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-in;
+  }
+
+  .vc-lightbox__viewport.is-zoomed {
+    cursor: grab;
+  }
+
+  .vc-lightbox__viewport.is-grabbing {
+    cursor: grabbing;
   }
 
   .vc-lightbox__img {
-    position: relative;
     max-width: 95vw;
     max-height: 95vh;
     box-shadow: 0 4px 24px rgb(0 0 0 / 50%);
     border-radius: 4px;
+    user-select: none;
+    -webkit-user-drag: none;
+    transform-origin: center center;
+    transition: transform 0.15s ease-out;
+  }
+
+  /* Quand on drag, on enleve la transition pour suivre la souris en live. */
+  .vc-lightbox__img.is-panning {
+    transition: none;
   }
 
   .vc-lightbox__close {
@@ -52,6 +80,35 @@ dependance externe.
     border-radius: 50%;
     cursor: pointer;
     line-height: 1;
+    z-index: 2;
+  }
+
+  .vc-lightbox__hint {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgb(0 0 0 / 70%);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .vc-lightbox__zoom-indicator {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgb(0 0 0 / 70%);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 2;
+    pointer-events: none;
   }
 </style>
 
@@ -59,20 +116,142 @@ dependance externe.
   (function () {
     const lb = document.getElementById("vc-lightbox");
     if (!lb) return;
+    const viewport = lb.querySelector(".vc-lightbox__viewport");
     const img = lb.querySelector(".vc-lightbox__img");
-    const close = () => { lb.hidden = true; img.src = ""; };
+    const indicator = lb.querySelector(".vc-lightbox__zoom-indicator");
+
+    let scale = 1;
+    let tx = 0;
+    let ty = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let txStart = 0;
+    let tyStart = 0;
+
+    const MIN_SCALE = 0.5;
+    const MAX_SCALE = 8;
+
+    function apply() {
+      img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      indicator.textContent = `${scale.toFixed(scale < 1 ? 1 : (scale < 10 ? 1 : 0))}×`;
+      viewport.classList.toggle("is-zoomed", scale > 1.01);
+    }
+
+    function reset() {
+      scale = 1;
+      tx = 0;
+      ty = 0;
+      apply();
+    }
+
+    function close() {
+      lb.hidden = true;
+      img.src = "";
+      reset();
+    }
+
+    function open(src) {
+      img.src = src;
+      reset();
+      lb.hidden = false;
+    }
+
+    // Zoom autour d'un point (x, y en coords client).
+    function zoomAt(newScale, clientX, clientY) {
+      newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+      // On veut que le point (clientX, clientY) reste fixe pendant le zoom.
+      // tx/ty doivent etre ajustes pour compenser le changement d'echelle.
+      const rect = img.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const ratio = newScale / scale;
+      tx -= dx * (ratio - 1);
+      ty -= dy * (ratio - 1);
+      scale = newScale;
+      apply();
+    }
+
+    // Clic sur le viewport : toggle zoom 1x <-> 2x (autour du curseur).
+    viewport.addEventListener("click", (e) => {
+      if (isPanning) return; // pan termine, pas un click
+      // Backdrop click = close.
+      if (e.target === viewport) {
+        close();
+        return;
+      }
+      // Click sur l'image -> toggle zoom
+      if (e.target === img) {
+        if (scale > 1.01) {
+          reset();
+        } else {
+          zoomAt(2, e.clientX, e.clientY);
+        }
+      }
+    });
+
+    // Ctrl + scroll : zoom progressif.
+    viewport.addEventListener(
+      "wheel",
+      (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+        zoomAt(scale * factor, e.clientX, e.clientY);
+      },
+      { passive: false }
+    );
+
+    // Drag pour pan quand zoome.
+    img.addEventListener("pointerdown", (e) => {
+      if (scale <= 1.01) return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      txStart = tx;
+      tyStart = ty;
+      img.classList.add("is-panning");
+      viewport.classList.add("is-grabbing");
+      img.setPointerCapture(e.pointerId);
+    });
+    img.addEventListener("pointermove", (e) => {
+      if (!isPanning) return;
+      tx = txStart + (e.clientX - panStartX);
+      ty = tyStart + (e.clientY - panStartY);
+      apply();
+    });
+    img.addEventListener("pointerup", (e) => {
+      if (!isPanning) return;
+      img.classList.remove("is-panning");
+      viewport.classList.remove("is-grabbing");
+      img.releasePointerCapture(e.pointerId);
+      // Petit delay pour que le click handler ne se declenche pas apres pan.
+      setTimeout(() => { isPanning = false; }, 50);
+    });
+
     lb.querySelector(".vc-lightbox__backdrop").addEventListener("click", close);
     lb.querySelector(".vc-lightbox__close").addEventListener("click", close);
     document.addEventListener("keydown", (e) => {
+      if (lb.hidden) return;
       if (e.key === "Escape") close();
+      // + / - pour zoom au centre
+      if (e.key === "+" || e.key === "=") {
+        zoomAt(scale * 1.2, window.innerWidth / 2, window.innerHeight / 2);
+      }
+      if (e.key === "-") {
+        zoomAt(scale / 1.2, window.innerWidth / 2, window.innerHeight / 2);
+      }
+      if (e.key === "0") reset();
     });
+
     document.addEventListener("click", (e) => {
       const t = e.target.closest("[data-lightbox]");
       if (!t) return;
+      e.preventDefault();
       const src = t.dataset.src || t.src;
-      if (!src) return;
-      img.src = src;
-      lb.hidden = false;
+      if (src) open(src);
     });
   })();
 </script>
