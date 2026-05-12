@@ -861,7 +861,10 @@ evenements_phenologiques:
     date_calendrier: "01/08"
   derniere_coupe_luzerne:
     libelle_public: "Dernière coupe de la luzerne"
-    date_calendrier: "01/10"
+    # Date conventionnelle de rendu calendrier : place au milieu de la fenetre
+    # d'interdiction 15/12 -> 15/01 pour que la zone hachuree "autorise apres
+    # coupe" apparaisse visuellement dans la fenetre rouge.
+    date_calendrier: "20/12"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CATÉGORIES UTILISATEUR DE FERTILISANTS (Étape 1 du formulaire)

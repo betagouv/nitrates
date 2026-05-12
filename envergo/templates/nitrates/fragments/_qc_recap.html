@@ -3,20 +3,29 @@
 {% comment %}
 Recap des reponses aux questions complementaires, sous le form principal
 (colonne gauche). S'affiche apres que l'utilisateur a repondu aux QC posees
-dans le panneau resultat. Permet de garder visible la cascade complete des
-reponses pour la prochaine simulation.
+dans le panneau resultat. Rendu en radio buttons editables pour permettre
+de changer la reponse sans tout recommencer.
 
-Inputs : qc_repondues = liste de {champ, valeur, libelle}.
+Inputs : qc_repondues = liste de {champ, valeur, libelle, texte, choix}.
 {% endcomment %}
 
 <h2 class="form-section-title">Questions complémentaires</h2>
-<ul class="qc-recap__list">
+<div class="qc-recap__list">
   {% for entry in qc_repondues %}
-    <li class="qc-recap__item">
-      <span class="qc-recap__label">{{ entry.texte }}</span>
-      <span class="qc-recap__value"><strong>{{ entry.libelle|default:entry.valeur }}</strong></span>
-      {# Hidden input pour preserver la valeur a la prochaine soumission #}
-      <input type="hidden" name="{{ entry.champ }}" value="{{ entry.valeur }}">
-    </li>
+    <fieldset class="qc-recap__item fr-fieldset">
+      <legend class="fr-fieldset__legend qc-recap__label">{{ entry.texte }}</legend>
+      <div class="fr-fieldset__content">
+        {% for choix in entry.choix %}
+          <div class="fr-radio-group">
+            <input type="radio"
+                   id="qc-{{ entry.champ }}-{{ choix.valeur }}"
+                   name="{{ entry.champ }}"
+                   value="{{ choix.valeur }}"
+                   {% if choix.valeur == entry.valeur %}checked{% endif %}>
+            <label class="fr-label" for="qc-{{ entry.champ }}-{{ choix.valeur }}">{{ choix.libelle }}</label>
+          </div>
+        {% endfor %}
+      </div>
+    </fieldset>
   {% endfor %}
-</ul>
+</div>

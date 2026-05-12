@@ -295,22 +295,64 @@ class MoulinetteView(View):
         if premier_qc and getattr(premier_qc, "questions_subsidiaires", None):
             qc_actifs = list(premier_qc.questions_subsidiaires.champs_set)
 
-        # Recap des QC deja repondues : champs subsidiaires connus presents
-        # dans request.GET ET qui ne sont plus en cours de saisie (sinon le
-        # walker les redemanderait). Le libelle est resolu via _QC_LIBELLES.
+        # Recap des QC sur le chemin actuel : repondues + en attente
+        # (les "en attente" sont aussi rendues a gauche en radio buttons
+        # editables pour que l'utilisateur change la cascade sans repartir
+        # de zero). Les choix sont issus DIRECTEMENT de l'arbre YAML
+        # (pas d'une table hardcodee), donc seules les valeurs reellement
+        # presentes dans la branche en cours sont proposees.
+        from envergo.nitrates.yaml_tree import collecter_qc_du_chemin, load_active_tree
+
+        arbre_actif = load_active_tree()
+        contexte_courant = dict(request.GET.items())
+        # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
+        # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
+        # a collecter_qc_du_chemin de descendre l'arbre, on force
+        # en_zone_vulnerable=True (par definition si on a une QC sur le chemin,
+        # on est dans la branche ZV) et on remonte les autres champs catalogue
+        # depuis la moulinette si dispo.
+        contexte_courant.setdefault("en_zone_vulnerable", True)
+        try:
+            cat = getattr(moulinette, "catalog", None) or {}
+            for k in (
+                "zone_note_5",
+                "zone_montagne_d113_14",
+                "zonage_montagne_regional",
+                "zonage_prairie_III",
+            ):
+                if k in cat and k not in contexte_courant:
+                    contexte_courant[k] = cat[k]
+        except Exception:
+            pass
         qc_repondues = []
-        for champ, meta in _QC_LIBELLES.items():
-            if champ in qc_actifs:
+        for q in collecter_qc_du_chemin(arbre_actif, contexte_courant):
+            if q.champ in qc_actifs:
+                # Deja en cours de saisie dans le panneau resultat (a droite),
+                # on ne le redouble pas a gauche.
                 continue
-            valeur = request.GET.get(champ)
-            if not valeur:
-                continue
+            raw = request.GET.get(q.champ) or ""
+            # Stringify les valeurs des choix pour comparer avec ce qui
+            # arrive par URL (toujours str). Sinon bool True != "True"
+            # et le radio button n'est jamais coche.
+            choix = [
+                {
+                    "valeur": str(c["valeur"]),
+                    "libelle": c.get("libelle") or str(c["valeur"]),
+                }
+                for c in (q.choix or [])
+            ]
+            valeur = raw
+            libelle = next(
+                (c["libelle"] for c in choix if c["valeur"] == valeur),
+                valeur,
+            )
             qc_repondues.append(
                 {
-                    "champ": champ,
+                    "champ": q.champ,
                     "valeur": valeur,
-                    "texte": meta["texte"],
-                    "libelle": meta["choix"].get(valeur, valeur),
+                    "texte": q.texte or q.champ,
+                    "libelle": libelle,
+                    "choix": choix,
                 }
             )
 

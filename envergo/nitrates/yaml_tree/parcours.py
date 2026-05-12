@@ -409,3 +409,85 @@ def _walk_for_index(noeud: dict, index: dict[str, dict]) -> None:
             index[branche["regle"]["id"]] = branche["regle"]
         elif "noeud" in branche:
             _walk_for_index(branche["noeud"], index)
+
+
+# ─── QC sur le chemin actuel (repondues + en attente) ──────────────────────
+
+
+def collecter_qc_du_chemin(
+    arbre: dict, contexte: dict[str, Any]
+) -> list[QuestionFormulaire]:
+    """Retourne TOUTES les questions complementaires (niveau formulaire =
+    'complement') qui se trouvent sur le chemin actuel d'apres `contexte`,
+    qu'elles soient deja repondues ou pas.
+
+    Sert au rendu du panneau gauche : on doit reafficher chaque QC en cours
+    avec ses choix REELS issus de l'arbre (pas une table hardcodee), y compris
+    pour les QC en aval qui n'ont pas encore ete repondues.
+    """
+    qc: list[QuestionFormulaire] = []
+    racine = arbre.get("arbre", {}).get("noeud")
+    if not racine:
+        return qc
+    index_ids = _build_id_index(arbre)
+    _suivre_chemin_pour_qc(racine, contexte, index_ids, qc, visites=set())
+    return qc
+
+
+def _suivre_chemin_pour_qc(
+    noeud: dict,
+    contexte: dict[str, Any],
+    index_ids: dict[str, dict],
+    qc: list[QuestionFormulaire],
+    visites: set[str],
+) -> None:
+    """Descend un noeud en suivant la branche dictee par `contexte`. Collecte
+    les QC de niveau complement croisees. S'arrete si la valeur du champ
+    courant n'est pas dans le contexte (= QC bloquante atteinte ; on l'ajoute
+    AVEC ses choix arbre puis on stop).
+    """
+    if "id" in noeud and noeud["id"] in visites:
+        return
+    if "id" in noeud:
+        visites.add(noeud["id"])
+
+    type_noeud = noeud.get("type_noeud")
+    champ = noeud.get("champ")
+
+    # QC = formulaire de niveau complement. On les collecte (repondues ou pas).
+    if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
+        _ajouter_question(qc, noeud)
+
+    valeur = contexte.get(champ) if champ else None
+    if valeur is None:
+        # On ne peut pas continuer plus loin sans reponse. Cas typique :
+        # 1ere QC pas repondue -> on s'arrete ici. Pour les noeuds non-QC
+        # (catalogue ou form principal), c'est pareil mais on a deja
+        # collecte ce qu'il fallait.
+        return
+
+    branche = _choisir_branche_safe(noeud, valeur)
+    if branche is None:
+        return
+    if "noeud" in branche:
+        _suivre_chemin_pour_qc(branche["noeud"], contexte, index_ids, qc, visites)
+    elif "renvoi_vers" in branche:
+        cible = index_ids.get(branche["renvoi_vers"])
+        if cible and cible.get("type_noeud") in ("formulaire", "catalogue"):
+            _suivre_chemin_pour_qc(cible, contexte, index_ids, qc, visites)
+
+
+def _choisir_branche_safe(noeud: dict, valeur) -> dict | None:
+    """Comme _choisir_branche mais retourne None au lieu de raise quand la
+    valeur ne matche pas une branche (cas d'un contexte incoherent qu'on
+    veut tolerer dans la collecte QC pour ne pas casser l'affichage).
+    Applique le meme fallback type_I = {type_Ia, type_Ib} que le parcours."""
+    for branche in noeud.get("branches", []) or []:
+        if _valeurs_egales(branche.get("valeur"), valeur):
+            return branche
+    # Fallback type_I (cf. _choisir_branche).
+    if noeud.get("champ") == "type_fertilisant" and valeur in ("type_Ia", "type_Ib"):
+        for branche in noeud.get("branches", []) or []:
+            if branche.get("valeur") == "type_I":
+                return branche
+    return None

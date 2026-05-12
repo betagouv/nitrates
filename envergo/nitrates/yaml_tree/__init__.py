@@ -26,6 +26,7 @@ from envergo.nitrates.yaml_tree.parcours import (
     QuestionFormulaire,
     QuestionsSubsidiaires,
     Resultat,
+    collecter_qc_du_chemin,
     parcours,
 )
 from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
@@ -46,4 +47,5 @@ __all__ = [
     "QuestionFormulaire",
     "BesoinCatalogue",
     "ParcoursError",
+    "collecter_qc_du_chemin",
 ]

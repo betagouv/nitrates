@@ -49,7 +49,7 @@ PERIODE_REGIMES = (
 NIVEAUX = ("culture", "sous_culture", "type_fertilisant", "complement")
 
 DATE_JJ_MM_RE = re.compile(r"^\d{2}/\d{2}$")
-ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+ID_RE = re.compile(r"^[a-z][a-zA-Z0-9_]*$")
 
 
 def _choices(values: tuple[str, ...], blank: bool = False) -> list[tuple[str, str]]:

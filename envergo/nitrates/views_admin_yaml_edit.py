@@ -393,7 +393,13 @@ class EditRegleView(View):
         if err:
             return HttpResponseForbidden(err)
         parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
-        valeur = _parse_valeur(request.GET.get("valeur")) or request.POST.get("valeur")
+        # Attention : bool False est falsy, donc on ne peut pas faire
+        # `_parse_valeur(GET) or POST` (False bool serait perdu). On prefere
+        # `valeur` du GET en priorite, sinon fallback POST.
+        valeur_raw = request.GET.get("valeur")
+        if valeur_raw is None:
+            valeur_raw = request.POST.get("valeur")
+        valeur = _parse_valeur(valeur_raw)
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
         if branche is None or "regle" not in branche:
             return HttpResponseForbidden("Règle introuvable.")

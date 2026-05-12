@@ -92,8 +92,11 @@
             {% endfor %}
           </div>
         {% endfor %}
-        {% comment %}Une ligne vide pour ajouter une nouvelle periode.{% endcomment %}
-        <div class="yaml-tree__form-row">
+        {% comment %}Une ligne vide pour ajouter une nouvelle periode.
+        Le bouton "+ Ajouter une periode" en-dessous clone cette ligne en JS
+        pour permettre d'en ajouter plusieurs sans aller-retour serveur.
+        {% endcomment %}
+        <div class="yaml-tree__form-row" data-periode-row>
           <label class="yaml-tree__form-label">
             <span>+ ajouter</span>
             <input type="text"
@@ -117,6 +120,12 @@
               {% endfor %}
             </select>
           </label>
+        </div>
+        <div class="yaml-tree__form-row">
+          <button type="button"
+                  class="yaml-admin__btn yaml-admin__btn--small"
+                  data-add-periode
+                  data-next-index="{{ regle.periodes|length|default:0|add:1 }}">+ Ajouter une période</button>
         </div>
       {% endwith %}
     </fieldset>
@@ -271,6 +280,41 @@
         };
         apply();
         typeSelect.addEventListener('change', apply);
+      })();
+    </script>
+
+    <script>
+      // Bouton "+ Ajouter une periode" : clone la derniere ligne de periode
+      // et incremente l'index dans les `name="periodes-N-..."` pour que
+      // Django parse correctement N entrees au POST.
+      (function () {
+        const form = document.currentScript.closest('form');
+        const btn = form.querySelector('[data-add-periode]');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          const rows = form.querySelectorAll('[data-periode-row]');
+          const last = rows[rows.length - 1];
+          if (!last) return;
+          const nextIndex = parseInt(btn.dataset.nextIndex || '1', 10);
+          const clone = last.cloneNode(true);
+          clone.querySelectorAll('input, select').forEach((el) => {
+            // Remplace l'index dans le name : periodes-N-xxx -> periodes-NEXT-xxx
+            if (el.name) {
+              el.name = el.name.replace(/^periodes-\d+-/, `periodes-${nextIndex}-`);
+            }
+            // Reset les valeurs
+            if (el.tagName === 'INPUT') el.value = '';
+            if (el.tagName === 'SELECT') el.selectedIndex = 0;
+          });
+          // Renomme le span "+ ajouter" en "période #N+1" pour la lisibilite
+          const span = clone.querySelector('span');
+          if (span) span.textContent = `période #${nextIndex + 1}`;
+          last.after(clone);
+          btn.dataset.nextIndex = String(nextIndex + 1);
+          // Re-applique le toggle visibilite regime selon type courant.
+          const typeSelect = form.querySelector('[data-regle-type-select]');
+          if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
+        });
       })();
     </script>
   </form>
