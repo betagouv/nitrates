@@ -2,7 +2,21 @@
 
 {% load static %}
 
+{% block title %}{{ title }} | Simulateur nitrates{% endblock %}
+
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static "css/project_admin.css" %}">
+  <link rel="stylesheet" href="{% static 'css/project_admin.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/css/nitrates_admin.css' %}">
 {% endblock %}
+
+{% block branding %}
+  <div id="site-name">
+    <a href="{% url 'admin:index' %}">
+      <span class="nitrates-brand-title">Simulateur nitrates</span>
+      <span class="nitrates-brand-subtitle">Administration · Min. Agriculture</span>
+    </a>
+  </div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

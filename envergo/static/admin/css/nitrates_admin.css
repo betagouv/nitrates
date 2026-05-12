@@ -1,0 +1,48 @@
+/* Branding admin nitrates : header bleu Marianne au lieu du violet Django.
+ * Couleurs DSFR : #000091 (bleu France principal), #1212FF (bleu plus clair).
+ */
+
+:root {
+  --primary: #000091;
+  --secondary: #000091;
+  --accent: #1212ff;
+  --link-fg: #000091;
+  --link-hover-color: #1212ff;
+  --header-bg: #000091;
+  --header-link-color: #fff;
+  --header-color: #fff;
+  --button-bg: #000091;
+  --button-hover-bg: #1212ff;
+  --default-button-bg: #000091;
+  --default-button-hover-bg: #1212ff;
+}
+
+#header {
+  background: #000091;
+  color: #fff;
+}
+
+.nitrates-brand-title {
+  display: block;
+  font-size: 1.15em;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.nitrates-brand-subtitle {
+  display: block;
+  font-size: 0.78em;
+  font-weight: 400;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+/* Login page : centre + branding visible */
+.login #header {
+  background: #000091;
+}
+
+.login #branding h1,
+.login #branding #site-name a {
+  color: #fff;
+}

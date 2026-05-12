@@ -72,6 +72,11 @@ class RequireLoginEverywhere:
             return True
         if path.startswith("/healthcheck/"):
             return True
+        # ProConnect OIDC : les routes /oidc/* gerent leur propre flow auth.
+        # Sans cet exempt, le middleware piege /oidc/authenticate/ et redirige
+        # vers /admin/login/ -> boucle infinie de next= imbrique.
+        if path.startswith("/oidc/"):
+            return True
         return False
 
     def __call__(self, request):

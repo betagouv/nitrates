@@ -40,3 +40,4 @@ ruamel.yaml
 pyyaml
 py7zr
 Pygments
+mozilla-django-oidc

@@ -118,6 +118,11 @@ EMAIL_SUBJECT_PREFIX = env(
 # Django Admin URL regex.
 ADMIN_URL = env("DJANGO_ADMIN_URL")
 
+# ProConnect : recalculer LOGIN_REDIRECT_URL avec le vrai ADMIN_URL prod.
+# Cf. base.py section ProConnect/ADMIN.
+if PROCONNECT_ENABLED:  # noqa F405
+    LOGIN_REDIRECT_URL = "/" + ADMIN_URL.lstrip("/")
+
 # Anymail
 # ------------------------------------------------------------------------------
 # https://anymail.readthedocs.io/en/stable/installation/#installing-anymail
