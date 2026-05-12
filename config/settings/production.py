@@ -80,7 +80,11 @@ AWS_S3_OBJECT_PARAMETERS = {
     "CacheControl": f"max-age={_AWS_EXPIRY}, s-maxage={_AWS_EXPIRY}, must-revalidate"
 }
 AWS_S3_CUSTOM_DOMAIN = env("DJANGO_AWS_S3_CUSTOM_DOMAIN", default=None)
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : Cellar fournit l'endpoint avec
+# scheme (boto3 l'exige), MEDIA_URL ne doit pas re-prefixer https://.
 aws_s3_domain = AWS_S3_ENDPOINT_URL
+if aws_s3_domain.startswith(("https://", "http://")):
+    aws_s3_domain = aws_s3_domain.split("://", 1)[1]
 
 MEDIA_URL = f"https://{aws_s3_domain}/media/"
 
