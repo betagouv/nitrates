@@ -1,4 +1,5 @@
 import logging
+import os
 
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -73,6 +74,14 @@ AWS_S3_REGION_NAME = env("DJANGO_AWS_S3_REGION_NAME")
 AWS_DEFAULT_ACL = "public-read"
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
+
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : boto3 >= 1.36 envoie
+# Content-Encoding: aws-chunked + checksum SHA256 par defaut, ce que Cellar
+# (Clever Cloud) ne supporte pas -> MissingContentLength sur PutObject.
+# On force le mode legacy via env vars boto3 (lues au moment de la creation
+# du client S3). Pas d'impact sur AWS officiel.
+os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "WHEN_REQUIRED")
+os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "WHEN_REQUIRED")
 
 # DO NOT change these unless you know what you're doing.
 _AWS_EXPIRY = 60 * 60 * 24 * 7
