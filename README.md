@@ -2,6 +2,16 @@
 
 Améliorer la prise en compte de l'environnement dans les projets d'urbanisme.
 
+> **Fork nitrates** — Ce repo est un fork orienté simulateur réglementation
+> nitrates (Min. Agriculture / beta.gouv.fr). Tout le code spécifique vit
+> dans `envergo/nitrates/` (app isolée). Le reste du repo suit l'upstream
+> Envergo.
+>
+> - **Pipeline déploiement** (push Scalingo, ProConnect, provisioning admins,
+>   imports SIG) : voir [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+> - **Infrastructure** (OpenTofu, secrets, env vars Scalingo) : repo séparé
+>   `betagouv/nitrates-iac`.
+
 ## À propos
 
 Cette page concerne le code source du projet Envergo. Pour en savoir plus sur le
