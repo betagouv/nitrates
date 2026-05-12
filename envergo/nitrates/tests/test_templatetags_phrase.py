@@ -27,8 +27,10 @@ def test_format_jjmm_long():
     assert _format_jjmm_long("15/12") == "15 décembre"
     assert _format_jjmm_long("01/07") == "1er juillet"
     assert _format_jjmm_long("31/08") == "31 août"
-    # Non parsable -> chaîne brute renvoyée telle quelle.
-    assert _format_jjmm_long("brunissement_soies") == "brunissement_soies"
+    # Note 2026-05-12 : un evenement phenologique KNOWN avec date_calendrier
+    # dans referentiels.yaml est maintenant resolu vers cette date. Si on
+    # veut tester le fallback "chaine brute", il faut un slug inexistant.
+    assert _format_jjmm_long("evenement_inexistant") == "evenement_inexistant"
 
 
 def test_libre_sans_periode():
@@ -118,10 +120,11 @@ def test_regimes_mixtes_fallback_brut():
 
 
 def test_phenologique_fallback():
-    """Borne phenologique (du = 'brunissement_soies') -> fallback brut.
-    Pour une regle a 1 seule periode phenologique, le fallback ne sait pas
-    formater la periode et renvoie le libelle generique du badge."""
-    r = _regle("interdiction", [{"du": "brunissement_soies", "au": "15/02"}])
+    """Borne phenologique INCONNUE -> fallback brut (libelle generique).
+    Note 2026-05-12 : une borne phenologique KNOWN avec date_calendrier
+    dans referentiels.yaml est maintenant resolue, donc on teste avec un
+    slug inexistant pour valider le fallback brut."""
+    r = _regle("interdiction", [{"du": "evenement_inexistant", "au": "15/02"}])
     phrase = construire_phrase_explicative(r, today=date(2026, 5, 7))
     # Le fallback brut filtre les periodes non parsables -> liste vide ->
     # libelle generique "Interdit".

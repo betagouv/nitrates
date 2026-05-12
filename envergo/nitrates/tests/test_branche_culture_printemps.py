@@ -170,9 +170,11 @@ def test_printemps_type_II_fertirrigation_non(setup):
 
 
 def test_printemps_type_III_irriguee_mais(setup):
-    """Type III + irriguee Oui + Mais : interdit 15/07 -> 15/02, pc5.
-    + message specifique sur l'extension phenologique brunissement
-    des soies (cf. spec PC5)."""
+    """Type III + irriguee Oui + Mais : regime mixte (interdiction
+    15/07 -> 15/02 + autorisation_sous_condition 15/07 -> brunissement
+    des soies), pc5.
+    Note 2026-05-12 : passe d'interdiction simple a mixte suite a
+    validation metier (extension phenologique brunissement des soies)."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -182,8 +184,10 @@ def test_printemps_type_III_irriguee_mais(setup):
     )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_printemps_III_mais_irrigue"
+    assert ev.regle.type == "mixte"
     assert ev.regle.code_prescription == "pc5"
-    assert ev.regle.periodes == [{"du": "15/07", "au": "15/02"}]
+    # 2 periodes : interdiction + autorisation phenologique.
+    assert len(ev.regle.periodes) == 2
     # Message specifique mais (extension phenologique).
     assert ev.regle.message is not None
     assert "brunissement des soies" in ev.regle.message

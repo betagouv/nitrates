@@ -131,7 +131,9 @@ test.describe('Branche culture_de_printemps : flow question complementaire', () 
 
     // Page resultat affiche la question complementaire (radio buttons DSFR
     // dans le form principal, pas dans un sous-form).
-    const labelOui = page.locator('label[for="id_qc_fertirrigation_True"]');
+    // Note 2026-05-12 : selecteur change vers le pattern qc-<champ>-<valeur>
+    // generes par _qc_recap.html et _resultat_questions.html.
+    const labelOui = page.locator('label[for*="fertirrigation"][for*="True"]').first();
     await expect(labelOui).toBeVisible();
     await labelOui.click();
 

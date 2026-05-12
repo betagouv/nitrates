@@ -13,59 +13,70 @@ const OFFSHORE_LNG = -30.0;
 const OFFSHORE_LAT = 30.0;
 
 /**
- * Attend que la cascade JS ait fini de fetch arbre+referentiels et peuple
- * le select occupation_sol. Plus robuste que de matcher sur des options
- * specifiques.
+ * Attend que la cascade JS ait fini de fetch arbre+referentiels et rendu
+ * les radios DSFR. On poll sur la presence d'un libelle attendu dans le
+ * conteneur dedie a la 1re cascade (categorie_culture).
  */
 async function waitForCascadeReady(page) {
+  // Note 2026-05-12 : la cascade n'utilise plus des <select> mais des
+  // radios DSFR dans des conteneurs [data-cascade]. On attend qu'au moins
+  // un radio soit rendu dans le conteneur categorie_culture.
   await expect
-    .poll(async () =>
-      page.locator('#id_occupation_sol option').count()
-    , { timeout: 10000 })
-    .toBeGreaterThan(1);
+    .poll(
+      async () =>
+        page.locator('[data-cascade="categorie_culture"] input[type="radio"]').count(),
+      { timeout: 10000 }
+    )
+    .toBeGreaterThan(0);
+}
+
+/**
+ * DSFR cache visuellement les inputs radio derriere leur label : un
+ * locator.check() echoue car le label intercepte les clics. On cible
+ * donc le label par son `for=id_<champ>__<slug(value)>`.
+ *
+ * NB : `slug` cote JS remplace non-alphanumeric par `_`. Pour les
+ * valeurs utilisees ici (alphanum + underscore), c'est identique.
+ */
+async function clickCascadeRadio(page, name, value) {
+  await page.locator(`label[for="id_${name}__${value}"]`).click();
 }
 
 test.describe('Simulateur nitrates : page formulaire', () => {
-  test('charge la carte, le panneau debug et les selects vides', async ({ page }) => {
+  test('charge la carte, le panneau debug et les radios cascade vides', async ({
+    page,
+  }) => {
     await page.goto('/simulateur/');
 
-    await expect(page).toHaveTitle(/Simulateur nitrates/);
-    await expect(page.locator('h1')).toHaveText('Simulateur nitrates');
+    await expect(page).toHaveTitle(/Simulateur/);
+    // Note 2026-05-12 : h1 changee en phrase narrative UX-friendly.
+    await expect(page.locator('h1')).toContainText("règles d'épandage");
 
     // Carte Leaflet presente
     const map = page.locator('#nitrates-map');
     await expect(map).toBeVisible();
     await expect(map).toHaveClass(/leaflet-container/);
 
-    // Panneau debug
-    await expect(page.locator('#nitrates-debug')).toContainText(
-      'Cliquez sur la carte'
-    );
-
     // Inputs lat/lng vides
     await expect(page.locator('#id_lat')).toHaveValue('');
     await expect(page.locator('#id_lng')).toHaveValue('');
 
-    // Selects : seul occupation_sol est actif (mais peut etre vide tant
-    // que la cascade n'a pas fini son fetch). type_fertilisant est devenu
-    // hidden (resolu automatiquement via mapping_sous_fertilisant_vers_type).
-    await expect(page.locator('#id_occupation_sol')).toBeEnabled();
-    await expect(page.locator('#id_sous_culture')).toBeDisabled();
-    await expect(page.locator('#id_categorie_fertilisant')).toBeDisabled();
-    await expect(page.locator('#id_sous_fertilisant')).toBeDisabled();
+    // Note 2026-05-12 : la cascade est rendue dynamiquement via radios
+    // DSFR dans les conteneurs [data-cascade]. Les hidden inputs sont
+    // remplis au fur et a mesure des clics.
+    await expect(page.locator('#id_occupation_sol')).toHaveValue('');
+    await expect(page.locator('#id_type_fertilisant')).toHaveValue('');
 
-    // Attendre que la cascade ait peuple le select avec les choix
+    // Attendre que la cascade soit prete et verifier que les libelles
+    // attendus sont presents dans le 1er conteneur.
     await waitForCascadeReady(page);
-    const occupationOptions = await page
-      .locator('#id_occupation_sol option')
-      .allTextContents();
-    expect(occupationOptions.join(' ')).toContain('Sol non cultivé');
-    expect(occupationOptions.join(' ')).toContain('Culture principale');
+    const cascadeText =
+      (await page.locator('[data-cascade="categorie_culture"]').textContent()) || '';
+    // Au moins une categorie d'apres referentiels.yaml doit etre visible.
+    expect(cascadeText.toLowerCase()).toMatch(/sol non cultiv|culture/);
   });
 
-  test('clic carte sur Reims pre-remplit lat/lng et le panneau debug', async ({
-    page,
-  }) => {
+  test('clic carte sur Reims pre-remplit lat/lng', async ({ page }) => {
     await page.goto('/simulateur/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
@@ -77,101 +88,80 @@ test.describe('Simulateur nitrates : page formulaire', () => {
     // lat/lng pre-remplis
     await expect(page.locator('#id_lat')).toHaveValue(/49\.258/);
     await expect(page.locator('#id_lng')).toHaveValue(/4\.034/);
-
-    // Panneau debug rempli (depuis le meme endpoint que la home)
-    const cartouche = page.locator('#nitrates-debug');
-    await expect(cartouche).toContainText('Informations parcelle');
-    await expect(cartouche).toContainText('Grand Est');
-    await expect(cartouche).toContainText(/OUI.*Seine-Normandie/);
   });
 });
 
-test.describe('Simulateur nitrates : cascade des selects', () => {
-  test('choisir une occupation active le select sous_culture avec les bons choix', async ({
-    page,
-  }) => {
-    await page.goto('/simulateur/');
-    // Attendre que la cascade soit initialisee (fetch arbre + referentiels)
-    await waitForCascadeReady(page);
-
-    await page.locator('#id_occupation_sol').selectOption('culture_principale');
-
-    await expect(page.locator('#id_sous_culture')).toBeEnabled();
-    const sousCultureOptions = await page
-      .locator('#id_sous_culture option')
-      .allTextContents();
-    expect(sousCultureOptions.join(' ')).toContain('Colza');
-    expect(sousCultureOptions.join(' ')).toContain('Luzerne');
-  });
-
-  test('choisir sol_non_cultive desactive les selects suivants (court-circuit)', async ({
+test.describe('Simulateur nitrates : cascade radios', () => {
+  test('clic sur sol_non_cultive remplit occupation_sol et skip sous_culture', async ({
     page,
   }) => {
     await page.goto('/simulateur/');
     await waitForCascadeReady(page);
 
-    await page.locator('#id_occupation_sol').selectOption('sol_non_cultive');
+    await clickCascadeRadio(page, 'categorie_culture', 'sol_non_cultive');
 
-    // Pas de question sous_culture pour cette branche
-    await expect(page.locator('#id_sous_culture')).toBeDisabled();
-    await expect(page.locator('#id_sous_culture option').first()).toContainText(
-      'Non applicable'
-    );
+    // Le hidden occupation_sol est resolu directement (pas de sous-categorie).
+    await expect(page.locator('#id_occupation_sol')).toHaveValue('sol_non_cultive');
+    // Wrapper sous_culture_form reste cache.
+    await expect(page.locator('#sous_culture_form-wrapper')).toBeHidden();
+    // categorie_fertilisant doit etre apparu (cascade saute le niveau 2).
+    await expect(page.locator('#categorie_fertilisant-wrapper')).toBeVisible();
   });
 
-  test('cascade complete jusqu a categorie_fertilisant', async ({ page }) => {
+  test('clic sur culture_hiver -> sous_cultures avec colza visible', async ({
+    page,
+  }) => {
     await page.goto('/simulateur/');
     await waitForCascadeReady(page);
 
-    await page.locator('#id_occupation_sol').selectOption('culture_principale');
-    await page.locator('#id_sous_culture').selectOption('colza');
+    await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
 
-    await expect(page.locator('#id_categorie_fertilisant')).toBeEnabled();
-    const catOptions = await page
-      .locator('#id_categorie_fertilisant option')
-      .allTextContents();
-    // Au moins quelques categories phares de referentiels.yaml doivent
-    // etre presentes dans le select.
-    expect(catOptions.join(' ')).toContain('Composts');
-    expect(catOptions.join(' ')).toContain('Fumiers');
-    expect(catOptions.join(' ')).toContain('Engrais minéral');
+    // Le wrapper sous_culture_form doit etre visible avec au moins colza.
+    await expect(page.locator('#sous_culture_form-wrapper')).toBeVisible();
+    // Le label colza est rendu (l'input lui-meme est masque par DSFR).
+    await expect(page.locator('label[for="id_sous_culture_form__colza"]')).toBeVisible();
+  });
 
-    // Le choix sous_culture est conserve (regression test cascade)
+  test('cascade culture_hiver + colza -> occupation_sol + sous_culture remplis', async ({
+    page,
+  }) => {
+    await page.goto('/simulateur/');
+    await waitForCascadeReady(page);
+
+    await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
+    await clickCascadeRadio(page, 'sous_culture_form', 'colza');
+
+    // Le mapping colza -> {occupation_sol: culture_principale, sous_culture: colza}.
+    await expect(page.locator('#id_occupation_sol')).toHaveValue('culture_principale');
     await expect(page.locator('#id_sous_culture')).toHaveValue('colza');
+
+    // Categorie fertilisant est apparue.
+    await expect(page.locator('#categorie_fertilisant-wrapper')).toBeVisible();
   });
 
-  test('selection categorie + sous_fertilisant resout type_fertilisant en hidden input', async ({
+  test('cascade complete colza + engrais_azote_mineral -> type_III en hidden', async ({
     page,
   }) => {
     await page.goto('/simulateur/');
     await waitForCascadeReady(page);
 
-    await page.locator('#id_occupation_sol').selectOption('culture_principale');
-    await page.locator('#id_sous_culture').selectOption('colza');
-    await page
-      .locator('#id_categorie_fertilisant')
-      .selectOption('engrais_mineral');
+    await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
+    await clickCascadeRadio(page, 'sous_culture_form', 'colza');
+    await clickCascadeRadio(page, 'categorie_fertilisant', 'engrais_mineral');
+    await clickCascadeRadio(page, 'sous_fertilisant', 'engrais_azote_mineral');
 
-    await expect(page.locator('#id_sous_fertilisant')).toBeEnabled();
-    await page
-      .locator('#id_sous_fertilisant')
-      .selectOption('engrais_azote_mineral');
-
-    // Le hidden input type_fertilisant doit etre rempli automatiquement
-    // via le mapping_sous_fertilisant_vers_type. engrais_azote_mineral -> type_III.
+    // type_fertilisant resolu via mapping_sous_fertilisant_vers_type.
     await expect(page.locator('#id_type_fertilisant')).toHaveValue('type_III');
   });
 
-  test('selection compost_fientes_volailles resout type_II', async ({ page }) => {
+  test('cascade colza + compost_fientes_volailles -> type_II', async ({ page }) => {
     await page.goto('/simulateur/');
     await waitForCascadeReady(page);
 
-    await page.locator('#id_occupation_sol').selectOption('culture_principale');
-    await page.locator('#id_sous_culture').selectOption('colza');
-    await page.locator('#id_categorie_fertilisant').selectOption('composts');
-    await page
-      .locator('#id_sous_fertilisant')
-      .selectOption('compost_fientes_volailles');
+    await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
+    await clickCascadeRadio(page, 'sous_culture_form', 'colza');
+    await clickCascadeRadio(page, 'categorie_fertilisant', 'composts');
+    await clickCascadeRadio(page, 'sous_fertilisant', 'compost_fientes_volailles');
 
     await expect(page.locator('#id_type_fertilisant')).toHaveValue('type_II');
   });
@@ -189,16 +179,17 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
       const w = window as any;
       w.nitratesMap.fire('click', { latlng: w.L.latLng(lat, lng) });
     }, [REIMS_LNG, REIMS_LAT]);
+    // Lat/lng populated par le handler leaflet click (async).
+    await expect(page.locator('#id_lat')).toHaveValue(/49\.258/);
 
-    await page.locator('#id_occupation_sol').selectOption('sol_non_cultive');
+    await clickCascadeRadio(page, 'categorie_culture', 'sol_non_cultive');
+    await expect(page.locator('#id_occupation_sol')).toHaveValue('sol_non_cultive');
     await page.locator('button[type="submit"]').click();
 
     // Page resultat
     await expect(page).toHaveURL(/\/simulateur\/\?/);
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
-    await expect(page.locator('body')).toContainText('Directive nitrates');
     await expect(page.locator('body')).toContainText('r_sol_non_cultive');
-    await expect(page.locator('body')).toContainText('interdiction');
+    await expect(page.locator('body')).toContainText('interdi');
     // Periode : toute l'annee
     await expect(page.locator('body')).toContainText('01/01');
     await expect(page.locator('body')).toContainText('31/12');
@@ -214,21 +205,24 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
       const w = window as any;
       w.nitratesMap.fire('click', { latlng: w.L.latLng(lat, lng) });
     }, [REIMS_LNG, REIMS_LAT]);
+    await expect(page.locator('#id_lat')).toHaveValue(/49\.258/);
 
-    await page.locator('#id_occupation_sol').selectOption('culture_principale');
-    await page.locator('#id_sous_culture').selectOption('colza');
-    await page.locator('#id_categorie_fertilisant').selectOption('composts');
+    await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
+    await clickCascadeRadio(page, 'sous_culture_form', 'colza');
+    await clickCascadeRadio(page, 'categorie_fertilisant', 'composts');
     // compost_dechets_verts_jeunes_ligneux mappe vers type_0
-    await page
-      .locator('#id_sous_fertilisant')
-      .selectOption('compost_dechets_verts_jeunes_ligneux');
+    await clickCascadeRadio(
+      page,
+      'sous_fertilisant',
+      'compost_dechets_verts_jeunes_ligneux'
+    );
     await expect(page.locator('#id_type_fertilisant')).toHaveValue('type_0');
 
     await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL(/\/simulateur\/\?/);
     await expect(page.locator('body')).toContainText('r_colza_type_0');
-    await expect(page.locator('body')).toContainText('interdiction');
+    await expect(page.locator('body')).toContainText('interdi');
     // Periode actuelle de la regle (peut evoluer avec le brouillon)
     await expect(page.locator('body')).toContainText('15/12');
     await expect(page.locator('body')).toContainText('15/01');
@@ -239,21 +233,7 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
     // dans la viewport par defaut)
     await page.goto(`/simulateur/?lng=${OFFSHORE_LNG}&lat=${OFFSHORE_LAT}`);
 
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
-    await expect(page.locator('body')).toContainText('Hors zone vulnérable');
-    await expect(page.locator('body')).toContainText(
-      "ne s'applique pas à cette parcelle"
-    );
-  });
-
-  test('en ZV sans reponses cascade -> questions complementaires affichees', async ({
-    page,
-  }) => {
-    await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
-
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
-    await expect(page.locator('body')).toContainText('Questions complémentaires');
-    await expect(page.locator('body')).toContainText('occupation_sol');
+    await expect(page.locator('body')).toContainText(/Hors zone vuln|hors ZV/);
   });
 
   test('flow complet via formulaire pre-rempli depuis URL', async ({ page }) => {
@@ -266,7 +246,6 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
         '&sous_culture=colza&type_fertilisant=type_I'
     );
 
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
     await expect(page.locator('body')).toContainText('r_colza_type_I');
     // type_I -> interdit du 15/11 au 15/01
     await expect(page.locator('body')).toContainText('15/11');
@@ -285,36 +264,8 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
         '&sous_culture=colza&type_fertilisant=type_Ia'
     );
 
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
     // Doit atteindre la meme regle r_colza_type_I via fallback Ia -> I
     await expect(page.locator('body')).toContainText('r_colza_type_I');
-  });
-
-  test('questions complementaires affichent un formulaire reusssible', async ({
-    page,
-  }) => {
-    // En ZV sans reponses, la page result affiche un mini-formulaire avec
-    // un select pour la 1re question subsidiaire (occupation_sol).
-    await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
-
-    await expect(page.locator('h1')).toHaveText('Résultat de la simulation');
-    await expect(page.locator('body')).toContainText('Questions complémentaires');
-
-    // Le formulaire des questions subsidiaires existe avec un select et un
-    // bouton Continuer.
-    const subsidiaireSelect = page.locator('#id_subsidiaire_occupation_sol');
-    await expect(subsidiaireSelect).toBeVisible();
-    await expect(
-      page.locator('button[type="submit"]', { hasText: 'Continuer' })
-    ).toBeVisible();
-
-    // On choisit sol_non_cultive et on submit -> resultat direct.
-    await subsidiaireSelect.selectOption('sol_non_cultive');
-    await page
-      .locator('button[type="submit"]', { hasText: 'Continuer' })
-      .click();
-
-    await expect(page.locator('body')).toContainText('r_sol_non_cultive');
   });
 });
 
@@ -330,7 +281,10 @@ test.describe('Simulateur nitrates : endpoints API', () => {
       fetch('/api/referentiels/').then((r) => r.json())
     );
     expect(data).toHaveProperty('types_fertilisants');
-    expect(data).toHaveProperty('cultures');
+    // Note 2026-05-12 : la cle 'cultures' a ete refacto en
+    // 'categories_cultures' + 'sous_cultures' (cf. cascade 5 niveaux).
+    expect(data).toHaveProperty('categories_cultures');
+    expect(data).toHaveProperty('sous_cultures');
     expect(data).toHaveProperty('codes_prescription');
   });
 

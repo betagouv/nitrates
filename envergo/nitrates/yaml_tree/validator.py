@@ -394,13 +394,17 @@ def _check_niveau_ajout(
     if niveau not in NIVEAUX_FORMULAIRE_ORDRE:
         return None  # le schema l'aurait deja attrape
     idx_nouveau = NIVEAUX_FORMULAIRE_ORDRE.index(niveau)
-    # Les noeuds `complement` sont transparents pour l'ordre cascade
-    # culture -> sous_culture -> type_fertilisant : ils peuvent servir de
-    # question intermediaire (ex: duree d'interculture) sans bloquer le
-    # retour vers un sous_culture ou un type_fertilisant en aval. On les
-    # ignore donc quand on verifie le retour en arriere.
-    chemin_non_complement = [(n, c) for n, c in chemin if n != "complement"]
-    for prec_niveau, prec_champ in chemin_non_complement:
+    # Convention 2026-05-12 : `complement` est le dernier niveau autorise.
+    # Une fois entre dans une chaine de complements, on ne peut PAS revenir
+    # vers culture / sous_culture / type_fertilisant. Donc des qu'un
+    # complement apparait dans le chemin, tout niveau suivant doit etre
+    # complement aussi.
+    if any(n == "complement" for n, _ in chemin) and niveau != "complement":
+        return (
+            f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
+            f"'complement' dans le chemin (retour en arriere interdit)"
+        )
+    for prec_niveau, prec_champ in chemin:
         idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec_niveau)
         if idx_nouveau < idx_prec:
             return (
