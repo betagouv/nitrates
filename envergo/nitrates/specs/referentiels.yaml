@@ -837,18 +837,31 @@ regions:
 # plante plutôt que de dates fixes.
 
 evenements_phenologiques:
+  # `date_calendrier` : date JJ/MM arbitraire conventionnelle pour positionner
+  # l'événement sur la barre 12 mois du calendrier d'épandage. Ne reflète pas
+  # une date métier (celle-ci dépend du climat, de la parcelle). Sert
+  # uniquement à dessiner une zone visible côté simulateur.
   semis:
     libelle_public: "Semis"
+    date_calendrier: "15/04"
   implantation_couvert:
     libelle_public: "Implantation du couvert"
+    date_calendrier: "15/08"
   destruction_couvert:
     libelle_public: "Destruction du couvert"
+    date_calendrier: "15/03"
   recolte:
     libelle_public: "Récolte"
+    date_calendrier: "15/09"
   brunissement_soies:
     libelle_public: "Brunissement des soies (maïs)"
+    date_calendrier: "01/08"
+  brunissement_des_soies:
+    libelle_public: "Brunissement des soies (maïs)"
+    date_calendrier: "01/08"
   derniere_coupe_luzerne:
     libelle_public: "Dernière coupe de la luzerne"
+    date_calendrier: "01/10"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CATÉGORIES UTILISATEUR DE FERTILISANTS (Étape 1 du formulaire)

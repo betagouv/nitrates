@@ -40,6 +40,24 @@ from envergo.nitrates.yaml_admin.grammar import (
 from envergo.nitrates.yaml_admin.tags import get_tags
 
 
+def _evenements_phenologiques() -> list[dict]:
+    """Liste des evenements phenologiques depuis referentiels.yaml, pour
+    proposer en datalist dans les inputs du/au des periodes. Permet
+    d'eviter les typos (cf. brunissement_soies vs brunissement_des_soies)."""
+    from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+    ref = load_referentiels()
+    out = []
+    for slug, data in (ref.get("evenements_phenologiques") or {}).items():
+        out.append(
+            {
+                "slug": slug,
+                "libelle": (data or {}).get("libelle_public") or slug,
+            }
+        )
+    return out
+
+
 def _parse_path(raw: str | None) -> tuple[str, ...]:
     """Convertit `?path=n_root/q_culture` en tuple ('n_root', 'q_culture').
     Vide ou None -> tuple vide (=racine).
@@ -365,6 +383,7 @@ class EditRegleView(View):
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
+                "evenements_phenologiques": _evenements_phenologiques(),
             },
         )
 
@@ -396,6 +415,7 @@ class EditRegleView(View):
                     "parent_path_str": "/".join(parent_path),
                     "valeur": valeur,
                     "errors": form_errors,
+                    "evenements_phenologiques": _evenements_phenologiques(),
                 },
                 status=422,
             )
@@ -420,6 +440,7 @@ class EditRegleView(View):
                     "parent_path_str": "/".join(parent_path),
                     "valeur": valeur,
                     "errors": result.errors,
+                    "evenements_phenologiques": _evenements_phenologiques(),
                 },
                 status=422,
             )

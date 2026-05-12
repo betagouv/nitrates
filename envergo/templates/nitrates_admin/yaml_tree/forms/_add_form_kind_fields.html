@@ -142,7 +142,7 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       <span>type</span>
       <select name="c_type">
         <option value="">— choisir —</option>
-        {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+        {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice,mixte"|split:"," %}
           <option value="{{ t }}" {% if form_data.c_type == t %}selected{% endif %}>{{ t }}</option>
         {% endfor %}
       </select>

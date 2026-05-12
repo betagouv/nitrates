@@ -90,16 +90,67 @@
 
 .calendrier-epandage__period {
   position: relative;
-  height: 20px;
+  height: 38px; /* 2 lignes : row 0 en haut, row 1 en bas */
   margin-top: 8px;
 }
 
 .calendrier-epandage__period-date {
   position: absolute;
+  top: 0;
   font-size: 12px;
   font-weight: 700;
   color: #e1000f;
   transform: translateX(-50%);
+}
+
+/* Borne phenologique : couleur noire italique (date conventionnelle, pas
+   une vraie date metier — l'utilisateur doit comprendre qu'elle est flottante).
+   Un petit trait diagonal en pseudo-element ::before relie le texte a son
+   ancre sur la barre du calendrier. */
+.calendrier-epandage__period-date--phenologique {
+  color: #161616;
+  font-style: italic;
+}
+
+.calendrier-epandage__period-date--phenologique::before {
+  content: "";
+  position: absolute;
+
+  /* Trait vertical du haut du texte jusqu'a la barre du calendrier
+     (situee 12px au-dessus dans .calendrier-epandage__period margin-top:8px
+     + 4px de jeu). Ancre = centre horizontal du texte = pos reelle borne. */
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 12px;
+  margin-left: -0.5px;
+  background: #161616;
+  pointer-events: none;
+}
+
+/* Empilage 2e ligne : decale verticalement pour eviter l'overlap textuel
+   quand 2 bornes sont a moins de 10% de distance horizontale. */
+.calendrier-epandage__period-date--row2 {
+  top: 18px;
+}
+
+/* Trait phenologique sur row2 : plus long pour atteindre la barre, qui est
+   ~26px au-dessus (vs 12px pour row1 / row0). */
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row2::before {
+  height: 26px;
+}
+
+/* Zone hachuree : segment dont une borne est phenologique (date flottante).
+   Patterne en bandes diagonales noires sur fond de la couleur du regime,
+   pour signaler visuellement que la duree exacte n'est pas figee. */
+.calendrier-epandage__zone--flottant {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 6px,
+    rgb(22 22 22 / 22%) 6px,
+    rgb(22 22 22 / 22%) 8px
+  );
 }
 
 .calendrier-epandage__phenologique {
@@ -143,6 +194,18 @@
 
 .calendrier-epandage__legende-puce--vert {
   background: #c2e8c2;
+}
+
+/* Puce hachuree : meme couleur de fond que la version simple, plus un overlay
+   de bandes diagonales noires pour signaler la presence d'une borne flottante. */
+.calendrier-epandage__legende-puce--flottant {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 2px,
+    rgb(22 22 22 / 35%) 2px,
+    rgb(22 22 22 / 35%) 3px
+  );
 }
 
 /* ─── Header epandage dynamique (issue #28) ─────────────────────────── */

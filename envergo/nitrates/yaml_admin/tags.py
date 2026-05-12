@@ -35,6 +35,7 @@ _REGLE_TYPES = {
     "libre": Tag("libre", "tag-regle-libre", "🟢"),
     "non_applicable": Tag("non applicable", "tag-regle-non-applicable", "⚪"),
     "calculatrice": Tag("calculatrice", "tag-regle-calculatrice", "🧮"),
+    "mixte": Tag("mixte", "tag-regle-mixte", "🔀"),
 }
 
 _CATALOGUE_TAG = Tag("catalogue", "tag-catalogue", "🌍")
@@ -155,3 +156,12 @@ def has_a_completer(noeud: dict) -> bool:
 
 def subtree_has_calculatrice(noeud: dict) -> bool:
     return subtree_matches("calculatrice", noeud)
+
+
+def regime_tag(regime: str | None) -> Tag | None:
+    """Tag visuel pour un `regime` de periode. Reutilise les memes couleurs
+    que les tags de regle (cf. _REGLE_TYPES) pour coherence visuelle :
+    interdiction = rouge, autorisation_sous_condition = orange, etc."""
+    if not regime:
+        return None
+    return _REGLE_TYPES.get(regime)

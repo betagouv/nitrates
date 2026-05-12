@@ -178,7 +178,13 @@ def _descendre_branche(
                 f"renvoi_vers '{cible_id}' ne pointe vers aucun id existant"
             )
         # On marque le renvoi dans le chemin pour que la trace reste lisible.
-        return _faire_resultat(cible, chemin + [f"renvoi_vers:{cible_id}"])
+        new_chemin = chemin + [f"renvoi_vers:{cible_id}"]
+        # Si la cible est un noeud (sous-arbre reutilisable), on re-descend
+        # dedans avec le meme contexte. Sinon (cible = regle), on retourne
+        # directement le resultat.
+        if cible.get("type_noeud") in ("formulaire", "catalogue"):
+            return _descendre(cible, contexte, new_chemin, index_ids)
+        return _faire_resultat(cible, new_chemin)
     raise ParcoursError(f"branche sans noeud/regle/renvoi_vers : {branche!r}")
 
 
@@ -392,6 +398,12 @@ def _build_id_index(arbre: dict) -> dict[str, dict]:
 
 
 def _walk_for_index(noeud: dict, index: dict[str, dict]) -> None:
+    # Index les noeuds aussi pour autoriser renvoi_vers vers un sous-arbre
+    # entier (pattern "include"). Ex: la branche luzerne / type_0 renvoie vers
+    # q_prairie_plus6_type_0_icpe pour reutiliser la question complementaire
+    # ICPE et toutes les feuilles sous-jacentes.
+    if "id" in noeud:
+        index[noeud["id"]] = noeud
     for branche in noeud.get("branches", []):
         if "regle" in branche and "id" in branche["regle"]:
             index[branche["regle"]["id"]] = branche["regle"]

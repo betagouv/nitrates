@@ -13,7 +13,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 {% endcomment %}
 
 <div class="resultat-panel">
-  <h2 class="fr-h3">Réglementations applicables</h2>
+  <h2 class="fr-h3">Réglementation nitrates applicable</h2>
 
   {# ─── Zone vulnérable ─────────────────────────────────────────────── #}
   <div class="resultat-row">
@@ -36,9 +36,11 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
       {% with criterion=entry.criterion ev=entry.evaluator %}
 
         {% if ev.questions_subsidiaires %}
-          {# Parcours en pause sur une question subsidiaire : on remplace tout le
-             rendu resultat (header / calendrier / texte) par le mini-form de QC
-             qui partage le form principal via form="form-simulateur". #}
+          {% comment %}
+          Parcours en pause sur une question subsidiaire : on remplace tout
+          le rendu resultat (header / calendrier / texte) par le mini-form
+          de QC qui partage le form principal via form="form-simulateur".
+          {% endcomment %}
           {% include "nitrates/fragments/_resultat_questions.html" %}
         {% elif ev.regle %}
           {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
@@ -83,16 +85,64 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             </div>
           {% endif %}
 
-          {# Periode d'interdiction (texte) #}
+          {% comment %}
+          Periodes (texte). Pour les regles non-mixtes : "Periode
+          d'interdiction". Pour mixte : on liste chaque periode avec son
+          regime (interdiction / autorisation_sous_condition).
+          {% endcomment %}
           {% if ev.regle.periodes %}
-            <p>
-              <strong>Période d'interdiction :</strong>
-              {% for p in ev.regle.periodes %}
-                du {{ p.du }} au {{ p.au }}
-                {% if not forloop.last %};{% endif %}
-              {% endfor %}
-              .
-            </p>
+            {% if ev.regle.type == "mixte" %}
+              {% comment %}
+              Ordre d'affichage : on remonte les periodes avec borne
+              phenologique (cas particulier "autorise sous condition jusqu'a
+              tel evenement"), puis on rappelle la regle de base avec
+              "Sinon, regle de base :" pour signaler que c'est le fallback.
+              {% endcomment %}
+              <ul class="fr-mb-0">
+                {% for p in ev.regle.periodes %}
+                  {% if p.du|slice:"2:3" != "/" or p.au|slice:"2:3" != "/" %}
+                    <li>
+                      {% if p.regime == "autorisation_sous_condition" %}
+                        <strong>Autorisation sous conditions phénologiques :</strong>
+                      {% elif p.regime == "interdiction" %}
+                        <strong>Interdiction (dates flottantes) :</strong>
+                      {% elif p.regime == "plafonnement" %}
+                        <strong>Plafond (dates flottantes) :</strong>
+                      {% else %}
+                        <strong>{{ p.regime|default:"Période" }} :</strong>
+                      {% endif %}
+                      du {{ p.du }} au {{ p.au }}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+                {% for p in ev.regle.periodes %}
+                  {% if p.du|slice:"2:3" == "/" and p.au|slice:"2:3" == "/" %}
+                    <li>
+                      <em>Sinon, règle de base —</em>
+                      {% if p.regime == "interdiction" %}
+                        <strong>Interdiction :</strong>
+                      {% elif p.regime == "autorisation_sous_condition" %}
+                        <strong>Autorisation sous condition :</strong>
+                      {% elif p.regime == "plafonnement" %}
+                        <strong>Plafond :</strong>
+                      {% else %}
+                        <strong>{{ p.regime|default:"Période" }} :</strong>
+                      {% endif %}
+                      du {{ p.du }} au {{ p.au }}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>
+                <strong>Période d'interdiction :</strong>
+                {% for p in ev.regle.periodes %}
+                  du {{ p.du }} au {{ p.au }}
+                  {% if not forloop.last %};{% endif %}
+                {% endfor %}
+                .
+              </p>
+            {% endif %}
           {% endif %}
 
           {# Plafond (si applicable) #}

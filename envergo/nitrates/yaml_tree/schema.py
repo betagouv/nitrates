@@ -26,6 +26,7 @@ REGLE_SCHEMA = {
                 "libre",
                 "non_applicable",
                 "calculatrice",
+                "mixte",
             ]
         },
         "periodes": {

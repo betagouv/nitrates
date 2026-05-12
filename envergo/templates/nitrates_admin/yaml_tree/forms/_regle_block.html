@@ -14,12 +14,16 @@
      id="regle-block-{{ parent_path|default_if_none:''|slugify }}-{{ valeur|slugify }}">
   <div class="yaml-tree__row">
     <span class="yaml-tree__tags">
-      {% for tag in regle|tags_for:"regle" %}
-        <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
-          {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
-          <span class="yaml-tag__label">{{ tag.label }}</span>
-        </span>
-      {% endfor %}
+      {% if regle.type == "mixte" %}
+        {# type=mixte : pas de tag global. Les regimes apparaissent par periode ci-dessous. #}
+      {% else %}
+        {% for tag in regle|tags_for:"regle" %}
+          <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
+            {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
+            <span class="yaml-tag__label">{{ tag.label }}</span>
+          </span>
+        {% endfor %}
+      {% endif %}
     </span>
     <code class="yaml-tree__id" title="Identifiant technique">{{ regle.id }}</code>
     {% if regle.code_prescription %}
@@ -31,8 +35,17 @@
       <ul class="yaml-tree__periodes">
         {% for p in regle.periodes %}
           <li>
+            {% if p.regime %}
+              {% with tag=p.regime|regime_tag %}
+                {% if tag %}
+                  <span class="yaml-tag {{ tag.css }}" title="{{ tag.label }}">
+                    {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
+                    <span class="yaml-tag__label">{{ tag.label }}</span>
+                  </span>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
             <code>{{ p.du }}</code> → <code>{{ p.au }}</code>
-            {% if p.regime %}<em>({{ p.regime }})</em>{% endif %}
           </li>
         {% endfor %}
       </ul>

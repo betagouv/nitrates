@@ -37,6 +37,7 @@ REGLE_TYPES = (
     "libre",
     "non_applicable",
     "calculatrice",
+    "mixte",
 )
 PERIODE_REGIMES = (
     "interdiction",
@@ -232,6 +233,10 @@ class RegleForm(_BaseYamlForm):
             new_data["inputs_requis"] = [
                 x.strip() for x in inputs_raw.split(",") if x.strip()
             ]
+        # Pour les champs textuels optionnels : on pousse None quand vide pour
+        # signaler explicitement la suppression a editor.update_regle (sinon
+        # la cle absente = on garde l'ancienne valeur, l'utilisateur ne peut
+        # plus vider un champ).
         for key in (
             "code_prescription",
             "note",
@@ -242,8 +247,7 @@ class RegleForm(_BaseYamlForm):
             "plafonnement_associe",
         ):
             val = (cd.get(key) or "").strip()
-            if val:
-                new_data[key] = val
+            new_data[key] = val if val else None
         plafond = cd.get("plafond_azote_kg_n_ha")
         if plafond is not None:
             new_data["plafond_azote_kg_n_ha"] = float(plafond)

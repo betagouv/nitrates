@@ -165,7 +165,13 @@ def update_regle(
         return EditResult.fail([FieldError("", "Règle introuvable à cet emplacement.")])
     current_regle = branche["regle"]
     merged = dict(current_regle)
-    merged.update(new_data)
+    # Convention update_regle : new_data[key] = None signale "supprime cette
+    # cle" (l'utilisateur a vide le champ via le form). Sinon update standard.
+    for k, v in new_data.items():
+        if v is None:
+            merged.pop(k, None)
+        else:
+            merged[k] = v
     # a_completer : si False, on retire la cle plutot que de stocker
     # `a_completer: false` dans le YAML (bruit visuel).
     if merged.get("a_completer") is False:

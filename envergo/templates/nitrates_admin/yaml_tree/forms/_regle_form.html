@@ -32,7 +32,7 @@
         <span>type</span>
         <select name="type" data-regle-type-select>
           <option value="">— (aucun, brouillon)</option>
-          {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+          {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice,mixte"|split:"," %}
             <option value="{{ t }}"{% if regle.type == t %} selected{% endif %}>{{ t }}</option>
           {% endfor %}
         </select>
@@ -52,8 +52,13 @@
     </div>
 
     <fieldset class="yaml-tree__form-fieldset"
-              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement">
+              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte">
       <legend>Périodes (du / au + régime optionnel)</legend>
+      {% if evenements_phenologiques %}
+        <datalist id="evenements-phenologiques-list">
+          {% for ev in evenements_phenologiques %}<option value="{{ ev.slug }}" label="{{ ev.libelle }}"></option>{% endfor %}
+        </datalist>
+      {% endif %}
       {% with regle.periodes|default_if_none:"" as periodes %}
         {% for p in periodes %}
           <div class="yaml-tree__form-row">
@@ -62,13 +67,15 @@
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-du"
                      value="{{ p.du|default_if_none:'' }}"
-                     placeholder="du (JJ/MM)"
-                     style="max-width:14ch">
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-au"
                      value="{{ p.au|default_if_none:'' }}"
-                     placeholder="au (JJ/MM)"
-                     style="max-width:14ch">
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
               <select name="periodes-{{ forloop.counter0 }}-regime"
                       data-regime-select
                       style="max-width:22ch">
@@ -92,13 +99,15 @@
             <input type="text"
                    name="periodes-{{ regle.periodes|length|default:0 }}-du"
                    value=""
-                   placeholder="du (JJ/MM)"
-                   style="max-width:14ch">
+                   placeholder="JJ/MM ou événement"
+                   list="evenements-phenologiques-list"
+                   style="max-width:24ch">
             <input type="text"
                    name="periodes-{{ regle.periodes|length|default:0 }}-au"
                    value=""
-                   placeholder="au (JJ/MM)"
-                   style="max-width:14ch">
+                   placeholder="JJ/MM ou événement"
+                   list="evenements-phenologiques-list"
+                   style="max-width:24ch">
             <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
                     data-regime-select
                     style="max-width:22ch">
@@ -238,16 +247,16 @@
         const apply = () => {
           const t = typeSelect.value;
           const sousCondition = t === 'autorisation_sous_condition';
-          // regime par periode + condition : visibles uniquement quand
-          // type=autorisation_sous_condition. Convention grammaire : la
-          // regle ne peut raffiner que VERS PLUS RESTRICTIF (sous condition
-          // → interdit), pas l'inverse. Donc le selecteur regime n'a de
-          // sens que sur une regle parente "autorisation_sous_condition".
+          const mixte = t === 'mixte';
+          // regime par periode : visible quand type=autorisation_sous_condition
+          // (raffinement vers plus restrictif) ou type=mixte (regime obligatoire
+          // par periode, plusieurs regimes distincts coexistent).
+          // condition (texte_condition) : seulement pour autorisation_sous_condition.
           // On NE PURGE JAMAIS sel.value : un switch de type ne doit pas
           // detruire silencieusement les regimes par-periode existants.
           // Le validator backend assure la coherence au save.
           regimeSelects.forEach(sel => {
-            sel.style.display = sousCondition ? '' : 'none';
+            sel.style.display = sousCondition || mixte ? '' : 'none';
           });
           if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
           // fieldsets et rows marques avec data-type-fieldset/row

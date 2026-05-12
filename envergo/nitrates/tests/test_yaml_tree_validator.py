@@ -535,15 +535,25 @@ def test_regime_periode_raffine_vers_plus_permissif_rejete():
 
 
 def test_regime_periode_inconnu_rejete():
-    """Un regime inconnu (typo, valeur libre) est refuse."""
+    """Un regime inconnu (typo, valeur libre) est refuse.
+
+    Soit le JSON Schema attrape (enum restreint), soit le check semantique
+    de regimes_coherents. Les deux messages sont acceptables tant que la
+    validation echoue."""
     with pytest.raises(ValidationError) as exc:
         validate_arbre(_arbre_avec_type_et_regime("interdiction", "yolo"))
-    assert any("regime" in e and "inconnu" in e for e in exc.value.errors)
+    assert any(
+        "regime" in e and ("inconnu" in e or "is not one of" in e)
+        for e in exc.value.errors
+    )
 
     # `calculatrice` est un type de regle, pas un regime de periode.
     with pytest.raises(ValidationError) as exc:
         validate_arbre(_arbre_avec_type_et_regime("interdiction", "calculatrice"))
-    assert any("regime" in e and "inconnu" in e for e in exc.value.errors)
+    assert any(
+        "regime" in e and ("inconnu" in e or "is not one of" in e)
+        for e in exc.value.errors
+    )
 
 
 def test_periode_sans_regime_passe_retro_compat():

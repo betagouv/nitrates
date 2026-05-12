@@ -16,8 +16,10 @@
   --tag-fg-form-comp: #880e4f;
   --tag-bg-interdiction: #ffebee;
   --tag-fg-interdiction: #b71c1c;
-  --tag-bg-autorisation: #e8f5e9;
-  --tag-fg-autorisation: #1b5e20;
+  --tag-bg-autorisation: #fff3e0;
+  --tag-fg-autorisation: #e65100;
+  --tag-bg-mixte: #ede7f6;
+  --tag-fg-mixte: #311b92;
   --tag-bg-plafonnement: #f3e5f5;
   --tag-fg-plafonnement: #4a148c;
   --tag-bg-libre: #e0f2f1;
@@ -179,7 +181,12 @@
 .yaml-tree__edit-actions {
   display: inline-flex;
   gap: 0.15rem;
-  margin-left: 0.5rem;
+
+  /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
+     Avec margin-left:auto en flex container, le span occupe l'espace
+     residuel apres les autres elements, ce qui le pousse a droite. */
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .yaml-tree__edit-btn {
@@ -1202,6 +1209,11 @@ details[open] > summary.yaml-tree__row::before {
 .tag-regle-calculatrice {
   background: var(--tag-bg-calc);
   color: var(--tag-fg-calc);
+}
+
+.tag-regle-mixte {
+  background: var(--tag-bg-mixte);
+  color: var(--tag-fg-mixte);
 }
 
 .tag-renvoi {

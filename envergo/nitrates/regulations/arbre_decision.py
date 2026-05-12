@@ -219,6 +219,22 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         infos metier (periodes, plafond, etc.) sur l'evaluator pour le
         template."""
         result = TYPE_REGLE_TO_RESULT.get(res.type, RESULTS.non_disponible)
+        # Cas mixte : on resout sur le regime le plus restrictif trouve dans
+        # les periodes (interdiction > plafonnement > autorisation_sous_condition
+        # > libre). Coherent avec l'affichage : si une periode interdit, le
+        # statut global doit le reporter.
+        if res.type == "mixte":
+            severite = {
+                "interdiction": 0,
+                "plafonnement": 1,
+                "autorisation_sous_condition": 2,
+                "libre": 3,
+            }
+            periodes = res.periodes or []
+            regimes = [p.get("regime") for p in periodes if p.get("regime")]
+            if regimes:
+                pire = min(regimes, key=lambda r: severite.get(r, 99))
+                result = TYPE_REGLE_TO_RESULT.get(pire, RESULTS.non_disponible)
         # Cas a_completer : meme si le mapping a donne autre chose, on
         # force non_disponible parce qu'on ne veut pas afficher un
         # resultat partiel issu d'un stub brouillon.

@@ -9,13 +9,9 @@
     </ul>
   {% elif branche.regle %}
     {% include "nitrates_admin/yaml_tree/_regle.html" with regle=branche.regle parent_path=ancestors_path valeur=branche.valeur %}
-  {% elif branche.renvoi_vers %}
-    <div class="yaml-tree__renvoi">
-      <span class="yaml-tag tag-renvoi" title="Renvoi vers une règle existante">
-        <span class="yaml-tag__icon" aria-hidden="true">↪️</span>
-        <span class="yaml-tag__label">renvoi</span>
-      </span>
-      <code class="yaml-tree__renvoi-target">→ {{ branche.renvoi_vers }}</code>
-    </div>
   {% endif %}
+  {% comment %}
+  Le rendu de renvoi_vers est maintenant inclus dans _branche_block.html
+  pour qu'un htmx swap apres edition reflete la nouvelle cible.
+  {% endcomment %}
 </li>

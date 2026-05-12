@@ -251,6 +251,37 @@
         appliquerHash();
         window.addEventListener('hashchange', appliquerHash);
 
+        // ─── Preserve state on "Editer cet arbre" / "Editer ce brouillon" ─
+        // Quand l'utilisateur clique sur le bouton global "Editer", on veut
+        // pouvoir revenir au meme endroit dans l'arbre apres redirect. Pour
+        // ca on cherche la regle (ou noeud) visible la plus proche du centre
+        // du viewport, on l'ajoute en #regle=<id>&edit=1 dans l'URL cible.
+        function trouverRegleVisible() {
+          const centerY = window.innerHeight / 2;
+          let best = null;
+          let bestDist = Infinity;
+          for (const code of document.querySelectorAll('.yaml-tree__id')) {
+            const r = code.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > window.innerHeight) continue;
+            const mid = (r.top + r.bottom) / 2;
+            const dist = Math.abs(mid - centerY);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = code.textContent.trim();
+            }
+          }
+          return best;
+        }
+
+        document.addEventListener('click', (e) => {
+          const a = e.target.closest('a[data-preserve-state]');
+          if (!a) return;
+          const rid = trouverRegleVisible();
+          if (!rid) return;
+          const sep = a.href.includes('#') ? '&' : '#';
+          a.href = a.href + sep + 'regle=' + encodeURIComponent(rid) + '&edit=1';
+        }, true);
+
         // ─── 3. Bouton "🔗 copier lien" sur chaque ligne ─────────────────
         // Visible uniquement quand "Afficher les identifiants techniques"
         // est ON (sinon on n'expose pas les regle_id en clair).

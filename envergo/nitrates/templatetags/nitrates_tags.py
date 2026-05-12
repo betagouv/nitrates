@@ -5,9 +5,12 @@ le type de la regle atteinte (interdiction rouge, libre vert, etc.) avec
 overlay des periodes specifiques tirees du YAML.
 """
 
+import re
 from datetime import date
 
 from django import template
+
+DATE_JJMM_RE = re.compile(r"^\d{2}/\d{2}$")
 
 register = template.Library()
 
@@ -42,6 +45,7 @@ _FOND_PAR_TYPE = {
     "non_applicable": "gris",
     "calculatrice": "orange",
     "a_completer": "gris",
+    "mixte": "vert",  # fond vert, chaque periode rend son regime en overlay
 }
 
 # Couleur de la zone overlay selon le type / regime effectif.
@@ -55,13 +59,14 @@ _COULEUR_ZONE_PAR_TYPE = {
 }
 
 _LABEL_PAR_TYPE = {
-    "interdiction": "Épandage interdit",
-    "autorisation_sous_condition": "Sous conditions",
-    "plafonnement": "Plafond",
-    "libre": "Épandage autorisé",
+    "interdiction": "Calendrier d'épandage",
+    "autorisation_sous_condition": "Calendrier d'épandage",
+    "plafonnement": "Calendrier d'épandage",
+    "libre": "Calendrier d'épandage",
     "non_applicable": "Ne s'applique pas",
     "calculatrice": "Calcul nécessaire",
     "a_completer": "À compléter",
+    "mixte": "Calendrier d'épandage",
 }
 
 # Annee agricole : on commence le 1er juillet pour que les periodes
@@ -103,13 +108,28 @@ def _day_of_year(jour: int, mois: int) -> int:
 
 
 def _parse_jjmm(s: str) -> tuple[int, int] | None:
-    """Parse 'JJ/MM' -> (jour, mois). Retourne None pour les valeurs non
-    parsables (ex: 'brunissement_soies', evenement phenologique)."""
+    """Parse 'JJ/MM' -> (jour, mois). Pour un evenement phenologique (ex:
+    'brunissement_soies'), retombe sur la `date_calendrier` definie dans
+    referentiels.yaml > evenements_phenologiques. Si rien ne matche, None.
+    """
+    if not s:
+        return None
     try:
         jour, mois = s.split("/")
         return int(jour), int(mois)
     except (ValueError, AttributeError):
-        return None
+        pass
+    # Fallback evenement phenologique -> date conventionnelle calendrier.
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ev = (load_referentiels().get("evenements_phenologiques") or {}).get(s)
+        if ev and ev.get("date_calendrier"):
+            jour, mois = ev["date_calendrier"].split("/")
+            return int(jour), int(mois)
+    except Exception:
+        pass
+    return None
 
 
 def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
@@ -470,6 +490,12 @@ def calendrier_epandage(regle):
             # rien pour cette periode (le fond suffit a porter le sens).
             continue
         seg = _segment_interdit(p)
+        # is_flottant : au moins une borne est phenologique (date conventionnelle
+        # arbitraire). On signale visuellement via un hachure dans le rendu pour
+        # que l'utilisateur comprenne que la borne reelle depend du climat.
+        is_flottant = bool(
+            p.get("du") and not DATE_JJMM_RE.match(str(p["du"]))
+        ) or bool(p.get("au") and not DATE_JJMM_RE.match(str(p["au"])))
         if seg:
             for start, width in seg:
                 segments.append(
@@ -477,6 +503,7 @@ def calendrier_epandage(regle):
                         "start_pct": start,
                         "width_pct": width,
                         "couleur": couleur,
+                        "is_flottant": is_flottant,
                     }
                 )
         else:
@@ -495,13 +522,25 @@ def calendrier_epandage(regle):
     for p in periodes:
         if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
             seg = _segment_interdit(p)
-            bornes_brutes.append({"label": p["du"], "pct": seg[0][0]})
+            bornes_brutes.append(
+                {
+                    "label": p["du"],
+                    "pct": seg[0][0],
+                    "is_phenologique": not DATE_JJMM_RE.match(str(p["du"])),
+                }
+            )
             if len(seg) == 1:
                 end_pct = seg[0][0] + seg[0][1]
             else:
                 # Cas pivot : la fin est sur le 2e segment
                 end_pct = seg[1][0] + seg[1][1]
-            bornes_brutes.append({"label": p["au"], "pct": end_pct})
+            bornes_brutes.append(
+                {
+                    "label": p["au"],
+                    "pct": end_pct,
+                    "is_phenologique": not DATE_JJMM_RE.match(str(p["au"])),
+                }
+            )
 
     # Deduplication par couple (label, pct~). 2 bornes a moins de 1% de
     # distance avec le meme label sont fusionnees en une seule.
@@ -518,6 +557,57 @@ def calendrier_epandage(regle):
         if not deja:
             bornes.append(b)
 
+    # Empilage deterministe : dates fixes (JJ/MM) toujours en row=0 (ligne du
+    # haut, position canonique), dates phenologiques toujours en row=1 (ligne
+    # du bas, avec trait diagonal qui pointe vers l'ancre). Garantit que le
+    # rendu d'une date fixe est toujours au meme endroit, peu importe la
+    # presence d'une date flottante a cote.
+    for b in bornes:
+        b["row"] = 1 if b.get("is_phenologique") else 0
+
+    # Legende dynamique : on liste uniquement les categories presentes dans
+    # le calendrier (interdit / autorise sous condition / plafonnement) et on
+    # signale les segments a date flottante via une variante hachuree
+    # "Autorise sous conditions phenologiques".
+    legende = []
+    couleurs_simples = set()
+    couleurs_flottantes = set()
+    for seg in segments:
+        if seg.get("is_flottant"):
+            couleurs_flottantes.add(seg["couleur"])
+        else:
+            couleurs_simples.add(seg["couleur"])
+    libelle_legende = {
+        "rouge": "Interdit",
+        "orange": "Autorisé sous condition",
+        "violet": "Plafond",
+    }
+    libelle_legende_flottant = {
+        "orange": "Autorisé sous conditions phénologiques",
+        "rouge": "Interdit (dates flottantes)",
+        "violet": "Plafond (dates flottantes)",
+    }
+    for couleur in ("rouge", "orange", "violet"):
+        if couleur in couleurs_simples:
+            legende.append(
+                {
+                    "couleur": couleur,
+                    "label": libelle_legende.get(couleur, couleur),
+                    "flottant": False,
+                }
+            )
+        if couleur in couleurs_flottantes:
+            legende.append(
+                {
+                    "couleur": couleur,
+                    "label": libelle_legende_flottant.get(couleur, couleur),
+                    "flottant": True,
+                }
+            )
+    # Le fond "Autorise" (vert) est toujours present quand fond=vert.
+    if fond == "vert":
+        legende.append({"couleur": "vert", "label": "Autorisé", "flottant": False})
+
     return {
         "vide": False,
         "mois": _MOIS_LABELS,
@@ -528,4 +618,5 @@ def calendrier_epandage(regle):
         "bornes": bornes,
         "periodes_phenologiques": periodes_phenologiques,
         "regle_type": regle_type,
+        "legende": legende,
     }

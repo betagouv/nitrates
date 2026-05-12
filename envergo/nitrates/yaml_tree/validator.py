@@ -64,6 +64,7 @@ def validate_arbre(
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
     errors.extend(_check_regimes_coherents(arbre))
+    errors.extend(_check_regime_mixte(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -285,8 +286,64 @@ def _check_regimes_coherents(arbre: dict) -> list[str]:
                     f"parent {rtype!r}. Une periode ne peut raffiner que "
                     f"vers PLUS RESTRICTIF (convention grammaire 2026-05-08). "
                     f"Si l'intention est d'avoir un regime mixte, declarer "
-                    f"type='autorisation_sous_condition' au niveau regle."
+                    f"type='mixte' au niveau regle."
                 )
+    return errors
+
+
+# ─── Type "mixte" : exige >=2 regimes distincts dans les periodes ──────────
+
+
+def _check_regime_mixte(arbre: dict) -> list[str]:
+    """Pour `type=mixte`, chaque periode doit declarer son `regime` et il
+    faut au moins 2 regimes distincts (sinon `mixte` n'a pas de sens : la
+    regle devrait declarer le type unique de ses periodes).
+
+    Convention 2026-05-11 : `mixte` exprime explicitement la coexistence
+    de plusieurs regimes dans une meme regle (ex. autorisation_sous_condition
+    sur une fenetre + interdiction sur une autre). Plus carre que de declarer
+    `type=autorisation_sous_condition` + periode `regime=interdiction` (qui
+    laissait penser que toute la regle etait permissive).
+    """
+    errors: list[str] = []
+    regimes_valides = {
+        "interdiction",
+        "plafonnement",
+        "autorisation_sous_condition",
+        "libre",
+    }
+    for obj in _walk_objects(arbre):
+        if obj.get("type") != "mixte":
+            continue
+        rid = obj.get("id")
+        periodes = obj.get("periodes") or []
+        if len(periodes) < 2:
+            errors.append(
+                f"[mixte] regle '{rid}' : type='mixte' exige au moins 2 periodes "
+                f"(avec regimes distincts). Trouve : {len(periodes)}."
+            )
+            continue
+        regimes_vus: set[str] = set()
+        for i, periode in enumerate(periodes, start=1):
+            preg = periode.get("regime")
+            if not preg:
+                errors.append(
+                    f"[mixte] regle '{rid}' periode #{i} : `regime` obligatoire "
+                    f"sur chaque periode quand type='mixte' (pas d'heritage)."
+                )
+                continue
+            if preg not in regimes_valides:
+                errors.append(
+                    f"[mixte] regle '{rid}' periode #{i} : regime={preg!r} "
+                    f"invalide (attendu : {sorted(regimes_valides)})."
+                )
+                continue
+            regimes_vus.add(preg)
+        if len(regimes_vus) < 2:
+            errors.append(
+                f"[mixte] regle '{rid}' : type='mixte' exige >=2 regimes "
+                f"distincts dans les periodes. Trouve : {sorted(regimes_vus)}."
+            )
     return errors
 
 

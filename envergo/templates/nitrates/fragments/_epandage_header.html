@@ -17,11 +17,7 @@ Inputs (cf. epandage_header templatetag) :
      data-statut-code="{{ statut.code }}"
      data-statut-couleur="{{ statut.couleur }}">
   <div class="epandage-header__row">
-    <span class="epandage-header__title">Épandage <strong>aujourd'hui</strong></span>
-    <span class="epandage-header__date-badge">
-      <span class="epandage-header__date">en date du {{ today_fr }} :</span>
-      <span class="epandage-header__badge epandage-header__badge--{{ statut.couleur }}">{{ statut.libelle|upper }}</span>
-    </span>
+    <span class="epandage-header__title">Épandage <strong>du jour</strong></span>
   </div>
   {% if phrase %}<p class="epandage-header__phrase">{{ phrase }}</p>{% endif %}
 </div>

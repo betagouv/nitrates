@@ -121,10 +121,12 @@
                         class="fr-mt-2w subsidiaires-form"
                         data-subsidiaires>
 
-                    {# Conserve les params actuels comme hidden inputs.
-                       Important : on n'inclut PAS les champs des questions
-                       en cours (selects en aval) pour eviter d'avoir 2
-                       inputs avec le meme name. #}
+                    {% comment %}
+                    Conserve les params actuels comme hidden inputs.
+                    Important : on n'inclut PAS les champs des questions
+                    en cours (selects en aval) pour eviter d'avoir 2
+                    inputs avec le meme name.
+                    {% endcomment %}
                     {% with subsidiary_fields=ev.questions_subsidiaires.champs_set %}
                       {% for key, value in data.items %}
                         {% if value and key not in subsidiary_fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}

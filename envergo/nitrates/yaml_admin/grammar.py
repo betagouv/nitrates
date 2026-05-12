@@ -42,6 +42,7 @@ REGLE_TYPES = [
     "libre",
     "non_applicable",
     "calculatrice",
+    "mixte",
 ]
 
 CATALOGUE_SOURCES = ["sig", "mapping_referentiel", "calcul"]
