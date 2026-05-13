@@ -1,23 +1,29 @@
 // Cascade en RADIO BUTTONS DSFR du formulaire /simulateur/.
 //
-// Ordre de cascade UX :
-//   1. occupation_sol     -> depuis l'arbre PAN (q_occupation_sol)
-//   2. sous_culture       -> depuis l'arbre PAN (q_culture_principale_type, etc.)
-//   3. categorie_fertilisant -> depuis referentiels.categories_fertilisants
-//   4. sous_fertilisant   -> depuis categories_fertilisants[X].sous_fertilisants
-//   5. type_fertilisant   -> RESOLU via mapping_sous_fertilisant_vers_type
-//                            stocke dans un input hidden, envoye au serveur
+// Ordre de cascade UX (5 niveaux visibles) :
+//   1. categorie_culture  -> referentiels.categories_cultures
+//   2. sous_culture_form  -> categories_cultures[X].sous_cultures (filtre)
+//   3. categorie_fertilisant -> referentiels.categories_fertilisants
+//   4. sous_fertilisant   -> categories_fertilisants[X].sous_fertilisants
 //
-// Chaque niveau a un conteneur `<div data-cascade="<champ>">` que ce JS
-// remplit avec les `fr-radio-group` correspondants. Les niveaux suivants
-// sont caches tant que le parent n'est pas selectionne.
+// Hidden inputs resolus cote front et envoyes au backend :
+//   - occupation_sol      : via mapping_sous_culture_vers_branche
+//   - sous_culture        : via mapping_sous_culture_vers_branche
+//   - type_fertilisant    : via mapping_sous_fertilisant_vers_type
+//   - culture_irriguee_type, prairie_permanente, sous_culture_couvert :
+//     flags optionnels remplis depuis mapping_sous_culture_vers_branche
+//     pour court-circuiter des questions complementaires.
+//
+// Cas special : "sol_non_cultive" en categorie_culture n'a pas de
+// sous-categorie. On saute directement le niveau 2 et on rempli les
+// hidden inputs occupation_sol=sol_non_cultive direct.
 
 (function () {
   "use strict";
 
   const FIELDS = [
-    "occupation_sol",
-    "sous_culture",
+    "categorie_culture",
+    "sous_culture_form",
     "categorie_fertilisant",
     "sous_fertilisant",
   ];
@@ -26,61 +32,42 @@
   for (const champ of FIELDS) {
     containers[champ] = document.querySelector(`[data-cascade="${champ}"]`);
   }
-  if (!containers.occupation_sol) return;
+  if (!containers.categorie_culture) return;
 
+  const occupationSolHidden = document.getElementById("id_occupation_sol");
+  const sousCultureHidden = document.getElementById("id_sous_culture");
+  const cultureIrrigueeTypeHidden = document.getElementById(
+    "id_culture_irriguee_type"
+  );
+  const prairiePermanenteHidden = document.getElementById(
+    "id_prairie_permanente"
+  );
+  const sousCultureCouvertHidden = document.getElementById(
+    "id_sous_culture_couvert"
+  );
   const typeFertilisantHidden = document.getElementById("id_type_fertilisant");
+
   const initial = window.NITRATES_INITIAL_DATA || {};
 
-  let arbre = null;
   let referentiels = null;
 
-  Promise.all([
-    fetch(window.NITRATES_ARBRE_URL).then((r) => r.json()),
-    fetch(window.NITRATES_REFERENTIELS_URL).then((r) => r.json()),
-  ])
-    .then(([a, r]) => {
-      arbre = a;
+  fetch(window.NITRATES_REFERENTIELS_URL)
+    .then((r) => r.json())
+    .then((r) => {
       referentiels = r;
       initialiser();
     })
     .catch((err) => {
-      console.error("Cascade : echec du chargement arbre/referentiels", err);
+      console.error("Cascade : echec du chargement referentiels", err);
     });
 
-  // ─── Helpers de descente dans l'arbre ─────────────────────────────────
-
-  function noeudFormulairePourChamp(racine, champ) {
-    if (!racine) return null;
-    if (racine.type_noeud === "formulaire" && racine.champ === champ) {
-      return racine;
-    }
-    let valeurChoisie;
-    if (racine.type_noeud === "catalogue" && racine.id === "n_zvn") {
-      valeurChoisie = true;
-    } else {
-      valeurChoisie = currentValue(racine.champ);
-    }
-    if (valeurChoisie === "" || valeurChoisie === undefined) return null;
-    const branche = (racine.branches || []).find(
-      (b) => String(b.valeur) === String(valeurChoisie)
-    );
-    if (!branche || !branche.noeud) return null;
-    return noeudFormulairePourChamp(branche.noeud, champ);
-  }
+  // ─── Helpers ──────────────────────────────────────────────────────────
 
   function currentValue(champ) {
-    if (!FIELDS.includes(champ)) return "";
     const checked = document.querySelector(
       `input[type="radio"][name="${champ}"]:checked`
     );
     return checked ? checked.value : "";
-  }
-
-  // ─── Rendu des radio groups ────────────────────────────────────────────
-
-  function libelleChoix(choix) {
-    if (choix.libelle) return choix.libelle;
-    return choix.valeur;
   }
 
   function montrerWrapper(champ) {
@@ -92,65 +79,109 @@
     if (wrapper) wrapper.hidden = true;
   }
 
-  function rendreRadiosDepuisNoeud(champ, noeud, valeurInitiale) {
-    const container = containers[champ];
+  function viderContainer(champ) {
+    const c = containers[champ];
+    if (!c) return;
+    c.innerHTML = "";
+    c.hidden = true;
+    cacherWrapper(champ);
+  }
+
+  function slug(s) {
+    return String(s)
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .toLowerCase();
+  }
+
+  function rendreRadio(container, champ, valeur, libelle, checked) {
+    const id = `id_${champ}__${slug(valeur)}`;
+    const wrapper = document.createElement("div");
+    wrapper.className = "fr-radio-group";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.id = id;
+    input.name = champ;
+    input.value = String(valeur);
+    if (checked) input.checked = true;
+    input.addEventListener("change", () => onChangeChamp(champ));
+    const label = document.createElement("label");
+    label.className = "fr-label";
+    label.htmlFor = id;
+    label.textContent = libelle || valeur;
+    wrapper.appendChild(input);
+    wrapper.appendChild(label);
+    container.appendChild(wrapper);
+  }
+
+  // ─── Rendu de chaque niveau ───────────────────────────────────────────
+
+  function rendreCategoriesCultures() {
+    const container = containers.categorie_culture;
     container.innerHTML = "";
     container.hidden = false;
-    montrerWrapper(champ);
-    for (const branche of noeud.branches || []) {
-      const id = `id_${champ}__${slug(branche.valeur)}`;
-      const wrapper = document.createElement("div");
-      wrapper.className = "fr-radio-group";
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.id = id;
-      input.name = champ;
-      input.value = String(branche.valeur);
-      if (String(valeurInitiale) === String(branche.valeur)) {
-        input.checked = true;
-      }
-      input.addEventListener("change", () => onChangeChamp(champ));
-      const label = document.createElement("label");
-      label.className = "fr-label";
-      label.htmlFor = id;
-      label.textContent = libelleChoix({
-        valeur: branche.valeur,
-        libelle: branche.libelle,
-      });
-      wrapper.appendChild(input);
-      wrapper.appendChild(label);
-      container.appendChild(wrapper);
+    montrerWrapper("categorie_culture");
+    const cats = (referentiels || {}).categories_cultures || {};
+    for (const [cle, meta] of Object.entries(cats)) {
+      rendreRadio(
+        container,
+        "categorie_culture",
+        cle,
+        meta.libelle_public || cle,
+        initial.categorie_culture === cle
+      );
     }
   }
 
-  function rendreRadiosCategoriesFertilisant() {
+  function rendreSousCulturesForm() {
+    const container = containers.sous_culture_form;
+    container.innerHTML = "";
+    const categorie = currentValue("categorie_culture");
+    if (!categorie) {
+      container.hidden = true;
+      cacherWrapper("sous_culture_form");
+      return;
+    }
+    const cats = (referentiels || {}).categories_cultures || {};
+    const sousCultures = (referentiels || {}).sous_cultures || {};
+    const cles = (cats[categorie] || {}).sous_cultures || [];
+    if (cles.length === 0) {
+      // Cas sol_non_cultive : pas de sous-categorie, on cache.
+      container.hidden = true;
+      cacherWrapper("sous_culture_form");
+      return;
+    }
+    container.hidden = false;
+    montrerWrapper("sous_culture_form");
+    for (const sc of cles) {
+      const meta = sousCultures[sc] || {};
+      rendreRadio(
+        container,
+        "sous_culture_form",
+        sc,
+        meta.libelle_public || sc,
+        initial.sous_culture_form === sc
+      );
+    }
+  }
+
+  function rendreCategoriesFertilisant() {
     const container = containers.categorie_fertilisant;
     container.innerHTML = "";
     container.hidden = false;
     montrerWrapper("categorie_fertilisant");
     const cats = (referentiels || {}).categories_fertilisants || {};
     for (const [cle, meta] of Object.entries(cats)) {
-      const id = `id_categorie_fertilisant__${slug(cle)}`;
-      const wrapper = document.createElement("div");
-      wrapper.className = "fr-radio-group";
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.id = id;
-      input.name = "categorie_fertilisant";
-      input.value = cle;
-      if (initial.categorie_fertilisant === cle) input.checked = true;
-      input.addEventListener("change", () => onChangeChamp("categorie_fertilisant"));
-      const label = document.createElement("label");
-      label.className = "fr-label";
-      label.htmlFor = id;
-      label.textContent = meta.libelle_public || cle;
-      wrapper.appendChild(input);
-      wrapper.appendChild(label);
-      container.appendChild(wrapper);
+      rendreRadio(
+        container,
+        "categorie_fertilisant",
+        cle,
+        meta.libelle_public || cle,
+        initial.categorie_fertilisant === cle
+      );
     }
   }
 
-  function rendreRadiosSousFertilisantPourCategorie() {
+  function rendreSousFertilisantPourCategorie() {
     const container = containers.sous_fertilisant;
     container.innerHTML = "";
     const categorie = currentValue("categorie_fertilisant");
@@ -166,30 +197,55 @@
     montrerWrapper("sous_fertilisant");
     for (const sf of cles) {
       const meta = sousFerts[sf] || {};
-      const id = `id_sous_fertilisant__${slug(sf)}`;
-      const wrapper = document.createElement("div");
-      wrapper.className = "fr-radio-group";
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.id = id;
-      input.name = "sous_fertilisant";
-      input.value = sf;
-      if (initial.sous_fertilisant === sf) input.checked = true;
-      input.addEventListener("change", () => onChangeChamp("sous_fertilisant"));
-      const label = document.createElement("label");
-      label.className = "fr-label";
-      label.htmlFor = id;
-      label.textContent = meta.libelle_public || sf;
-      wrapper.appendChild(input);
-      wrapper.appendChild(label);
-      container.appendChild(wrapper);
+      rendreRadio(
+        container,
+        "sous_fertilisant",
+        sf,
+        meta.libelle_public || sf,
+        initial.sous_fertilisant === sf
+      );
     }
   }
 
-  function viderContainer(champ) {
-    const c = containers[champ];
-    c.innerHTML = "";
-    c.hidden = true;
+  // ─── Resolution des hidden inputs ─────────────────────────────────────
+
+  function resoudreOccupationSousCulture() {
+    if (!occupationSolHidden) return;
+    // Reset des hidden flags. Les hidden form_field=value du POST initial
+    // sont preserves seulement quand on est en init replay (pas userDriven).
+    if (cultureIrrigueeTypeHidden) cultureIrrigueeTypeHidden.value = "";
+    if (prairiePermanenteHidden) prairiePermanenteHidden.value = "";
+    if (sousCultureCouvertHidden) sousCultureCouvertHidden.value = "";
+
+    const cat = currentValue("categorie_culture");
+    if (cat === "sol_non_cultive") {
+      occupationSolHidden.value = "sol_non_cultive";
+      if (sousCultureHidden) sousCultureHidden.value = "";
+      return;
+    }
+    const sc = currentValue("sous_culture_form");
+    if (!sc) {
+      occupationSolHidden.value = "";
+      if (sousCultureHidden) sousCultureHidden.value = "";
+      return;
+    }
+    const mapping =
+      (referentiels || {}).mapping_sous_culture_vers_branche || {};
+    const target = mapping[sc] || {};
+    occupationSolHidden.value = target.occupation_sol || "";
+    if (sousCultureHidden)
+      sousCultureHidden.value = target.sous_culture || "";
+    // Application des flags optionnels.
+    const flags = target.flags || {};
+    if (cultureIrrigueeTypeHidden && flags.culture_irriguee_type) {
+      cultureIrrigueeTypeHidden.value = flags.culture_irriguee_type;
+    }
+    if (prairiePermanenteHidden && flags.prairie_permanente !== undefined) {
+      prairiePermanenteHidden.value = String(flags.prairie_permanente);
+    }
+    if (sousCultureCouvertHidden && flags.sous_culture_couvert) {
+      sousCultureCouvertHidden.value = flags.sous_culture_couvert;
+    }
   }
 
   function resoudreTypeFertilisant() {
@@ -204,94 +260,87 @@
     typeFertilisantHidden.value = mapping[sf] || "";
   }
 
-  function slug(s) {
-    return String(s)
-      .replace(/[^a-zA-Z0-9_-]/g, "_")
-      .toLowerCase();
-  }
-
   // ─── Initialisation et propagation ────────────────────────────────────
 
   function initialiser() {
-    // Niveau 1 : occupation_sol
-    const noeud = noeudFormulairePourChamp(arbre.arbre.noeud, "occupation_sol");
-    if (noeud) {
-      rendreRadiosDepuisNoeud(
-        "occupation_sol",
-        noeud,
-        initial.occupation_sol
-      );
-    }
-    // Si occupation_sol est deja choisi (initial), on propage en aval
-    // (mode init replay, on ne reset pas le hidden type_fertilisant).
-    if (initial.occupation_sol) onChangeChamp("occupation_sol", false);
+    rendreCategoriesCultures();
+    if (initial.categorie_culture) onChangeChamp("categorie_culture", false);
   }
 
   // `userDriven` distingue un click utilisateur (true) d'un replay au
-  // chargement initial (false). En replay, on ne touche pas au hidden
-  // type_fertilisant (sinon on ecrase les valeurs deja resolues lorsque
-  // le serveur a re-render avec un type_fertilisant present, par ex.
-  // une question complementaire qui re-injecte le type pour avancer
-  // dans le parcours).
+  // chargement initial (false). En replay, on ne touche pas aux hidden
+  // inputs (sinon on ecrase les valeurs deja resolues, ex apres une
+  // question complementaire qui re-injecte des champs).
   function onChangeChamp(champSource, userDriven) {
     if (userDriven === undefined) userDriven = true;
-    const order = FIELDS;
-    const idxSource = order.indexOf(champSource);
+    const idxSource = FIELDS.indexOf(champSource);
 
     // Reset des niveaux en aval
-    for (let i = idxSource + 1; i < order.length; i++) {
-      viderContainer(order[i]);
+    for (let i = idxSource + 1; i < FIELDS.length; i++) {
+      viderContainer(FIELDS[i]);
     }
-    // Reset hidden type_fertilisant si l'utilisateur a touche a quelque
-    // chose en amont de sous_fertilisant. En init replay, on respecte
-    // la valeur deja presente (peut venir de l'URL ou d'une QC).
-    if (userDriven && idxSource < order.indexOf("sous_fertilisant")) {
-      if (typeFertilisantHidden) typeFertilisantHidden.value = "";
+
+    if (userDriven) {
+      // L'user a touche en amont -> on reset les hidden inputs concernes.
+      if (idxSource <= FIELDS.indexOf("sous_culture_form")) {
+        resoudreOccupationSousCulture();
+      }
+      if (idxSource <= FIELDS.indexOf("sous_fertilisant")) {
+        if (typeFertilisantHidden) typeFertilisantHidden.value = "";
+      }
     }
 
     if (!currentValue(champSource)) return;
 
-    // Peupler le suivant
-    const champSuivant = order[idxSource + 1];
-    if (!champSuivant) {
-      // Plus rien apres, on resout le type_fertilisant
-      if (champSource === "sous_fertilisant") {
-        resoudreTypeFertilisant();
-      }
-      return;
-    }
+    const champSuivant = FIELDS[idxSource + 1];
 
-    if (champSuivant === "sous_culture") {
-      const noeud = noeudFormulairePourChamp(arbre.arbre.noeud, "sous_culture");
-      if (noeud) {
-        rendreRadiosDepuisNoeud("sous_culture", noeud, initial.sous_culture);
-        if (initial.sous_culture && currentValue("sous_culture")) {
-          onChangeChamp("sous_culture", false);
-        }
-      } else {
-        // Pas de sous_culture (court-circuit) : passer direct au fertilisant
-        rendreRadiosCategoriesFertilisant();
-        if (initial.categorie_fertilisant && currentValue("categorie_fertilisant")) {
+    if (champSource === "categorie_culture") {
+      const cat = currentValue("categorie_culture");
+      if (cat === "sol_non_cultive") {
+        // Pas de niveau 2 sous-categorie. Direct au fertilisant.
+        viderContainer("sous_culture_form");
+        resoudreOccupationSousCulture();
+        rendreCategoriesFertilisant();
+        if (
+          initial.categorie_fertilisant &&
+          currentValue("categorie_fertilisant")
+        ) {
           onChangeChamp("categorie_fertilisant", false);
         }
+        return;
+      }
+      rendreSousCulturesForm();
+      if (initial.sous_culture_form && currentValue("sous_culture_form")) {
+        onChangeChamp("sous_culture_form", false);
       }
       return;
     }
 
-    if (champSuivant === "categorie_fertilisant") {
-      rendreRadiosCategoriesFertilisant();
-      if (initial.categorie_fertilisant && currentValue("categorie_fertilisant")) {
+    if (champSource === "sous_culture_form") {
+      resoudreOccupationSousCulture();
+      rendreCategoriesFertilisant();
+      if (
+        initial.categorie_fertilisant &&
+        currentValue("categorie_fertilisant")
+      ) {
         onChangeChamp("categorie_fertilisant", false);
       }
       return;
     }
 
-    if (champSuivant === "sous_fertilisant") {
-      rendreRadiosSousFertilisantPourCategorie();
+    if (champSource === "categorie_fertilisant") {
+      rendreSousFertilisantPourCategorie();
       if (initial.sous_fertilisant && currentValue("sous_fertilisant")) {
         onChangeChamp("sous_fertilisant", false);
       }
       return;
     }
+
+    if (champSource === "sous_fertilisant") {
+      resoudreTypeFertilisant();
+      return;
+    }
+
+    void champSuivant;  // suppress unused warning
   }
 })();

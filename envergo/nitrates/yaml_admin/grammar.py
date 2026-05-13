@@ -42,6 +42,7 @@ REGLE_TYPES = [
     "libre",
     "non_applicable",
     "calculatrice",
+    "mixte",
 ]
 
 CATALOGUE_SOURCES = ["sig", "mapping_referentiel", "calcul"]
@@ -317,17 +318,22 @@ def get_allowed_child_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[s
 
     allowed: list[str] = []
 
-    # Niveaux formulaire : on autorise tout niveau >= au plus haut deja vu,
-    # et si pas encore vu (sauf complement qui peut se repeter).
-    if niveaux_vus:
-        max_idx = max(NIVEAUX_FORMULAIRE_ORDRE.index(n) for n in niveaux_vus)
+    # `complement` est transparent : il peut apparaitre n'importe ou
+    # entre les autres niveaux, et ne contraint pas l'ordre. On l'ignore
+    # pour le calcul du plus haut niveau deja vu.
+    niveaux_significatifs = [n for n in niveaux_vus if n != "complement"]
+    if niveaux_significatifs:
+        max_idx = max(NIVEAUX_FORMULAIRE_ORDRE.index(n) for n in niveaux_significatifs)
     else:
         max_idx = -1
     for i, niveau in enumerate(NIVEAUX_FORMULAIRE_ORDRE):
+        if niveau == "complement":
+            allowed.append(f"noeud_formulaire_{niveau}")
+            continue
         if i < max_idx:
             continue  # ordre violerait
-        if niveau != "complement" and niveau in niveaux_vus:
-            continue  # doublon interdit pour les 3 premiers
+        if niveau in niveaux_significatifs:
+            continue  # doublon interdit pour les 3 niveaux principaux
         allowed.append(f"noeud_formulaire_{niveau}")
 
     # Catalogue, regle, renvoi_vers : toujours autorises.
@@ -395,16 +401,50 @@ def _niveaux_formulaire_sur_chemin(arbre: dict, path: tuple[str, ...]) -> list[s
     return niveaux
 
 
+def collect_champs_by_niveau(arbre: dict) -> dict[str, list[str]]:
+    """Retourne {niveau: [champs uniques deja utilises dans l'arbre]}.
+
+    Sert de datalist pour l'edition d'un noeud formulaire : le juriste
+    peut reutiliser un `champ` deja employe ailleurs (au lieu d'inventer
+    un slug random qui casserait le parser de la moulinette).
+
+    Le champ est plus parlant pour `complement` (questions annexes
+    sans nom canonique : `plan_epandage`, `fertilisant_iaa`, etc.).
+    """
+    result: dict[str, set[str]] = {n: set() for n in NIVEAUX_FORMULAIRE_ORDRE}
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if racine:
+        _walk_collect_champs(racine, result)
+    # Tri stable
+    return {k: sorted(v) for k, v in result.items()}
+
+
+def _walk_collect_champs(noeud: dict, out: dict[str, set]) -> None:
+    if not isinstance(noeud, dict):
+        return
+    if noeud.get("type_noeud") == "formulaire":
+        niveau = noeud.get("niveau")
+        champ = noeud.get("champ")
+        if niveau in out and champ:
+            out[niveau].add(champ)
+    for branche in noeud.get("branches") or []:
+        if isinstance(branche, dict) and isinstance(branche.get("noeud"), dict):
+            _walk_collect_champs(branche["noeud"], out)
+
+
 def _collect_ids(arbre: dict) -> set[str]:
     """Tous les ids de noeuds et regles dans l'arbre."""
     ids: set[str] = set()
     racine = (arbre or {}).get("arbre", {}).get("noeud")
     if racine:
         _collect_ids_in_node(racine, ids)
-    for entry in arbre.get("plafonnements") or []:
-        regle = entry.get("regle") if isinstance(entry, dict) else None
-        if isinstance(regle, dict) and regle.get("id"):
-            ids.add(regle["id"])
+    # Regles top-level reutilisables : `plafonnements` (legacy) et
+    # `regles_partagees` (couvert d'interculture, etc.).
+    for top_key in ("plafonnements", "regles_partagees"):
+        for entry in (arbre or {}).get(top_key) or []:
+            regle = entry.get("regle") if isinstance(entry, dict) else None
+            if isinstance(regle, dict) and regle.get("id"):
+                ids.add(regle["id"])
     return ids
 
 

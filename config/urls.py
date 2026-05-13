@@ -27,6 +27,13 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+# ProConnect (SSO admin nitrates) : routes /oidc/authenticate/, /oidc/callback/,
+# /oidc/logout/. Active uniquement si PROCONNECT_ENABLED (cf. config.settings.base).
+if settings.PROCONNECT_ENABLED:
+    urlpatterns += [
+        path("oidc/", include("mozilla_django_oidc.urls")),
+    ]
+
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit

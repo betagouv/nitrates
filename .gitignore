@@ -304,3 +304,12 @@ docker-compose.override.yml
 
 # Claude Code workspace (memoire locale, plans, worktrees) -- jamais versionne
 .claude/
+
+# Captures Playwright nitrates (regenerables, lourd)
+envergo/nitrates/scripts/validation/out_simu/
+envergo/nitrates/scripts/validation/out_yaml/
+
+# Scripts devops contenant des donnees RH (emails equipe pour provision_admin)
+envergo/nitrates/scripts/provision_team.sh
+# Dumps DB devops (regenerables via dumpdata)
+/branches_validation_dump.json

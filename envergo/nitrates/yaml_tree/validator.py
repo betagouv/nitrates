@@ -44,7 +44,7 @@ def validate_arbre(
     code_prescription / note / evenements_phenologiques referencees existent.
 
     references_sig_supportees (optionnel) : set des references SIG que le
-    backend sait resoudre (cf. ArbreDecisionEvaluator.REFERENCE_TO_MAP_TYPE).
+    backend sait resoudre (cf. catalogue_refs.CATALOGUE_RESOLVERS).
     Si fourni, on signale les noeuds catalogue source=sig dont la
     reference n'est pas couverte par le backend (= dataset SIG manquant).
     Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
@@ -63,6 +63,8 @@ def validate_arbre(
     errors.extend(_check_renvois_vers(arbre, ids_definis))
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
+    errors.extend(_check_regimes_coherents(arbre))
+    errors.extend(_check_regime_mixte(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -221,6 +223,130 @@ def _is_valid_date(s: str) -> bool:
         return False
 
 
+# ─── Coherence type / regime par periode ────────────────────────────────────
+
+
+def _check_regimes_coherents(arbre: dict) -> list[str]:
+    """Refuse les combinaisons type / regime intra-regle absurdes.
+
+    Convention grammaire 2026-05-08 : `type` est le regime principal
+    autorise par la regle. Les sous-periodes peuvent UNIQUEMENT raffiner
+    vers PLUS RESTRICTIF. Une regle `type=interdiction` ne peut donc
+    pas avoir de periode `regime=autorisation_sous_condition` (ce serait
+    plus permissif que le type parent).
+
+    Ordre de severite (plus restrictif en haut) :
+        interdiction > plafonnement > autorisation_sous_condition > libre
+
+    Permissions :
+      type=libre               : aucun raffinement utile (regle libre = pas
+                                 de periode contrainte normalement). Si on
+                                 met un regime, ce serait incoherent. Refus.
+      type=autorisation_sous_condition : peut raffiner vers `interdiction`,
+                                 `plafonnement`, ou `autorisation_sous_condition`
+                                 (idempotent). Refuse `libre` (plus permissif).
+      type=plafonnement        : peut raffiner vers `interdiction`. Refuse
+                                 `autorisation_sous_condition` et `libre`.
+      type=interdiction        : ne peut PAS etre raffine vers plus permissif.
+                                 Tolere `regime=interdiction` (idempotent).
+                                 Refuse autorisation_sous_condition / plafonnement
+                                 / libre.
+
+    Le `non_applicable` / `calculatrice` / `a_completer` n'ont pas de
+    periodes typiquement, on ne valide rien (laisse passer si pas de regime).
+    """
+    errors: list[str] = []
+    # Plus le rang est BAS, plus le regime est RESTRICTIF.
+    severite = {
+        "interdiction": 0,
+        "plafonnement": 1,
+        "autorisation_sous_condition": 2,
+        "libre": 3,
+    }
+    for obj in _walk_objects(arbre):
+        rtype = obj.get("type")
+        if rtype not in severite:
+            continue
+        rang_type = severite[rtype]
+        for i, periode in enumerate(obj.get("periodes", []) or [], start=1):
+            preg = periode.get("regime")
+            if preg is None:
+                continue
+            if preg not in severite:
+                errors.append(
+                    f"[regime] regle '{obj.get('id')}' periode #{i} : "
+                    f"regime={preg!r} inconnu (attendu : "
+                    f"interdiction / plafonnement / autorisation_sous_condition / libre)"
+                )
+                continue
+            if severite[preg] > rang_type:
+                errors.append(
+                    f"[regime] regle '{obj.get('id')}' periode #{i} : "
+                    f"regime={preg!r} est plus permissif que le type "
+                    f"parent {rtype!r}. Une periode ne peut raffiner que "
+                    f"vers PLUS RESTRICTIF (convention grammaire 2026-05-08). "
+                    f"Si l'intention est d'avoir un regime mixte, declarer "
+                    f"type='mixte' au niveau regle."
+                )
+    return errors
+
+
+# ─── Type "mixte" : exige >=2 regimes distincts dans les periodes ──────────
+
+
+def _check_regime_mixte(arbre: dict) -> list[str]:
+    """Pour `type=mixte`, chaque periode doit declarer son `regime` et il
+    faut au moins 2 regimes distincts (sinon `mixte` n'a pas de sens : la
+    regle devrait declarer le type unique de ses periodes).
+
+    Convention 2026-05-11 : `mixte` exprime explicitement la coexistence
+    de plusieurs regimes dans une meme regle (ex. autorisation_sous_condition
+    sur une fenetre + interdiction sur une autre). Plus carre que de declarer
+    `type=autorisation_sous_condition` + periode `regime=interdiction` (qui
+    laissait penser que toute la regle etait permissive).
+    """
+    errors: list[str] = []
+    regimes_valides = {
+        "interdiction",
+        "plafonnement",
+        "autorisation_sous_condition",
+        "libre",
+    }
+    for obj in _walk_objects(arbre):
+        if obj.get("type") != "mixte":
+            continue
+        rid = obj.get("id")
+        periodes = obj.get("periodes") or []
+        if len(periodes) < 2:
+            errors.append(
+                f"[mixte] regle '{rid}' : type='mixte' exige au moins 2 periodes "
+                f"(avec regimes distincts). Trouve : {len(periodes)}."
+            )
+            continue
+        regimes_vus: set[str] = set()
+        for i, periode in enumerate(periodes, start=1):
+            preg = periode.get("regime")
+            if not preg:
+                errors.append(
+                    f"[mixte] regle '{rid}' periode #{i} : `regime` obligatoire "
+                    f"sur chaque periode quand type='mixte' (pas d'heritage)."
+                )
+                continue
+            if preg not in regimes_valides:
+                errors.append(
+                    f"[mixte] regle '{rid}' periode #{i} : regime={preg!r} "
+                    f"invalide (attendu : {sorted(regimes_valides)})."
+                )
+                continue
+            regimes_vus.add(preg)
+        if len(regimes_vus) < 2:
+            errors.append(
+                f"[mixte] regle '{rid}' : type='mixte' exige >=2 regimes "
+                f"distincts dans les periodes. Trouve : {sorted(regimes_vus)}."
+            )
+    return errors
+
+
 # ─── Ordre des niveaux formulaire ───────────────────────────────────────────
 
 
@@ -268,6 +394,16 @@ def _check_niveau_ajout(
     if niveau not in NIVEAUX_FORMULAIRE_ORDRE:
         return None  # le schema l'aurait deja attrape
     idx_nouveau = NIVEAUX_FORMULAIRE_ORDRE.index(niveau)
+    # Convention 2026-05-12 : `complement` est le dernier niveau autorise.
+    # Une fois entre dans une chaine de complements, on ne peut PAS revenir
+    # vers culture / sous_culture / type_fertilisant. Donc des qu'un
+    # complement apparait dans le chemin, tout niveau suivant doit etre
+    # complement aussi.
+    if any(n == "complement" for n, _ in chemin) and niveau != "complement":
+        return (
+            f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
+            f"'complement' dans le chemin (retour en arriere interdit)"
+        )
     for prec_niveau, prec_champ in chemin:
         idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec_niveau)
         if idx_nouveau < idx_prec:
@@ -275,12 +411,7 @@ def _check_niveau_ajout(
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
                 f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"
             )
-        if (
-            idx_nouveau == idx_prec
-            and niveau != "complement"
-            and prec_niveau != "complement"
-            and champ == prec_champ
-        ):
+        if idx_nouveau == idx_prec and niveau != "complement" and champ == prec_champ:
             return (
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} et champ "
                 f"{champ!r} en doublon sur le chemin (deja vus avec champ "
@@ -338,7 +469,7 @@ def _check_references_sig_supportees(
             errors.append(
                 f"[sig] noeud '{obj.get('id')}' (champ='{obj.get('champ')}') : "
                 f"reference SIG '{ref}' non supportee par le backend (dataset "
-                f"manquant ou mapping a ajouter dans REFERENCE_TO_MAP_TYPE)"
+                f"manquant ou resolveur a ajouter dans catalogue_refs.CATALOGUE_RESOLVERS)"
             )
     return errors
 

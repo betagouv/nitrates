@@ -39,27 +39,96 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     ordering = ("-activated_at", "-created_at")
     readonly_fields = (
-        "contenu",
-        "contenu_yaml_brut",
+        "yaml_preview",
+        "edit_link",
         "created_at",
         "updated_at",
         "activated_at",
         "created_by",
     )
     fieldsets = (
-        (None, {"fields": ("name", "status", "parent")}),
+        (None, {"fields": ("name", "status", "parent", "edit_link")}),
         (
-            "Contenu",
-            {
-                "classes": ("collapse",),
-                "fields": ("contenu_yaml_brut", "contenu"),
-            },
+            "Contenu YAML (lecture seule — utiliser l'éditeur pour modifier)",
+            {"fields": ("yaml_preview",)},
         ),
         (
             "Métadonnées",
             {"fields": ("created_at", "updated_at", "activated_at", "created_by")},
         ),
     )
+
+    @admin.display(description="Aperçu YAML")
+    def yaml_preview(self, obj):
+        """Rend le YAML avec coloration syntaxique Pygments.
+
+        Theme `monokai` (fond sombre type Darcula). On force le theme
+        independant du dark/light mode du systeme pour garder une
+        coloration coherente.
+        """
+        if not obj or not obj.contenu_yaml_brut:
+            return "(vide)"
+        from pygments import highlight
+        from pygments.formatters import HtmlFormatter
+        from pygments.lexers import YamlLexer
+
+        formatter = HtmlFormatter(
+            cssclass="yaml-raw",
+            linenos="inline",
+            wrapcode=True,
+            style="monokai",
+        )
+        css = formatter.get_style_defs(".yaml-raw")
+        body = highlight(obj.contenu_yaml_brut, YamlLexer(), formatter)
+        return format_html(
+            "<style>{}\n"
+            ".yaml-raw {{ max-height: 70vh; overflow: auto; "
+            "border-radius: 4px; padding: 0.75rem 1rem; "
+            "background: #272822 !important; "
+            "color: #f8f8f2; "
+            "font-family: ui-monospace, Menlo, monospace; "
+            "font-size: 0.85rem; line-height: 1.5; }}\n"
+            ".yaml-raw pre {{ background: transparent !important; "
+            "color: inherit; margin: 0; }}\n"
+            ".yaml-raw .linenos {{ color: #75715e; padding-right: 1rem; "
+            "user-select: none; }}\n"
+            "</style>{}",
+            mark_safe(css),
+            mark_safe(body),
+        )
+
+    @admin.display(description="Éditer")
+    def edit_link(self, obj):
+        """Lien vers l'éditeur YAML (depuis l'admin Django classique)."""
+        if not obj or not obj.pk:
+            return "—"
+        view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
+        if obj.status == DecisionTree.STATUS_DRAFT:
+            edit_url = view_url + "&mode=edition"
+            return format_html(
+                '<a class="button" href="{}">Voir</a> '
+                '<a class="button" style="background:#1f4789;color:#fff;" href="{}">'
+                "✏️ Éditer ce brouillon</a>",
+                view_url,
+                edit_url,
+            )
+        if obj.status == DecisionTree.STATUS_ACTIVE:
+            edit_active_url = reverse("nitrates_admin_yaml_edit_active")
+            return format_html(
+                '<a class="button" href="{}">Voir</a> '
+                '<a class="button" style="background:#1f4789;color:#fff;" href="{}">'
+                "✏️ Éditer cet arbre</a>",
+                view_url,
+                edit_active_url,
+            )
+        # Archive
+        clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
+        return format_html(
+            '<a class="button" href="{}">Voir</a> '
+            '<a class="button" href="{}">Cloner en draft</a>',
+            view_url,
+            clone_url,
+        )
 
     @admin.display(description="Statut", ordering="status")
     def status_badge(self, obj):

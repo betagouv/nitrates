@@ -15,24 +15,10 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       <input type="text"
              name="c_texte"
              value="{{ form_data.c_texte|default_if_none:'' }}"
-             placeholder="ex: Quel type de fertilisant utilisez-vous ?"
-             required>
+             placeholder="auto suggéré selon le niveau (ex: Quel type de fertilisant…)">
     </label>
     {% for err in errors %}
       {% if err.field == "texte" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>champ technique</span>
-      <input type="text"
-             name="c_champ"
-             value="{{ form_data.c_champ|default_if_none:'' }}"
-             placeholder="ex: type_fertilisant"
-             required>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
   <div class="yaml-tree__form-row">
@@ -43,6 +29,27 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
              value="{{ form_data.c_aide|default_if_none:'' }}">
     </label>
   </div>
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label"
+           title="Slug technique cle pour le parser. Pour culture/sous_culture/type_fertilisant : derive auto. Pour complement : choisir parmi les champs deja utilises (datalist) ou en creer un nouveau si la question est nouvelle.">
+      <span>champ technique</span>
+      <input type="text"
+             name="c_champ"
+             list="yaml-tree__champs-list-add"
+             value="{{ form_data.c_champ|default_if_none:'' }}"
+             placeholder="auto (dérivé du niveau)">
+    </label>
+    {% for err in errors %}
+      {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+  {% if champs_by_niveau %}
+    <datalist id="yaml-tree__champs-list-add">
+      {% for niveau, champs in champs_by_niveau.items %}
+        {% for c in champs %}<option value="{{ c }}" label="(niveau: {{ niveau }})"></option>{% endfor %}
+      {% endfor %}
+    </datalist>
+  {% endif %}
   <details class="yaml-tree__form-advanced">
     <summary>Options avancées (id forcé)</summary>
     <div class="yaml-tree__form-row">
@@ -61,10 +68,26 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
 
 {% elif kind == "noeud_catalogue" %}
   <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label"
+           title="Référence du résolveur backend. Sélectionner une référence pré-remplit aussi le champ technique.">
+      <span>référence catalogue</span>
+      <select name="c_reference" data-catalogue-ref-select>
+        <option value="">— libre / non listée —</option>
+        {% for ref in catalogue_refs %}
+          <option value="{{ ref.reference }}"
+                  data-champ="{{ ref.champ }}"
+                  title="{{ ref.description }}"
+                  {% if form_data.c_reference == ref.reference %}selected{% endif %}>{{ ref.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>champ technique</span>
       <input type="text"
              name="c_champ"
+             data-catalogue-champ-input
              value="{{ form_data.c_champ|default_if_none:'' }}"
              required>
     </label>
@@ -85,14 +108,18 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>reference (optionnel)</span>
-      <input type="text"
-             name="c_reference"
-             value="{{ form_data.c_reference|default_if_none:'' }}">
-    </label>
-  </div>
+  <script>
+    (function () {
+      const select = document.querySelector('[data-catalogue-ref-select]');
+      const champInput = document.querySelector('[data-catalogue-champ-input]');
+      if (!select || !champInput) return;
+      select.addEventListener('change', () => {
+        const opt = select.options[select.selectedIndex];
+        const slug = opt && opt.dataset.champ;
+        if (slug) champInput.value = slug;
+      });
+    })();
+  </script>
   <details class="yaml-tree__form-advanced">
     <summary>Options avancées (id forcé)</summary>
     <div class="yaml-tree__form-row">
@@ -115,7 +142,7 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       <span>type</span>
       <select name="c_type">
         <option value="">— choisir —</option>
-        {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+        {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice,mixte"|split:"," %}
           <option value="{{ t }}" {% if form_data.c_type == t %}selected{% endif %}>{{ t }}</option>
         {% endfor %}
       </select>
@@ -147,9 +174,12 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>regime</span>
-        <input type="text"
-               name="c_periodes-0-regime"
-               placeholder="ex: autorise (optionnel)">
+        <select name="c_periodes-0-regime">
+          <option value="">— régime hérité du type ci-dessus —</option>
+          {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+            <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
       </label>
     </div>
   </fieldset>
@@ -195,11 +225,13 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     </label>
   </div>
   <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>note (optionnel)</span>
+    <label class="yaml-tree__form-label"
+           title="Verdict court rendu à l'utilisateur (ex: « Apport interdit toute l'année »).">
+      <span>verdict</span>
       <input type="text"
-             name="c_note"
-             value="{{ form_data.c_note|default_if_none:'' }}">
+             name="c_message"
+             value="{{ form_data.c_message|default_if_none:'' }}"
+             placeholder="Phrase courte (ex: Apport interdit toute l'année)">
     </label>
   </div>
   <div class="yaml-tree__form-row">
@@ -221,10 +253,10 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   </div>
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>message</span>
+      <span>note (optionnel)</span>
       <input type="text"
-             name="c_message"
-             value="{{ form_data.c_message|default_if_none:'' }}">
+             name="c_note"
+             value="{{ form_data.c_note|default_if_none:'' }}">
     </label>
   </div>
   <details class="yaml-tree__form-advanced">

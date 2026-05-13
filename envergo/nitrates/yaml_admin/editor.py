@@ -126,8 +126,17 @@ def update_node(
             [FieldError("", "Le noeud cible n'a pas de type_noeud reconnu.")]
         )
     # Merge logique : on accepte les champs scalaires, jamais branches.
+    # Convention : une valeur vide ("") dans new_data signifie "retirer
+    # cette cle du noeud" (sinon une cle optionnelle ne pourrait jamais
+    # etre supprimee apres edition).
     merged = dict(node)
-    merged.update({k: v for k, v in new_data.items() if k != "branches"})
+    for k, v in new_data.items():
+        if k == "branches":
+            continue
+        if v == "" and k in merged:
+            del merged[k]
+        else:
+            merged[k] = v
     res = validate_node_local(merged, kind, arbre=tree.contenu, own_path=path)
     if not res.ok:
         return EditResult.from_validation(res)
@@ -156,7 +165,13 @@ def update_regle(
         return EditResult.fail([FieldError("", "Règle introuvable à cet emplacement.")])
     current_regle = branche["regle"]
     merged = dict(current_regle)
-    merged.update(new_data)
+    # Convention update_regle : new_data[key] = None signale "supprime cette
+    # cle" (l'utilisateur a vide le champ via le form). Sinon update standard.
+    for k, v in new_data.items():
+        if v is None:
+            merged.pop(k, None)
+        else:
+            merged[k] = v
     # a_completer : si False, on retire la cle plutot que de stocker
     # `a_completer: false` dans le YAML (bruit visuel).
     if merged.get("a_completer") is False:

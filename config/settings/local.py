@@ -14,7 +14,11 @@ SECRET_KEY = env(
 
 ENVERGO_AMENAGEMENT_DOMAIN = "envergo.local"
 ENVERGO_HAIE_DOMAIN = "haie.local"
-ENVERGO_NITRATES_DOMAIN = "nitrates.local"
+# ENVERGO_NITRATES_DOMAIN n'est plus hardcode ici : on le pilote via
+# l'env var DJANGO_ENVERGO_NITRATES_DOMAIN (cf. docker-compose.override.yml)
+# pour pouvoir taper le simulateur sur 127.0.0.1:8042 sans se manger la
+# redirection vers nitrates.local imposee par SetUrlConfBasedOnSite.
+# Le default lu dans base.py reste "nitrates.beta.gouv.fr".
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
@@ -24,9 +28,11 @@ ALLOWED_HOSTS = [
     "envergo.local",
     "haie.local",
     "nitrates.local",
+    "django",  # nom de service docker compose, acces depuis container node
+    "envergo_django",
     ENVERGO_AMENAGEMENT_DOMAIN,
     ENVERGO_HAIE_DOMAIN,
-    ENVERGO_NITRATES_DOMAIN,
+    ENVERGO_NITRATES_DOMAIN,  # noqa F405
 ]
 
 # CACHES
@@ -62,6 +68,18 @@ if env("USE_DEBUG_TOOLBAR", default="yes") == "yes":
         "debug_toolbar.middleware.DebugToolbarMiddleware",
         *MIDDLEWARE,  # noqa F405
     ]
+
+    def _show_debug_toolbar(request):
+        # Masque la toolbar sur le simulateur public (sinon elle empeche
+        # de voir la moitie gauche du resultat sur les screenshots Playwright
+        # de validation et sur les demos juriste).
+        if request.path.startswith("/simulateur/"):
+            return False
+        # Comportement classique : visible uniquement depuis INTERNAL_IPS.
+        from debug_toolbar.middleware import show_toolbar
+
+        return show_toolbar(request)
+
     DEBUG_TOOLBAR_CONFIG = {
         "DISABLE_PANELS": [
             "debug_toolbar.panels.redirects.RedirectsPanel",
@@ -73,6 +91,7 @@ if env("USE_DEBUG_TOOLBAR", default="yes") == "yes":
         ],
         "SHOW_TEMPLATE_CONTEXT": True,
         "RESULTS_CACHE_SIZE": 50,
+        "SHOW_TOOLBAR_CALLBACK": _show_debug_toolbar,
     }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1", "10.0.2.2"]

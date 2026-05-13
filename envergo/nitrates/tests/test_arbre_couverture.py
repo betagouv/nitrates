@@ -108,9 +108,19 @@ def _explore_branche(branche: dict, contexte: dict, label: list, cas: list) -> N
     elif "regle" in branche:
         cas.append((" / ".join(label), contexte, branche["regle"]["id"]))
     elif "renvoi_vers" in branche:
-        cas.append(
-            (" / ".join(label) + f" -> {branche['renvoi_vers']}", contexte, None)
-        )
+        # Note 2026-05-12 : renvoi_vers peut maintenant pointer vers un noeud
+        # (sous-arbre reutilisable, pattern "include") -- pas seulement vers
+        # une regle. Quand c'est un noeud, le parcours descend dedans et peut
+        # demander des QC supplementaires. On ne genere PAS de cas de test
+        # pour ces renvois car le contexte fourni ne contient pas forcement
+        # toutes les QC necessaires, et les cas terminaux (regles atteintes
+        # apres renvoi) sont deja couverts par leur propre exploration en
+        # amont (le sous-arbre cible est lui-meme exhaustivement teste).
+        cible_id = branche["renvoi_vers"]
+        if cible_id.startswith("r_"):
+            # Renvoi vers une regle : terminal, on enregistre.
+            cas.append((" / ".join(label) + f" -> {cible_id}", contexte, None))
+        # Sinon (q_/n_) : skip silencieusement, sous-arbre teste ailleurs.
 
 
 def _build_cas() -> list:

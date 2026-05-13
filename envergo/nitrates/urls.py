@@ -10,6 +10,16 @@ from envergo.nitrates.views import (
     ReferentielsView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_validation import (
+    validation_detail,
+    validation_edit_meta,
+    validation_index,
+    validation_set_statut,
+    validation_upload_miro,
+    validation_upload_playwright,
+    validation_upload_yaml_form,
+    validation_upload_yaml_viewer,
+)
 from envergo.nitrates.views_admin_yaml import (
     CancelEditView,
     CloneConfirmView,
@@ -19,6 +29,7 @@ from envergo.nitrates.views_admin_yaml import (
     YamlTreeView,
 )
 from envergo.nitrates.views_admin_yaml_edit import (
+    ActivateTreeView,
     AddChildView,
     CancelAddChildView,
     CancelEditBrancheView,
@@ -28,9 +39,11 @@ from envergo.nitrates.views_admin_yaml_edit import (
     DeleteNodeView,
     EditBrancheView,
     EditNodeView,
+    EditRawYamlView,
     EditRegleView,
     RestoreRevisionView,
     UndoLastView,
+    ValidateTreeView,
 )
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
@@ -168,8 +181,64 @@ urlpatterns = [
         name="nitrates_yaml_browser_detail",
     ),
     path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/validate/",
+        ValidateTreeView.as_view(),
+        name="nitrates_admin_yaml_validate_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/activate/",
+        ActivateTreeView.as_view(),
+        name="nitrates_admin_yaml_activate_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/raw-yaml/",
+        EditRawYamlView.as_view(),
+        name="nitrates_admin_yaml_edit_raw",
+    ),
+    path(
         _("contact-us/"),
         TemplateView.as_view(template_name="nitrates/contact_us.html"),
         name="contact_us",
+    ),
+    # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)
+    path(
+        "admin/nitrates/validation/",
+        validation_index,
+        name="nitrates_admin_validation_index",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/",
+        validation_detail,
+        name="nitrates_admin_validation_detail",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/statut/",
+        validation_set_statut,
+        name="nitrates_admin_validation_set_statut",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-miro/",
+        validation_upload_miro,
+        name="nitrates_admin_validation_upload_miro",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-yaml-viewer/",
+        validation_upload_yaml_viewer,
+        name="nitrates_admin_validation_upload_yaml_viewer",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-yaml-form/",
+        validation_upload_yaml_form,
+        name="nitrates_admin_validation_upload_yaml_form",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/upload-playwright/",
+        validation_upload_playwright,
+        name="nitrates_admin_validation_upload_playwright",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/edit-meta/",
+        validation_edit_meta,
+        name="nitrates_admin_validation_edit_meta",
     ),
 ]

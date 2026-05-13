@@ -21,12 +21,41 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
+from django.utils.text import slugify
 from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
-from envergo.nitrates.yaml_admin.grammar import FieldError, get_allowed_child_kinds
+from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS
+from envergo.nitrates.yaml_admin.forms import (
+    BrancheForm,
+    NoeudFormulaireForm,
+    RegleForm,
+)
+from envergo.nitrates.yaml_admin.grammar import (
+    FieldError,
+    collect_champs_by_niveau,
+    get_allowed_child_kinds,
+)
 from envergo.nitrates.yaml_admin.tags import get_tags
+
+
+def _evenements_phenologiques() -> list[dict]:
+    """Liste des evenements phenologiques depuis referentiels.yaml, pour
+    proposer en datalist dans les inputs du/au des periodes. Permet
+    d'eviter les typos (cf. brunissement_soies vs brunissement_des_soies)."""
+    from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+    ref = load_referentiels()
+    out = []
+    for slug, data in (ref.get("evenements_phenologiques") or {}).items():
+        out.append(
+            {
+                "slug": slug,
+                "libelle": (data or {}).get("libelle_public") or slug,
+            }
+        )
+    return out
 
 
 def _parse_path(raw: str | None) -> tuple[str, ...]:
@@ -54,6 +83,86 @@ def _parse_valeur(raw):
     return raw
 
 
+def _render_partial_node_response(
+    request, tree, parent_path: tuple[str, ...], message: str
+) -> HttpResponse:
+    """Renvoie le `<li>` du noeud parent re-rendu, avec headers htmx
+    pour cibler le `<li>` existant du DOM.
+
+    Cette reponse evite un full reload : le sous-arbre du parent est
+    remis a jour en place, le scroll et le fold du reste de la page
+    ne bougent pas.
+    """
+    from envergo.nitrates.yaml_admin.tags import QUICK_FILTERS
+    from envergo.nitrates.yaml_tree import load_tree_admin
+
+    arbre = load_tree_admin(tree)
+    parent_node = editor.get_node_at(arbre, parent_path)
+    if parent_node is None:
+        # Fallback : full refresh si on ne retrouve pas le parent.
+        return _refresh_response(request, message)
+
+    # Le path du parent dans la representation du template.
+    if parent_path:
+        ancestors_str = "/".join(parent_path[:-1])
+        parent_path_str = "/".join(parent_path)
+    else:
+        ancestors_str = ""
+        parent_path_str = ""
+
+    # On veut que le parent soit deplie (l'utilisateur vient de modifier
+    # son contenu, on lui montre le resultat). On ouvre aussi tous ses
+    # ancetres directs.
+    open_paths: set[str] = set()
+    if parent_path_str:
+        open_paths.add(parent_path_str)
+        # ancetres : "a", "a/b", ..., parent_path
+        segs = parent_path_str.split("/")
+        for i in range(1, len(segs)):
+            open_paths.add("/".join(segs[:i]))
+    # On peut etre conservateur et garder ouvert tout ce qu'il y avait
+    # avant, mais le LocalStorage cote client gere deja ca au premier load.
+    # Ici on s'assure juste que le parent reste deplie.
+
+    rendered = render(
+        request,
+        "nitrates_admin/yaml_tree/_noeud.html",
+        {
+            "tree": tree,
+            "noeud": parent_node,
+            "ancestors_path": ancestors_str,
+            "depth": len(parent_path) - 1 if parent_path else 0,
+            "is_editing": True,
+            "open_paths": open_paths,
+            "expand": [],
+            "expand_deep": [],
+            "querystring_base": "",
+            "quick_filters": QUICK_FILTERS,
+        },
+    ).content.decode("utf-8")
+
+    # Toast inline via hx-swap-oob : htmx injecte ce fragment dans
+    # `#yaml-admin-toast-zone` (defini dans base.html) en plus du swap
+    # principal. Plus fiable que HX-Trigger qui ne se declenche pas
+    # toujours apres un swap retargete.
+    if message:
+        import time
+
+        toast_id = f"toast-{int(time.time() * 1000)}"
+        toast_html = (
+            f'<div hx-swap-oob="afterbegin:#yaml-admin-toast-zone">'
+            f'<div class="yaml-admin__toast" id="{toast_id}">'
+            f"{escape(message)}</div>"
+            f"</div>"
+        )
+        rendered = rendered + toast_html
+
+    response = HttpResponse(rendered)
+    response["HX-Retarget"] = f"#node-{slugify(parent_path_str)}"
+    response["HX-Reswap"] = "outerHTML"
+    return response
+
+
 def _refresh_response(request, message: str) -> HttpResponse:
     """Reponse htmx qui declenche un rechargement de la page courante en
     preservant son URL complete (et donc tous les ?expand=...).
@@ -78,6 +187,36 @@ def _refresh_response(request, message: str) -> HttpResponse:
     else:
         response["HX-Refresh"] = "true"
     return response
+
+
+# Suggestions par niveau pour les champs canoniques d'un noeud formulaire.
+# Le `champ` (slug technique) doit etre exactement celui-la car le parser
+# de la moulinette s'en sert pour mapper a un input utilisateur.
+# NB pour `culture` le champ canonique dans l'arbre national est
+# `occupation_sol` (pas `culture`) -- la racine de la classification.
+_NIVEAU_SUGGESTIONS = {
+    "culture": {
+        "champ": "occupation_sol",
+        "texte_suggere": "Quelle est la culture en place ?",
+    },
+    "sous_culture": {
+        "champ": "sous_culture",
+        "texte_suggere": "Quelle culture utilisez-vous ?",
+    },
+    "type_fertilisant": {
+        "champ": "type_fertilisant",
+        "texte_suggere": "Quel type de fertilisant est utilisé ?",
+    },
+    "complement": {
+        "champ": "",
+        "texte_suggere": "",
+    },
+}
+
+
+def _champ_from_niveau(niveau: str) -> str:
+    """Champ technique canonique pour un niveau formulaire."""
+    return _NIVEAU_SUGGESTIONS.get(niveau or "", {}).get("champ", "") or ""
 
 
 def _check_editable(tree: DecisionTree, user) -> str | None:
@@ -116,6 +255,8 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "errors": [],
+                "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                "catalogue_refs": CATALOGUE_RESOLVERS,
             },
         )
 
@@ -133,22 +274,51 @@ class EditNodeView(View):
         # champs scalaires connus du noeud).
         new_data: dict = {"id": request.POST.get("id", "").strip() or node.get("id")}
         if node.get("type_noeud") == "formulaire":
-            new_data["niveau"] = request.POST.get("niveau", "").strip() or node.get(
-                "niveau"
+            form = NoeudFormulaireForm(request.POST)
+            if not form.is_valid():
+                form_errors = [
+                    FieldError(field, " / ".join(msgs))
+                    for field, msgs in form.errors.items()
+                ]
+                return render(
+                    request,
+                    "nitrates_admin/yaml_tree/forms/_node_form.html",
+                    {
+                        "tree": tree,
+                        "node": {**node, **dict(request.POST.items())},
+                        "path": path,
+                        "path_str": "/".join(path),
+                        "errors": form_errors,
+                        "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                        "catalogue_refs": CATALOGUE_RESOLVERS,
+                    },
+                    status=422,
+                )
+            cd = form.to_new_data()
+            niveau = cd["niveau"] or node.get("niveau")
+            new_data["id"] = cd["id"] or node.get("id")
+            new_data["niveau"] = niveau
+            new_data["texte"] = cd["texte"]
+            # `champ` est derive du niveau pour les noeuds formulaire :
+            # le parser de la moulinette compte sur cette correspondance
+            # 1:1, et l'exposer en saisie libre permet de le casser
+            # silencieusement. On accepte un override depuis le POST si
+            # fourni (cas avance), sinon on derive automatiquement.
+            new_data["champ"] = (
+                cd["champ"] or _champ_from_niveau(niveau) or node.get("champ")
             )
-            new_data["texte"] = request.POST.get("texte", "").strip()
-            new_data["champ"] = request.POST.get("champ", "").strip()
-            aide = request.POST.get("aide", "").strip()
-            if aide:
-                new_data["aide"] = aide
+            # `aide` est optionnel : on l'envoie toujours (meme vide)
+            # pour que update_node retire la cle si l'utilisateur l'a
+            # effacee (cf. convention "" = delete dans editor.update_node).
+            new_data["aide"] = cd["aide"]
         elif node.get("type_noeud") == "catalogue":
             new_data["champ"] = request.POST.get("champ", "").strip()
             new_data["source"] = request.POST.get("source", "").strip() or node.get(
                 "source"
             )
-            ref = request.POST.get("reference", "").strip()
-            if ref:
-                new_data["reference"] = ref
+            # `reference` est optionnel : envoye toujours pour permettre
+            # la suppression (cf. convention update_node).
+            new_data["reference"] = request.POST.get("reference", "").strip()
 
         result = editor.update_node(tree, path, new_data, request.user)
         if not result.ok:
@@ -163,6 +333,7 @@ class EditNodeView(View):
                     "path": path,
                     "path_str": "/".join(path),
                     "errors": result.errors,
+                    "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 },
                 status=422,
             )
@@ -212,6 +383,7 @@ class EditRegleView(View):
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
+                "evenements_phenologiques": _evenements_phenologiques(),
             },
         )
 
@@ -221,82 +393,44 @@ class EditRegleView(View):
         if err:
             return HttpResponseForbidden(err)
         parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
-        valeur = _parse_valeur(request.GET.get("valeur")) or request.POST.get("valeur")
+        # Attention : bool False est falsy, donc on ne peut pas faire
+        # `_parse_valeur(GET) or POST` (False bool serait perdu). On prefere
+        # `valeur` du GET en priorite, sinon fallback POST.
+        valeur_raw = request.GET.get("valeur")
+        if valeur_raw is None:
+            valeur_raw = request.POST.get("valeur")
+        valeur = _parse_valeur(valeur_raw)
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
         if branche is None or "regle" not in branche:
             return HttpResponseForbidden("Règle introuvable.")
 
-        # Reconstruit new_data depuis le POST.
-        new_data: dict = {}
-        new_id = request.POST.get("id", "").strip()
-        if new_id:
-            new_data["id"] = new_id
-        rtype = request.POST.get("type", "").strip()
-        if rtype:
-            new_data["type"] = rtype
-        # Periodes : POST contient periodes-{i}-du / periodes-{i}-au /
-        # periodes-{i}-regime (optionnel).
-        periodes = []
-        i = 0
-        while True:
-            du = request.POST.get(f"periodes-{i}-du", "").strip()
-            au = request.POST.get(f"periodes-{i}-au", "").strip()
-            regime = request.POST.get(f"periodes-{i}-regime", "").strip()
-            if not du and not au and not regime:
-                if i == 0:
-                    break
-                # Ligne suivante vide -> on s'arrete
-                break
-            if du or au or regime:
-                p: dict = {}
-                if du:
-                    p["du"] = du
-                if au:
-                    p["au"] = au
-                if regime:
-                    p["regime"] = regime
-                periodes.append(p)
-            i += 1
-        if periodes:
-            new_data["periodes"] = periodes
-        elif "periodes" in branche["regle"]:
-            # L'utilisateur a vide les periodes -> on les retire
-            new_data["periodes"] = []
-        # Calculatrice : composant + inputs_requis
-        composant = request.POST.get("composant", "").strip()
-        if composant:
-            new_data["composant"] = composant
-        inputs_raw = request.POST.get("inputs_requis", "").strip()
-        if inputs_raw:
-            new_data["inputs_requis"] = [
-                x.strip() for x in inputs_raw.split(",") if x.strip()
+        # Parsing + validation locale via RegleForm. La validation
+        # sémantique (collisions d'id, etc.) reste dans editor.
+        form = RegleForm(request.POST)
+        if not form.is_valid():
+            form_errors = [
+                FieldError(field, " / ".join(msgs))
+                for field, msgs in form.errors.items()
             ]
-        # Champs optionnels scalaires
-        for key in (
-            "code_prescription",
-            "note",
-            "source_juridique",
-            "message",
-            "texte",
-            "texte_condition",
-            "plafonnement_associe",
-        ):
-            val = request.POST.get(key, "").strip()
-            if val:
-                new_data[key] = val
-        plafond = request.POST.get("plafond_azote_kg_n_ha", "").strip()
-        if plafond:
-            try:
-                new_data["plafond_azote_kg_n_ha"] = float(plafond)
-            except ValueError:
-                pass
-        # Checkbox a_completer : si non cochee, le navigateur ne l'envoie
-        # pas du tout dans le POST. On positionne explicitement False pour
-        # ecraser une eventuelle valeur True precedente sur la regle.
-        if request.POST.get("a_completer") in ("on", "true", "1"):
-            new_data["a_completer"] = True
-        else:
-            new_data["a_completer"] = False
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/forms/_regle_form.html",
+                {
+                    "tree": tree,
+                    "regle": {**branche["regle"]},
+                    "parent_path_str": "/".join(parent_path),
+                    "valeur": valeur,
+                    "errors": form_errors,
+                    "evenements_phenologiques": _evenements_phenologiques(),
+                },
+                status=422,
+            )
+        new_data = form.to_new_data()
+        # Si la règle d'origine n'avait pas de périodes et que l'utilisateur
+        # n'en a pas saisies, on retire `periodes` de new_data : pas la peine
+        # de pousser une liste vide qui retirerait une clé déjà absente.
+        if not new_data.get("periodes") and "periodes" not in branche["regle"]:
+            new_data.pop("periodes", None)
 
         result = editor.update_regle(tree, parent_path, valeur, new_data, request.user)
         if not result.ok:
@@ -312,6 +446,7 @@ class EditRegleView(View):
                     "parent_path_str": "/".join(parent_path),
                     "valeur": valeur,
                     "errors": result.errors,
+                    "evenements_phenologiques": _evenements_phenologiques(),
                 },
                 status=422,
             )
@@ -385,6 +520,11 @@ class EditBrancheView(View):
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
+                "renvoi_targets": (
+                    _list_renvoi_targets(tree.contenu)
+                    if "renvoi_vers" in branche
+                    else []
+                ),
             },
         )
 
@@ -399,8 +539,24 @@ class EditBrancheView(View):
         if branche is None:
             return HttpResponseForbidden("Branche introuvable.")
 
-        new_valeur_raw = request.POST.get("valeur_new", "").strip()
-        new_libelle = request.POST.get("libelle", "").strip()
+        form = BrancheForm(request.POST)
+        if not form.is_valid():
+            # Une seule erreur structurelle possible aujourd'hui : id de
+            # renvoi non-slug. On rend le 1er message comme "renvoi".
+            field, msgs = next(iter(form.errors.items()))
+            return _render_branche_error(
+                request,
+                tree,
+                branche,
+                parent_path,
+                valeur,
+                field.replace("_new", ""),
+                " / ".join(msgs),
+            )
+        cd = form.to_new_data()
+        new_valeur_raw = cd["valeur_new_raw"]
+        new_libelle = cd["libelle"]
+        new_renvoi = cd["renvoi_vers_new"]
 
         # Conversion type-aware de la nouvelle valeur (preserve bool/int).
         if new_valeur_raw == "":
@@ -450,6 +606,11 @@ class EditBrancheView(View):
                 branche["libelle"] = new_libelle
             elif "libelle" in branche:
                 del branche["libelle"]
+            # Si la branche est de type renvoi_vers, on applique la
+            # nouvelle cible si fournie. On ne valide pas ici qu'elle
+            # existe dans l'arbre -- le validateur deep le fera.
+            if "renvoi_vers" in branche and new_renvoi:
+                branche["renvoi_vers"] = new_renvoi
             tree.contenu_yaml_brut = editor._dump_yaml(tree.contenu)
             tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
 
@@ -574,6 +735,8 @@ class AddChildView(View):
                 "selected_kind": kind,
                 "errors": [],
                 "form_data": form_data,
+                "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
+                "catalogue_refs": CATALOGUE_RESOLVERS,
             },
         )
 
@@ -667,7 +830,9 @@ class AddChildView(View):
                 form_data=request.POST,
             )
 
-        return _refresh_response(request, f"Branche {valeur!r} ajoutée. Rechargement…")
+        return _render_partial_node_response(
+            request, tree, parent_path, f"Branche {valeur!r} ajoutée."
+        )
 
 
 def _coerce_branch_value(raw: str):
@@ -707,8 +872,13 @@ def _build_content_data(
         )
         data["type_noeud"] = "formulaire"
         data["niveau"] = niveau
-        data["texte"] = post.get("c_texte", "").strip()
-        data["champ"] = post.get("c_champ", "").strip()
+        data["texte"] = post.get("c_texte", "").strip() or _NIVEAU_SUGGESTIONS.get(
+            niveau, {}
+        ).get("texte_suggere", "")
+        # `champ` derive du niveau (cf. EditNodeView.post). On accepte un
+        # override si l'utilisateur a ouvert "Options avancees" et l'a
+        # explicitement saisi.
+        data["champ"] = post.get("c_champ", "").strip() or _champ_from_niveau(niveau)
         aide = post.get("c_aide", "").strip()
         if aide:
             data["aide"] = aide
@@ -852,6 +1022,7 @@ def _render_add_errors(
             "selected_kind": kind,
             "errors": errors,
             "form_data": form_data or {},
+            "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
         },
         status=422,
     )
@@ -884,8 +1055,8 @@ class DeleteBrancheView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        return _refresh_response(
-            request, f"Branche {valeur!r} supprimée. Rechargement…"
+        return _render_partial_node_response(
+            request, tree, parent_path, f"Branche {valeur!r} supprimée."
         )
 
 
@@ -908,9 +1079,472 @@ class DeleteNodeView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Suppression refusee."
             )
-        return _refresh_response(
-            request, f"Nœud {path[-1] if path else ''} supprimé. Rechargement…"
+        # On swap le grand-parent : le noeud supprime + sa branche
+        # disparaissent. Si on n'a pas de grand-parent (suppression d'un
+        # enfant direct de la racine), on prend le parent.
+        parent_path = path[:-1] if len(path) >= 2 else path[:-1]
+        return _render_partial_node_response(
+            request,
+            tree,
+            parent_path,
+            f"Nœud {path[-1] if path else ''} supprimé.",
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ValidateTreeView(View):
+    """POST : lance la validation deep d'un draft. Renvoie un panneau
+    HTML avec la liste des erreurs, ou un message OK si l'arbre est
+    valide. La validation ne modifie pas le draft."""
+
+    def post(self, request, tree_pk):
+        from envergo.nitrates.yaml_tree import load_tree_admin
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        if tree.status != DecisionTree.STATUS_DRAFT:
+            return HttpResponseForbidden(
+                "La validation deep n'est pertinente que sur un draft."
+            )
+        arbre = load_tree_admin(tree)
+        try:
+            validate_arbre(arbre)
+            errors: list[str] = []
+        except ValidationError as e:
+            errors = list(e.errors)
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/_validation_panel.html",
+            {
+                "tree": tree,
+                "errors": [_humanize_error(arbre, e) for e in errors],
+            },
+        )
+
+
+def _humanize_error(arbre: dict, raw_error: str) -> dict:
+    """Transforme une erreur de validation en dict {label, message, raw}.
+
+    `label` : chemin metier lisible (ex: "Culture principale > Colza >
+    période #1").
+    `message` : la fin du message d'erreur, sans le chemin technique.
+    `raw` : message original, montre au survol pour debug.
+    `kind` : "structure" / "renvoi_vers" / "niveau" / "ids" / "date" / ...
+    """
+    import re
+
+    # Erreur de structure (jsonschema) : "[structure] arbre/.../path : msg"
+    m = re.match(r"^\[structure\]\s*(?P<path>\S*)\s*:\s*(?P<msg>.*)$", raw_error)
+    if m:
+        return {
+            "label": _path_to_breadcrumb(arbre, m.group("path")),
+            "message": m.group("msg"),
+            "raw": raw_error,
+            "kind": "structure",
+        }
+
+    # Erreur renvoi_vers : "[renvoi_vers] 'r_xxx' (depuis branche valeur=X) ..."
+    m = re.match(
+        r"^\[renvoi_vers\]\s*'(?P<cible>[^']+)'\s*"
+        r"\(depuis branche valeur=(?P<valeur>[^)]+)\)\s*(?P<msg>.*)$",
+        raw_error,
+    )
+    if m:
+        valeur = m.group("valeur").strip().strip("'\"")
+        cible = m.group("cible")
+        label = _find_branch_breadcrumb(arbre, valeur, "renvoi_vers", cible)
+        return {
+            "label": label,
+            "message": f"renvoi vers '{cible}' inconnu",
+            "raw": raw_error,
+            "kind": "renvoi_vers",
+        }
+
+    # Erreur niveau : "[niveau] noeud 'q_xxx' : msg"
+    m = re.match(
+        r"^\[niveau\]\s*noeud\s*'(?P<nid>[^']+)'\s*:\s*(?P<msg>.*)$", raw_error
+    )
+    if m:
+        nid = m.group("nid")
+        label = _find_node_breadcrumb(arbre, nid)
+        return {
+            "label": label,
+            "message": m.group("msg"),
+            "raw": raw_error,
+            "kind": "niveau",
+        }
+
+    # Fallback generique
+    m = re.match(r"^\[(?P<kind>\w+)\]\s*(?P<rest>.*)$", raw_error)
+    if m:
+        return {
+            "label": "",
+            "message": m.group("rest"),
+            "raw": raw_error,
+            "kind": m.group("kind"),
+        }
+    return {"label": "", "message": raw_error, "raw": raw_error, "kind": ""}
+
+
+def _find_branch_breadcrumb(arbre: dict, valeur: str, key: str, value: str) -> str:
+    """Cherche la branche {valeur, key:value} dans l'arbre et renvoie son
+    chemin metier lisible."""
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if not racine:
+        return ""
+    found = _walk_for_branch(racine, valeur, key, value, [])
+    return " > ".join(found) if found else ""
+
+
+def _walk_for_branch(noeud, target_valeur, target_key, target_value, crumbs):
+    if not isinstance(noeud, dict):
+        return None
+    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
+    next_crumbs = crumbs + ([str(label)] if label else [])
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        if str(branche.get("valeur")) == str(target_valeur) and str(
+            branche.get(target_key)
+        ) == str(target_value):
+            return b_crumbs
+        if isinstance(branche.get("noeud"), dict):
+            res = _walk_for_branch(
+                branche["noeud"], target_valeur, target_key, target_value, b_crumbs
+            )
+            if res is not None:
+                return res
+    return None
+
+
+def _find_node_breadcrumb(arbre: dict, target_id: str) -> str:
+    """Cherche un noeud par son id et renvoie son chemin metier lisible."""
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if not racine:
+        return ""
+    found = _walk_for_node(racine, target_id, [])
+    return " > ".join(found) if found else ""
+
+
+def _walk_for_node(noeud, target_id, crumbs):
+    if not isinstance(noeud, dict):
+        return None
+    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
+    next_crumbs = crumbs + ([str(label)] if label else [])
+    if noeud.get("id") == target_id:
+        return next_crumbs
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = next_crumbs + ([b_label] if b_label else [])
+        if isinstance(branche.get("noeud"), dict):
+            res = _walk_for_node(branche["noeud"], target_id, b_crumbs)
+            if res is not None:
+                return res
+    return None
+
+
+def _list_renvoi_targets(arbre: dict) -> list[dict]:
+    """Liste tous les ids cibles potentiels pour un renvoi_vers, avec
+    pour chacun son label metier (chemin) pour aider a choisir.
+
+    Les cibles incluent :
+      - regles dans l'arbre (avec leur chemin metier complet)
+      - regles top-level dans plafonnements et regles_partagees
+      - noeuds (renvoi vers un noeud entier est rare mais possible)
+
+    Retourne une liste [{id, label, group}] triee par groupe puis label.
+    """
+    targets: list[dict] = []
+
+    # Regles + noeuds dans l'arbre
+    racine = (arbre or {}).get("arbre", {}).get("noeud")
+    if racine:
+        _collect_targets_in_node(racine, [], targets)
+
+    # Regles top-level
+    for top_key in ("plafonnements", "regles_partagees"):
+        for entry in (arbre or {}).get(top_key) or []:
+            regle = entry.get("regle") if isinstance(entry, dict) else None
+            if isinstance(regle, dict) and regle.get("id"):
+                # Petit label : le message ou l'id
+                label = regle.get("message") or regle.get("id")
+                targets.append(
+                    {
+                        "id": regle["id"],
+                        "label": label,
+                        "group": top_key,
+                    }
+                )
+
+    # Tri : groupe (arbre d'abord), puis label
+    targets.sort(key=lambda t: (t["group"], t["label"]))
+    return targets
+
+
+def _collect_targets_in_node(noeud, crumbs, out):
+    """Construit la liste des cibles pour le select de renvoi.
+
+    Le breadcrumb ne contient QUE les valeurs/libelles des branches
+    traversees (les "reponses"), pas les textes des noeuds (les
+    "questions"). C'est ce qui distingue les chemins ; les questions
+    sont redondantes et rendent les options illisibles.
+
+    Ex: "Oui > Culture principale > Colza > type_II > zone_note_5"
+    au lieu de "en_zone_vulnerable > Oui > Est-ce que la culture est…"
+    """
+    if not isinstance(noeud, dict):
+        return
+    # On ajoute aussi les noeuds (utile pour renvoyer vers un sous-arbre).
+    if noeud.get("id"):
+        out.append(
+            {
+                "id": noeud["id"],
+                "label": " > ".join(crumbs) if crumbs else noeud["id"],
+                "group": "arbre",
+            }
+        )
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
+        b_crumbs = crumbs + ([b_label] if b_label else [])
+        # Regle attachee a la branche
+        regle = branche.get("regle")
+        if isinstance(regle, dict) and regle.get("id"):
+            out.append(
+                {
+                    "id": regle["id"],
+                    "label": " > ".join(b_crumbs),
+                    "group": "arbre",
+                }
+            )
+        # Sous-noeud
+        if isinstance(branche.get("noeud"), dict):
+            _collect_targets_in_node(branche["noeud"], b_crumbs, out)
+
+
+def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
+    """Convertit un path JSON style "arbre/noeud/branches/1/noeud/branches/0"
+    en chemin lisible "Culture principale > Colza > ...".
+
+    On parcourt l'arbre et a chaque noeud on prend `texte` (ou `champ`),
+    a chaque branche on prend `libelle` (ou `valeur`).
+    """
+    if not raw_path:
+        return ""
+    parts = raw_path.split("/")
+    cursor = arbre
+    crumbs: list[str] = []
+    i = 0
+    while i < len(parts):
+        seg = parts[i]
+        if seg == "arbre":
+            cursor = cursor.get("arbre", {}) if isinstance(cursor, dict) else cursor
+            i += 1
+            continue
+        if seg == "noeud":
+            cursor = cursor.get("noeud", {}) if isinstance(cursor, dict) else cursor
+            if isinstance(cursor, dict):
+                label = cursor.get("texte") or cursor.get("champ") or cursor.get("id")
+                if label:
+                    crumbs.append(str(label))
+            i += 1
+            continue
+        if seg == "branches" and i + 1 < len(parts):
+            try:
+                idx = int(parts[i + 1])
+            except ValueError:
+                break
+            branches = cursor.get("branches") if isinstance(cursor, dict) else None
+            if not branches or idx >= len(branches):
+                break
+            cursor = branches[idx]
+            label = (
+                cursor.get("libelle") if isinstance(cursor, dict) else None
+            ) or str(cursor.get("valeur") if isinstance(cursor, dict) else "")
+            if label:
+                crumbs.append(label)
+            i += 2
+            continue
+        if seg == "regle":
+            cursor = cursor.get("regle", {}) if isinstance(cursor, dict) else cursor
+            i += 1
+            continue
+        if seg == "periodes" and i + 1 < len(parts):
+            try:
+                idx = int(parts[i + 1])
+            except ValueError:
+                break
+            crumbs.append(f"période #{idx + 1}")
+            periodes = cursor.get("periodes") if isinstance(cursor, dict) else None
+            if periodes and idx < len(periodes):
+                cursor = periodes[idx]
+            i += 2
+            continue
+        crumbs.append(seg)
+        i += 1
+    return " > ".join(crumbs) if crumbs else raw_path
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class EditRawYamlView(View):
+    """POST : remplace le YAML brut entier d'un draft.
+
+    Utilisation principale : editer les blocs hors `arbre` (regles
+    partagees, plafonnements, metadata) qui n'ont pas de UI dediee.
+    On parse le YAML, on valide la structure, on ecrit. Si une etape
+    echoue, on refuse et on renvoie le panneau d'erreurs.
+    """
+
+    def post(self, request, tree_pk):
+        from io import StringIO
+
+        from ruamel.yaml import YAML
+        from ruamel.yaml.error import YAMLError
+
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        raw = request.POST.get("contenu_yaml_brut", "")
+        if not raw.strip():
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "",
+                            "message": "Le YAML ne peut pas être vide.",
+                            "raw": "",
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        # Parse YAML
+        yaml = YAML(typ="rt")
+        yaml.preserve_quotes = True
+        yaml.width = 4096
+        try:
+            arbre_dict = yaml.load(StringIO(raw))
+        except YAMLError as exc:
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "Parse YAML",
+                            "message": str(exc),
+                            "raw": str(exc),
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        if not isinstance(arbre_dict, dict):
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [
+                        {
+                            "label": "",
+                            "message": "Le YAML racine doit être un dict.",
+                            "raw": "",
+                            "kind": "structure",
+                        }
+                    ],
+                    "blocked_activation": False,
+                },
+            )
+        # Validation profonde
+        try:
+            validate_arbre(arbre_dict)
+        except ValidationError as exc:
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [_humanize_error(arbre_dict, e) for e in exc.errors],
+                    "blocked_activation": False,
+                },
+            )
+        # OK : on enregistre, avec une revision pour pouvoir undo.
+        from django.db import transaction
+
+        with transaction.atomic():
+            DecisionTreeRevision.record(
+                tree,
+                action=DecisionTreeRevision.ACTION_EDIT,
+                user=request.user,
+                target_path="",
+                description="Édition directe du YAML brut",
+            )
+            tree.contenu = arbre_dict
+            tree.contenu_yaml_brut = raw
+            tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+        # Renvoie un panneau succes + reload
+        return _refresh_response(request, "YAML enregistré et validé.")
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ActivateTreeView(View):
+    """POST : valide et publie un draft. Si la validation deep echoue,
+    on refuse et on renvoie le panneau d'erreurs ; sinon le draft passe
+    en `active`, l'actif courant passe en `archive`.
+
+    L'utilisateur est ensuite redirige vers le viewer du nouvel actif.
+    """
+
+    def post(self, request, tree_pk):
+        from envergo.nitrates.yaml_tree import load_tree_admin
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        if tree.status != DecisionTree.STATUS_DRAFT:
+            return HttpResponseForbidden("Seul un draft peut etre publie.")
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        arbre = load_tree_admin(tree)
+        try:
+            validate_arbre(arbre)
+        except ValidationError as e:
+            # Refus : on renvoie le panneau de validation pour que
+            # l'utilisateur voit precisement ce qui bloque.
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [_humanize_error(arbre, err) for err in e.errors],
+                    "blocked_activation": True,
+                },
+            )
+        tree.activate()
+        # Recharge la page : le draft est maintenant actif, le bandeau
+        # change automatiquement (mode lecture sur un actif).
+        messages.info(request, f"« {tree.name} » est maintenant l'arbre actif.")
+        response = HttpResponse(
+            "<div class='yaml-admin__validation-header yaml-admin__validation-header--ok'>"
+            "✅ Activé. Rechargement…</div>"
+        )
+        response["HX-Redirect"] = f"/admin/nitrates/arbre-decision/?tree_id={tree.pk}"
+        return response
 
 
 @method_decorator(staff_member_required, name="dispatch")

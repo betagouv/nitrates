@@ -12,7 +12,7 @@ Le contexte fournit :
 
 {% for key, value in data.items %}
   {% if value %}
-    {% if key not in cascade_fields and key not in qc_actifs %}
+    {% if key not in cascade_fields and key not in qc_actifs and key not in qc_repondues_champs %}
       <input type="hidden" name="{{ key }}" value="{{ value }}">
     {% endif %}
   {% endif %}

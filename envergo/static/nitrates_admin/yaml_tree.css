@@ -16,8 +16,10 @@
   --tag-fg-form-comp: #880e4f;
   --tag-bg-interdiction: #ffebee;
   --tag-fg-interdiction: #b71c1c;
-  --tag-bg-autorisation: #e8f5e9;
-  --tag-fg-autorisation: #1b5e20;
+  --tag-bg-autorisation: #fff3e0;
+  --tag-fg-autorisation: #e65100;
+  --tag-bg-mixte: #ede7f6;
+  --tag-fg-mixte: #311b92;
   --tag-bg-plafonnement: #f3e5f5;
   --tag-fg-plafonnement: #4a148c;
   --tag-bg-libre: #e0f2f1;
@@ -179,7 +181,12 @@
 .yaml-tree__edit-actions {
   display: inline-flex;
   gap: 0.15rem;
-  margin-left: 0.5rem;
+
+  /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
+     Avec margin-left:auto en flex container, le span occupe l'espace
+     residuel apres les autres elements, ce qui le pousse a droite. */
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .yaml-tree__edit-btn {
@@ -290,6 +297,7 @@
   gap: 0.5rem;
   font-size: 0.85rem;
   color: #444;
+  min-width: 0;
 }
 
 .yaml-tree__form-label > span {
@@ -301,12 +309,22 @@
 .yaml-tree__form-label input,
 .yaml-tree__form-label select {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.9rem;
   padding: 0.25rem 0.4rem;
   border: 1px solid #ccc;
   border-radius: 3px;
   font-family: inherit;
   background: #fff;
+}
+
+/* Selects avec beaucoup d'options (renvoi_vers, etc.) : on laisse le
+   navigateur gerer le truncate horizontal sans deborder du form. */
+.yaml-tree__form-label select {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .yaml-tree__form-label input:focus,
@@ -418,6 +436,107 @@
   color: #888;
   font-style: italic;
   padding: 0.2rem 0;
+}
+
+.yaml-admin__validation {
+  flex: 1 0 100%;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid;
+}
+
+.yaml-admin__validation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.yaml-admin__validation-header--ok {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.yaml-admin__validation-header--ko {
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+.yaml-admin__validation-header > .yaml-admin__btn {
+  margin-left: auto;
+}
+
+.yaml-admin__validation-errors {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  background: #fff;
+  font-size: 0.85rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.yaml-admin__validation-errors li {
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed #f1d4d4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1.5;
+}
+
+.yaml-admin__validation-errors li:last-child {
+  border-bottom: none;
+}
+
+.yaml-admin__validation-breadcrumb {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  flex: 1 1 100%;
+}
+
+.yaml-admin__validation-breadcrumb-crumb {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.8rem;
+  color: #333;
+}
+
+.yaml-admin__validation-breadcrumb-sep {
+  color: #b0b0b0;
+  font-weight: 700;
+  user-select: none;
+}
+
+.yaml-admin__validation-kind {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.yaml-admin__validation-kind--structure {
+  background: #ffe0b2;
+  color: #6d4c00;
+}
+
+.yaml-admin__validation-kind--semantique {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+
+.yaml-admin__validation-msg {
+  color: #444;
 }
 
 .yaml-admin__toasts {
@@ -620,10 +739,10 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__raw {
-  background: #fafafa;
-  border: 1px solid #e0e0e0;
+  background: #272822;
+  color: #f8f8f2;
   border-radius: 4px;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   overflow: auto;
   font-size: 0.8rem;
   max-height: 80vh;
@@ -631,7 +750,53 @@ button.yaml-admin__btn {
 
 .yaml-admin__raw pre {
   margin: 0;
+  background: transparent !important;
+  color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.yaml-admin__raw .yaml-raw .linenos {
+  color: #75715e;
+  padding-right: 1rem;
+  user-select: none;
+}
+
+/* Edition directe du YAML brut */
+
+.yaml-admin__raw--editable {
+  background: #1e1f1c;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.yaml-admin__raw-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #fff3e0;
+  color: #6d4c00;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__raw-textarea {
+  width: 100%;
+  min-height: 60vh;
+  background: #272822;
+  color: #f8f8f2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 0.75rem 1rem;
+  border: 1px solid #3a3b35;
+  border-radius: 4px;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.yaml-admin__raw-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* Arbre */
@@ -714,6 +879,44 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #1f4789;
+  background: #f5f7fb;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
+/* Toggle "Afficher les identifiants techniques" : par defaut, on
+   masque les <code class="yaml-tree__id"> inline dans le listing. Le
+   toggle pose la classe `--show-tech-ids` sur le conteneur racine.
+   Les formulaires d'edition ne sont pas concernes (inputs hors de
+   .yaml-tree__id). */
+.yaml-admin:not(.yaml-admin--show-tech-ids) .yaml-tree__id {
+  display: none;
+}
+
+.yaml-admin__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
+
+.yaml-admin__toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Cible d'un renvoi vers : on la garde visible (utile au juriste pour
+   suivre le flux). Pas de grisage. */
+.yaml-tree__renvoi-target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem;
   color: #1f4789;
   background: #f5f7fb;
@@ -721,11 +924,27 @@ details[open] > summary.yaml-tree__row::before {
   border-radius: 3px;
 }
 
+/* Ids techniques (q_, n_, r_) revealed au survol/focus de la ligne. */
+.yaml-tree__row:hover .yaml-tree__id,
+.yaml-tree__row:focus-within .yaml-tree__id,
+.yaml-tree__regle:hover .yaml-tree__id,
+.yaml-tree__regle:focus-within .yaml-tree__id,
+.yaml-tree__branche-header:hover .yaml-tree__id,
+.yaml-tree__branche-header:focus-within .yaml-tree__id {
+  opacity: 0.9;
+}
+
 .yaml-tree__libelle {
   color: #222;
 }
 
 .yaml-tree__meta {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+.yaml-tree__aide-inline {
   font-size: 0.85rem;
   color: #666;
   font-style: italic;
@@ -763,7 +982,55 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 .yaml-tree__regle .yaml-tree__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.5rem;
   padding: 0;
+}
+
+/* Branche feuille (regle terminale, pas de sous-arbre) : on aligne la
+   valeur de branche + la regle sur une seule ligne, en gardant
+   exactement la meme apparence (font-size, padding, alignment) que
+   les rangees de noeud, pour que l'oeil ne percoive pas de difference
+   structurelle entre une branche et son enfant feuille. */
+.yaml-tree__item--leaf-regle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: var(--tree-row-pad) 0;
+}
+
+.yaml-tree__item--leaf-regle > .yaml-tree__branche-header,
+.yaml-tree__item--leaf-regle > .yaml-tree__regle {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-left: none;
+  font-size: inherit;
+}
+
+.yaml-tree__item--leaf-regle > .yaml-tree__regle.is-todo {
+  background: var(--tag-bg-warn);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+}
+
+/* Aligne aussi la row interne de la regle sur center et meme gap. */
+.yaml-tree__item--leaf-regle > .yaml-tree__regle .yaml-tree__row {
+  align-items: center;
+  gap: 0.5rem;
+  font-size: inherit;
+}
+
+/* Sur une feuille regle, les boutons d'edition de la branche sont
+   redondants avec ceux de la regle (supprimer la branche = supprimer
+   la regle, et inversement). On masque ceux de la branche pour aerer. */
+.yaml-tree__item--leaf-regle
+  > .yaml-tree__branche-header
+  > .yaml-tree__edit-actions {
+  display: none;
 }
 
 .yaml-tree__pc code {
@@ -781,13 +1048,29 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__periodes {
   list-style: none;
-  margin: 0.3rem 0 0;
+  margin: 0;
   padding-left: 0;
   font-size: 0.85rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.yaml-tree__periodes li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
 }
 
 .yaml-tree__periodes code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.yaml-tree__plafond,
+.yaml-tree__assoc,
+.yaml-tree__calc {
+  font-size: 0.85rem;
+  color: #555;
 }
 
 .yaml-tree__plafond,
@@ -928,6 +1211,11 @@ details[open] > summary.yaml-tree__row::before {
   color: var(--tag-fg-calc);
 }
 
+.tag-regle-mixte {
+  background: var(--tag-bg-mixte);
+  color: var(--tag-fg-mixte);
+}
+
 .tag-renvoi {
   background: var(--tag-bg-renvoi);
   color: var(--tag-fg-renvoi);
@@ -951,12 +1239,15 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 /* Vue compacte : quand un noeud est ferme (details:not([open])), on
-   masque le tag de type et le libelle dans son summary. Seul reste l'id
-   (et les boutons d'edition s'il y en a). Permet d'avoir une liste plate
-   des branches d'un parent sans la surcharge des questions descendantes. */
-.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__tags,
+   masque le libelle long et le meta. Le tag de type reste visible
+   (le juriste doit toujours voir s'il s'agit d'une question culture,
+   sous-culture, complement, etc.). */
 .yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__libelle,
-.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta {
+.yaml-tree__item--noeud > details:not([open]) > summary > .yaml-tree__meta,
+.yaml-tree__item--noeud
+  > details:not([open])
+  > summary
+  > .yaml-tree__aide-inline {
   display: none;
 }
 
@@ -969,16 +1260,33 @@ details[open] > summary.yaml-tree__row::before {
   font-size: 0.85rem;
 }
 
-/* On garde la racine avec son tag (pas dans une branche) toujours visible. */
-.yaml-tree--root
-  > .yaml-tree__item--noeud
-  > details:not([open])
-  > summary
-  > .yaml-tree__tags,
-.yaml-tree--root
-  > .yaml-tree__item--noeud
-  > details:not([open])
-  > summary
-  > .yaml-tree__libelle {
-  display: inline-flex;
+/* Stripes alternees par groupe de branches au meme niveau. Aide a
+   distinguer les freres dans une longue liste (ex: les 8 sous-cultures
+   de culture_principale). On colore le `<li>` entier (branche + son
+   sous-arbre) pour que la frontiere visuelle soit nette. */
+.yaml-tree__branches > .yaml-tree__item--branche:nth-child(even) {
+  background: rgb(0 0 0 / 2.5%);
+}
+
+.yaml-tree__branches > .yaml-tree__item--branche:nth-child(odd) {
+  background: transparent;
+}
+
+/* Compaction des sous-blocs de regle (periodes inline, etc.). */
+.yaml-tree__regle .yaml-tree__plafond,
+.yaml-tree__regle .yaml-tree__assoc,
+.yaml-tree__regle .yaml-tree__calc,
+.yaml-tree__regle .yaml-tree__calc-inputs,
+.yaml-tree__regle .yaml-tree__message,
+.yaml-tree__regle .yaml-tree__texte,
+.yaml-tree__regle .yaml-tree__condition,
+.yaml-tree__regle .yaml-tree__source,
+.yaml-tree__regle .yaml-tree__todo {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.yaml-tree__regle .yaml-tree__source {
+  font-style: italic;
 }

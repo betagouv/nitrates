@@ -76,14 +76,18 @@ def test_form_inclut_carte_et_simulator_js(client, nitrates_site):
 
 
 def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata):
-    """Point en ZV, sans reponses cascade : on doit voir des questions
-    subsidiaires."""
+    """Point en ZV, sans reponses cascade : on doit voir une question
+    subsidiaire (rendue maintenant dans le panneau resultat a droite,
+    cf. issue #28)."""
     response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
     assert response.status_code == 200
-    # Header du panneau resultat
-    assert b"glementations applicables" in response.content
-    # Questions complementaires affichees
-    assert b"Questions compl" in response.content
+    # Header du panneau resultat (renomme 2026-05-12 : "Reglementation
+    # nitrates applicable" pour preciser le scope, vs ancien
+    # "Reglementations applicables" trop generique).
+    assert b"glementation nitrates applicable" in response.content
+    # Question subsidiaire rendue dans le panneau resultat
+    assert b"resultat-panel--questions" in response.content
+    assert b"Une question compl" in response.content
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):
@@ -102,8 +106,11 @@ def test_resultat_rendu_chemin_complet_sol_non_cultive(
         "/simulateur/?lng=4.0345&lat=49.2583&occupation_sol=sol_non_cultive"
     )
     assert response.status_code == 200
-    # Badge INTERDIT visible dans le panel resultat
-    assert b"INTERDIT" in response.content
+    # Note 2026-05-12 : le badge "INTERDIT" dans le header epandage a ete
+    # remplace par une phrase narrative dans la simplification UX (header
+    # juste "Épandage" + phrase "L'épandage est interdit..."). On verifie
+    # la presence du libelle "interdit" dans la phrase.
+    assert b"interdit" in response.content
     # Periode toute l'annee (1er janvier au 31 decembre)
     assert b"01/01" in response.content
     assert b"31/12" in response.content

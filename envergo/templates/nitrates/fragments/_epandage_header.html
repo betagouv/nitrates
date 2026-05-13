@@ -1,0 +1,23 @@
+{% comment %}
+Header du panneau resultat (issue #28).
+
+Variante unique apres validation UX (mix entre les anciennes A et B) :
+"Épandage <strong>aujourd'hui</strong>" a gauche, puis a droite
+"en date du <jour> :" colle au badge couleur.
+
+Inputs (cf. epandage_header templatetag) :
+  - regle : Resultat
+  - statut : dict {code, couleur (rouge/orange/vert), libelle, periode_active}
+  - today : date.today() (Europe/Paris)
+  - today_fr : str "mercredi 6 mai 2026"
+  - phrase : str phrase explicative auto-generee
+{% endcomment %}
+
+<div class="epandage-header"
+     data-statut-code="{{ statut.code }}"
+     data-statut-couleur="{{ statut.couleur }}">
+  <div class="epandage-header__row">
+    <span class="epandage-header__title">Épandage</span>
+  </div>
+  {% if phrase %}<p class="epandage-header__phrase">{{ phrase }}</p>{% endif %}
+</div>

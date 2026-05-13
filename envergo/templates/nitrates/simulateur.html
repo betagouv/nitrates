@@ -14,25 +14,31 @@
 {% block extra_js %}
   {% leaflet_js %}
   <script>
+    // Force le path des marker icons Leaflet : sans ca, Leaflet derive
+    // le path a partir du JS courant (hashe par whitenoise) -> 404.
+    L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
     window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
     window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
     window.NITRATES_INITIAL_DATA = {
-      occupation_sol: "{{ data.occupation_sol|default:'' }}",
-      sous_culture: "{{ data.sous_culture|default:'' }}",
+      categorie_culture: "{{ data.categorie_culture|default:'' }}",
+      sous_culture_form: "{{ data.sous_culture_form|default:'' }}",
       categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
       sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
     };
     {% if moulinette %}
     // Catalog deja resolu cote serveur : on l'expose pour repeupler le
-    // bandeau localisation au rechargement de page (apres "Lancer la
-    // simulation" ou "Recommencer" avec lat/lng dans l'URL).
+    // bandeau localisation + le panneau debug au rechargement de page
+    // (apres "Lancer la simulation" ou "Recommencer" avec lat/lng dans
+    // l'URL). Sans ca, l'utilisateur perdrait le contexte de la parcelle.
     window.NITRATES_CATALOG = {
       department_code: "{{ moulinette.catalog.department_code|default:'' }}",
       region_code: "{{ moulinette.catalog.region_code|default:'' }}",
       region_label: "{{ moulinette.catalog.region_label|default:'' }}",
       en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
+      bassin: "{{ moulinette.catalog.bassin|default:'' }}",
+      bassin_label: "{{ moulinette.catalog.bassin_label|default:'' }}",
     };
     {% endif %}
   </script>
@@ -40,6 +46,7 @@
   <script defer src="{% static 'nitrates/cascade.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires.js' %}"></script>
+    <script defer src="{% static 'nitrates/epandage_aujourdhui.js' %}"></script>
   {% endif %}
 {% endblock %}
 

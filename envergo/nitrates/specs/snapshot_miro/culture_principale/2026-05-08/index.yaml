@@ -1,0 +1,129 @@
+# Snapshot Miro — branche "culture principale"
+#
+# Date du snapshot : 2026-05-08
+# Source : board Miro métier (capture intégrale des branches culture
+# principale telles que peintes par les juristes).
+#
+# Convention :
+#   - chaque entrée du tableau `branches` correspond à UNE branche culture
+#     principale (= un nœud racine de l'arbre, hors filtre "résolution
+#     ECG concernée par zone nitrate" / "sol non couvert" / "sol végétal"
+#     qui ne sont PAS dans la culture principale).
+#   - chaque feuille = une combinaison testable {culture, type fertilisant,
+#     questions intermédiaires, zonage} qui doit produire le résultat
+#     attendu (interdiction / autorisation conditionnelle / code PC).
+#   - les périodes sont écrites EXACTEMENT comme dans le screenshot
+#     (jj/mm sans année, parfois avec "puis" pour les fenêtres composées).
+#   - `screenshot` pointe vers le PNG horodaté de la même branche dans
+#     ce dossier. C'est la preuve visuelle pour comparer le rendu de
+#     l'application au peint juriste.
+#
+# Codes PC référencés dans ce snapshot :
+#   PC1   = "ICPE A"
+#   PC5   = "culture irriguée"
+#   PC6   = "effluents peu chargés en fertirrigation"
+#   PC7   = "effluent peu chargé"
+#   PC10  = "IAA luzerne + ICPE A"
+#   PC11  = "colza"
+#
+# Notes (zonages réglementaires) référencées :
+#   Note 5 = Régions PACA, Occitanie + départements Dordogne, Gironde,
+#            Landes, Lot-et-Garonne, Pyrénées-Atlantiques
+#   Note 6 = autre région et/ou départements (complémentaire de note 7)
+#   Note 7 = Régions PACA, Occitanie et département Pyrénées-Atlantique
+#            (au singulier dans le screenshot)
+#   Note 12 = fertilisant issu du traitement et/ou de la transformation
+#             de matière première en vue de la fabrication d'alimentation
+#             humaine ou animale
+#
+# Types de fertilisant (constants sur tout l'arbre) :
+#   Type 0   = engrais minéraux
+#   Type I   = effluents type I (fumiers compacts pailleux, composts...)
+#   Type Ia  = sous-type I (apparaît en culture de printemps)
+#   Type Ib  = sous-type I (apparaît en culture de printemps)
+#   Type II  = effluents type II (lisiers, fientes, etc.)
+#   Type III = engrais minéraux azotés de synthèse
+
+snapshot_date: 2026-05-08
+source: board Miro juriste, branche "culture principale"
+
+branches:
+
+  # =========================================================================
+  - branche: colza
+    screenshot: colza.png
+    feuilles:
+      - { type_fertilisant: "Type 0",   condition: null,                                 zonage: null,                  resultat: "Interdit du 15/12 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type I",   condition: null,                                 zonage: null,                  resultat: "Interdit du 15/11 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type II",  condition: null,                                 zonage: "Note 5",              resultat: "Interdit du 15/10 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type II",  condition: null,                                 zonage: "Pas concerné Note 5", resultat: "Interdit du 15/10 au 31/01",                                            code_pc: null }
+      - { type_fertilisant: "Type III", condition: null,                                 zonage: "Note 5",              resultat: "Autorisé sous condition du 01/09 au 15/10 et Interdit du 15/10 au 15/01", code_pc: "PC11" }
+      - { type_fertilisant: "Type III", condition: null,                                 zonage: "Pas concerné Note 5", resultat: "Autorisé sous condition du 01/09 au 15/10 et Interdit du 15/10 au 31/01", code_pc: "PC11" }
+
+  # =========================================================================
+  - branche: culture_hiver_autre_que_colza
+    screenshot: culture_hiver_autre_que_colza.png
+    feuilles:
+      - { type_fertilisant: "Type 0",   condition: null,                                 zonage: null,                  resultat: "Interdit du 15/12 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type I",   condition: null,                                 zonage: null,                  resultat: "Interdit du 15/11 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type II",  condition: null,                                 zonage: "Note 5",              resultat: "Interdit du 01/10 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type II",  condition: null,                                 zonage: "Pas concerné Note 5", resultat: "Interdit du 01/10 au 31/01",                                            code_pc: null }
+      - { type_fertilisant: "Type III", condition: null,                                 zonage: "Note 5",              resultat: "Interdit du 01/09 au 15/01",                                            code_pc: null }
+      - { type_fertilisant: "Type III", condition: null,                                 zonage: "Pas concerné Note 5", resultat: "Interdit du 01/09 au 31/01",                                            code_pc: null }
+
+  # =========================================================================
+  - branche: culture_de_printemps
+    screenshot: culture_de_printemps.png
+    feuilles:
+      - { type_fertilisant: "Type 0",   condition: null,                                                                                       zonage: null, resultat: "Interdit du 15/12 au 15/01",                                                              code_pc: null }
+      - { type_fertilisant: "Type Ia",  condition: null,                                                                                       zonage: null, resultat: "Interdit du 01/07 au 31/08 puis du 15/11 au 15/01",                                       code_pc: null }
+      - { type_fertilisant: "Type Ib",  condition: null,                                                                                       zonage: null, resultat: "Interdit du 01/07 au 15/01",                                                              code_pc: null }
+      - { type_fertilisant: "Type II",  condition: "effluents peu chargés / Q3 fertirrigation = Oui",                                          zonage: null, resultat: "Interdit du 31/08 au 31/01 et autorisé sous condition entre le 01/07 et le 31/08",        code_pc: "PC6" }
+      - { type_fertilisant: "Type II",  condition: "effluents peu chargés / Q3 fertirrigation = Non",                                          zonage: null, resultat: "Interdit du 01/07 au 31/01",                                                              code_pc: null }
+      - { type_fertilisant: "Type III", condition: "Q4 culture irriguée = Oui / Maïs",                                                         zonage: null, resultat: "Autorisé sous condition, sinon interdit, du 15/07 au 15/02",                              code_pc: "PC5" }
+      - { type_fertilisant: "Type III", condition: "Q4 culture irriguée = Oui / Autre",                                                        zonage: null, resultat: "Interdit du 15/07 au 15/02",                                                              code_pc: "PC5" }
+      - { type_fertilisant: "Type III", condition: "Q4 culture irriguée = Non",                                                                zonage: null, resultat: "Interdit du 01/07 au 15/02",                                                              code_pc: null }
+
+  # =========================================================================
+  - branche: prairies_implantees_plus_de_6_mois
+    libelle_complet: "Prairies implantées depuis plus de six mois dont prairie permanente"
+    screenshot: prairies_implantees_plus_de_6_mois.png
+    feuilles:
+      - { type_fertilisant: "Type 0",   condition: "Q1 Plan d'épandage = à autorisation",                                                      zonage: null,     resultat: "Autorisé sous condition entre le 15/12 et le 15/01",        code_pc: "PC1" }
+      - { type_fertilisant: "Type 0",   condition: "Q1 Plan d'épandage = autres",                                                              zonage: null,     resultat: "Interdit du 15/12 au 15/01",                                code_pc: null }
+      - { type_fertilisant: "Type I",   condition: null,                                                                                       zonage: null,     resultat: "Interdit du 15/12 au 15/01",                                code_pc: null }
+      - { type_fertilisant: "Type II",  condition: "effluents peu chargés = Oui",                                                              zonage: null,     resultat: "Autorisé sous condition entre le 15/11 et le 15/01",        code_pc: "PC7" }
+      - { type_fertilisant: "Type II",  condition: "effluents peu chargés = Non",                                                              zonage: null,     resultat: "Interdit du 15/11 au 15/01",                                code_pc: null }
+      - { type_fertilisant: "Type III", condition: "îlot cultural en zone de montagne (D113-14 CRPM) = Oui",                                   zonage: "Note 7", resultat: "Interdit du 01/10 au 15/02",                                code_pc: null }
+      - { type_fertilisant: "Type III", condition: "îlot cultural en zone de montagne (D113-14 CRPM) = Oui",                                   zonage: "Note 6", resultat: "Interdit du 01/10 au 28/02",                                code_pc: null }
+      - { type_fertilisant: "Type III", condition: "îlot cultural en zone de montagne (D113-14 CRPM) = Non",                                   zonage: null,     resultat: "Interdit du 01/10 au 15/01",                                code_pc: null }
+
+  # =========================================================================
+  - branche: luzerne
+    screenshot: luzerne_partie1.png
+    screenshots_complementaires:
+      - luzerne_partie2.png  # Type III, Q1 plan d'épandage (suite à droite)
+      - luzerne_partie3.png  # Type III, branche îlot montagne (Notes 6/7) + Non
+    feuilles:
+      - { type_fertilisant: "Type 0",   condition: null,                                                                                       zonage: null,     resultat: "go to branche prairie + type 0",                                                                                  code_pc: null }
+      - { type_fertilisant: "Type I",   condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = oui",                                   zonage: null,     resultat: "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/12 au 15/01",                   code_pc: "PC10" }
+      - { type_fertilisant: "Type I",   condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = non",                                   zonage: null,     resultat: "Interdit du 15/12 au 15/01",                                                                                      code_pc: null }
+      - { type_fertilisant: "Type I",   condition: "Q1 Plan d'épandage = autre",                                                               zonage: null,     resultat: "Interdit du 15/12 au 15/01",                                                                                      code_pc: null }
+      - { type_fertilisant: "Type II",  condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = oui",                                   zonage: null,     resultat: "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/11 au 15/01",                   code_pc: "PC10" }
+      - { type_fertilisant: "Type II",  condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = non",                                   zonage: null,     resultat: "go to branche prairie + type II",                                                                                 code_pc: null }
+      - { type_fertilisant: "Type II",  condition: "Q1 Plan d'épandage = autre",                                                               zonage: null,     resultat: "go to branche prairie + type II",                                                                                 code_pc: null }
+      - { type_fertilisant: "Type III", condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = oui / îlot zone montagne = oui",        zonage: "Note 7", resultat: "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 15/02",                   code_pc: "PC10" }
+      - { type_fertilisant: "Type III", condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = oui / îlot zone montagne = oui",        zonage: "Note 6", resultat: "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 28/02",                   code_pc: "PC10" }
+      - { type_fertilisant: "Type III", condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = oui / îlot zone montagne = non",        zonage: null,     resultat: "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 31/01",                   code_pc: "PC10" }
+      - { type_fertilisant: "Type III", condition: "Q1 Plan d'épandage = à autorisation / Q2 Note 12 = non",                                   zonage: null,     resultat: "go to branche prairie + type III",                                                                                code_pc: null }
+      - { type_fertilisant: "Type III", condition: "Q1 Plan d'épandage = autre",                                                               zonage: null,     resultat: "go to branche prairie + type III",                                                                                code_pc: null }
+    notes_relecture:
+      - "luzerne_partie1.png : un commentaire Miro (cercle '1') chevauche partiellement le texte 'Sinon interdit du 15/12 au 15/01' du chemin Type I→autorisation→Q2 oui. La règle a été lue à partir du contexte (cohérence avec Type II → 15/11 au 15/01)."
+      - "Les 3 PNG `luzerne_partie*` couvrent la même branche ; le board Miro est trop large pour tenir en une seule capture."
+
+  # =========================================================================
+  - branche: autres_cultures
+    libelle_complet: "Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)"
+    screenshot: autres_cultures.png
+    feuilles:
+      - { type_fertilisant: "Types 0, Ia, Ib, II et III", condition: null,                                                                     zonage: null,     resultat: "Interdit du 15/12 au 15/01",                                                                                      code_pc: null }

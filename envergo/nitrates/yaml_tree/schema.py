@@ -26,6 +26,7 @@ REGLE_SCHEMA = {
                 "libre",
                 "non_applicable",
                 "calculatrice",
+                "mixte",
             ]
         },
         "periodes": {
@@ -37,20 +38,19 @@ REGLE_SCHEMA = {
                 "properties": {
                     "du": {"type": "string"},
                     "au": {"type": "string"},
-                    # Optionnel : regime de cette periode specifique. Si
-                    # absent, on retombe sur le `type` global de la regle
-                    # parente. Permet d'exprimer des regles a regimes
-                    # mixtes successifs (ex: colza Type III note_5 :
-                    # autorisation_sous_condition puis interdiction).
-                    # Seuls les 3 regimes "vrais" sont autorises ; les
-                    # types `plafonnement`, `non_applicable`,
-                    # `calculatrice`, `a_completer` ne sont pas des
-                    # regimes valides pour une periode.
+                    # Regime : permet d'avoir une regle "interdiction" globale
+                    # avec des periodes ou cette interdiction est reduite a
+                    # une autorisation_sous_condition (ex: colza Type III
+                    # autorise sous condition entre 01/09 et 15/10, interdit
+                    # ensuite). Le `regime` de la periode prevaut sur le
+                    # `type` de la regle parente pour la fenetre concernee.
                     "regime": {
                         "enum": [
                             "interdiction",
                             "autorisation_sous_condition",
+                            "plafonnement",
                             "libre",
+                            "non_applicable",
                         ]
                     },
                 },
@@ -139,8 +139,7 @@ BRANCHE_SCHEMA = {
 # Schema racine pour un fichier arbre national :
 #   metadata: { version, source, ... }
 #   arbre:    { noeud: ... }   — point d'entree de l'arbre
-#   plafonnements: [ { regle: ... }, ... ]      — regles libres reutilisables
-#   regles_partagees: [ { regle: ... }, ... ]   — regles cibles de renvoi_vers
+#   plafonnements: [ { regle: ... }, ... ]   — regles libres reutilisables
 ARBRE_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -161,6 +160,9 @@ ARBRE_SCHEMA = {
                 "properties": {"regle": {"$ref": "#/$defs/regle"}},
             },
         },
+        # Regles reutilisables top-level, ciblees par renvoi_vers depuis
+        # n'importe quelle branche. Utile pour les regles communes (ex:
+        # couvert d'interculture courte, plafonds, etc.).
         "regles_partagees": {
             "type": "array",
             "items": {

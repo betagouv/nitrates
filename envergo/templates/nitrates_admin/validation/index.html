@@ -1,0 +1,224 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block title %}Validation arbre{% endblock %}
+
+{% block content %}
+  <div class="fr-container-fluid fr-py-3w">
+    <h1>Validation manuelle des feuilles culture_principale</h1>
+
+    <p style="color: #666; max-width: 80ch;">
+      Tableau de validation croisée pour chaque feuille atteignable sous
+      <code>culture_principale</code>. Chaque ligne croise 5 sources : PNG Miro,
+      YAML codé, admin YAML viewer/form, deeplink simulateur, screenshot Playwright.
+    </p>
+
+    <div class="vc-stats">
+      <span class="vc-pill" style="background:#eafbe7; color:#18753c">
+        ✅ {{ stats.valide }} validé{{ stats.valide|pluralize:"s" }}
+      </span>
+      <span class="vc-pill" style="background:#fff3e0; color:#b35900">⚠️ {{ stats.a_corriger }} à corriger</span>
+      <span class="vc-pill" style="background:#eaeaea; color:#666">
+        ⬜ {{ stats.non_valide }} non validé{{ stats.non_valide|pluralize:"s" }}
+      </span>
+      <span class="vc-pill" style="background:#e1ecff; color:#1f4789">Total : {{ stats.total }}</span>
+    </div>
+
+    <table class="vc-table">
+      <thead>
+        <tr>
+          <th>Statut</th>
+          <th>Règle</th>
+          <th>Branche Miro</th>
+          <th>Type fert.</th>
+          <th>Résultat Miro attendu</th>
+          <th>PC</th>
+          <th>Miro</th>
+          <th>Playwright</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for branche in branches %}
+          <tr class="vc-row vc-row--{{ branche.statut }}">
+            <td>
+              {% if branche.statut == 'valide' %}
+                <span class="vc-pill vc-pill--ok">✅</span>
+              {% elif branche.statut == 'a_corriger' %}
+                <span class="vc-pill vc-pill--warn">⚠️</span>
+              {% else %}
+                <span class="vc-pill vc-pill--neutre">⬜</span>
+              {% endif %}
+              {% with users=branche.actions_par_user %}
+                {% if users %}
+                  <div class="vc-validators" title="Contributeurs validation">
+                    {% for a in users %}<span class="vc-validators__pill">{{ a.user|default:"?" }}</span>{% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
+            </td>
+            <td>{{ branche.branche_miro|default:"—" }}</td>
+            <td>{{ branche.type_fertilisant_miro|default:"—" }}</td>
+            <td class="vc-row__resultat">{{ branche.resultat_miro|default:"—" }}</td>
+            <td>
+              {% if branche.code_pc_miro %}
+                <span class="vc-pc">{{ branche.code_pc_miro }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="vc-row__media">
+              {% if branche.screenshot_miro %}
+                <img src="{{ branche.screenshot_miro.url }}"
+                     alt="Miro"
+                     class="vc-thumb vc-clickable"
+                     data-lightbox
+                     data-src="{{ branche.screenshot_miro.url }}">
+              {% else %}
+                <span style="color:#999">—</span>
+              {% endif %}
+            </td>
+            <td class="vc-row__media">
+              {% if branche.screenshot_playwright %}
+                <img src="{{ branche.screenshot_playwright.url }}"
+                     alt="Playwright"
+                     class="vc-thumb vc-clickable"
+                     data-lightbox
+                     data-src="{{ branche.screenshot_playwright.url }}">
+              {% else %}
+                <span style="color:#999">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}"
+                 class="vc-btn">Voir</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "nitrates_admin/validation/_lightbox.html" %}
+
+  <style>
+    .vc-stats {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .vc-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .vc-pill--ok {
+      background: #b8fec9;
+      color: #18753c;
+    }
+
+    .vc-pill--warn {
+      background: #ffe0b2;
+      color: #b35900;
+    }
+
+    .vc-pill--neutre {
+      background: #eaeaea;
+      color: #666;
+    }
+
+    .vc-pc {
+      background: #f5f5fc;
+      border: 1px solid #cecefc;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6a6af4;
+    }
+
+    .vc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .vc-table th,
+    .vc-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .vc-table th {
+      background: #f4f6f9;
+      font-weight: 600;
+    }
+
+    .vc-regle-id {
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .vc-row__resultat {
+      max-width: 40ch;
+      color: #444;
+    }
+
+    .vc-row__media {
+      width: 100px;
+    }
+
+    .vc-thumb {
+      max-width: 90px;
+      max-height: 50px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+
+    .vc-clickable {
+      cursor: zoom-in;
+    }
+
+    .vc-btn {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 3px;
+      background: #1f4789;
+      color: #fff !important;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+
+    .vc-row--valide {
+      background: #fafff5;
+    }
+
+    .vc-row--a_corriger {
+      background: #fffaf2;
+    }
+
+    .vc-validators {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: 4px;
+    }
+
+    .vc-validators__pill {
+      font-size: 0.7rem;
+      padding: 1px 5px;
+      border-radius: 8px;
+      background: #e1ecff;
+      color: #1f4789;
+      white-space: nowrap;
+    }
+  </style>
+{% endblock %}

@@ -13,7 +13,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 {% endcomment %}
 
 <div class="resultat-panel">
-  <h2 class="fr-h3">Réglementations applicables</h2>
+  <h2 class="fr-h3">Réglementation nitrates applicable</h2>
 
   {# ─── Zone vulnérable ─────────────────────────────────────────────── #}
   <div class="resultat-row">
@@ -35,25 +35,39 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% for entry in regulations_evaluees %}
       {% with criterion=entry.criterion ev=entry.evaluator %}
 
-        {# ─── Épandage ─────────────────────────────────────────────── #}
-        <div class="resultat-row">
-          <span class="resultat-row__label">Épandage</span>
-          {% if ev.result == "interdit" %}
-            <span class="resultat-badge resultat-badge--interdit">INTERDIT</span>
-          {% elif ev.result == "action_requise" %}
-            <span class="resultat-badge resultat-badge--conditionnel">SOUS CONDITIONS</span>
-          {% elif ev.result == "non_soumis" %}
-            <span class="resultat-badge resultat-badge--autorise">AUTORISÉ</span>
-          {% elif ev.result == "non_concerne" %}
-            <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
-          {% else %}
-            <span class="resultat-badge resultat-badge--neutre">{{ ev.result|upper }}</span>
-          {% endif %}
-        </div>
+        {% if ev.questions_subsidiaires %}
+          {% comment %}
+          Parcours en pause sur une question subsidiaire : on remplace tout
+          le rendu resultat (header / calendrier / texte) par le mini-form
+          de QC qui partage le form principal via form="form-simulateur".
+          {% endcomment %}
+          {% include "nitrates/fragments/_resultat_questions.html" %}
+        {% elif ev.regle %}
+          {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
+          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
+          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
+          {% epandage_header ev.regle %}
+        {% else %}
+          {# Fallback ancien rendu si pas de regle (cas edge non_disponible). #}
+          <div class="resultat-row">
+            <span class="resultat-row__label">Épandage</span>
+            {% if ev.result == "interdit" %}
+              <span class="resultat-badge resultat-badge--interdit">INTERDIT</span>
+            {% elif ev.result == "action_requise" %}
+              <span class="resultat-badge resultat-badge--conditionnel">SOUS CONDITIONS</span>
+            {% elif ev.result == "non_soumis" %}
+              <span class="resultat-badge resultat-badge--autorise">AUTORISÉ</span>
+            {% elif ev.result == "non_concerne" %}
+              <span class="resultat-badge resultat-badge--neutre">NON CONCERNÉ</span>
+            {% else %}
+              <span class="resultat-badge resultat-badge--neutre">{{ ev.result|upper }}</span>
+            {% endif %}
+          </div>
+        {% endif %}
 
         {% if ev.regle %}
 
-          {# Texte introductif #}
+          {# Texte introductif (message specifique a la regle, ex maïs brunissement) #}
           {% if ev.regle.message %}
             <p class="fr-mt-2w">{{ ev.regle.message }}</p>
           {% elif ev.regle.texte %}
@@ -63,16 +77,72 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {# Calendrier visuel #}
           {% calendrier_epandage ev.regle %}
 
-          {# Periode d'interdiction (texte) #}
+          {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
+          {% if ev.regle.texte_condition %}
+            <div class="fr-callout fr-callout--blue-ecume fr-mt-3w">
+              <h4 class="fr-callout__title">Condition d'autorisation</h4>
+              <p>{{ ev.regle.texte_condition }}</p>
+            </div>
+          {% endif %}
+
+          {% comment %}
+          Periodes (texte). Pour les regles non-mixtes : "Periode
+          d'interdiction". Pour mixte : on liste chaque periode avec son
+          regime (interdiction / autorisation_sous_condition).
+          {% endcomment %}
           {% if ev.regle.periodes %}
-            <p>
-              <strong>Période d'interdiction :</strong>
-              {% for p in ev.regle.periodes %}
-                du {{ p.du }} au {{ p.au }}
-                {% if not forloop.last %};{% endif %}
-              {% endfor %}
-              .
-            </p>
+            {% if ev.regle.type == "mixte" %}
+              {% comment %}
+              Ordre d'affichage : on remonte les periodes avec borne
+              phenologique (cas particulier "autorise sous condition jusqu'a
+              tel evenement"), puis on rappelle la regle de base avec
+              "Sinon, regle de base :" pour signaler que c'est le fallback.
+              {% endcomment %}
+              <ul class="fr-mb-0">
+                {% for p in ev.regle.periodes %}
+                  {% if p.du|slice:"2:3" != "/" or p.au|slice:"2:3" != "/" %}
+                    <li>
+                      {% if p.regime == "autorisation_sous_condition" %}
+                        <strong>Autorisation sous conditions phénologiques :</strong>
+                      {% elif p.regime == "interdiction" %}
+                        <strong>Interdiction (dates flottantes) :</strong>
+                      {% elif p.regime == "plafonnement" %}
+                        <strong>Plafond (dates flottantes) :</strong>
+                      {% else %}
+                        <strong>{{ p.regime|default:"Période" }} :</strong>
+                      {% endif %}
+                      du {{ p.du }} au {{ p.au }}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+                {% for p in ev.regle.periodes %}
+                  {% if p.du|slice:"2:3" == "/" and p.au|slice:"2:3" == "/" %}
+                    <li>
+                      <em>Sinon, règle de base —</em>
+                      {% if p.regime == "interdiction" %}
+                        <strong>Interdiction :</strong>
+                      {% elif p.regime == "autorisation_sous_condition" %}
+                        <strong>Autorisation sous condition :</strong>
+                      {% elif p.regime == "plafonnement" %}
+                        <strong>Plafond :</strong>
+                      {% else %}
+                        <strong>{{ p.regime|default:"Période" }} :</strong>
+                      {% endif %}
+                      du {{ p.du }} au {{ p.au }}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>
+                <strong>Période d'interdiction :</strong>
+                {% for p in ev.regle.periodes %}
+                  du {{ p.du }} au {{ p.au }}
+                  {% if not forloop.last %};{% endif %}
+                {% endfor %}
+                .
+              </p>
+            {% endif %}
           {% endif %}
 
           {# Plafond (si applicable) #}
@@ -82,12 +152,27 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             </p>
           {% endif %}
 
-          {# Code prescription : libelle long resolu via referentiels #}
-          {% if ev.regle.code_prescription %}
+          {% comment %}
+          Code prescription : libelle long resolu via referentiels.
+          On ne l'affiche QUE si la regle n'a pas deja un `message` narratif :
+          le `texte_court` du PC est volontairement minimaliste (ex pc5
+          "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
+          avec un message regle qui dit deja la meme chose en plus contextuel.
+          {% endcomment %}
+          {% if ev.regle.code_prescription and not ev.regle.message %}
             {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
               {% if pc %}
                 <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
-                {% if pc.texte_court %}<p>{{ pc.texte_court|linebreaksbr }}</p>{% endif %}
+                {% if pc.texte_court %}
+                  <p>
+                    {{ pc.texte_court|linebreaksbr }}
+                    {% if pc.texte_redaction_initiale %}
+                      <a href="#accordion-texte-init-{{ ev.regle.code_prescription }}"
+                         class="fr-link fr-link--sm nitrates-voir-plus"
+                         data-target="accordion-texte-init-{{ ev.regle.code_prescription }}">voir plus</a>
+                    {% endif %}
+                  </p>
+                {% endif %}
               {% else %}
                 <p class="fr-text--sm">
                   <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
@@ -115,6 +200,24 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             <p class="fr-text--sm fr-mt-2w">
               <em>⚠ Cette règle est marquée "à compléter" dans le brouillon — résultat non finalisé.</em>
             </p>
+          {% endif %}
+
+          {% comment %}
+          Plafonnement PC16 prairie permanente : affiche systematiquement
+          quand l'utilisateur a coche "Prairie permanente" en sous-categorie,
+          peu importe le type de fertilisant. Cf. PDF mapping form ->
+          arbres : "pour les prairies permanentes, il faut afficher la
+          PC16 'plafond prairie' (peu importe le type de fertilisant)".
+          {% endcomment %}
+          {% if data.prairie_permanente == "True" %}
+            {% with pc16=codes_prescription|get_item:"pc16" %}
+              {% if pc16 %}
+                <div class="fr-callout fr-mt-3w">
+                  <h4 class="fr-callout__title">{{ pc16.mots_cles|default:"Plafond prairies" }} (PC16)</h4>
+                  {% if pc16.texte_court %}<p>{{ pc16.texte_court|linebreaksbr }}</p>{% endif %}
+                </div>
+              {% endif %}
+            {% endwith %}
           {% endif %}
 
           {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
@@ -145,6 +248,27 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                 </ul>
               </div>
             </section>
+
+            {# Texte reglementaire initial du PC (cible des liens "voir plus") #}
+            {% if ev.regle.code_prescription %}
+              {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
+                {% if pc.texte_redaction_initiale %}
+                  <section class="fr-accordion">
+                    <h3 class="fr-accordion__title">
+                      <button class="fr-accordion__btn"
+                              aria-expanded="false"
+                              aria-controls="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:ev.regle.code_prescription }})
+                      </button>
+                    </h3>
+                    <div class="fr-collapse"
+                         id="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                      <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
+                    </div>
+                  </section>
+                {% endif %}
+              {% endwith %}
+            {% endif %}
           </div>
 
         {% endif %}
@@ -261,4 +385,21 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     <a href="{% url 'nitrates_simulateur' %}"
        class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
   </div>
+
+  <script>
+    (function () {
+      document.addEventListener("click", function (e) {
+        var a = e.target.closest(".nitrates-voir-plus");
+        if (!a) return;
+        e.preventDefault();
+        var id = a.getAttribute("data-target");
+        var btn = document.querySelector('[aria-controls="' + id + '"]');
+        if (btn && btn.getAttribute("aria-expanded") !== "true") {
+          btn.click();
+        }
+        var panel = document.getElementById(id);
+        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    })();
+  </script>
 </div>

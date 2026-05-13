@@ -87,6 +87,12 @@
             {% reset_link querystring_base as reset_url %}
             <a href="{{ reset_url }}" class="yaml-admin__btn">↺ Réinitialiser le pli</a>
           {% endif %}
+
+          <label class="yaml-admin__toggle"
+                 title="Affiche les identifiants techniques (q_, n_, r_) dans l'arbre">
+            <input type="checkbox" id="yaml-admin-toggle-tech-ids">
+            <span>Afficher les identifiants techniques</span>
+          </label>
         </nav>
       </header>
 
@@ -98,11 +104,249 @@
         {% endif %}
 
         {% if vue == "split" or vue == "brut" %}
-          <section class="yaml-admin__raw" aria-label="Source YAML">
-            {{ raw_html|safe }}
-          </section>
+          {% if is_editing %}
+            <section class="yaml-admin__raw yaml-admin__raw--editable"
+                     aria-label="Source YAML (édition directe)">
+              <form method="post"
+                    action="{% url 'nitrates_admin_yaml_edit_raw' tree_pk=tree.pk %}"
+                    hx-post="{% url 'nitrates_admin_yaml_edit_raw' tree_pk=tree.pk %}"
+                    hx-target="#yaml-admin-validation-zone"
+                    hx-swap="innerHTML">
+                {% csrf_token %}
+                <p class="yaml-admin__raw-hint">
+                  ⚠ Édition directe du YAML — utile pour modifier les
+                  blocs hors arbre (<code>regles_partagees</code>,
+                  <code>plafonnements</code>, <code>metadata</code>).
+                  La structure est validée à l'enregistrement.
+                </p>
+                <textarea name="contenu_yaml_brut"
+                          class="yaml-admin__raw-textarea"
+                          spellcheck="false">{{ tree.contenu_yaml_brut }}</textarea>
+                <div class="yaml-admin__raw-actions">
+                  <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer le YAML</button>
+                </div>
+              </form>
+            </section>
+          {% else %}
+            <section class="yaml-admin__raw" aria-label="Source YAML">
+              {{ raw_html|safe }}
+            </section>
+          {% endif %}
         {% endif %}
       </div>
     </div>
+
+    <script>
+      // Toggle "Afficher les identifiants techniques" (q_, n_, r_).
+      // Persiste dans localStorage. Defaut : ON (afficher).
+      (function () {
+        const KEY = 'nitrates_admin__show_tech_ids';
+        const root = document.querySelector('.yaml-admin');
+        const cb = document.getElementById('yaml-admin-toggle-tech-ids');
+        if (!root || !cb) return;
+        const isOn = () => localStorage.getItem(KEY) !== '0';
+        const apply = (on) => {
+          root.classList.toggle('yaml-admin--show-tech-ids', !!on);
+          cb.checked = !!on;
+        };
+        apply(isOn());
+        cb.addEventListener('change', () => {
+          localStorage.setItem(KEY, cb.checked ? '1' : '0');
+          apply(cb.checked);
+        });
+        // Re-applique apres chaque swap htmx (le DOM peut etre re-rendu).
+        document.addEventListener('htmx:afterSwap', () => apply(isOn()));
+      })();
+    </script>
+
+    <script>
+      // Deeplink #regle=X : ouvre tous les ancestors et scroll sur la regle.
+      // ?edit=1 : si pas deja en mode edition, redirect vers editer-actif/
+      // en preservant le hash.
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const isEditMode = params.get('mode') === 'edition';
+        // wantsEdit peut venir des query params OU du hash (apres redirect
+        // depuis viewer lecture seule -> mode edition).
+        const wantsEdit =
+          params.get('edit') === '1' || /(^|&)edit=1(&|$)/.test(location.hash);
+
+        // ─── 1. Si ?edit=1 et pas en mode edition, redirect ──────────────
+        // On forward `edit=1` dans le hash pour que le redirect cible
+        // re-detecte la volonte d'editer (les query params seront cleared
+        // par editer-actif/ qui repond avec ?tree_id=X&mode=edition).
+        if (wantsEdit && !isEditMode) {
+          const newHash = location.hash
+            ? location.hash + '&edit=1'
+            : '#edit=1';
+          const url = "{% url 'nitrates_admin_yaml_edit_active' %}" + newHash;
+          location.replace(url);
+          return;
+        }
+
+        // ─── 2. Parse hash pour deeplink #regle=X ────────────────────────
+        function parseHash() {
+          const h = location.hash.replace(/^#/, '');
+          const out = {};
+          for (const part of h.split('&')) {
+            if (!part) continue;
+            const [k, v] = part.split('=', 2);
+            out[k] = decodeURIComponent(v || '');
+          }
+          return out;
+        }
+
+        function trouverLigneRegle(rid) {
+          // Cherche un .yaml-tree__id dont le textContent == rid.
+          return [...document.querySelectorAll('.yaml-tree__id')].find(
+            (c) => c.textContent.trim() === rid
+          );
+        }
+
+        function deplierJusquALaRegle(rid) {
+          const target = trouverLigneRegle(rid);
+          if (!target) return null;
+          // Remonte les <details> ancestors et ouvre-les.
+          let n = target.parentElement;
+          while (n && n !== document.body) {
+            if (n.tagName === 'DETAILS') n.open = true;
+            n = n.parentElement;
+          }
+          return target;
+        }
+
+        function appliquerHash() {
+          const { regle } = parseHash();
+          if (!regle) return;
+          const target = deplierJusquALaRegle(regle);
+          if (!target) {
+            console.warn('Deeplink: regle non trouvee dans le tree :', regle);
+            return;
+          }
+          // Scroll apres un tick pour laisser le navigateur calculer la layout.
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: 'instant', block: 'center' });
+            // Highlight visuel temporaire.
+            const row = target.closest('.yaml-tree__row, summary, li, div');
+            if (row) {
+              row.style.transition = 'background 0.4s';
+              const orig = row.style.background;
+              row.style.background = '#fff3a8';
+              setTimeout(() => { row.style.background = orig; }, 1500);
+            }
+            // Si mode edition demande, auto-clique le crayon de la regle.
+            if (isEditMode && wantsEdit) {
+              const code = target;
+              let parent = code;
+              while (parent && !parent.querySelector('button[title="Éditer cette règle"]')) {
+                parent = parent.parentElement;
+                if (!parent || parent.tagName === 'BODY') break;
+              }
+              const btn = parent && parent.querySelector('button[title="Éditer cette règle"]');
+              if (btn) btn.click();
+            }
+          }, 50);
+        }
+
+        appliquerHash();
+        window.addEventListener('hashchange', appliquerHash);
+
+        // ─── Preserve state on "Editer cet arbre" / "Editer ce brouillon" ─
+        // Quand l'utilisateur clique sur le bouton global "Editer", on veut
+        // pouvoir revenir au meme endroit dans l'arbre apres redirect. Pour
+        // ca on cherche la regle (ou noeud) visible la plus proche du centre
+        // du viewport, on l'ajoute en #regle=<id>&edit=1 dans l'URL cible.
+        function trouverRegleVisible() {
+          const centerY = window.innerHeight / 2;
+          let best = null;
+          let bestDist = Infinity;
+          for (const code of document.querySelectorAll('.yaml-tree__id')) {
+            const r = code.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > window.innerHeight) continue;
+            const mid = (r.top + r.bottom) / 2;
+            const dist = Math.abs(mid - centerY);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = code.textContent.trim();
+            }
+          }
+          return best;
+        }
+
+        document.addEventListener('click', (e) => {
+          const a = e.target.closest('a[data-preserve-state]');
+          if (!a) return;
+          const rid = trouverRegleVisible();
+          if (!rid) return;
+          const sep = a.href.includes('#') ? '&' : '#';
+          a.href = a.href + sep + 'regle=' + encodeURIComponent(rid) + '&edit=1';
+        }, true);
+
+        // ─── 3. Bouton "🔗 copier lien" sur chaque ligne ─────────────────
+        // Visible uniquement quand "Afficher les identifiants techniques"
+        // est ON (sinon on n'expose pas les regle_id en clair).
+        function ajouterBoutonsCopier() {
+          [...document.querySelectorAll('.yaml-tree__id')].forEach((code) => {
+            if (code.dataset.copyLinkAdded) return;
+            const rid = code.textContent.trim();
+            if (!rid) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'yaml-tree__copy-link';
+            btn.title = 'Copier le lien direct vers ce nœud';
+            btn.textContent = '🔗';
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const url = location.origin + location.pathname + location.search + '#regle=' + encodeURIComponent(rid);
+              navigator.clipboard.writeText(url).then(() => {
+                afficherToast('✓ Lien copié');
+              });
+            });
+            code.insertAdjacentElement('afterend', btn);
+            code.dataset.copyLinkAdded = '1';
+          });
+        }
+
+        function afficherToast(msg) {
+          let toast = document.getElementById('yaml-tree__toast');
+          if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'yaml-tree__toast';
+            toast.style.cssText = 'position:fixed; bottom:1rem; right:1rem; background:#1d1d1d; color:#fff; padding:8px 14px; border-radius:4px; z-index:9999; font-size:0.85rem; opacity:0; transition:opacity 0.2s';
+            document.body.appendChild(toast);
+          }
+          toast.textContent = msg;
+          toast.style.opacity = '1';
+          clearTimeout(toast._t);
+          toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 1500);
+        }
+
+        ajouterBoutonsCopier();
+        document.addEventListener('htmx:afterSwap', ajouterBoutonsCopier);
+      })();
+    </script>
+
+    <style>
+      .yaml-tree__copy-link {
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+        font-size: 0.85rem;
+        padding: 1px 4px;
+        margin-left: 4px;
+      }
+
+      .yaml-admin--show-tech-ids .yaml-tree__copy-link,
+      .yaml-tree__row:hover .yaml-tree__copy-link {
+        opacity: 0.6;
+      }
+
+      .yaml-tree__copy-link:hover {
+        opacity: 1 !important;
+      }
+    </style>
   {% endif %}
 {% endblock %}

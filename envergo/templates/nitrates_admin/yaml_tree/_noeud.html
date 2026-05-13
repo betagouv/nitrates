@@ -25,13 +25,16 @@
           </span>
         {% endfor %}
       </span>
-      <code class="yaml-tree__id">{{ noeud.id }}</code>
+      <code class="yaml-tree__id" title="Identifiant technique">{{ noeud.id }}</code>
       {% if noeud.texte %}
         <span class="yaml-tree__libelle">{{ noeud.texte }}</span>
       {% elif noeud.champ %}
         <span class="yaml-tree__libelle">{{ noeud.champ }}</span>
       {% endif %}
       {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
+      {% if noeud.aide %}
+        <span class="yaml-tree__aide-inline" title="Aide affichée à l'utilisateur">💡 {{ noeud.aide }}</span>
+      {% endif %}
 
       {% if is_editing %}
         <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
@@ -61,8 +64,6 @@
         </span>
       {% endif %}
     </summary>
-
-    {% if noeud.aide %}<p class="yaml-tree__aide">{{ noeud.aide }}</p>{% endif %}
 
     {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
 

@@ -37,4 +37,7 @@ dacite
 python-magic
 jsonschema
 ruamel.yaml
+pyyaml
+py7zr
 Pygments
+mozilla-django-oidc

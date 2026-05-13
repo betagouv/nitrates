@@ -16,6 +16,29 @@ from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 
+# Mapping pour le recap des QC repondues (rendu dans le panneau gauche apres
+# que l'utilisateur a repondu via le mini-form du panneau droit). Donne le
+# texte de la question et le libelle humain de chaque valeur.
+# Si on ajoute de nouveaux champs subsidiaires dans l'arbre, les ajouter ici.
+_QC_LIBELLES = {
+    "plan_epandage": {
+        "texte": "Plan d'épandage",
+        "choix": {
+            "icpe_a": "À autorisation (ICPE A)",
+            "icpe_e": "À enregistrement (ICPE E)",
+            "icpe_d": "À déclaration (ICPE D)",
+            "non_concerne": "Non concerné",
+        },
+    },
+    "effluents_peu_charges": {
+        "texte": "Effluents peu chargés",
+        "choix": {
+            "oui": "Oui",
+            "non": "Non",
+        },
+    },
+}
+
 
 class HomeView(TemplateView):
     template_name = "nitrates/home.html"
@@ -208,11 +231,16 @@ class MoulinetteView(View):
             "lat",
             "lng",
             "code_insee",
+            "categorie_culture",
+            "sous_culture_form",
             "occupation_sol",
             "sous_culture",
             "categorie_fertilisant",
             "sous_fertilisant",
             "type_fertilisant",
+            "culture_irriguee_type",
+            "prairie_permanente",
+            "sous_culture_couvert",
         ]
 
         ctx = {
@@ -225,6 +253,7 @@ class MoulinetteView(View):
             "debug": settings.DEBUG,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
+            "qc_repondues_champs": [],
         }
 
         # Sans lat/lng -> on rend juste le panneau form (pas de resultat).
@@ -266,6 +295,67 @@ class MoulinetteView(View):
         if premier_qc and getattr(premier_qc, "questions_subsidiaires", None):
             qc_actifs = list(premier_qc.questions_subsidiaires.champs_set)
 
+        # Recap des QC sur le chemin actuel : repondues + en attente
+        # (les "en attente" sont aussi rendues a gauche en radio buttons
+        # editables pour que l'utilisateur change la cascade sans repartir
+        # de zero). Les choix sont issus DIRECTEMENT de l'arbre YAML
+        # (pas d'une table hardcodee), donc seules les valeurs reellement
+        # presentes dans la branche en cours sont proposees.
+        from envergo.nitrates.yaml_tree import collecter_qc_du_chemin, load_active_tree
+
+        arbre_actif = load_active_tree()
+        contexte_courant = dict(request.GET.items())
+        # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
+        # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
+        # a collecter_qc_du_chemin de descendre l'arbre, on force
+        # en_zone_vulnerable=True (par definition si on a une QC sur le chemin,
+        # on est dans la branche ZV) et on remonte les autres champs catalogue
+        # depuis la moulinette si dispo.
+        contexte_courant.setdefault("en_zone_vulnerable", True)
+        try:
+            cat = getattr(moulinette, "catalog", None) or {}
+            for k in (
+                "zone_note_5",
+                "zone_montagne_d113_14",
+                "zonage_montagne_regional",
+                "zonage_prairie_III",
+            ):
+                if k in cat and k not in contexte_courant:
+                    contexte_courant[k] = cat[k]
+        except Exception:
+            pass
+        qc_repondues = []
+        for q in collecter_qc_du_chemin(arbre_actif, contexte_courant):
+            if q.champ in qc_actifs:
+                # Deja en cours de saisie dans le panneau resultat (a droite),
+                # on ne le redouble pas a gauche.
+                continue
+            raw = request.GET.get(q.champ) or ""
+            # Stringify les valeurs des choix pour comparer avec ce qui
+            # arrive par URL (toujours str). Sinon bool True != "True"
+            # et le radio button n'est jamais coche.
+            choix = [
+                {
+                    "valeur": str(c["valeur"]),
+                    "libelle": c.get("libelle") or str(c["valeur"]),
+                }
+                for c in (q.choix or [])
+            ]
+            valeur = raw
+            libelle = next(
+                (c["libelle"] for c in choix if c["valeur"] == valeur),
+                valeur,
+            )
+            qc_repondues.append(
+                {
+                    "champ": q.champ,
+                    "valeur": valeur,
+                    "texte": q.texte or q.champ,
+                    "libelle": libelle,
+                    "choix": choix,
+                }
+            )
+
         ctx.update(
             {
                 "afficher_resultat": True,
@@ -273,6 +363,8 @@ class MoulinetteView(View):
                 "regulations_evaluees": regulations_evaluees,
                 "premier_evaluator_avec_questions": premier_qc,
                 "qc_actifs": qc_actifs,
+                "qc_repondues": qc_repondues,
+                "qc_repondues_champs": [e["champ"] for e in qc_repondues],
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)

@@ -101,9 +101,13 @@ def _evaluator(moulinette):
 
 
 def test_luzerne_type_0_renvoi_prairie(setup):
-    """Type 0 : renvoi vers la regle r_prairie_plus_6_type_0
-    (interdit 15/12 -> 15/01)."""
-    ev = _evaluator(_moulinette(type_fertilisant="type_0"))
+    """Type 0 + plan_epandage=autre : renvoi vers le sous-arbre prairie+6
+    type_0 ICPE. Avec plan_epandage=autre, on tombe sur la regle
+    r_prairie_plus_6_type_0 (interdit 15/12 -> 15/01).
+    Note 2026-05-12 : la luzerne type_0 renvoie maintenant vers le NOEUD
+    q_prairie_plus6_type_0_icpe (au lieu de la regle directe), donc on a
+    une QC `plan_epandage` a fournir."""
+    ev = _evaluator(_moulinette(type_fertilisant="type_0", plan_epandage="autre"))
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_0"
     assert ev.regle.periodes == [{"du": "15/12", "au": "15/01"}]
@@ -113,8 +117,10 @@ def test_luzerne_type_0_renvoi_prairie(setup):
 
 
 def test_luzerne_type_I_icpe_a_iaa(setup):
-    """Type I + ICPE A + IAA : calculatrice luzerne_post_coupe,
-    periode 15/12 -> 15/01, pc10."""
+    """Type I + ICPE A + IAA : regime mixte (interdiction 15/12 -> 15/01
+    + autorisation_sous_condition derniere_coupe_luzerne -> 15/01), pc10.
+    Note 2026-05-12 : passe de calculatrice -> mixte suite a validation
+    metier (cf. issue #44 "autorise sous condition apres derniere coupe")."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_I",
@@ -122,10 +128,9 @@ def test_luzerne_type_I_icpe_a_iaa(setup):
             fertilisant_iaa="true",
         )
     )
-    assert ev.result == RESULTS.action_requise
+    assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_luzerne_I_icpe_a_iaa"
-    assert ev.regle.type == "calculatrice"
-    assert ev.regle.composant == "luzerne_post_coupe"
+    assert ev.regle.type == "mixte"
 
 
 # ─── 2b. type_I + ICPE A + non IAA -> interdit ────────────────────────────
@@ -160,7 +165,8 @@ def test_luzerne_type_I_autre(setup):
 
 
 def test_luzerne_type_II_icpe_a_iaa(setup):
-    """Type II + ICPE A + IAA : calculatrice 15/11 -> 15/01, pc10."""
+    """Type II + ICPE A + IAA : regime mixte (interdiction 15/11 -> 15/01
+    + autorisation_sous_condition derniere_coupe_luzerne -> 15/01), pc10."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_II",
@@ -168,22 +174,28 @@ def test_luzerne_type_II_icpe_a_iaa(setup):
             fertilisant_iaa="true",
         )
     )
-    assert ev.result == RESULTS.action_requise
+    assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_luzerne_II_icpe_a_iaa"
-    assert ev.regle.type == "calculatrice"
+    assert ev.regle.type == "mixte"
 
 
 # ─── 3b. type_II + ICPE A + non IAA -> renvoi prairie+6 type_II ───────────
 
 
 def test_luzerne_type_II_icpe_a_sans_iaa_renvoi(setup):
-    """Type II + ICPE A + non IAA : renvoi vers r_prairie_plus_6_type_II
-    (interdit 15/11 -> 15/01)."""
+    """Type II + ICPE A + non IAA + effluent_peu_charge=false : renvoi
+    vers q_prairie_plus6_II_effluent qui pose la QC effluent_peu_charge.
+    Avec effluent_peu_charge=false -> r_prairie_plus_6_type_II
+    (interdit 15/11 -> 15/01).
+    Note 2026-05-12 : la luzerne II non IAA renvoie maintenant vers le
+    NOEUD q_prairie_plus6_II_effluent (au lieu de r_prairie_plus_6_type_II
+    direct), donc une QC supplementaire est demandee."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_II",
             plan_epandage="icpe_a",
             fertilisant_iaa="false",
+            effluent_peu_charge="false",
         )
     )
     assert ev.result == RESULTS.interdit
@@ -195,8 +207,17 @@ def test_luzerne_type_II_icpe_a_sans_iaa_renvoi(setup):
 
 
 def test_luzerne_type_II_autre_renvoi(setup):
-    """Type II + autre plan d'epandage : renvoi r_prairie_plus_6_type_II."""
-    ev = _evaluator(_moulinette(type_fertilisant="type_II", plan_epandage="autre"))
+    """Type II + autre plan d'epandage + effluent_peu_charge=false : renvoi
+    vers q_prairie_plus6_II_effluent, puis r_prairie_plus_6_type_II.
+    Note 2026-05-12 : ajoute effluent_peu_charge dans le contexte car la
+    luzerne II non-icpe renvoie aussi vers le noeud effluent."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            plan_epandage="autre",
+            effluent_peu_charge="false",
+        )
+    )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_II"
     assert ev.regle.periodes == [{"du": "15/11", "au": "15/01"}]
@@ -206,8 +227,9 @@ def test_luzerne_type_II_autre_renvoi(setup):
 
 
 def test_luzerne_type_III_iaa_montagne_note_7(setup):
-    """Type III + ICPE A + IAA + montagne PA (Accous 64006) : calculatrice
-    01/10 -> 15/02, pc10, note_7."""
+    """Type III + ICPE A + IAA + montagne PA (Accous 64006) : regime mixte
+    (interdiction 01/10 -> 15/02 + autorisation_sous_condition apres
+    derniere coupe luzerne), pc10, note_7."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -216,17 +238,18 @@ def test_luzerne_type_III_iaa_montagne_note_7(setup):
             code_insee=INSEE_ACCOUS_64,
         )
     )
-    assert ev.result == RESULTS.action_requise
+    assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_luzerne_III_iaa_montagne_note7"
-    assert ev.regle.type == "calculatrice"
+    assert ev.regle.type == "mixte"
 
 
 # ─── 4b. type_III + ICPE A + IAA + montagne note 6 (Aiguebelette 73) ──────
 
 
 def test_luzerne_type_III_iaa_montagne_note_6(setup):
-    """Type III + ICPE A + IAA + montagne Savoie (73001) : calculatrice
-    01/10 -> 28/02, pc10, note_6."""
+    """Type III + ICPE A + IAA + montagne Savoie (73001) : regime mixte
+    (interdiction 01/10 -> 28/02 + autorisation_sous_condition apres
+    derniere coupe luzerne), pc10, note_6."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -235,17 +258,18 @@ def test_luzerne_type_III_iaa_montagne_note_6(setup):
             code_insee=INSEE_AIGUEBELETTE_73,
         )
     )
-    assert ev.result == RESULTS.action_requise
+    assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_luzerne_III_iaa_montagne_note6"
-    assert ev.regle.type == "calculatrice"
+    assert ev.regle.type == "mixte"
 
 
 # ─── 4c. type_III + ICPE A + IAA + non montagne (Reims 51) ────────────────
 
 
 def test_luzerne_type_III_iaa_non_montagne(setup):
-    """Type III + ICPE A + IAA + Reims (hors montagne) : calculatrice
-    01/10 -> 31/01, pc10."""
+    """Type III + ICPE A + IAA + Reims (hors montagne) : regime mixte
+    (interdiction 01/10 -> 31/01 + autorisation_sous_condition apres
+    derniere coupe luzerne), pc10."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -254,9 +278,9 @@ def test_luzerne_type_III_iaa_non_montagne(setup):
             code_insee=INSEE_REIMS_51,
         )
     )
-    assert ev.result == RESULTS.action_requise
+    assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_luzerne_III_iaa_non_montagne"
-    assert ev.regle.type == "calculatrice"
+    assert ev.regle.type == "mixte"
 
 
 # ─── 4d. type_III + ICPE A + non IAA -> renvoi prairie+6 type_III ─────────

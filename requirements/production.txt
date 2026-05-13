@@ -60,10 +60,15 @@ cffi==1.17.1
     # via
     #   -r base.txt
     #   argon2-cffi-bindings
+    #   cryptography
 charset-normalizer==3.4.2
     # via
     #   -r base.txt
     #   requests
+cryptography==45.0.7
+    # via
+    #   -r base.txt
+    #   mozilla-django-oidc
 click==8.2.1
     # via
     #   -r base.txt
@@ -177,6 +182,8 @@ kombu==5.5.4
     #   celery
 markdown==3.8.2
     # via -r base.txt
+mozilla-django-oidc==5.0.2
+    # via -r base.txt
 multidict==6.6.3
     # via
     #   -r base.txt
@@ -220,6 +227,10 @@ pycparser==2.22
     # via
     #   -r base.txt
     #   cffi
+pyjwt==2.10.1
+    # via
+    #   -r base.txt
+    #   mozilla-django-oidc
 pyproj==3.7.2
     # via -r base.txt
 pyproject-hooks==1.2.0
@@ -241,6 +252,10 @@ python-stdnum==2.1
     #   -r base.txt
     #   django-localflavor
 pytz==2025.2
+    # via -r base.txt
+pyyaml==6.0.2
+    # via -r base.txt
+py7zr==1.1.0
     # via -r base.txt
 qrcode==8.2
     # via

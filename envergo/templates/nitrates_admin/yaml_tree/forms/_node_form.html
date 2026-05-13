@@ -31,7 +31,7 @@
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>niveau</span>
-          <select name="niveau" required>
+          <select name="niveau" data-niveau-select required>
             {% for niveau in "culture,sous_culture,type_fertilisant,complement"|split:"," %}
               <option value="{{ niveau }}"
                       {% if node.niveau == niveau %}selected{% endif %}>{{ niveau }}</option>
@@ -47,6 +47,7 @@
           <span>texte (question)</span>
           <input type="text"
                  name="texte"
+                 data-niveau-texte
                  value="{{ node.texte|default_if_none:'' }}"
                  required>
         </label>
@@ -56,28 +57,89 @@
       </div>
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
+          <span>aide (optionnel)</span>
+          <input type="text" name="aide" value="{{ node.aide|default_if_none:'' }}">
+        </label>
+      </div>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Slug technique cle pour le parser. Pour culture/sous_culture/type_fertilisant : derive auto. Pour complement : choisir parmi les champs deja utilises (datalist) ou en creer un nouveau si la question est nouvelle.">
           <span>champ technique</span>
           <input type="text"
                  name="champ"
+                 list="yaml-tree__champs-list"
                  value="{{ node.champ|default_if_none:'' }}"
-                 required>
+                 placeholder="auto (dérivé du niveau)"
+                 data-niveau-champ>
         </label>
         {% for err in errors %}
           {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
         {% endfor %}
       </div>
+      <datalist id="yaml-tree__champs-list">
+        {% for niveau, champs in champs_by_niveau.items %}
+          {% for c in champs %}<option value="{{ c }}" label="(niveau: {{ niveau }})"></option>{% endfor %}
+        {% endfor %}
+      </datalist>
+      <script>
+        // Auto-suggest du texte + champ selon le niveau choisi.
+        // Pour complement : on laisse vide, le datalist guide.
+        // L'utilisateur peut surcharger : on ne touche pas a un input
+        // deja modifie manuellement (data-touched).
+        (function () {
+          const root = document.currentScript.parentElement;
+          const select = root.querySelector('[data-niveau-select]');
+          const texte = root.querySelector('[data-niveau-texte]');
+          const champ = root.querySelector('[data-niveau-champ]');
+          if (!select || !texte) return;
+          const TEXTES = {
+            culture: 'Quelle est la culture en place ?',
+            sous_culture: 'Quelle culture utilisez-vous ?',
+            type_fertilisant: 'Quel type de fertilisant est utilisé ?',
+            complement: '',
+          };
+          const CHAMPS = {
+            culture: 'occupation_sol',
+            sous_culture: 'sous_culture',
+            type_fertilisant: 'type_fertilisant',
+            complement: '',  // libre, pas de slug canonique
+          };
+          texte.addEventListener('input', () => texte.dataset.touched = '1');
+          if (champ) champ.addEventListener('input', () => champ.dataset.touched = '1');
+          select.addEventListener('change', () => {
+            if (!texte.dataset.touched) {
+              const sug = TEXTES[select.value];
+              if (sug && !texte.value) texte.value = sug;
+            }
+            if (champ && !champ.dataset.touched) {
+              const slug = CHAMPS[select.value];
+              if (slug !== undefined) champ.value = slug;
+            }
+          });
+        })();
+      </script>
+    {% elif node.type_noeud == "catalogue" %}
       <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>aide (optionnel)</span>
-          <input type="text" name="aide" value="{{ node.aide|default_if_none:'' }}">
+        <label class="yaml-tree__form-label"
+               title="Référence du résolveur backend. Sélectionner une référence pré-remplit aussi le champ technique.">
+          <span>référence catalogue</span>
+          <select name="reference" data-catalogue-ref-select>
+            <option value="">— libre / non listée —</option>
+            {% for ref in catalogue_refs %}
+              <option value="{{ ref.reference }}"
+                      data-champ="{{ ref.champ }}"
+                      title="{{ ref.description }}"
+                      {% if node.reference == ref.reference %}selected{% endif %}>{{ ref.label }}</option>
+            {% endfor %}
+          </select>
         </label>
       </div>
-    {% elif node.type_noeud == "catalogue" %}
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>champ technique</span>
           <input type="text"
                  name="champ"
+                 data-catalogue-champ-input
                  value="{{ node.champ|default_if_none:'' }}"
                  required>
         </label>
@@ -98,14 +160,18 @@
           {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
         {% endfor %}
       </div>
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>reference (optionnel)</span>
-          <input type="text"
-                 name="reference"
-                 value="{{ node.reference|default_if_none:'' }}">
-        </label>
-      </div>
+      <script>
+        (function () {
+          const select = document.querySelector('[data-catalogue-ref-select]');
+          const champInput = document.querySelector('[data-catalogue-champ-input]');
+          if (!select || !champInput) return;
+          select.addEventListener('change', () => {
+            const opt = select.options[select.selectedIndex];
+            const slug = opt && opt.dataset.champ;
+            if (slug) champInput.value = slug;
+          });
+        })();
+      </script>
     {% endif %}
 
     <div class="yaml-tree__form-actions">

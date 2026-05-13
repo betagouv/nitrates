@@ -134,6 +134,9 @@ exemple_branche_renvoi:
 #   - "libre"
 #   - "non_applicable"
 #   - "calculatrice"            # nouveau : délégation à un composant nommé
+#   - "mixte"                   # plusieurs régimes coexistent sur la règle
+#                                 (>= 2 régimes distincts dans les périodes,
+#                                 chaque période a son `regime` explicite)
 
 
 # ── Type "interdiction" ──────────────────────────────────────────────────────
@@ -150,20 +153,41 @@ exemple_regle_interdiction:
     source_juridique: "arrêté 19/12/2011 annexe I §3.1"
 
 
-# ── Périodes à régime mixte (optionnel) ──────────────────────────────────────
-# Quand une feuille combine plusieurs régimes successifs (ex: colza Type III :
-# autorisation sous condition du 01/09 au 15/10 PUIS interdiction stricte du
-# 15/10 au 15/01), chaque période peut porter un champ optionnel `regime` qui
-# précise sa nature. Si `regime` est absent, on retombe sur le `type` global
-# de la règle.
+# ── Périodes à régime mixte ──────────────────────────────────────────────────
+# Convention grammaire (2026-05-11) :
+#
+# Deux conventions coexistent :
+#
+# A) `type=mixte` : régime explicitement multiple sur la règle.
+#    Utilisé quand la règle exprime plusieurs régimes distincts dans ses
+#    périodes (ex. autorisation_sous_condition sur 01/09→15/10 +
+#    interdiction sur 15/10→15/01). Le validator EXIGE :
+#      - au moins 2 périodes
+#      - chaque période a un `regime` explicite (pas d'héritage)
+#      - au moins 2 régimes DISTINCTS dans les périodes
+#    Forme recommandée pour toute règle aux régimes hétérogènes.
+#
+# B) `type=<régime principal>` + `regime` par période (raffinement) :
+#    Utilisé quand toutes les périodes partagent le même régime principal
+#    et qu'on veut juste raffiner une sous-fenêtre vers plus restrictif.
+#    Les raffinements doivent aller du plus permissif au plus restrictif :
+#
+#       interdiction > plafonnement > autorisation_sous_condition > libre
+#
+#    Une période ne peut PAS être plus permissive que le type parent.
+#
+# Le validator refuse les combinaisons absurdes. Voir `_check_regime_mixte`
+# et `_check_regimes_coherents` dans validator.py.
 #
 # Valeurs possibles pour `regime` :
-#   "interdiction" | "autorisation_sous_condition" | "libre"
+#   "interdiction" | "plafonnement" | "autorisation_sous_condition" | "libre"
 
 exemple_regle_periodes_mixtes:
   regle:
     id: "r_colza_type_III_note5"
-    type: "interdiction"          # type "principal" / le plus restrictif
+    # type=mixte : autorisation_sous_condition sur 01/09→15/10 puis
+    # interdiction sur 15/10→15/01. Chaque période porte son `regime`.
+    type: "mixte"
     periodes:
       - du: "01/09"
         au: "15/10"

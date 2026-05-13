@@ -5,9 +5,12 @@ le type de la regle atteinte (interdiction rouge, libre vert, etc.) avec
 overlay des periodes specifiques tirees du YAML.
 """
 
+import re
 from datetime import date
 
 from django import template
+
+DATE_JJMM_RE = re.compile(r"^\d{2}/\d{2}$")
 
 register = template.Library()
 
@@ -42,6 +45,7 @@ _FOND_PAR_TYPE = {
     "non_applicable": "gris",
     "calculatrice": "orange",
     "a_completer": "gris",
+    "mixte": "vert",  # fond vert, chaque periode rend son regime en overlay
 }
 
 # Couleur de la zone overlay selon le type / regime effectif.
@@ -55,13 +59,14 @@ _COULEUR_ZONE_PAR_TYPE = {
 }
 
 _LABEL_PAR_TYPE = {
-    "interdiction": "Épandage interdit",
-    "autorisation_sous_condition": "Sous conditions",
-    "plafonnement": "Plafond",
-    "libre": "Épandage autorisé",
+    "interdiction": "Calendrier d'épandage",
+    "autorisation_sous_condition": "Calendrier d'épandage",
+    "plafonnement": "Calendrier d'épandage",
+    "libre": "Calendrier d'épandage",
     "non_applicable": "Ne s'applique pas",
     "calculatrice": "Calcul nécessaire",
     "a_completer": "À compléter",
+    "mixte": "Calendrier d'épandage",
 }
 
 # Annee agricole : on commence le 1er juillet pour que les periodes
@@ -103,13 +108,28 @@ def _day_of_year(jour: int, mois: int) -> int:
 
 
 def _parse_jjmm(s: str) -> tuple[int, int] | None:
-    """Parse 'JJ/MM' -> (jour, mois). Retourne None pour les valeurs non
-    parsables (ex: 'brunissement_soies', evenement phenologique)."""
+    """Parse 'JJ/MM' -> (jour, mois). Pour un evenement phenologique (ex:
+    'brunissement_soies'), retombe sur la `date_calendrier` definie dans
+    referentiels.yaml > evenements_phenologiques. Si rien ne matche, None.
+    """
+    if not s:
+        return None
     try:
         jour, mois = s.split("/")
         return int(jour), int(mois)
     except (ValueError, AttributeError):
-        return None
+        pass
+    # Fallback evenement phenologique -> date conventionnelle calendrier.
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ev = (load_referentiels().get("evenements_phenologiques") or {}).get(s)
+        if ev and ev.get("date_calendrier"):
+            jour, mois = ev["date_calendrier"].split("/")
+            return int(jour), int(mois)
+    except Exception:
+        pass
+    return None
 
 
 def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
@@ -141,6 +161,299 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
         (j_du / _TOTAL_DAYS * 100, (_TOTAL_DAYS - j_du) / _TOTAL_DAYS * 100),
         (0.0, (j_au + 1) / _TOTAL_DAYS * 100),
     ]
+
+
+_JOURS_SEMAINE_FR = [
+    "lundi",
+    "mardi",
+    "mercredi",
+    "jeudi",
+    "vendredi",
+    "samedi",
+    "dimanche",
+]
+_MOIS_LONGS_FR = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+
+
+def _periode_couvre_today(periode: dict, today: date) -> bool:
+    """Indique si la date `today` tombe dans la periode `du -> au`.
+
+    Gere le cas pivot d'annee (ex 15/12 -> 15/01 traverse le 31/12).
+    Periodes non parsables (evenements phenologiques) -> False (on ne sait
+    pas projeter).
+    """
+    du = _parse_jjmm(periode.get("du", ""))
+    au = _parse_jjmm(periode.get("au", ""))
+    if du is None or au is None:
+        return False
+    j_du = _day_of_year(*du)  # annee agricole 0-indexe
+    j_au = _day_of_year(*au)
+    j_today = _day_of_year(today.day, today.month)
+    if j_du <= j_au:
+        return j_du <= j_today <= j_au
+    # Pivot annee : couvre [j_du, fin] U [debut, j_au]
+    return j_today >= j_du or j_today <= j_au
+
+
+def statut_aujourdhui(regle, today: date | None = None) -> dict:
+    """Calcule le statut effectif d'epandage a la date `today`.
+
+    Pour chaque periode de la regle, regarde si `today` tombe dedans.
+    Si oui, retourne le `regime` de la periode (ou fallback sur
+    `regle.type`). Si dans aucune periode, retourne 'libre' (vert,
+    autorise par defaut hors periode d'interdiction).
+
+    Helper testable independamment de la date courante : pour les tests
+    unitaires, passer `today=date(2026, 5, 7)`. En production, le
+    templatetag passe `today=date.today()`.
+    """
+    if today is None:
+        today = date.today()
+    if regle is None:
+        return {
+            "code": "libre",
+            "couleur": "vert",
+            "libelle": "Autorisé",
+            "periode_active": None,
+        }
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    for p in periodes:
+        if _periode_couvre_today(p, today):
+            regime = p.get("regime") or regle_type
+            return {
+                "code": regime,
+                "couleur": _COULEUR_BADGE.get(regime, "gris"),
+                "libelle": _LIBELLE_BADGE.get(regime, regime),
+                "periode_active": {"du": p.get("du"), "au": p.get("au")},
+            }
+    # Hors de toute periode : on est en autorise par defaut.
+    # Sauf si la regle est un type "global" (libre / non_applicable / etc.)
+    # auquel cas le statut reflete le type global.
+    if regle_type in ("libre", "non_applicable", "calculatrice", "a_completer"):
+        return {
+            "code": regle_type,
+            "couleur": _COULEUR_BADGE.get(regle_type, "gris"),
+            "libelle": _LIBELLE_BADGE.get(regle_type, regle_type),
+            "periode_active": None,
+        }
+    return {
+        "code": "libre",
+        "couleur": "vert",
+        "libelle": "Autorisé",
+        "periode_active": None,
+    }
+
+
+_COULEUR_BADGE = {
+    "interdiction": "rouge",
+    "autorisation_sous_condition": "orange",
+    "plafonnement": "orange",
+    "libre": "vert",
+    "non_applicable": "gris",
+    "calculatrice": "orange",
+    "a_completer": "gris",
+}
+_LIBELLE_BADGE = {
+    "interdiction": "Interdit",
+    "autorisation_sous_condition": "Autorisé sous condition",
+    "plafonnement": "Plafonnement",
+    "libre": "Autorisé",
+    "non_applicable": "Ne s'applique pas",
+    "calculatrice": "Calcul nécessaire",
+    "a_completer": "À compléter",
+}
+
+
+def _format_jjmm_long(jjmm: str) -> str:
+    """Convertit '15/12' en '15 décembre' (et '01/07' en '1er juillet').
+    Retourne la chaîne brute si non parsable."""
+    parsed = _parse_jjmm(jjmm)
+    if parsed is None:
+        return jjmm
+    jour, mois = parsed
+    jour_fmt = "1er" if jour == 1 else str(jour)
+    return f"{jour_fmt} {_MOIS_LONGS_FR[mois - 1]}"
+
+
+def construire_phrase_explicative(regle, today: date | None = None) -> str:
+    """Construit une phrase auto contextuelle "aujourd'hui" a partir des
+    periodes + regimes.
+
+    Cas safe (gere ici) :
+    - Regle libre / non_applicable / pas de periode : phrase generique.
+    - 1 ou 2 periodes du meme regime, toutes parsables (JJ/MM) : phrase
+      contextuelle qui indique le statut effectif du jour ET ce qui arrive
+      ensuite. Format en mois longs ("15 décembre") plus naturel que "15/12".
+
+    Cas non-safe (fallback sur _construire_phrase_brute) :
+    - Regimes mixtes dans la meme regle (ex maïs irrigue borne souple, a
+      clarifier dans la grammaire en backlog 2026-05-11).
+    - Periodes avec evenement phenologique (du/au non parsable JJ/MM).
+
+    Le parametre `today` est injectable pour les tests (defaut date.today()).
+    """
+    if regle is None:
+        return ""
+    if today is None:
+        today = date.today()
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+
+    # Cas trivial : aucune periode -> on s'appuie sur le type global.
+    if not periodes:
+        if regle_type == "libre":
+            return "L'épandage est autorisé toute l'année."
+        if regle_type == "non_applicable":
+            return "La directive nitrates ne s'applique pas."
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    parsed = []
+    has_phenologique = False
+    for p in periodes:
+        if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
+            regime = p.get("regime") or regle_type
+            parsed.append((regime, p["du"], p["au"]))
+        else:
+            has_phenologique = True
+
+    # Fallback brut si phenologique ou regimes mixtes : a traiter avec la
+    # grammaire des bornes souples (backlog 2026-05-11).
+    regimes = {r for r, _, _ in parsed}
+    if has_phenologique or len(regimes) > 1:
+        return _construire_phrase_brute(regle)
+
+    if not parsed:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    regime = next(iter(regimes))
+    today_in_periode = any(
+        _periode_couvre_today({"du": du, "au": au, "regime": r}, today)
+        for r, du, au in parsed
+    )
+
+    morceaux = [
+        f"du {_format_jjmm_long(du)} au {_format_jjmm_long(au)}" for _, du, au in parsed
+    ]
+    liste = " et ".join(morceaux)
+
+    if regime == "interdiction":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est interdit. "
+                f"Cette période d'interdiction court {liste}."
+            )
+        return f"Aujourd'hui, l'épandage est autorisé. " f"Il sera interdit {liste}."
+    if regime == "autorisation_sous_condition":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est autorisé sous condition. "
+                f"Régime applicable {liste}."
+            )
+        return (
+            f"Aujourd'hui, l'épandage est autorisé. "
+            f"Il sera soumis à conditions {liste}."
+        )
+    if regime == "plafonnement":
+        if today_in_periode:
+            return (
+                f"Aujourd'hui, l'épandage est plafonné. " f"Plafond applicable {liste}."
+            )
+        return f"Aujourd'hui, l'épandage est autorisé. " f"Il sera plafonné {liste}."
+
+    # Cas libre ou autre : phrase neutre, on liste les periodes connues.
+    return f"L'épandage est autorisé. Périodes connues {liste}."
+
+
+def _construire_phrase_brute(regle) -> str:
+    """Phrase auto sans contexte temporel "aujourd'hui" -- fallback pour les
+    cas non-safe (regimes mixtes ou periodes phenologiques). A enrichir
+    quand la grammaire des bornes souples sera implementee (backlog
+    2026-05-11)."""
+    if regle is None:
+        return ""
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    if not periodes:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    parsed = []
+    for p in periodes:
+        if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
+            regime = p.get("regime") or regle_type
+            parsed.append((regime, p["du"], p["au"]))
+    if not parsed:
+        return _LIBELLE_BADGE.get(regle_type, "")
+
+    regimes = {r for r, _, _ in parsed}
+    if len(regimes) == 1:
+        regime = next(iter(regimes))
+        verbe = {
+            "interdiction": "L'épandage est interdit",
+            "autorisation_sous_condition": "L'épandage est autorisé sous condition",
+            "plafonnement": "L'épandage est plafonné",
+        }.get(regime, "L'épandage")
+        morceaux = [f"du {du} au {au}" for _, du, au in parsed]
+        if len(morceaux) == 1:
+            return f"{verbe} {morceaux[0]}."
+        return f"{verbe} {' et '.join(morceaux)}."
+
+    parts = []
+    for regime, du, au in parsed:
+        v = {
+            "interdiction": "interdit",
+            "autorisation_sous_condition": "autorisé sous condition",
+            "plafonnement": "plafonné",
+            "libre": "autorisé",
+        }.get(regime, regime)
+        parts.append(f"{v} du {du} au {au}")
+    return "L'épandage est " + ", puis ".join(parts) + "."
+
+
+def _formatter_date_fr(d: date) -> str:
+    """Format 'mercredi 6 mai 2026' (jour de la semaine + jour + mois long
+    + annee). Locales independent : on construit a la main pour garantir
+    le rendu fr."""
+    weekday = _JOURS_SEMAINE_FR[d.weekday()]
+    mois = _MOIS_LONGS_FR[d.month - 1]
+    return f"{weekday} {d.day} {mois} {d.year}"
+
+
+@register.inclusion_tag("nitrates/fragments/_epandage_header.html")
+def epandage_header(regle):
+    """Rend le header du panneau resultat avec :
+    - badge dynamique (rouge / orange / vert) selon le statut effectif
+      a la date du jour
+    - "en date du <jour de la semaine> <jour> <mois> <annee>"
+    - phrase explicative auto-generee
+    - 3 variantes UX swappables (test interactif), choix utilisateur
+      stocke en localStorage. Le bouton de switch est temporaire,
+      a retirer apres validation design.
+
+    Cf. issue #28.
+    """
+    today = date.today()
+    statut = statut_aujourdhui(regle, today=today)
+    return {
+        "regle": regle,
+        "statut": statut,
+        "today": today,
+        "today_fr": _formatter_date_fr(today),
+        "phrase": construire_phrase_explicative(regle, today=today),
+    }
 
 
 @register.inclusion_tag("nitrates/fragments/_calendrier.html")
@@ -177,6 +490,12 @@ def calendrier_epandage(regle):
             # rien pour cette periode (le fond suffit a porter le sens).
             continue
         seg = _segment_interdit(p)
+        # is_flottant : au moins une borne est phenologique (date conventionnelle
+        # arbitraire). On signale visuellement via un hachure dans le rendu pour
+        # que l'utilisateur comprenne que la borne reelle depend du climat.
+        is_flottant = bool(
+            p.get("du") and not DATE_JJMM_RE.match(str(p["du"]))
+        ) or bool(p.get("au") and not DATE_JJMM_RE.match(str(p["au"])))
         if seg:
             for start, width in seg:
                 segments.append(
@@ -184,6 +503,7 @@ def calendrier_epandage(regle):
                         "start_pct": start,
                         "width_pct": width,
                         "couleur": couleur,
+                        "is_flottant": is_flottant,
                     }
                 )
         else:
@@ -194,19 +514,99 @@ def calendrier_epandage(regle):
     today = date.today()
     today_pct = _day_of_year(today.day, today.month) / _TOTAL_DAYS * 100
 
-    # Texte des dates limites a afficher sous la barre (ex: "15/12", "15/01")
-    bornes = []
+    # Texte des dates limites a afficher sous la barre (ex: "15/12", "15/01").
+    # Fusion des bornes pivot : si 2 periodes contiguës partagent une date
+    # (ex 01/07->31/08 puis 31/08->31/01), on n'affiche qu'une fois "31/08".
+    # Sans ca le rendu duplique le label avec une legere superposition.
+    bornes_brutes = []
     for p in periodes:
         if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
-            bornes.append({"label": p["du"], "pct": _segment_interdit(p)[0][0]})
-            # Position de fin du dernier segment
             seg = _segment_interdit(p)
+            bornes_brutes.append(
+                {
+                    "label": p["du"],
+                    "pct": seg[0][0],
+                    "is_phenologique": not DATE_JJMM_RE.match(str(p["du"])),
+                }
+            )
             if len(seg) == 1:
                 end_pct = seg[0][0] + seg[0][1]
             else:
                 # Cas pivot : la fin est sur le 2e segment
                 end_pct = seg[1][0] + seg[1][1]
-            bornes.append({"label": p["au"], "pct": end_pct})
+            bornes_brutes.append(
+                {
+                    "label": p["au"],
+                    "pct": end_pct,
+                    "is_phenologique": not DATE_JJMM_RE.match(str(p["au"])),
+                }
+            )
+
+    # Deduplication par couple (label, pct~). 2 bornes a moins de 1% de
+    # distance avec le meme label sont fusionnees en une seule.
+    bornes = []
+    for b in bornes_brutes:
+        deja = next(
+            (
+                x
+                for x in bornes
+                if x["label"] == b["label"] and abs(x["pct"] - b["pct"]) < 1.0
+            ),
+            None,
+        )
+        if not deja:
+            bornes.append(b)
+
+    # Empilage deterministe : dates fixes (JJ/MM) toujours en row=0 (ligne du
+    # haut, position canonique), dates phenologiques toujours en row=1 (ligne
+    # du bas, avec trait diagonal qui pointe vers l'ancre). Garantit que le
+    # rendu d'une date fixe est toujours au meme endroit, peu importe la
+    # presence d'une date flottante a cote.
+    for b in bornes:
+        b["row"] = 1 if b.get("is_phenologique") else 0
+
+    # Legende dynamique : on liste uniquement les categories presentes dans
+    # le calendrier (interdit / autorise sous condition / plafonnement) et on
+    # signale les segments a date flottante via une variante hachuree
+    # "Autorise sous conditions phenologiques".
+    legende = []
+    couleurs_simples = set()
+    couleurs_flottantes = set()
+    for seg in segments:
+        if seg.get("is_flottant"):
+            couleurs_flottantes.add(seg["couleur"])
+        else:
+            couleurs_simples.add(seg["couleur"])
+    libelle_legende = {
+        "rouge": "Interdit",
+        "orange": "Autorisé sous condition",
+        "violet": "Plafond",
+    }
+    libelle_legende_flottant = {
+        "orange": "Autorisé sous conditions phénologiques",
+        "rouge": "Interdit (dates flottantes)",
+        "violet": "Plafond (dates flottantes)",
+    }
+    for couleur in ("rouge", "orange", "violet"):
+        if couleur in couleurs_simples:
+            legende.append(
+                {
+                    "couleur": couleur,
+                    "label": libelle_legende.get(couleur, couleur),
+                    "flottant": False,
+                }
+            )
+        if couleur in couleurs_flottantes:
+            legende.append(
+                {
+                    "couleur": couleur,
+                    "label": libelle_legende_flottant.get(couleur, couleur),
+                    "flottant": True,
+                }
+            )
+    # Le fond "Autorise" (vert) est toujours present quand fond=vert.
+    if fond == "vert":
+        legende.append({"couleur": "vert", "label": "Autorisé", "flottant": False})
 
     return {
         "vide": False,
@@ -218,4 +618,5 @@ def calendrier_epandage(regle):
         "bornes": bornes,
         "periodes_phenologiques": periodes_phenologiques,
         "regle_type": regle_type,
+        "legende": legende,
     }

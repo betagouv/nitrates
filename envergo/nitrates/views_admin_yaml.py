@@ -145,7 +145,10 @@ class YamlTreeView(TemplateView):
         if vue in {"brut", "split"}:
             raw = load_tree_raw(tree)
             formatter = HtmlFormatter(
-                cssclass="yaml-raw", linenos="inline", wrapcode=True
+                cssclass="yaml-raw",
+                linenos="inline",
+                wrapcode=True,
+                style="monokai",
             )
             ctx["raw_html"] = highlight(raw, YamlLexer(), formatter)
             ctx["raw_css"] = formatter.get_style_defs(".yaml-raw")
@@ -222,11 +225,18 @@ class RenameTreeView(View):
             return HttpResponseRedirect(
                 reverse("nitrates_admin_yaml_tree") + f"?tree_id={tree.pk}"
             )
-        # Collision : si un autre tree porte deja ce nom, on ajoute un suffixe.
+        # Collision : si un autre tree porte deja ce nom, on ajoute un
+        # suffixe numerique pour eviter le doublon.
         if DecisionTree.objects.filter(name=new_name).exclude(pk=tree.pk).exists():
-            new_name = DecisionTree.unique_copy_name(new_name).replace(
-                " (copy)", " (renommé)"
-            )
+            base = new_name
+            n = 2
+            while (
+                DecisionTree.objects.filter(name=f"{base} ({n})")
+                .exclude(pk=tree.pk)
+                .exists()
+            ):
+                n += 1
+            new_name = f"{base} ({n})"
         tree.name = new_name
         tree.save(update_fields=["name", "updated_at"])
         return HttpResponseRedirect(

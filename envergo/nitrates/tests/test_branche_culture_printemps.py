@@ -9,8 +9,8 @@ Cas couverts :
   1. type_0                                 -> r_printemps_type_0
   2. type_Ia                                -> r_printemps_type_Ia
   3. type_Ib                                -> r_printemps_type_Ib
-  4. type_II + fertirrigation oui           -> r_printemps_II_peu_charge_fertirrig
-  5. type_II + fertirrigation non           -> r_printemps_II_peu_charge_sans_fertirrig
+  4. type_II + fertirrigation oui           -> r_printemps_II_fertirrig
+  5. type_II + fertirrigation non           -> r_printemps_II_sans_fertirrig
   6. type_III + irriguee oui + mais         -> r_printemps_III_mais_irrigue
   7. type_III + irriguee oui + autre        -> r_printemps_III_autre_irrigue
   8. type_III + irriguee non                -> r_printemps_III_non_irrigue
@@ -131,12 +131,12 @@ def test_printemps_type_II_fertirrigation_oui(setup):
     + code_prescription pc6."""
     ev = _evaluator(
         _moulinette(
-            type_fertilisant="type_II_effluents_peu_charges",
+            type_fertilisant="type_II",
             fertirrigation="true",
         )
     )
     assert ev.result == RESULTS.interdit
-    assert ev.regle.regle_id == "r_printemps_II_peu_charge_fertirrig"
+    assert ev.regle.regle_id == "r_printemps_II_fertirrig"
     assert ev.regle.code_prescription == "pc6"
     assert ev.regle.periodes == [
         {
@@ -156,12 +156,12 @@ def test_printemps_type_II_fertirrigation_non(setup):
     de code prescription)."""
     ev = _evaluator(
         _moulinette(
-            type_fertilisant="type_II_effluents_peu_charges",
+            type_fertilisant="type_II",
             fertirrigation="false",
         )
     )
     assert ev.result == RESULTS.interdit
-    assert ev.regle.regle_id == "r_printemps_II_peu_charge_sans_fertirrig"
+    assert ev.regle.regle_id == "r_printemps_II_sans_fertirrig"
     assert ev.regle.code_prescription is None
     assert ev.regle.periodes == [{"du": "01/07", "au": "31/01"}]
 
@@ -170,9 +170,11 @@ def test_printemps_type_II_fertirrigation_non(setup):
 
 
 def test_printemps_type_III_irriguee_mais(setup):
-    """Type III + irriguee Oui + Mais : interdit 15/07 -> 15/02, pc5.
-    + message specifique sur l'extension phenologique brunissement
-    des soies (cf. spec PC5)."""
+    """Type III + irriguee Oui + Mais : regime mixte (interdiction
+    15/07 -> 15/02 + autorisation_sous_condition 15/07 -> brunissement
+    des soies), pc5.
+    Note 2026-05-12 : passe d'interdiction simple a mixte suite a
+    validation metier (extension phenologique brunissement des soies)."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -182,8 +184,10 @@ def test_printemps_type_III_irriguee_mais(setup):
     )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_printemps_III_mais_irrigue"
+    assert ev.regle.type == "mixte"
     assert ev.regle.code_prescription == "pc5"
-    assert ev.regle.periodes == [{"du": "15/07", "au": "15/02"}]
+    # 2 periodes : interdiction + autorisation phenologique.
+    assert len(ev.regle.periodes) == 2
     # Message specifique mais (extension phenologique).
     assert ev.regle.message is not None
     assert "brunissement des soies" in ev.regle.message

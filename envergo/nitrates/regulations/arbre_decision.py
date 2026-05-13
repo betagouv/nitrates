@@ -31,8 +31,12 @@ Cycle :
 from django import forms
 
 from envergo.evaluations.models import RESULTS
-from envergo.geodata.models import MAP_TYPES, Zone
 from envergo.moulinette.regulations import CriterionEvaluator
+from envergo.nitrates.yaml_admin.catalogue_refs import (
+    CATALOGUE_NON_RESOLVABLE,
+    ResolveContext,
+    get_resolver,
+)
 from envergo.nitrates.yaml_tree import (
     BesoinCatalogue,
     QuestionsSubsidiaires,
@@ -40,12 +44,6 @@ from envergo.nitrates.yaml_tree import (
     load_active_tree,
     parcours,
 )
-from envergo.nitrates.zonage_montagne import (
-    est_zone_montagne_d113_14,
-    note_7_vs_note_6_pour_commune,
-    zonage_montagne_pour_commune,
-)
-from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
 
 # Mapping regle.type (YAML) -> RESULTS Envergo.
 TYPE_REGLE_TO_RESULT = {
@@ -61,61 +59,6 @@ TYPE_REGLE_TO_RESULT = {
     # encore quoi afficher.
     "a_completer": RESULTS.non_disponible,
 }
-
-# Mapping noeud.reference (YAML) -> MAP_TYPES Envergo, pour resoudre les
-# noeuds catalogue de source `sig`. Les references dont on n'a pas encore
-# le dataset retournent False par defaut (et on log un warning).
-REFERENCE_TO_MAP_TYPE = {
-    "zone_vulnerable_nitrates": MAP_TYPES.zv_nitrates,
-}
-
-# Reference YAML zone_note_5 : zone Sud-Ouest (PACA, Occitanie, depts
-# 24/33/40/47/64) definie geographiquement par codes INSEE region/dept.
-# Resolution sans PostGIS via le code INSEE de la commune (cf.
-# envergo.nitrates.zonage_note_5). Retourne un bool, l'arbre branche
-# sur valeur: true / false.
-REFERENCES_ZONE_NOTE_5 = {"zone_note_5"}
-
-# References YAML resolues via le mapping commune INSEE -> zone
-# montagne (cf. envergo.nitrates.zonage_montagne). Selon le contexte,
-# la fonction de resolution et les valeurs retournees different :
-#
-# REFERENCES_ZONE_MONTAGNE (resolveur `zonage_montagne_pour_commune`) :
-#   classification 3 valeurs (montagne_note_7 / montagne_note_6 /
-#   non_montagne) en un appel.
-#   `zonage_prairie_III` -> noeud catalogue prairie+6 type_III. Spec
-#     Miro : variante "pyrenees_atl" (PACA + Occitanie + dept 64 seul).
-#   `zone_note_7_montagne` -> ancien nom (retro-compat). Variante
-#     "elargie".
-#
-# REFERENCES_NOTE_7_VS_NOTE_6 (resolveur `note_7_vs_note_6_pour_commune`) :
-#   utilise quand un catalogue parent `zone_montagne_d113_14` (bool) a
-#   deja filtre les communes montagne, et qu'on doit ensuite trancher
-#   entre `note_7` et `note_6` (sans prefixe `montagne_` -- d'ou un
-#   resolveur dedie qui s'aligne sur les valeurs de branches YAML).
-#   `zone_note_7_vs_note_6` -> luzerne III IAA + montagne. Variante
-#     "elargie".
-#
-# Note 7 : 2 variantes JURIDIQUES distinctes
-#   - "elargie"      -> regions PACA + Occitanie OU 5 dept Sud-Ouest
-#                       (24/33/40/47/64).
-#   - "pyrenees_atl" -> regions PACA + Occitanie OU 64 seul.
-# Si tu ajoutes une nouvelle reference YAML, declare ici explicitement
-# quelle variante de Note 7 elle utilise.
-REFERENCES_ZONE_MONTAGNE = {
-    "zonage_prairie_III": "pyrenees_atl",
-    "zone_note_7_montagne": "elargie",
-}
-
-REFERENCES_NOTE_7_VS_NOTE_6 = {
-    "zone_note_7_vs_note_6": "elargie",
-}
-
-# `zone_montagne_d113_14` -> noeud catalogue qui branche sur bool
-# (true/false) : la commune est-elle en zone montagne au sens
-# D113-14, peu importe la note 6 vs 7. Resolution sur le code INSEE
-# via le CSV juriste (cf. zonage_montagne._mapping).
-REFERENCES_ZONE_MONTAGNE_BOOL = {"zone_montagne_d113_14"}
 
 # Champs du form principal lus depuis le catalog (ceux passes par le form
 # Django valide). Les questions subsidiaires (effluent_peu_charge,
@@ -139,7 +82,9 @@ CHAMPS_EXCLUS_CONTEXTE = {
     "lat",
     "lng",
     "code_insee",  # utilise pour resoudre la zone montagne, pas un champ d'arbre
-    "categorie_fertilisant",
+    "categorie_culture",  # tracabilite front (cf. mapping_sous_culture_vers_branche)
+    "sous_culture_form",  # tracabilite front (libelle UI)
+    "categorie_fertilisant",  # tracabilite front (cf. mapping_sous_fertilisant_vers_type)
     "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
 }
 
@@ -147,9 +92,11 @@ CHAMPS_EXCLUS_CONTEXTE = {
 # normal n'a pas plus de quelques noeuds catalogue empiles).
 MAX_ITERATIONS_CATALOGUE = 20
 
-# Sentinelle retournee par _resoudre_catalogue quand on ne sait pas
-# resoudre la reference (dataset SIG manquant, source non geree).
-_CATALOGUE_NON_RESOLVABLE = object()
+# Alias historique : la sentinelle vit maintenant dans `catalogue_refs`
+# (cf. CATALOGUE_NON_RESOLVABLE). On expose un alias prive ici pour
+# l'identite (`is`) et pour eviter de toucher aux call-sites qui
+# l'utilisent en comparaison.
+_CATALOGUE_NON_RESOLVABLE = CATALOGUE_NON_RESOLVABLE
 
 
 class ArbreDecisionEvaluator(CriterionEvaluator):
@@ -242,70 +189,28 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         return contexte
 
     def _resoudre_catalogue(self, besoin: BesoinCatalogue):
-        """Resoud un noeud catalogue via SIG. Retourne la valeur a injecter
-        dans le contexte, ou la sentinelle `_CATALOGUE_NON_RESOLVABLE` si
-        on ne sait pas resoudre la reference (dataset manquant, source
-        non geree).
+        """Resoud un noeud catalogue via le registre `catalogue_refs`.
 
-        L'evaluator detecte la sentinelle et retourne RESULTS.non_disponible
-        au lieu de planter ou de retomber sur une valeur qui ne match
-        aucune branche."""
+        Retourne la valeur a injecter dans le contexte, ou la sentinelle
+        `CATALOGUE_NON_RESOLVABLE` si on ne sait pas resoudre la
+        reference (resolveur absent, dataset SIG manquant, source non
+        geree). L'evaluator bascule alors en RESULTS.non_disponible.
+        """
         if besoin.source != "sig":
             # source `mapping_referentiel` ou `calcul` : pas dans le scope
             # du MVP, on ne sait pas resoudre.
             return _CATALOGUE_NON_RESOLVABLE
 
-        # Resolution speciale pour la zone montagne (D113-14) : on a un
-        # mapping commune INSEE -> classification (note_6 / note_7 / non),
-        # pas besoin de PostGIS. Le code INSEE est pousse par le front au
-        # clic carte (cf. simulator.js). La variante de Note 7
-        # (elargie / pyrenees_atl) depend de la reference YAML --
-        # cf. REFERENCES_ZONE_MONTAGNE pour le mapping reference -> variante.
-        if besoin.reference in REFERENCES_ZONE_MONTAGNE:
-            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
-            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
-            variante = REFERENCES_ZONE_MONTAGNE[besoin.reference]
-            return zonage_montagne_pour_commune(code_insee, variante=variante)
-
-        # Resolution dediee pour la reference `zone_note_7_vs_note_6` :
-        # on est dans un catalogue imbrique apres un 1er catalogue
-        # `zone_montagne_d113_14` (bool) qui a deja filtre les communes
-        # montagne. On retourne strictement "note_7" ou "note_6" (sans
-        # prefixe `montagne_`) pour matcher les valeurs de branches YAML.
-        if besoin.reference in REFERENCES_NOTE_7_VS_NOTE_6:
-            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
-            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
-            variante = REFERENCES_NOTE_7_VS_NOTE_6[besoin.reference]
-            return note_7_vs_note_6_pour_commune(code_insee, variante=variante)
-
-        # Resolution bool pour zone_montagne_d113_14 (oui/non commune
-        # en zone montagne au sens D113-14, peu importe la note).
-        if besoin.reference in REFERENCES_ZONE_MONTAGNE_BOOL:
-            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
-            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
-            return est_zone_montagne_d113_14(code_insee)
-
-        # Resolution speciale pour zone_note_5 (Sud-Ouest + PACA/Occitanie) :
-        # purement geographique, resolu sur le code INSEE comme la zone
-        # montagne mais retourne un bool (l'arbre branche sur true/false).
-        if besoin.reference in REFERENCES_ZONE_NOTE_5:
-            raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
-            code_insee = raw_data.get("code_insee") or self.catalog.get("code_insee")
-            return zone_note_5_pour_commune(code_insee)
-
-        map_type = REFERENCE_TO_MAP_TYPE.get(besoin.reference)
-        if map_type is None:
-            # Reference non mappee : dataset SIG pas encore importe pour
-            # cette reference (ex : zone_note_5).
+        resolver = get_resolver(besoin.reference)
+        if resolver is None:
             return _CATALOGUE_NON_RESOLVABLE
 
-        point = self.catalog.get("lng_lat")
-        if point is None:
-            return _CATALOGUE_NON_RESOLVABLE
-
-        return Zone.objects.filter(
-            map__map_type=map_type, geometry__intersects=point
-        ).exists()
+        raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+        ctx = ResolveContext(
+            code_insee=raw_data.get("code_insee") or self.catalog.get("code_insee"),
+            lng_lat=self.catalog.get("lng_lat"),
+        )
+        return resolver.resolve(ctx)
 
     # ─── Application du resultat ───────────────────────────────────────────
 
@@ -314,6 +219,22 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         infos metier (periodes, plafond, etc.) sur l'evaluator pour le
         template."""
         result = TYPE_REGLE_TO_RESULT.get(res.type, RESULTS.non_disponible)
+        # Cas mixte : on resout sur le regime le plus restrictif trouve dans
+        # les periodes (interdiction > plafonnement > autorisation_sous_condition
+        # > libre). Coherent avec l'affichage : si une periode interdit, le
+        # statut global doit le reporter.
+        if res.type == "mixte":
+            severite = {
+                "interdiction": 0,
+                "plafonnement": 1,
+                "autorisation_sous_condition": 2,
+                "libre": 3,
+            }
+            periodes = res.periodes or []
+            regimes = [p.get("regime") for p in periodes if p.get("regime")]
+            if regimes:
+                pire = min(regimes, key=lambda r: severite.get(r, 99))
+                result = TYPE_REGLE_TO_RESULT.get(pire, RESULTS.non_disponible)
         # Cas a_completer : meme si le mapping a donne autre chose, on
         # force non_disponible parce qu'on ne veut pas afficher un
         # resultat partiel issu d'un stub brouillon.

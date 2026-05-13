@@ -1,4 +1,5 @@
 import logging
+import os
 
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -74,13 +75,25 @@ AWS_DEFAULT_ACL = "public-read"
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
 
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : boto3 >= 1.36 envoie
+# Content-Encoding: aws-chunked + checksum SHA256 par defaut, ce que Cellar
+# (Clever Cloud) ne supporte pas -> MissingContentLength sur PutObject.
+# On force le mode legacy via env vars boto3 (lues au moment de la creation
+# du client S3). Pas d'impact sur AWS officiel.
+os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "WHEN_REQUIRED")
+os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "WHEN_REQUIRED")
+
 # DO NOT change these unless you know what you're doing.
 _AWS_EXPIRY = 60 * 60 * 24 * 7
 AWS_S3_OBJECT_PARAMETERS = {
     "CacheControl": f"max-age={_AWS_EXPIRY}, s-maxage={_AWS_EXPIRY}, must-revalidate"
 }
 AWS_S3_CUSTOM_DOMAIN = env("DJANGO_AWS_S3_CUSTOM_DOMAIN", default=None)
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : Cellar fournit l'endpoint avec
+# scheme (boto3 l'exige), MEDIA_URL ne doit pas re-prefixer https://.
 aws_s3_domain = AWS_S3_ENDPOINT_URL
+if aws_s3_domain.startswith(("https://", "http://")):
+    aws_s3_domain = aws_s3_domain.split("://", 1)[1]
 
 MEDIA_URL = f"https://{aws_s3_domain}/media/"
 
@@ -117,6 +130,11 @@ EMAIL_SUBJECT_PREFIX = env(
 # ------------------------------------------------------------------------------
 # Django Admin URL regex.
 ADMIN_URL = env("DJANGO_ADMIN_URL")
+
+# ProConnect : recalculer LOGIN_REDIRECT_URL avec le vrai ADMIN_URL prod.
+# Cf. base.py section ProConnect/ADMIN.
+if PROCONNECT_ENABLED:  # noqa F405
+    LOGIN_REDIRECT_URL = "/" + ADMIN_URL.lstrip("/")
 
 # Anymail
 # ------------------------------------------------------------------------------
@@ -293,6 +311,7 @@ SECURE_CSP_REPORT_ONLY = {
         CSP.SELF,
         "https://data.geopf.fr",  # New address autocomplete api
         "https://*.data.gouv.fr",  # Address autocomplete api
+        "https://geo.api.gouv.fr",  # Reverse geocode commune (nitrates simulateur)
         "https://*.beta.gouv.fr",  # Stats
         "https://sentry.incubateur.net",
         "https://*.crisp.chat",

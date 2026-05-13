@@ -37,6 +37,24 @@
       </label>
     </div>
 
+    {% if renvoi_targets %}
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label">
+          <span>renvoi vers</span>
+          <select name="renvoi_vers_new">
+            {% for t in renvoi_targets %}
+              <option value="{{ t.id }}"
+                      {% if t.id == branche.renvoi_vers %}selected{% endif %}
+                      title="{{ t.label }}">
+                {% if t.group != "arbre" %}[{{ t.group }}]{% endif %}
+                {{ t.label }} ({{ t.id }})
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+    {% endif %}
+
     <div class="yaml-tree__form-actions">
       <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer</button>
       <button type="button"

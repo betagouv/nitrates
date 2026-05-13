@@ -35,9 +35,13 @@ certifi==2025.8.3
     #   pyproj
     #   requests
 cffi==1.17.1
-    # via argon2-cffi-bindings
+    # via
+    #   argon2-cffi-bindings
+    #   cryptography
 charset-normalizer==3.4.2
     # via requests
+cryptography==45.0.7
+    # via mozilla-django-oidc
 click==8.2.1
     # via
     #   celery
@@ -125,6 +129,8 @@ kombu==5.5.4
     # via celery
 markdown==3.8.2
     # via -r base.in
+mozilla-django-oidc==5.0.2
+    # via -r base.in
 multidict==6.6.3
     # via yarl
 numpy==2.3.2
@@ -153,6 +159,8 @@ psycopg-binary==3.2.9
     # via psycopg
 pycparser==2.22
     # via cffi
+pyjwt==2.10.1
+    # via mozilla-django-oidc
 pyproj==3.7.2
     # via -r base.in
 pyproject-hooks==1.2.0
@@ -169,6 +177,13 @@ python-stdnum==2.1
     # via django-localflavor
 pytz==2025.2
     # via -r base.in
+pyyaml==6.0.2
+    # via -r base.in
+py7zr==1.1.0
+    # via -r base.in
+    # transitive deps (texttable, pycryptodomex, brotli, psutil,
+    # backports.zstd, pyppmd, pybcj, multivolumefile, inflate64)
+    # auto-installees par pip lors du build
 qrcode==8.2
     # via django-otp
 rcssmin==1.2.2

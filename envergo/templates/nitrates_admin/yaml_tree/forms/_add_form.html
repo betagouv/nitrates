@@ -20,7 +20,7 @@
       const valeur = root.querySelector('[name=valeur]');
       if (!valeur) return;
       // Marque les champs modifies par l'utilisateur pour eviter de les ecraser.
-      root.querySelectorAll('[name=libelle], [name=c_id]').forEach(inp => {
+      root.querySelectorAll('[name=libelle], [name=c_id], [name=c_champ]').forEach(inp => {
         inp.addEventListener('input', () => inp.dataset.touched = '1');
       });
       // Auto-populate sur `change` (focus out) ou Enter, PAS sur input :
@@ -41,6 +41,10 @@
           else if (kind === 'noeud_catalogue') prefix = 'n_';
           else if (kind === 'regle') prefix = 'r_';
           if (prefix) cId.value = prefix + slug(v);
+        }
+        const cChamp = root.querySelector('[name=c_champ]');
+        if (cChamp && !cChamp.dataset.touched && !cChamp.value) {
+          cChamp.value = slug(v);
         }
       };
       valeur.addEventListener('change', autoPopulate);

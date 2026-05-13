@@ -30,8 +30,11 @@ const INSEE_REIMS_51 = '51454'; // hors montagne
 test.describe('Branche luzerne : 12 cas via URL', () => {
   const cases = [
     {
-      label: 'type_0 -> renvoi r_prairie_plus_6_type_0 (15/12 -> 15/01)',
-      params: 'type_fertilisant=type_0',
+      // Note 2026-05-12 : la luzerne type_0 renvoie maintenant vers le NOEUD
+      // q_prairie_plus6_type_0_icpe (au lieu de la regle directe), donc une
+      // QC `plan_epandage` est requise.
+      label: 'type_0 + plan_epandage=autre -> r_prairie_plus_6_type_0 (15/12 -> 15/01)',
+      params: 'type_fertilisant=type_0&plan_epandage=autre',
       regle: 'r_prairie_plus_6_type_0',
       contains: ['15/12', '15/01'],
     },
@@ -69,16 +72,18 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
       contains: [],
     },
     {
+      // Note 2026-05-12 : non IAA renvoie maintenant vers q_prairie_plus6_II_effluent
+      // qui pose une QC `effluent_peu_charge` -> requise dans l'URL.
       label:
-        'type_II + ICPE A + non IAA -> renvoi r_prairie_plus_6_type_II',
+        'type_II + ICPE A + non IAA + effluent_peu_charge=false -> r_prairie_plus_6_type_II',
       params:
-        'type_fertilisant=type_II&plan_epandage=icpe_a&fertilisant_iaa=false',
+        'type_fertilisant=type_II&plan_epandage=icpe_a&fertilisant_iaa=false&effluent_peu_charge=false',
       regle: 'r_prairie_plus_6_type_II',
       contains: ['15/11', '15/01'],
     },
     {
-      label: 'type_II + autre -> renvoi r_prairie_plus_6_type_II',
-      params: 'type_fertilisant=type_II&plan_epandage=autre',
+      label: 'type_II + autre + effluent_peu_charge=false -> r_prairie_plus_6_type_II',
+      params: 'type_fertilisant=type_II&plan_epandage=autre&effluent_peu_charge=false',
       regle: 'r_prairie_plus_6_type_II',
       contains: ['15/11', '15/01'],
     },

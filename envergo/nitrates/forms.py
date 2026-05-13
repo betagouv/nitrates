@@ -38,7 +38,13 @@ class MoulinetteFormNitrates(forms.Form):
     lng = forms.FloatField(min_value=-180, max_value=180)
     lat = forms.FloatField(min_value=-90, max_value=90)
 
-    # Cascade culture : occupation_sol -> sous_culture
+    # Cascade culture en 3 niveaux : categorie_culture (UI) ->
+    # sous_culture_form (UI, libelle metier) -> occupation_sol +
+    # sous_culture (resolus cote front via mapping_sous_culture_vers_branche
+    # du referentiel, ce sont les valeurs effectivement matchees par
+    # l'arbre).
+    categorie_culture = forms.CharField(required=False)
+    sous_culture_form = forms.CharField(required=False)
     occupation_sol = forms.CharField(required=False)
     sous_culture = forms.CharField(required=False)
 

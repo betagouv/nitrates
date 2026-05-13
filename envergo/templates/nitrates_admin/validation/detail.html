@@ -1,0 +1,456 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block title %}Validation {{ branche.regle_id|default:branche.chemin_yaml }}{% endblock %}
+
+{% block content %}
+  <div class="fr-container-fluid fr-py-3w">
+    <p>
+      <a href="{% url 'nitrates_admin_validation_index' %}">← Retour au tableau</a>
+    </p>
+
+    <h1>{{ branche.regle_id|default:"feuille" }}</h1>
+
+    <div class="vd-meta">
+      <p>
+        <strong>chemin_yaml :</strong>
+        <code>{{ branche.chemin_yaml }}</code>
+      </p>
+      <p>
+        <strong>Chemin métier :</strong> {{ branche.branche_label }}
+      </p>
+      {% if branche.branche_miro %}
+        <p>
+          <strong>Miro :</strong> branche <code>{{ branche.branche_miro }}</code> /
+          <code>{{ branche.type_fertilisant_miro }}</code>
+          {% if branche.condition_miro %}/ condition: {{ branche.condition_miro }}{% endif %}
+          {% if branche.zonage_miro %}/ zonage: {{ branche.zonage_miro }}{% endif %}
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="vd-grid">
+      {# 1. Miro #}
+      <div class="vd-col">
+        <h2>📐 Miro juriste</h2>
+        {% if branche.screenshot_miro %}
+          <img src="{{ branche.screenshot_miro.url }}"
+               alt="Miro"
+               class="vd-img vc-clickable"
+               data-lightbox
+               data-src="{{ branche.screenshot_miro.url }}">
+        {% else %}
+          <p style="color:#999">Aucun screenshot Miro.</p>
+        {% endif %}
+        {% if branche.resultat_miro %}
+          <p class="vd-resultat">
+            <strong>Attendu :</strong> {{ branche.resultat_miro }}
+            {% if branche.code_pc_miro %}<span class="vc-pc">{{ branche.code_pc_miro }}</span>{% endif %}
+          </p>
+        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <label class="vd-edit-label">
+            Résultat attendu (texte juriste)
+            <textarea name="resultat_miro" rows="2" class="vd-edit-input">{{ branche.resultat_miro }}</textarea>
+          </label>
+          <label class="vd-edit-label">
+            Code PC
+            <input type="text"
+                   name="code_pc_miro"
+                   value="{{ branche.code_pc_miro }}"
+                   class="vd-edit-input"
+                   maxlength="20">
+          </label>
+          <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
+        </form>
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_upload_miro' pk=branche.pk %}"
+              enctype="multipart/form-data"
+              class="vd-form">
+          {% csrf_token %}
+          <input type="file" name="screenshot_miro" accept="image/*">
+          <button type="submit" class="vc-btn">Override Miro</button>
+        </form>
+      </div>
+
+      {# 2. YAML codé #}
+      <div class="vd-col">
+        <h2>📝 YAML codé</h2>
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <textarea name="yaml_snapshot" rows="14" class="vd-edit-textarea-yaml">{{ branche.yaml_snapshot }}</textarea>
+          <button type="submit" class="vc-btn">Enregistrer YAML</button>
+        </form>
+      </div>
+
+      {# 3. Admin YAML viewer #}
+      <div class="vd-col">
+        <h2>🌳 YAML viewer</h2>
+        {% if branche.screenshot_yaml_viewer %}
+          <img src="{{ branche.screenshot_yaml_viewer.url }}"
+               alt="YAML viewer"
+               class="vd-img vc-clickable"
+               data-lightbox
+               data-src="{{ branche.screenshot_yaml_viewer.url }}">
+        {% else %}
+          <p style="color:#999">Pas de capture admin viewer.</p>
+        {% endif %}
+        <p style="font-size:0.8rem;">
+          <a href="{% url 'nitrates_admin_yaml_tree' %}#{{ branche.regle_id }}"
+             target="_blank">Ouvrir le viewer ↗</a>
+        </p>
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_upload_yaml_viewer' pk=branche.pk %}"
+              enctype="multipart/form-data"
+              class="vd-form">
+          {% csrf_token %}
+          <input type="file" name="screenshot_yaml_viewer" accept="image/*">
+          <button type="submit" class="vc-btn">Uploader viewer</button>
+        </form>
+      </div>
+
+      {# 4. Admin YAML form (cas tricky) #}
+      <div class="vd-col">
+        <h2>✏️ YAML form (édition)</h2>
+        {% if branche.screenshot_yaml_form %}
+          <img src="{{ branche.screenshot_yaml_form.url }}"
+               alt="YAML form"
+               class="vd-img vc-clickable"
+               data-lightbox
+               data-src="{{ branche.screenshot_yaml_form.url }}">
+        {% else %}
+          <p style="color:#999">Optionnel — uploader si cas tricky.</p>
+        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_upload_yaml_form' pk=branche.pk %}"
+              enctype="multipart/form-data"
+              class="vd-form">
+          {% csrf_token %}
+          <input type="file" name="screenshot_yaml_form" accept="image/*">
+          <button type="submit" class="vc-btn">Uploader form</button>
+        </form>
+      </div>
+
+      {# 5. Simulateur deeplink #}
+      <div class="vd-col">
+        <h2>🌍 Simulateur</h2>
+        {% if branche.url_simulateur %}
+          <p>
+            <a href="{{ branche.url_simulateur }}" target="_blank" class="vc-btn">Ouvrir simulateur ↗</a>
+          </p>
+        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <label class="vd-edit-label">
+            URL simulateur (corrigeable manuellement)
+            <textarea name="url_simulateur"
+                      rows="4"
+                      class="vd-edit-input vd-edit-input--mono">{{ branche.url_simulateur }}</textarea>
+          </label>
+          <button type="submit" class="vc-btn">Enregistrer URL</button>
+        </form>
+      </div>
+
+      {# 6. Playwright simulateur #}
+      <div class="vd-col">
+        <h2>📸 Playwright simulateur</h2>
+        {% if branche.screenshot_playwright %}
+          <img src="{{ branche.screenshot_playwright.url }}"
+               alt="Playwright"
+               class="vd-img vc-clickable"
+               data-lightbox
+               data-src="{{ branche.screenshot_playwright.url }}">
+          <p style="font-size:0.75rem; color:#666;">Capturé le {{ branche.playwright_run_at|date:"d/m/Y H:i" }}</p>
+        {% else %}
+          <p style="color:#999">Pas de capture Playwright.</p>
+        {% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_upload_playwright' pk=branche.pk %}"
+              enctype="multipart/form-data"
+              class="vd-form">
+          {% csrf_token %}
+          <input type="file" name="screenshot_playwright" accept="image/*">
+          <button type="submit" class="vc-btn">Uploader Playwright</button>
+        </form>
+      </div>
+    </div>
+
+    {# Validation #}
+    <div class="vd-validation">
+      <h2>✅ Validation</h2>
+
+      {# Historique des actions deja enregistrees #}
+      {% with actions=branche.actions.all %}
+        {% if actions %}
+          <div class="vd-actions">
+            <p style="font-size:0.9rem; color:#666; margin:0 0 0.5rem;">
+              <strong>{{ actions|length }}</strong> action{{ actions|length|pluralize }} de validation
+              ({{ branche.actions_par_user|length }} contributeur{{ branche.actions_par_user|length|pluralize }})
+            </p>
+            <ul class="vd-actions__list">
+              {% for action in actions %}
+                <li class="vd-actions__item vd-actions__item--{{ action.statut }}">
+                  <span class="vd-actions__pill">
+                    {% if action.statut == 'valide' %}
+                      ✅
+                    {% elif action.statut == 'a_corriger' %}
+                      ⚠️
+                    {% else %}
+                      ⬜
+                    {% endif %}
+                    {{ action.get_statut_display }}
+                  </span>
+                  <span class="vd-actions__who">
+                    par <strong>{{ action.user|default:"?" }}</strong>
+                    le {{ action.created_at|date:"d/m/Y à H:i" }}
+                  </span>
+                  {% if action.commentaire %}<p class="vd-actions__commentaire">{{ action.commentaire|linebreaksbr }}</p>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p style="color:#999; font-size:0.9rem;">Aucune validation enregistrée pour cette branche.</p>
+        {% endif %}
+      {% endwith %}
+
+      {# Form pour ajouter une nouvelle action #}
+      <form method="post"
+            action="{% url 'nitrates_admin_validation_set_statut' pk=branche.pk %}"
+            class="vd-form vd-form--validation">
+        {% csrf_token %}
+        <h3 style="font-size:0.95rem; margin-top:1rem;">Ajouter ma validation</h3>
+        <div>
+          <label>
+            Statut :
+            <select name="statut">
+              <option value="valide">✅ Je valide</option>
+              <option value="a_corriger">⚠️ À corriger</option>
+              <option value="non_valide">⬜ Non validé</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            Commentaire (optionnel) :
+            <textarea name="commentaire"
+                      rows="3"
+                      style="width:100%;
+                             max-width:60ch"
+                      placeholder="Note libre pour cette validation"></textarea>
+          </label>
+        </div>
+        <button type="submit" class="vc-btn">Enregistrer ma validation</button>
+      </form>
+    </div>
+  </div>
+
+  {% include "nitrates_admin/validation/_lightbox.html" %}
+
+  <style>
+    .vd-meta {
+      background: #f4f6f9;
+      border-left: 3px solid #1f4789;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .vd-meta p {
+      margin: 0.25rem 0;
+    }
+
+    .vd-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (width >=1400px) {
+      .vd-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .vd-col {
+      background: #fafafa;
+      border: 1px solid #e1e1e1;
+      border-radius: 4px;
+      padding: 1rem;
+    }
+
+    .vd-col h2 {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+
+    .vd-img {
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+
+    .vc-clickable {
+      cursor: zoom-in;
+    }
+
+    .vd-resultat {
+      background: #fffaf2;
+      border-left: 3px solid #f93;
+      padding: 0.5rem 0.75rem;
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+
+    .vc-pc {
+      display: inline-block;
+      background: #f5f5fc;
+      border: 1px solid #cecefc;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #6a6af4;
+      margin-left: 0.5rem;
+    }
+
+    .vd-pre {
+      background: #fff;
+      border: 1px solid #e1e1e1;
+      padding: 0.5rem;
+      font-size: 0.78rem;
+      overflow: auto;
+      max-height: 280px;
+    }
+
+    .vd-form--edit {
+      background: #fff;
+      border: 1px dashed #bbb;
+      padding: 0.5rem;
+      border-radius: 3px;
+    }
+
+    .vd-edit-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .vd-edit-input {
+      width: 100%;
+      font-size: 0.82rem;
+      padding: 0.3rem;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      font-family: inherit;
+    }
+
+    .vd-edit-input--mono {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.72rem;
+      word-break: break-all;
+    }
+
+    .vd-edit-textarea-yaml {
+      width: 100%;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.76rem;
+      padding: 0.4rem;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+    }
+
+    .vd-form {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .vd-form input[type="file"] {
+      font-size: 0.8rem;
+    }
+
+    .vd-form--validation {
+      max-width: 60ch;
+    }
+
+    .vd-validation {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 2px solid #1f4789;
+    }
+
+    .vd-actions__list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .vd-actions__item {
+      padding: 0.6rem 0.9rem;
+      border-radius: 4px;
+      background: #f4f6f9;
+      border-left: 3px solid #ccc;
+      font-size: 0.9rem;
+    }
+
+    .vd-actions__item--valide {
+      background: #eafbe7;
+      border-left-color: #18753c;
+    }
+
+    .vd-actions__item--a_corriger {
+      background: #fff3e0;
+      border-left-color: #b35900;
+    }
+
+    .vd-actions__item--non_valide {
+      background: #eaeaea;
+      border-left-color: #666;
+    }
+
+    .vd-actions__pill {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+
+    .vd-actions__who {
+      color: #555;
+      font-size: 0.85rem;
+    }
+
+    .vd-actions__commentaire {
+      margin: 0.4rem 0 0;
+      padding-left: 1rem;
+      color: #444;
+      border-left: 2px solid rgb(0 0 0 / 10%);
+      font-size: 0.88rem;
+    }
+
+    .vc-btn {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 3px;
+      background: #1f4789;
+      color: #fff !important;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-decoration: none;
+      align-self: flex-start;
+    }
+  </style>
+{% endblock %}

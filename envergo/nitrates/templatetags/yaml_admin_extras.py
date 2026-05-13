@@ -4,6 +4,7 @@ from django import template
 from django.utils.html import escape
 
 from envergo.nitrates.yaml_admin.tags import get_tags
+from envergo.nitrates.yaml_admin.tags import regime_tag as _regime_tag
 
 register = template.Library()
 
@@ -13,6 +14,12 @@ def tags_for(data, kind):
     if not isinstance(data, dict):
         return []
     return get_tags(kind, data)
+
+
+@register.filter
+def regime_tag(regime):
+    """Tag visuel pour un `regime` de periode (interdiction, autorisation...)."""
+    return _regime_tag(regime)
 
 
 @register.filter(name="split")

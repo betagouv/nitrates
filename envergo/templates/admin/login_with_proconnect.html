@@ -1,0 +1,32 @@
+{% extends "admin/login.html" %}
+
+{% load static %}
+
+{# Wrap du template stock : seul ProConnect est propose. Le form user/pass #}
+{# Django reste accessible mais masque (pour debug/recovery emergency). #}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet"
+        href="{% static 'admin/css/proconnect_button.css' %}">
+{% endblock %}
+
+{% block content %}
+  {% if proconnect_enabled %}
+    <div style="text-align: center; margin: 2em 0;">
+      <a href="{{ proconnect_login_url }}" class="proconnect-button">
+        <span class="proconnect-sr-only">S'identifier avec ProConnect</span>
+      </a>
+      <p style="margin-top: 1.5em; font-size: 0.9em; color: #666;">
+        Réservé aux personnes pré-autorisées par leur adresse e-mail.
+      </p>
+      <p style="margin-top: 0.5em; font-size: 0.85em;">
+        <a href="https://www.proconnect.gouv.fr/"
+           target="_blank"
+           rel="noopener noreferrer">Qu'est-ce que ProConnect ?</a>
+      </p>
+    </div>
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}

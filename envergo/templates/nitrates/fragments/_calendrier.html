@@ -29,10 +29,10 @@ Inputs (cf. templatetag calendrier_epandage) :
 
     <div class="calendrier-epandage__bar">
       {% for seg in segments %}
-        <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}"
+        <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}{% if seg.is_flottant %} calendrier-epandage__zone--flottant{% endif %}"
              style="left: {{ seg.start_pct|unlocalize }}%;
                     width: {{ seg.width_pct|unlocalize }}%"
-             aria-label="Zone {{ seg.couleur }}"></div>
+             aria-label="Zone {{ seg.couleur }}{% if seg.is_flottant %} (date flottante){% endif %}"></div>
       {% endfor %}
 
       <div class="calendrier-epandage__today"
@@ -43,7 +43,7 @@ Inputs (cf. templatetag calendrier_epandage) :
     {% if bornes %}
       <div class="calendrier-epandage__period">
         {% for b in bornes %}
-          <span class="calendrier-epandage__period-date"
+          <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}"
                 style="left: {{ b.pct|unlocalize }}%">{{ b.label }}</span>
         {% endfor %}
       </div>
@@ -54,6 +54,18 @@ Inputs (cf. templatetag calendrier_epandage) :
         {% for p in periodes_phenologiques %}
           <li>
             du <strong>{{ p.du }}</strong> au <strong>{{ p.au }}</strong>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {# Legende couleurs : dynamique, ne liste que les categories presentes. #}
+    {% if legende %}
+      <ul class="calendrier-epandage__legende">
+        {% for item in legende %}
+          <li>
+            <span class="calendrier-epandage__legende-puce calendrier-epandage__legende-puce--{{ item.couleur }}{% if item.flottant %} calendrier-epandage__legende-puce--flottant{% endif %}"></span>
+            {{ item.label }}
           </li>
         {% endfor %}
       </ul>

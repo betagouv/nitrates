@@ -153,23 +153,43 @@ class DecisionTree(models.Model):
     def activate(self):
         """Active ce DecisionTree. L'actif courant passe en archive.
 
+        Renommage automatique :
+          - L'actif courant (qui devient archive) est renomme avec un
+            suffixe horodate '<canonical> – archive YYYY-MM-DD HH:MM'
+            pour distinguer les versions historiques.
+          - Le draft qui devient actif reprend le nom canonique de
+            l'archive qu'il remplace (sans suffixe '– username-N').
+
         Idempotent : re-activer un tree deja actif ne casse rien.
 
         TODO MVP : un seul tree actif global. Quand on ajoutera les
         overrides regionaux (PAR), la notion d'actif devra etre adossee
-        a un scope (national / region / departement / bassin). Modele
-        cible : champ `scope` (national | region | dept | bassin) +
+        a un scope (national | region | dept | bassin) +
         champ optionnel `scope_value` (code region/dept/bassin), avec
         contrainte unique partielle sur (status='active', scope, scope_value).
         Cette methode `activate()` devra alors n'archiver que les actifs
         du meme scope.
         """
-        DecisionTree.objects.filter(status=self.STATUS_ACTIVE).exclude(
-            pk=self.pk
-        ).update(status=self.STATUS_ARCHIVE)
+        now = timezone.now()
+        canonical_name = None
+        for current_active in DecisionTree.objects.filter(
+            status=self.STATUS_ACTIVE
+        ).exclude(pk=self.pk):
+            # Sauvegarde le nom canonique (sans suffixe d'archive) pour
+            # le passer au nouveau tree actif.
+            canonical_name = canonical_name or current_active.name
+            current_active.status = self.STATUS_ARCHIVE
+            current_active.name = (
+                f"{current_active.name} – archive {now:%Y-%m-%d %H:%M}"
+            )
+            current_active.save(update_fields=["status", "name", "updated_at"])
+        # Le nouveau tree actif reprend le nom canonique. Si plusieurs
+        # archives etaient au meme nom (peu probable), on garde le 1er.
+        if canonical_name and self.name != canonical_name:
+            self.name = canonical_name
         self.status = self.STATUS_ACTIVE
-        self.activated_at = timezone.now()
-        self.save(update_fields=["status", "activated_at", "updated_at"])
+        self.activated_at = now
+        self.save(update_fields=["status", "name", "activated_at", "updated_at"])
 
     # ─── Lock d'edition ────────────────────────────────────────────────────
 
@@ -210,15 +230,22 @@ class DecisionTree(models.Model):
             self.save(update_fields=["locked_by", "locked_at", "updated_at"])
 
     @classmethod
-    def unique_copy_name(cls, base_name: str) -> str:
-        """Genere un nom '<base> (copy)' ou '<base> (copy N)' sans collision
-        avec un nom existant."""
-        candidate = f"{base_name} (copy)"
-        if not cls.objects.filter(name=candidate).exists():
-            return candidate
-        n = 2
+    def unique_draft_name(cls, base_name: str, user=None) -> str:
+        """Genere un nom de draft '<base> – <username>-<N>' sans collision.
+
+        Quand plusieurs juristes editent en parallele, le nom du draft
+        contient leur username pour qu'on identifie qui travaille sur
+        quoi. <N> est le prochain numero libre pour cet utilisateur sur
+        cette base.
+        """
+        username = (
+            getattr(user, "username", None) or getattr(user, "email", None) or "anon"
+        )
+        # Garde une forme compacte : pas d'@ ni d'espace.
+        username = username.split("@")[0].replace(" ", "_")
+        n = 1
         while True:
-            candidate = f"{base_name} (copy {n})"
+            candidate = f"{base_name} – {username}-{n}"
             if not cls.objects.filter(name=candidate).exists():
                 return candidate
             n += 1
@@ -229,7 +256,7 @@ class DecisionTree(models.Model):
         brut sont dupliques en profondeur. Le nouveau draft pointe vers
         `source` via `parent`."""
         return cls.objects.create(
-            name=cls.unique_copy_name(source.name),
+            name=cls.unique_draft_name(source.name, user=user),
             status=cls.STATUS_DRAFT,
             contenu=copy.deepcopy(source.contenu),
             contenu_yaml_brut=source.contenu_yaml_brut,
@@ -559,3 +586,188 @@ class MoulinetteNitrates(Moulinette):
             "bassin": self.catalog.get("bassin"),
             "bassin_label": self.catalog.get("bassin_label"),
         }
+
+
+# ─── Validation manuelle des feuilles de l'arbre ───────────────────────────
+
+
+def _branche_screenshot_path(instance, filename):
+    """Stockage des screenshots Miro / Playwright / YAML sous
+    media/nitrates_validation/<regle_id_or_pk>/<filename>.
+
+    On utilise regle_id si dispo (court et lisible), sinon pk. Pas le
+    chemin_yaml complet : trop long pour le max_length du ImageField
+    apres slugification."""
+    folder = instance.regle_id or f"id-{instance.pk or 'new'}"
+    return f"nitrates_validation/{folder}/{filename}"
+
+
+class BrancheValidation(models.Model):
+    """Une ligne de validation manuelle pour une feuille de l'arbre nitrates.
+
+    Cf. issue #28 / sprint MVP-1 fin : Max valide exhaustivement chaque
+    feuille `culture_principale` en croisant 5 sources :
+      1. PNG Miro juriste (auto-attach depuis snapshot_miro/<branche>.png)
+      2. Screenshot admin YAML viewer (uploade par Max, devops local)
+      3. Screenshot admin YAML editor (cas tricky type colza Type III)
+      4. URL simulateur deeplink avec lat/lng + cascade pre-remplie
+      5. Screenshot Playwright du resultat simulateur (uploade par Max)
+
+    Cle naturelle : `chemin_yaml` (path d'IDs YAML, ex
+    "n_zvn/q_occupation_sol/q_culture_principale_type/q_colza_fertilisant/r_colza_type_0").
+    Stable a travers les re-imports tant que les IDs YAML ne changent pas.
+    """
+
+    STATUT_NON_VALIDE = "non_valide"
+    STATUT_VALIDE = "valide"
+    STATUT_A_CORRIGER = "a_corriger"
+    STATUT_CHOICES = [
+        (STATUT_NON_VALIDE, "Non validé"),
+        (STATUT_VALIDE, "Validé"),
+        (STATUT_A_CORRIGER, "À corriger"),
+    ]
+
+    # Cle naturelle : path d'ids YAML separes par "/".
+    chemin_yaml = models.CharField(
+        max_length=1000,
+        unique=True,
+        help_text="Path d'ids YAML depuis la racine vers la feuille",
+    )
+    # Ordre d'affichage canonique du Miro juriste (haut en bas).
+    # Rempli au seed dans l'ordre d'apparition dans index.yaml. Permet de
+    # parcourir la liste de validation dans le meme ordre que le Miro.
+    ordre = models.PositiveIntegerField(default=0, db_index=True)
+    # Dernier segment du chemin = id de la regle (ou "renvoi_vers:..." si
+    # la branche pointe ailleurs sans regle directe).
+    regle_id = models.CharField(max_length=200, blank=True)
+    branche_label = models.CharField(
+        max_length=500,
+        help_text="Chemin metier lisible (ex: 'sous_culture=colza / type_fertilisant=type_III')",
+    )
+
+    # ─── Source 1 : YAML codé ────────────────────────────────────────────
+    yaml_snapshot = models.TextField(
+        blank=True,
+        help_text="Extrait YAML de la regle au moment du seed (round-trip)",
+    )
+
+    # ─── Source 2 : Miro juriste ─────────────────────────────────────────
+    branche_miro = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Slug branche cote Miro (colza, luzerne, ...)",
+    )
+    type_fertilisant_miro = models.CharField(max_length=50, blank=True)
+    condition_miro = models.CharField(max_length=200, blank=True)
+    zonage_miro = models.CharField(max_length=200, blank=True)
+    resultat_miro = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
+    )
+    code_pc_miro = models.CharField(max_length=20, blank=True)
+    screenshot_miro = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="PNG Miro auto-attache depuis snapshot_miro/.../<branche>.png",
+    )
+
+    # ─── Source 3 : Admin YAML viewer / form (uploade manuellement) ──────
+    screenshot_yaml_viewer = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture admin YAML viewer scrolle sur la feuille",
+    )
+    screenshot_yaml_form = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture du form d'edition du noeud (cas tricky)",
+    )
+
+    # ─── Source 4 : URL simulateur ───────────────────────────────────────
+    url_simulateur = models.CharField(
+        max_length=2000,
+        blank=True,
+        help_text="URL relative du simulateur pre-rempli pour cette feuille",
+    )
+
+    # ─── Source 5 : Screenshot Playwright (devops manuel) ────────────────
+    screenshot_playwright = models.ImageField(
+        upload_to=_branche_screenshot_path,
+        blank=True,
+        null=True,
+        help_text="Capture du resultat simulateur (devops manuel)",
+    )
+    playwright_run_at = models.DateTimeField(blank=True, null=True)
+
+    # ─── Validation ─────────────────────────────────────────────────────
+    # Plusieurs personnes peuvent valider la meme branche. Chaque action
+    # (valide / a_corriger / re-non_valide) est enregistree dans
+    # BrancheValidationAction. Le statut courant = derniere action en date.
+    # On garde un champ statut denormalise sur cette table pour pouvoir
+    # filtrer/ordonner en SQL sans join, mais c'est mis a jour par la vue
+    # quand une action est ajoutee.
+    statut = models.CharField(
+        max_length=20,
+        choices=STATUT_CHOICES,
+        default=STATUT_NON_VALIDE,
+        help_text="Statut courant : derniere action enregistree",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["ordre", "chemin_yaml"]
+        verbose_name = "Validation de branche"
+        verbose_name_plural = "Validations de branches"
+
+    def __str__(self):
+        return f"{self.regle_id or self.chemin_yaml} ({self.get_statut_display()})"
+
+    def derniere_action(self):
+        return self.actions.order_by("-created_at").first()
+
+    def actions_par_user(self):
+        """Pour chaque user qui a deja valide cette branche, sa derniere
+        action. Permet d'afficher 'Max valide le X, Emma valide le Y'."""
+        seen = {}
+        for a in self.actions.order_by("created_at"):
+            seen[a.user_id] = a
+        return list(seen.values())
+
+
+class BrancheValidationAction(models.Model):
+    """Une action de validation enregistree pour une BrancheValidation.
+
+    Permet a plusieurs personnes (Max, Emma, Louise...) de valider la meme
+    branche independamment. L'historique complet est conserve. Le statut
+    courant de la BrancheValidation = statut de la derniere action.
+    """
+
+    branche = models.ForeignKey(
+        BrancheValidation,
+        on_delete=models.CASCADE,
+        related_name="actions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="branches_validation_actions",
+    )
+    statut = models.CharField(max_length=20, choices=BrancheValidation.STATUT_CHOICES)
+    commentaire = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Action de validation"
+        verbose_name_plural = "Actions de validation"
+
+    def __str__(self):
+        user_disp = self.user.email if self.user_id else "?"
+        return f"{user_disp} -> {self.statut} ({self.created_at:%d/%m/%Y %H:%M})"

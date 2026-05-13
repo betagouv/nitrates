@@ -1,0 +1,33 @@
+/* Bouton officiel ProConnect (option "sans DSFR" de la doc partenaires).
+ * Specs : https://partenaires.proconnect.gouv.fr/docs/fournisseur-service/bouton_proconnect
+ */
+
+.proconnect-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.proconnect-button {
+  background-color: transparent;
+  background-image: url("../img/proconnect/button.svg");
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+  width: 214px;
+  height: 56px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-block;
+}
+
+.proconnect-button:hover,
+.proconnect-button:focus {
+  background-image: url("../img/proconnect/button-hover.svg");
+}

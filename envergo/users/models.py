@@ -67,6 +67,16 @@ class User(AbstractUser):
         related_name="members",
         blank=True,
     )
+    # Identifiant unique ProConnect (claim `sub` du JWT id_token), rempli a
+    # la 1ere connexion SSO. Utilise en priorite pour la reconciliation
+    # d'identite (l'email peut changer cote ProConnect, le sub non).
+    proconnect_sub = models.CharField(
+        "Identifiant ProConnect (sub)",
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
 
     username = None  # type: ignore
     first_name = None  # type: ignore

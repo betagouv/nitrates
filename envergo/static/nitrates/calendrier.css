@@ -49,6 +49,7 @@
   position: absolute;
   top: -1px;
   bottom: -1px;
+  cursor: help;
 }
 
 .calendrier-epandage__zone--rouge {
@@ -89,19 +90,211 @@
 
 .calendrier-epandage__period {
   position: relative;
-  height: 20px;
+  height: 38px; /* 2 lignes : row 0 en haut, row 1 en bas */
   margin-top: 8px;
 }
 
 .calendrier-epandage__period-date {
   position: absolute;
+  top: 0;
   font-size: 12px;
   font-weight: 700;
   color: #e1000f;
   transform: translateX(-50%);
 }
 
+/* Borne phenologique : couleur noire italique (date conventionnelle, pas
+   une vraie date metier — l'utilisateur doit comprendre qu'elle est flottante).
+   Un petit trait diagonal en pseudo-element ::before relie le texte a son
+   ancre sur la barre du calendrier. */
+.calendrier-epandage__period-date--phenologique {
+  color: #161616;
+  font-style: italic;
+}
+
+.calendrier-epandage__period-date--phenologique::before {
+  content: "";
+  position: absolute;
+
+  /* Trait vertical du haut du texte jusqu'a la barre du calendrier
+     (situee 12px au-dessus dans .calendrier-epandage__period margin-top:8px
+     + 4px de jeu). Ancre = centre horizontal du texte = pos reelle borne. */
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 12px;
+  margin-left: -0.5px;
+  background: #161616;
+  pointer-events: none;
+}
+
+/* Empilage 2e ligne : decale verticalement pour eviter l'overlap textuel
+   quand 2 bornes sont a moins de 10% de distance horizontale. */
+.calendrier-epandage__period-date--row2 {
+  top: 18px;
+}
+
+/* Trait phenologique sur row2 : plus long pour atteindre la barre, qui est
+   ~26px au-dessus (vs 12px pour row1 / row0). */
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row2::before {
+  height: 26px;
+}
+
+/* Zone hachuree : segment dont une borne est phenologique (date flottante).
+   Patterne en bandes diagonales noires sur fond de la couleur du regime,
+   pour signaler visuellement que la duree exacte n'est pas figee. */
+.calendrier-epandage__zone--flottant {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 6px,
+    rgb(22 22 22 / 22%) 6px,
+    rgb(22 22 22 / 22%) 8px
+  );
+}
+
 .calendrier-epandage__phenologique {
   margin-top: 0.5rem;
   color: #666;
+}
+
+/* ─── Légende couleurs (issue #28) ──────────────────────────────────── */
+.calendrier-epandage__legende {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-default-grey);
+}
+
+.calendrier-epandage__legende li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendrier-epandage__legende-puce {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgb(0 0 0 / 15%);
+}
+
+.calendrier-epandage__legende-puce--rouge {
+  background: #ffc4c4;
+}
+
+.calendrier-epandage__legende-puce--orange {
+  background: #ffd6a1;
+}
+
+.calendrier-epandage__legende-puce--vert {
+  background: #c2e8c2;
+}
+
+/* Puce hachuree : meme couleur de fond que la version simple, plus un overlay
+   de bandes diagonales noires pour signaler la presence d'une borne flottante. */
+.calendrier-epandage__legende-puce--flottant {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 2px,
+    rgb(22 22 22 / 35%) 2px,
+    rgb(22 22 22 / 35%) 3px
+  );
+}
+
+/* ─── Header epandage dynamique (issue #28) ─────────────────────────── */
+
+.epandage-header {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.epandage-header__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.epandage-header__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-title-grey);
+}
+
+.epandage-header__date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.epandage-header__date {
+  color: var(--text-mention-grey);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.epandage-header__badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.epandage-header__badge--rouge {
+  background: #ffeaeb;
+  color: #e1000f;
+}
+
+.epandage-header__badge--orange {
+  background: #ffe0b2;
+  color: #b35900;
+}
+
+.epandage-header__badge--vert {
+  background: #b8fec9;
+  color: #18753c;
+}
+
+.epandage-header__badge--gris {
+  background: #eaeaea;
+  color: #666;
+}
+
+.epandage-header__phrase {
+  margin: 12px 0 0;
+  color: var(--text-default-grey);
+  line-height: 1.5;
+}
+
+/* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */
+.calendrier-epandage__tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(33 33 33 / 92%);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 100;
+  white-space: nowrap;
+  transform: translate(-50%, calc(-100% - 8px));
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.calendrier-epandage__tooltip[data-visible="true"] {
+  opacity: 1;
 }

@@ -30,9 +30,9 @@
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>type</span>
-        <select name="type">
+        <select name="type" data-regle-type-select>
           <option value="">— (aucun, brouillon)</option>
-          {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice"|split:"," %}
+          {% for t in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable,calculatrice,mixte"|split:"," %}
             <option value="{{ t }}"{% if regle.type == t %} selected{% endif %}>{{ t }}</option>
           {% endfor %}
         </select>
@@ -51,8 +51,14 @@
       </label>
     </div>
 
-    <fieldset class="yaml-tree__form-fieldset">
+    <fieldset class="yaml-tree__form-fieldset"
+              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte">
       <legend>Périodes (du / au + régime optionnel)</legend>
+      {% if evenements_phenologiques %}
+        <datalist id="evenements-phenologiques-list">
+          {% for ev in evenements_phenologiques %}<option value="{{ ev.slug }}" label="{{ ev.libelle }}"></option>{% endfor %}
+        </datalist>
+      {% endif %}
       {% with regle.periodes|default_if_none:"" as periodes %}
         {% for p in periodes %}
           <div class="yaml-tree__form-row">
@@ -61,18 +67,23 @@
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-du"
                      value="{{ p.du|default_if_none:'' }}"
-                     placeholder="du (JJ/MM)"
-                     style="max-width:14ch">
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-au"
                      value="{{ p.au|default_if_none:'' }}"
-                     placeholder="au (JJ/MM)"
-                     style="max-width:14ch">
-              <input type="text"
-                     name="periodes-{{ forloop.counter0 }}-regime"
-                     value="{{ p.regime|default_if_none:'' }}"
-                     placeholder="regime (optionnel)"
-                     style="max-width:18ch">
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
+              <select name="periodes-{{ forloop.counter0 }}-regime"
+                      data-regime-select
+                      style="max-width:22ch">
+                <option value="">— régime hérité —</option>
+                {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+                  <option value="{{ r }}" {% if p.regime == r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
             </label>
             {% for err in errors %}
               {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
@@ -81,32 +92,46 @@
             {% endfor %}
           </div>
         {% endfor %}
-        {% comment %}Une ligne vide pour ajouter une nouvelle periode.{% endcomment %}
-        <div class="yaml-tree__form-row">
+        {% comment %}Une ligne vide pour ajouter une nouvelle periode.
+        Le bouton "+ Ajouter une periode" en-dessous clone cette ligne en JS
+        pour permettre d'en ajouter plusieurs sans aller-retour serveur.
+        {% endcomment %}
+        <div class="yaml-tree__form-row" data-periode-row>
           <label class="yaml-tree__form-label">
             <span>+ ajouter</span>
             <input type="text"
                    name="periodes-{{ regle.periodes|length|default:0 }}-du"
                    value=""
-                   placeholder="du (JJ/MM)"
-                   style="max-width:14ch">
+                   placeholder="JJ/MM ou événement"
+                   list="evenements-phenologiques-list"
+                   style="max-width:24ch">
             <input type="text"
                    name="periodes-{{ regle.periodes|length|default:0 }}-au"
                    value=""
-                   placeholder="au (JJ/MM)"
-                   style="max-width:14ch">
-            <input type="text"
-                   name="periodes-{{ regle.periodes|length|default:0 }}-regime"
-                   value=""
-                   placeholder="regime (optionnel)"
-                   style="max-width:18ch">
+                   placeholder="JJ/MM ou événement"
+                   list="evenements-phenologiques-list"
+                   style="max-width:24ch">
+            <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
+                    data-regime-select
+                    style="max-width:22ch">
+              <option value="">— régime hérité —</option>
+              {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+                <option value="{{ r }}">{{ r }}</option>
+              {% endfor %}
+            </select>
           </label>
+        </div>
+        <div class="yaml-tree__form-row">
+          <button type="button"
+                  class="yaml-admin__btn yaml-admin__btn--small"
+                  data-add-periode
+                  data-next-index="{{ regle.periodes|length|default:0|add:1 }}">+ Ajouter une période</button>
         </div>
       {% endwith %}
     </fieldset>
 
-    <fieldset class="yaml-tree__form-fieldset">
-      <legend>Calculatrice (si type=calculatrice)</legend>
+    <fieldset class="yaml-tree__form-fieldset" data-type-fieldset="calculatrice">
+      <legend>Calculatrice</legend>
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>composant</span>
@@ -146,37 +171,49 @@
       </label>
     </div>
     <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>message</span>
+      <label class="yaml-tree__form-label"
+             title="Verdict court rendu à l'utilisateur de la moulinette (ex: « Apport interdit toute l'année »).">
+        <span>verdict</span>
         <input type="text"
                name="message"
-               value="{{ regle.message|default_if_none:'' }}">
+               value="{{ regle.message|default_if_none:'' }}"
+               placeholder="Phrase courte affichée à l'utilisateur (ex: Apport interdit toute l'année)">
       </label>
     </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>texte</span>
-        <input type="text" name="texte" value="{{ regle.texte|default_if_none:'' }}">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>texte_condition</span>
+    <div class="yaml-tree__form-row" data-regle-condition-row>
+      <label class="yaml-tree__form-label"
+             title="Détails de la condition à respecter pour autoriser l'épandage. Sert quand type=autorisation_sous_condition.">
+        <span>condition</span>
         <input type="text"
                name="texte_condition"
-               value="{{ regle.texte_condition|default_if_none:'' }}">
+               value="{{ regle.texte_condition|default_if_none:'' }}"
+               placeholder="Détail de la condition (ex: « Autorisation dans les conditions de la note 1 »)">
       </label>
     </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
+    <details class="yaml-tree__form-advanced">
+      <summary>Texte libre (notes, exceptions)</summary>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label">
+          <span>texte</span>
+          <input type="text"
+                 name="texte"
+                 value="{{ regle.texte|default_if_none:'' }}"
+                 placeholder="Champ libre, rarement utilisé">
+        </label>
+      </div>
+    </details>
+    <div class="yaml-tree__form-row" data-type-row="plafonnement">
+      <label class="yaml-tree__form-label"
+             title="Plafond d'azote autorisé en kg N/ha pour cette règle.">
         <span>plafond N kg/ha</span>
         <input type="text"
                name="plafond_azote_kg_n_ha"
                value="{{ regle.plafond_azote_kg_n_ha|default_if_none:'' }}">
       </label>
     </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
+    <div class="yaml-tree__form-row" data-type-row="libre">
+      <label class="yaml-tree__form-label"
+             title="Si la règle est de type libre, on peut référencer une règle de plafonnement (id r_*) qui s'applique en parallèle.">
         <span>plafonnement_associe</span>
         <input type="text"
                name="plafonnement_associe"
@@ -201,5 +238,84 @@
               hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
               hx-swap="outerHTML">Annuler</button>
     </div>
+
+    <script>
+      // Adapte les champs visibles selon le type choisi.
+      // - `regime` (par periode) + `condition` : autorisation_sous_condition uniquement
+      // - `Calculatrice` (composant + inputs_requis) : calculatrice uniquement
+      // - `plafond N kg/ha` : plafonnement uniquement
+      // - `plafonnement_associe` : libre uniquement
+      // - `Periodes` : interdiction / autorisation_sous_condition / plafonnement
+      (function () {
+        const root = document.currentScript.closest('form');
+        const typeSelect = root.querySelector('[data-regle-type-select]');
+        const regimeSelects = Array.from(root.querySelectorAll('[data-regime-select]'));
+        const conditionRow = root.querySelector('[data-regle-condition-row]');
+        const fieldsets = Array.from(root.querySelectorAll('[data-type-fieldset]'));
+        const rows = Array.from(root.querySelectorAll('[data-type-row]'));
+        const apply = () => {
+          const t = typeSelect.value;
+          const sousCondition = t === 'autorisation_sous_condition';
+          const mixte = t === 'mixte';
+          // regime par periode : visible quand type=autorisation_sous_condition
+          // (raffinement vers plus restrictif) ou type=mixte (regime obligatoire
+          // par periode, plusieurs regimes distincts coexistent).
+          // condition (texte_condition) : seulement pour autorisation_sous_condition.
+          // On NE PURGE JAMAIS sel.value : un switch de type ne doit pas
+          // detruire silencieusement les regimes par-periode existants.
+          // Le validator backend assure la coherence au save.
+          regimeSelects.forEach(sel => {
+            sel.style.display = sousCondition || mixte ? '' : 'none';
+          });
+          if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
+          // fieldsets et rows marques avec data-type-fieldset/row
+          fieldsets.forEach(el => {
+            const allowed = el.dataset.typeFieldset.split(',');
+            el.style.display = allowed.includes(t) ? '' : 'none';
+          });
+          rows.forEach(el => {
+            const allowed = el.dataset.typeRow.split(',');
+            el.style.display = allowed.includes(t) ? '' : 'none';
+          });
+        };
+        apply();
+        typeSelect.addEventListener('change', apply);
+      })();
+    </script>
+
+    <script>
+      // Bouton "+ Ajouter une periode" : clone la derniere ligne de periode
+      // et incremente l'index dans les `name="periodes-N-..."` pour que
+      // Django parse correctement N entrees au POST.
+      (function () {
+        const form = document.currentScript.closest('form');
+        const btn = form.querySelector('[data-add-periode]');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          const rows = form.querySelectorAll('[data-periode-row]');
+          const last = rows[rows.length - 1];
+          if (!last) return;
+          const nextIndex = parseInt(btn.dataset.nextIndex || '1', 10);
+          const clone = last.cloneNode(true);
+          clone.querySelectorAll('input, select').forEach((el) => {
+            // Remplace l'index dans le name : periodes-N-xxx -> periodes-NEXT-xxx
+            if (el.name) {
+              el.name = el.name.replace(/^periodes-\d+-/, `periodes-${nextIndex}-`);
+            }
+            // Reset les valeurs
+            if (el.tagName === 'INPUT') el.value = '';
+            if (el.tagName === 'SELECT') el.selectedIndex = 0;
+          });
+          // Renomme le span "+ ajouter" en "période #N+1" pour la lisibilite
+          const span = clone.querySelector('span');
+          if (span) span.textContent = `période #${nextIndex + 1}`;
+          last.after(clone);
+          btn.dataset.nextIndex = String(nextIndex + 1);
+          // Re-applique le toggle visibilite regime selon type courant.
+          const typeSelect = form.querySelector('[data-regle-type-select]');
+          if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
+        });
+      })();
+    </script>
   </form>
 </div>

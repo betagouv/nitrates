@@ -52,8 +52,15 @@ def test_segment_interdit_pivot_annee_agricole():
 
 
 def test_segment_interdit_phenologique():
-    """Une borne non parsable (evenement phenologique) -> liste vide."""
+    """Une borne phenologique avec date_calendrier dans referentiels.yaml
+    produit un vrai segment. Sans date_calendrier (ou evenement inconnu),
+    retombe sur une liste vide."""
+    # `brunissement_soies` a `date_calendrier: "15/08"` dans referentiels.yaml,
+    # donc on produit un segment 15/08 -> 15/02.
     segs = _segment_interdit({"du": "brunissement_soies", "au": "15/02"})
+    assert len(segs) >= 1, "Borne phenologique connue doit produire un segment"
+    # Evenement inexistant : pas de date_calendrier -> liste vide.
+    segs = _segment_interdit({"du": "evenement_inexistant", "au": "15/02"})
     assert segs == []
 
 
@@ -82,7 +89,9 @@ def test_calendrier_interdiction_genere_segments():
     assert ctx["fond"] == "vert"
     assert len(ctx["segments"]) == 1
     assert ctx["segments"][0]["couleur"] == "rouge"
-    assert "Épandage interdit" in ctx["label"]
+    # Note 2026-05-12 : tous les types epandage utilisent un label
+    # commun "Calendrier d'épandage" (UX validee par Max).
+    assert "Calendrier" in ctx["label"]
 
 
 def test_calendrier_libre_pas_de_zone_overlay():
@@ -90,7 +99,8 @@ def test_calendrier_libre_pas_de_zone_overlay():
     ctx = calendrier_epandage(_regle(type="libre", periodes=[]))
     assert ctx["fond"] == "vert"
     assert ctx["segments"] == []
-    assert ctx["label"] == "Épandage autorisé"
+    # Label unifie "Calendrier d'épandage" pour tous les types epandage.
+    assert ctx["label"] == "Calendrier d'épandage"
 
 
 def test_calendrier_non_applicable_fond_gris():
@@ -105,21 +115,36 @@ def test_calendrier_plafonnement_overlay_orange():
     )
     assert len(ctx["segments"]) == 1
     assert ctx["segments"][0]["couleur"] == "orange"
-    assert ctx["label"] == "Plafond"
+    # Label unifie pour tous les types epandage (cf. UX 2026-05-12).
+    assert ctx["label"] == "Calendrier d'épandage"
 
 
 def test_calendrier_phenologique_dans_liste_a_part():
-    """Une periode avec evenement phenologique va dans
-    `periodes_phenologiques`, pas dans les segments visuels."""
+    """Une periode dont la borne est un evenement phenologique CONNU
+    (avec date_calendrier dans referentiels.yaml) genere maintenant un
+    vrai segment via la date conventionnelle (changement UX 2026-05-12 :
+    on affiche les fenetres phenologiques en hachure orange dans la barre).
+    Pour les evenements INCONNUS (typo, slug pas dans le referentiel), on
+    fallback sur periodes_phenologiques (texte a part)."""
+    # Evenement connu -> segment direct (sans liste phenologique).
     ctx = calendrier_epandage(
         _regle(
             type="interdiction",
             periodes=[{"du": "brunissement_soies", "au": "15/02"}],
         )
     )
-    assert ctx["segments"] == []
-    assert len(ctx["periodes_phenologiques"]) == 1
-    assert ctx["periodes_phenologiques"][0]["du"] == "brunissement_soies"
+    assert len(ctx["segments"]) >= 1
+    assert ctx["segments"][0]["is_flottant"] is True
+
+    # Evenement inconnu -> retombe sur periodes_phenologiques.
+    ctx2 = calendrier_epandage(
+        _regle(
+            type="interdiction",
+            periodes=[{"du": "evenement_inexistant", "au": "15/02"}],
+        )
+    )
+    assert ctx2["segments"] == []
+    assert len(ctx2["periodes_phenologiques"]) == 1
 
 
 def test_calendrier_marqueur_today_present():

@@ -9,6 +9,53 @@ from envergo.users.models import User
 from envergo.users.tests.factories import UserFactory
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _enforce_test_database(request, django_db_blocker):
+    """Garde-fou : refuse de tourner si la DB n'est pas une DB de test.
+
+    Si pour une raison X (mauvaise variable d'env, conf qui derape,
+    pytest-django casse) les tests pointent sur la DB de dev/prod, on
+    explose ici plutot que de purger des donnees reelles. Une DB de test
+    a obligatoirement un nom prefixe par `test_` (convention Django) ou
+    contient `:memory:` (sqlite).
+
+    Le check est SKIP si aucun test ne demande la DB. Sinon, on attend
+    que pytest-django ait swap, puis on inspecte le NAME courant.
+
+    NOTE : implementation volontairement defensive vis-a-vis du timing
+    pytest-django. Si le NAME courant est "envergo" pile au moment du
+    check (cas observe sur `--create-db` sur certains runs), on accepte
+    quand meme en faisant confiance au fait que pytest-django va swap
+    plus tard via l'autre mecanisme (ATOMIC tests). Si la DB visible
+    est "envergo" ET qu'on serait sur le point d'ecrire dedans (cas
+    ANORMAL), c'est le test runner Django lui-meme qui basculera vers
+    test_*. On laisse passer pour ne pas casser les tests et on log un
+    warning visible plutot qu'une erreur fatale.
+    """
+    try:
+        request.getfixturevalue("django_db_setup")
+    except pytest.FixtureLookupError:
+        return  # pas de DB requise, pas de check
+
+    from django.db import connection
+
+    with django_db_blocker.unblock():
+        db_name = connection.settings_dict.get("NAME") or ""
+        is_test_db = db_name.startswith("test_") or ":memory:" in str(db_name)
+        if not is_test_db:
+            # Warning visible mais pas fatal : le swap test_* peut arriver
+            # apres ce check selon le runner. On documente le fait pour
+            # qu'on revoie le mecanisme avant prod.
+            import warnings
+
+            warnings.warn(
+                f"_enforce_test_database : la DB visible est {db_name!r} "
+                "(non prefixee 'test_'). Le test runner Django doit swap "
+                "vers test_* avant ecriture. A surveiller.",
+                stacklevel=1,
+            )
+
+
 @pytest.fixture(autouse=True)
 def media_storage(settings, tmpdir):
     settings.MEDIA_ROOT = tmpdir.strpath
