@@ -14,6 +14,22 @@ from envergo.nitrates.auth import ProConnectBackend
 from envergo.users.models import User
 
 
+@pytest.fixture(autouse=True)
+def _oidc_settings(settings):
+    """ProConnectBackend()' s init lit les settings OIDC_OP_*. En local et
+    en CI sans creds ProConnect, ces settings n'existent pas (cf. base.py
+    ou ils ne sont ajoutes que si PROCONNECT_ENABLED). On les force a des
+    valeurs fakes pour permettre l'instanciation -- les tests ne font pas
+    de network call, ils testent la logique de reconciliation user."""
+    settings.OIDC_RP_CLIENT_ID = "test-client"
+    settings.OIDC_RP_CLIENT_SECRET = "test-secret"  # pragma: allowlist secret
+    settings.OIDC_RP_SIGN_ALGO = "RS256"
+    settings.OIDC_OP_AUTHORIZATION_ENDPOINT = "https://op.test/authorize"
+    settings.OIDC_OP_TOKEN_ENDPOINT = "https://op.test/token"
+    settings.OIDC_OP_USER_ENDPOINT = "https://op.test/userinfo"
+    settings.OIDC_OP_JWKS_ENDPOINT = "https://op.test/jwks"
+
+
 @pytest.fixture
 def backend():
     return ProConnectBackend()
