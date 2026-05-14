@@ -733,9 +733,14 @@ class BrancheValidation(models.Model):
 
     def actions_par_user(self):
         """Pour chaque user qui a deja valide cette branche, sa derniere
-        action. Permet d'afficher 'Max valide le X, Emma valide le Y'."""
+        action. Permet d'afficher 'Max valide le X, Emma valide le Y'.
+
+        Trie en Python (et non en SQL via order_by) pour reutiliser le
+        cache du prefetch_related cote vue. Le BrancheValidationAction
+        Meta.ordering est ['-created_at'] (DESC), donc on parcourt en sens
+        inverse pour avoir l'ordre ASC sans re-query."""
         seen = {}
-        for a in self.actions.order_by("created_at"):
+        for a in sorted(self.actions.all(), key=lambda a: a.created_at):
             seen[a.user_id] = a
         return list(seen.values())
 

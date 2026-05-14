@@ -12,6 +12,7 @@ Cf. issue #28 / sprint MVP-1 fin.
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -22,7 +23,18 @@ from envergo.nitrates.models import BrancheValidation, BrancheValidationAction
 @staff_member_required
 def validation_index(request):
     """Tableau d'overview de toutes les validations."""
-    branches = BrancheValidation.objects.all()
+    # Prefetch sur `actions__user` : evite le N+1 cause par
+    # `branche.actions_par_user` appele dans le template pour chaque ligne.
+    # On ordonne le prefetch comme `actions_par_user` (created_at ASC) pour
+    # qu'il reutilise le cache (sinon Django refait une requete).
+    # Avant : 1 + N requetes actions + M requetes users (~50+ pour 41 lignes).
+    # Apres : 1 + 2 requetes (actions + users) au total.
+    actions_qs = BrancheValidationAction.objects.order_by("created_at").select_related(
+        "user"
+    )
+    branches = BrancheValidation.objects.prefetch_related(
+        Prefetch("actions", queryset=actions_qs)
+    )
     stats = {
         "total": branches.count(),
         "valide": branches.filter(statut=BrancheValidation.STATUT_VALIDE).count(),
