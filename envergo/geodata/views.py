@@ -8,10 +8,12 @@ from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView, View
-from shapely.geometry import mapping, shape
-from shapely.ops import unary_union
 
 from envergo.geodata.models import Zone
+
+# shapely lazy-loaded dans ParcelsExport.get : evite ~3 MiB RSS au boot.
+# Non utilise par le simulateur nitrates.
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,9 @@ class ParcelsExport(View):
     """Export a bunch of parcels into geojson"""
 
     def get(self, request, *args, **kwargs):
+        from shapely.geometry import mapping
+        from shapely.ops import unary_union
+
         parcels = self.request.GET.getlist("parcel")
 
         jsons = map(self.get_parcel_json, parcels)
@@ -44,6 +49,8 @@ class ParcelsExport(View):
         return json if res.status_code == 200 else None
 
     def extract_shape(self, json):
+        from shapely.geometry import shape
+
         return shape(json["features"][0]["properties"]["trueGeometry"])
 
 
