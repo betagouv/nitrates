@@ -474,6 +474,12 @@ NITRATES_SPECS_DIR = env(
     "NITRATES_SPECS_DIR",
     default=str(ROOT_DIR / "envergo" / "nitrates" / "specs"),
 )
+# Active les panneaux debug du simulateur (resolution catalogue, chemin
+# parcouru, result_code, etc.) independamment de DEBUG. Utile en staging
+# pour que les intras valident sans avoir DEBUG=True.
+NITRATES_FORM_DEBUG_PANELS = env.bool(
+    "DJANGO_NITRATES_FORM_DEBUG_PANELS", default=False
+)
 
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
