@@ -9,7 +9,7 @@ Source de verite : la table `DecisionTree`.
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -20,6 +20,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import YamlLexer
 
 from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.permissions import can_activate_tree, can_edit_active
 from envergo.nitrates.yaml_admin.flatten import iter_entries
 from envergo.nitrates.yaml_admin.fold import compute_open_paths
 from envergo.nitrates.yaml_admin.tags import (
@@ -133,7 +134,8 @@ class YamlTreeView(TemplateView):
                 "mode": mode,
                 "is_editing": mode == "edition",
                 "lock_blocked_by": lock_blocked_by,
-                "edited_origin_name": _edited_origin_name(tree),
+                "edited_origin_name": _edited_origin_name(tree, self.request.user),
+                "can_activate_this_tree": can_activate_tree(self.request.user, tree),
                 "recent_revisions": (
                     list(tree.revisions.order_by("-created_at")[:5])
                     if mode == "edition"
@@ -174,10 +176,6 @@ class EditActiveView(View):
         return self._do(request)
 
     def _do(self, request):
-        from django.http import HttpResponseForbidden
-
-        from envergo.nitrates.permissions import can_edit_active
-
         if not can_edit_active(request.user):
             return HttpResponseForbidden(
                 "L'édition de l'arbre actif est réservée aux administrateurs. "
@@ -298,11 +296,20 @@ class CreateDraftView(View):
         return HttpResponseRedirect(url)
 
 
-def _edited_origin_name(tree: DecisionTree) -> str:
+def _edited_origin_name(tree: DecisionTree, user=None) -> str:
     """Pour l'UX d'edition : le nom de l'arbre source que l'utilisateur
     croit editer. Si le draft a ete cree depuis l'actif, c'est le nom de
     cet actif. Sinon (parent archive ou null), le nom du draft lui-meme.
+
+    Cas particulier : un external_observator ne peut pas declencher
+    'Editer l'arbre actif' (cache pour lui). Ses drafts viennent donc
+    forcement du bouton 'Cloner' explicite et il s'attend a voir le nom
+    de son clone, pas celui de la source. Pour eux on retourne tree.name.
     """
+    from envergo.nitrates.permissions import is_external_observator
+
+    if user is not None and is_external_observator(user):
+        return tree.name
     if tree.status == DecisionTree.STATUS_DRAFT and tree.parent_id:
         return tree.parent.name
     return tree.name

@@ -32,13 +32,15 @@
             hx-target="#yaml-admin-validation-zone"
             hx-swap="innerHTML"
             title="Vérifier la cohérence globale de l'arbre">Vérifier l'arbre</button>
-    <button type="button"
-            class="yaml-admin__btn yaml-admin__btn--primary"
-            hx-post="{% url 'nitrates_admin_yaml_activate_tree' tree_pk=tree.pk %}"
-            hx-target="#yaml-admin-validation-zone"
-            hx-swap="innerHTML"
-            hx-confirm="Publier ce draft ? L'arbre actif courant sera archivé. Cette action est réversible (en réactivant l'archive)."
-            title="Valide la cohérence de l'arbre puis l'active (l'archive remplace).">Valider et publier</button>
+    {% if can_activate_this_tree %}
+      <button type="button"
+              class="yaml-admin__btn yaml-admin__btn--primary"
+              hx-post="{% url 'nitrates_admin_yaml_activate_tree' tree_pk=tree.pk %}"
+              hx-target="#yaml-admin-validation-zone"
+              hx-swap="innerHTML"
+              hx-confirm="Publier ce draft ? L'arbre actif courant sera archivé. Cette action est réversible (en réactivant l'archive)."
+              title="Valide la cohérence de l'arbre puis l'active (l'archive remplace).">Valider et publier</button>
+    {% endif %}
   </div>
 
   <div id="yaml-admin-validation-zone"></div>
