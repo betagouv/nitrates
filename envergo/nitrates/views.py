@@ -249,8 +249,9 @@ class MoulinetteView(View):
             "notes_referentiel": referentiels.get("notes", {}),
             "afficher_resultat": False,
             # Active les panels debug (info parcelle, chemin parcouru,
-            # result_code, etc.) uniquement en mode developpeur.
-            "debug": settings.DEBUG,
+            # result_code, etc.). Pilote par NITRATES_FORM_DEBUG_PANELS pour
+            # pouvoir activer en staging sans avoir DEBUG=True.
+            "debug": settings.NITRATES_FORM_DEBUG_PANELS,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
             "qc_repondues_champs": [],

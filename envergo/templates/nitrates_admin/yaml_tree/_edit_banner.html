@@ -2,8 +2,14 @@
   <div class="yaml-admin__edit-banner-msg">
     <span class="yaml-admin__edit-icon" aria-hidden="true">🔧</span>
     <strong>Édition de « {{ edited_origin_name }} »</strong>
-    — vos modifications ne sont pas encore en production. Sauvegarde
-    automatique à chaque changement.
+    — chaque modification est enregistrée automatiquement dans ce brouillon.
+    {% if can_activate_this_tree %}
+      Cliquez sur <em>Sauvegarder</em> pour quitter sans publier, ou
+      <em>Sauvegarder et publier</em> pour basculer le brouillon en arbre actif.
+    {% else %}
+      Cliquez sur <em>Sauvegarder</em> pour quitter. La publication d'un
+      brouillon comme arbre actif est réservée aux administrateurs.
+    {% endif %}
   </div>
 
   <div class="yaml-admin__edit-banner-actions">
@@ -19,27 +25,34 @@
               title="Aucune action à annuler">↩ Annuler</button>
     {% endif %}
 
-    <form method="post"
-          action="{% url 'nitrates_admin_yaml_cancel_edit' pk=tree.pk %}"
-          style="display:inline">
-      {% csrf_token %}
-      <button type="submit" class="yaml-admin__btn">Sortir de l'édition</button>
-    </form>
-
     <button type="button"
             class="yaml-admin__btn"
             hx-post="{% url 'nitrates_admin_yaml_validate_tree' tree_pk=tree.pk %}"
             hx-target="#yaml-admin-validation-zone"
             hx-swap="innerHTML"
             title="Vérifier la cohérence globale de l'arbre">Vérifier l'arbre</button>
+
+    <form method="post"
+          action="{% url 'nitrates_admin_yaml_cancel_edit' pk=tree.pk %}"
+          style="display:inline">
+      {% csrf_token %}
+      <button type="submit"
+              class="yaml-admin__btn"
+              title="Quitte le mode édition. Le brouillon reste enregistré, vous pourrez le reprendre via « Éditer l'arbre actif ».">
+        💾 Sauvegarder
+      </button>
+    </form>
+
     {% if can_activate_this_tree %}
       <button type="button"
               class="yaml-admin__btn yaml-admin__btn--primary"
               hx-post="{% url 'nitrates_admin_yaml_activate_tree' tree_pk=tree.pk %}"
               hx-target="#yaml-admin-validation-zone"
               hx-swap="innerHTML"
-              hx-confirm="Publier ce draft ? L'arbre actif courant sera archivé. Cette action est réversible (en réactivant l'archive)."
-              title="Valide la cohérence de l'arbre puis l'active (l'archive remplace).">Valider et publier</button>
+              hx-confirm="Publier ce brouillon ? L'arbre actif courant sera archivé. Cette action est réversible (en réactivant l'archive)."
+              title="Valide la cohérence du brouillon puis le bascule en arbre actif (l'archive remplace).">
+        Sauvegarder et publier
+      </button>
     {% endif %}
   </div>
 

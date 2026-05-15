@@ -90,6 +90,28 @@ def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata)
     assert b"Une question compl" in response.content
 
 
+def test_panneaux_debug_actifs_par_flag_dedie(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Le bloc Debug parcours est gate par NITRATES_FORM_DEBUG_PANELS,
+    independamment de DEBUG. Permet de l'activer en staging sans DEBUG=True."""
+    settings.DEBUG = False
+    settings.NITRATES_FORM_DEBUG_PANELS = True
+    response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
+    assert b"Debug parcours" in response.content
+
+
+def test_panneaux_debug_caches_sans_flag(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Sans le flag, pas de bloc Debug meme si DEBUG=True (le flag est la
+    seule source de verite a present)."""
+    settings.DEBUG = True
+    settings.NITRATES_FORM_DEBUG_PANELS = False
+    response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
+    assert b"Debug parcours" not in response.content
+
+
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):
     """Point offshore : pas en ZV, message clair."""
     response = client.get("/simulateur/?lng=-30&lat=30")

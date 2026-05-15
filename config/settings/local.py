@@ -5,6 +5,9 @@ from .base import env
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#debug
 DEBUG = True
+# Panneaux debug du simulateur nitrates : actifs par defaut en local
+# (override l'env var, qui sert plutot pour staging/prod).
+NITRATES_FORM_DEBUG_PANELS = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
