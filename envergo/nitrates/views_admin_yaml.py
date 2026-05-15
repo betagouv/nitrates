@@ -174,6 +174,15 @@ class EditActiveView(View):
         return self._do(request)
 
     def _do(self, request):
+        from django.http import HttpResponseForbidden
+
+        from envergo.nitrates.permissions import can_edit_active
+
+        if not can_edit_active(request.user):
+            return HttpResponseForbidden(
+                "L'édition de l'arbre actif est réservée aux administrateurs. "
+                "Vous pouvez cloner l'arbre actif pour créer votre propre brouillon."
+            )
         draft = DecisionTree.find_or_create_edit_draft(request.user)
         if draft is None:
             return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))

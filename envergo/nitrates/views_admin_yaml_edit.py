@@ -224,6 +224,14 @@ def _check_editable(tree: DecisionTree, user) -> str | None:
     d'editer ce tree. None sinon."""
     if tree.status != DecisionTree.STATUS_DRAFT:
         return "L'édition n'est possible que sur un draft."
+    # External observator : ne peut editer que ses propres drafts.
+    from envergo.nitrates.permissions import is_external_observator
+
+    if is_external_observator(user) and tree.created_by_id != user.pk:
+        return (
+            "Ce brouillon ne vous appartient pas. "
+            "Vous pouvez le cloner pour en faire votre propre brouillon."
+        )
     if tree.is_locked_by_other(user):
         return f"Édition verrouillée par {tree.locked_by.email if tree.locked_by else 'un autre utilisateur'}."
     # Refresh le lock (timestamp)
@@ -1511,12 +1519,17 @@ class ActivateTreeView(View):
     """
 
     def post(self, request, tree_pk):
+        from envergo.nitrates.permissions import can_activate_tree
         from envergo.nitrates.yaml_tree import load_tree_admin
         from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
 
         tree = get_object_or_404(DecisionTree, pk=tree_pk)
         if tree.status != DecisionTree.STATUS_DRAFT:
             return HttpResponseForbidden("Seul un draft peut etre publie.")
+        if not can_activate_tree(request.user, tree):
+            return HttpResponseForbidden(
+                "L'activation d'un brouillon est réservée aux administrateurs."
+            )
         err = _check_editable(tree, request.user)
         if err:
             return HttpResponseForbidden(err)

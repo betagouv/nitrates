@@ -12,6 +12,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from envergo.nitrates.models import DecisionTree, RpgCulture
+from envergo.nitrates.permissions import can_change_tree, can_delete_tree
 
 
 @admin.register(RpgCulture)
@@ -25,6 +26,18 @@ class RpgCultureAdmin(admin.ModelAdmin):
 @admin.register(DecisionTree)
 class DecisionTreeAdmin(admin.ModelAdmin):
     change_list_template = "admin/nitrates/decisiontree/change_list.html"
+
+    def has_change_permission(self, request, obj=None):
+        # Liste : on laisse l'acces (les actions par ligne sont filtrees
+        # par actions_links + les vues yaml_admin reverifient).
+        if obj is None:
+            return super().has_change_permission(request, obj)
+        return can_change_tree(request.user, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request, obj)
+        return can_delete_tree(request.user, obj)
 
     list_display = (
         "name",
@@ -157,16 +170,22 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
         edit_active_url = reverse("nitrates_admin_yaml_edit_active")
         if obj.status == DecisionTree.STATUS_DRAFT:
-            # Draft : on ouvre directement en mode edition.
+            # Draft : Voir + Éditer + Cloner (utile aux external_observator
+            # pour cloner un draft d'autrui en faire le leur).
             return mark_safe(
                 f'<a class="button" href="{view_url}">Voir</a> '
-                f'<a class="button" href="{edit_url}">Éditer</a>'
+                f'<a class="button" href="{edit_url}">Éditer</a> '
+                f'<a class="button" href="{clone_url}">Cloner</a>'
             )
         if obj.status == DecisionTree.STATUS_ACTIVE:
-            # Active : Voir + "Éditer" qui clone vers un draft puis bascule.
+            # Active : Voir + "Éditer" (intra : clone vers un draft puis
+            # bascule) + Cloner explicite (utile aux observateurs externes
+            # qui ne peuvent pas utiliser "Éditer" et ont besoin d'un point
+            # d'entree pour creer leur propre brouillon).
             return mark_safe(
                 f'<a class="button" href="{view_url}">Voir</a> '
-                f'<a class="button" href="{edit_active_url}">Éditer</a>'
+                f'<a class="button" href="{edit_active_url}">Éditer</a> '
+                f'<a class="button" href="{clone_url}">Cloner</a>'
             )
         # Archive : Voir + Cloner (pas d'edition directe sur un archive).
         return mark_safe(
