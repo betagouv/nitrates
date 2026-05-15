@@ -110,6 +110,13 @@ class EnvergoAdminSite(OTPAdminSite):
                 if model["object_name"] not in EXCLUDED_MODELS
             ]
 
+        # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : un membre du groupe
+        # `external_observator` ne voit que l'app `nitrates` dans l'admin.
+        from envergo.nitrates.permissions import is_external_observator
+
+        if is_external_observator(request.user):
+            apps = [a for a in apps if a.get("app_label") == "nitrates"]
+
         return apps
 
     def has_permission(self, request):
