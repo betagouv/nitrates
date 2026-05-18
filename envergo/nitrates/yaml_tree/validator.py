@@ -65,6 +65,7 @@ def validate_arbre(
     errors.extend(_check_niveaux_formulaire(arbre))
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
+    errors.extend(_check_branches_booleennes_exhaustives(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -470,6 +471,49 @@ def _check_references_sig_supportees(
                 f"[sig] noeud '{obj.get('id')}' (champ='{obj.get('champ')}') : "
                 f"reference SIG '{ref}' non supportee par le backend (dataset "
                 f"manquant ou resolveur a ajouter dans catalogue_refs.CATALOGUE_RESOLVERS)"
+            )
+    return errors
+
+
+# ─── Exhaustivite des branches booleennes ──────────────────────────────────
+
+
+def _check_branches_booleennes_exhaustives(arbre: dict) -> list[str]:
+    """Pour un noeud dont au moins une branche a `valeur: true` ou `valeur: false`,
+    on attend que les deux valeurs booleennes soient couvertes.
+
+    Cas typique : noeud catalogue source=sig avec champ booleen
+    (`en_zone_vulnerable`, `parcelle_communique`, etc.) ou noeud formulaire
+    niveau=complement (question oui/non). Supprimer la feuille `true` ou
+    `false` laisse un sous-arbre incomplet -- l'utilisateur dont le champ
+    prend l'autre valeur n'a pas de chemin.
+
+    On ne contraint pas les noeuds dont les branches sont des slugs
+    (type_0, colza, ...) : leur domaine n'est pas connu a coup sur depuis
+    l'arbre seul.
+    """
+    errors = []
+    racine = arbre.get("arbre", {}).get("noeud")
+    if not isinstance(racine, dict):
+        return errors
+    for noeud in _walk_node(racine):
+        if not isinstance(noeud, dict):
+            continue
+        if "branches" not in noeud:
+            continue
+        branches = noeud.get("branches") or []
+        valeurs = {b.get("valeur") for b in branches if isinstance(b, dict)}
+        has_bool = True in valeurs or False in valeurs
+        if not has_bool:
+            continue
+        manquantes = {True, False} - valeurs
+        if manquantes:
+            mqt = ", ".join(repr(v) for v in sorted(manquantes, key=str))
+            errors.append(
+                f"[exhaustivite] noeud '{noeud.get('id')}' "
+                f"(champ='{noeud.get('champ')}') : branche(s) booleenne(s) "
+                f"manquante(s) : {mqt}. Toutes les valeurs booleennes du "
+                f"champ doivent etre couvertes."
             )
     return errors
 

@@ -15,7 +15,11 @@ from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
 
 
 def _arbre_minimal_valide() -> dict:
-    """Arbre minimal qui passe : 1 noeud catalogue ZVN avec 1 branche regle."""
+    """Arbre minimal qui passe : 1 noeud catalogue ZVN avec branches true + false.
+
+    Les 2 valeurs booleennes doivent etre couvertes pour ne pas declencher
+    l'erreur d'exhaustivite (cf. _check_branches_booleennes_exhaustives).
+    """
     return {
         "metadata": {"version": "0.1.0"},
         "arbre": {
@@ -32,6 +36,14 @@ def _arbre_minimal_valide() -> dict:
                             "id": "r_hors_zvn",
                             "type": "non_applicable",
                             "message": "Hors ZVN",
+                        },
+                    },
+                    {
+                        "valeur": True,
+                        "regle": {
+                            "id": "r_en_zvn",
+                            "type": "non_applicable",
+                            "message": "En ZVN",
                         },
                     },
                 ],
@@ -594,3 +606,75 @@ def test_periodes_regime_mixte_accepte():
         }
     )
     validate_arbre(a)
+
+
+# ─── Exhaustivite booleenne ─────────────────────────────────────────────────
+
+
+def test_branche_booleenne_manquante_leve_erreur_true():
+    """Si on supprime la branche True d'un noeud booleen, le validator doit
+    lever une erreur (un utilisateur dont le champ = True n'a pas de chemin)."""
+    a = _arbre_minimal_valide()
+    # Garde uniquement la branche False
+    a["arbre"]["noeud"]["branches"] = [
+        b for b in a["arbre"]["noeud"]["branches"] if b["valeur"] is False
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    msgs = " ".join(exc.value.errors)
+    assert "[exhaustivite]" in msgs
+    assert "n_zvn" in msgs
+    assert "True" in msgs
+
+
+def test_branche_booleenne_manquante_leve_erreur_false():
+    """Idem pour la branche False manquante."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"] = [
+        b for b in a["arbre"]["noeud"]["branches"] if b["valeur"] is True
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    msgs = " ".join(exc.value.errors)
+    assert "[exhaustivite]" in msgs
+    assert "False" in msgs
+
+
+def test_branches_non_booleennes_ne_declenchent_pas_exhaustivite():
+    """Pour les noeuds dont les branches sont des slugs (type_0, colza, ...),
+    on ne contraint pas l'exhaustivite : le domaine peut etre ouvert."""
+    a = _arbre_minimal_valide()
+    # Remplace la branche True par un sous-noeud formulaire culture, qui a
+    # une seule branche slug "colza" (pas une enum exhaustive).
+    a["arbre"]["noeud"]["branches"][1] = {
+        "valeur": True,
+        "noeud": {
+            "type_noeud": "formulaire",
+            "id": "q_culture",
+            "texte": "Quelle culture ?",
+            "champ": "occupation_sol",
+            "niveau": "culture",
+            "branches": [
+                {
+                    "valeur": "colza",
+                    "regle": {
+                        "id": "r_colza",
+                        "type": "interdiction",
+                    },
+                },
+            ],
+        },
+    }
+    # Aucune erreur d'exhaustivite : "colza" tout seul est valide.
+    validate_arbre(a)
+
+
+def test_arbre_national_passe_le_check_exhaustivite():
+    """Garde-fou : l'arbre national packagé doit rester valide. Si ce test
+    casse, c'est qu'on a introduit un check trop strict ou qu'un noeud
+    booleen de l'arbre national a perdu une branche."""
+    import yaml
+
+    with open("envergo/nitrates/specs/arbre_decision_national.yaml") as f:
+        arbre = yaml.safe_load(f)
+    validate_arbre(arbre)
