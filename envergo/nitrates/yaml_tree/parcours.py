@@ -93,7 +93,14 @@ class Resultat:
 
 @dataclass
 class QuestionFormulaire:
-    """Une question a poser a l'utilisateur."""
+    """Une question a poser a l'utilisateur.
+
+    Quand `parent_champ` est non None, cette question n'est pertinente que
+    si l'utilisateur a repondu `parent_valeur` a la question `parent_champ`
+    en amont. Le template peut alors cacher/afficher dynamiquement la
+    question selon la valeur choisie cote front, sans aller-retour serveur
+    (cf. #58.1).
+    """
 
     noeud_id: str
     champ: str
@@ -101,6 +108,8 @@ class QuestionFormulaire:
     texte: str
     aide: str | None = None
     choix: list[dict] = field(default_factory=list)  # [{valeur, libelle?}, ...]
+    parent_champ: str | None = None
+    parent_valeur: Any = None
 
 
 @dataclass
@@ -324,24 +333,35 @@ def _collecter_questions(
         que si le catalogue est resolu dans le contexte ; sinon on
         s'arrete.
 
-    Cette strategie garantit que l'utilisateur ne voit jamais de questions
-    qui ne le concernent pas (branches laterales non choisies)."""
+    Pour les questions conditionnelles (en aval d'une branche dont le
+    parent n'a pas encore ete repondu), on les remonte aussi mais en
+    annotant `parent_champ` + `parent_valeur` : le template les rendra
+    cachees au depart et le mini-JS subsidiaires_cascade.js les affichera
+    quand l'utilisateur cliquera la bonne valeur. Resultat : un seul
+    aller-retour serveur quel que soit le nombre de questions en cascade
+    (cf. #58.1)."""
     questions: list[QuestionFormulaire] = []
     _ajouter_question(questions, noeud_formulaire)
 
-    # On essaie de descendre seulement si la valeur du noeud bloquant est
-    # connue dans le contexte. Mais par definition, si on arrive ici c'est
-    # que la valeur est absente : donc on s'arrete au 1er noeud.
-    # CEPENDANT : le walker peut etre appele depuis un point ou la 1re
-    # question est repondue mais d'autres en aval ne le sont pas.
-    # Pour rester correct, on essaie de descendre branche par branche
-    # selon le contexte.
     valeur = contexte.get(noeud_formulaire["champ"])
     if valeur is not None:
+        # Cas "1re question deja repondue dans l'URL" : on descend
+        # uniquement la branche choisie, sans questions conditionnelles.
         for branche in noeud_formulaire.get("branches", []):
             if _valeurs_egales(branche.get("valeur"), valeur):
                 _collecter_aval_si_chemin_unique(branche, contexte, questions)
                 break
+    else:
+        # Cas standard : on explore toutes les sous-branches du noeud
+        # bloquant pour proposer les questions conditionnelles en cascade.
+        for branche in noeud_formulaire.get("branches", []):
+            _collecter_aval_conditionnel(
+                branche,
+                contexte,
+                questions,
+                parent_champ=noeud_formulaire["champ"],
+                parent_valeur=branche.get("valeur"),
+            )
 
     return questions
 
@@ -385,7 +405,44 @@ def _collecter_aval_si_chemin_unique(
                 break
 
 
-def _ajouter_question(questions: list[QuestionFormulaire], noeud: dict) -> None:
+def _collecter_aval_conditionnel(
+    branche: dict,
+    contexte: dict[str, Any],
+    questions: list[QuestionFormulaire],
+    parent_champ: str,
+    parent_valeur: Any,
+) -> None:
+    """Comme `_collecter_aval_si_chemin_unique` mais pour le cas "1re
+    question pas encore repondue" : on remonte les questions formulaire
+    rencontrees en les annotant avec leur dependance au parent.
+
+    Le front cachera les questions tant que `parent_champ` ne vaut pas
+    `parent_valeur` cote utilisateur, et les revelera au clic. Aucun
+    aller-retour serveur intermediaire necessaire.
+
+    On ne descend pas les catalogues internes (resolus serveur uniquement)
+    ni les sous-branches conditionnelles a 2 niveaux (rare en pratique,
+    et ca alourdirait inutilement le rendu)."""
+    if "noeud" not in branche:
+        return
+    sous = branche["noeud"]
+    type_noeud = sous.get("type_noeud")
+    if type_noeud != "formulaire":
+        return
+    _ajouter_question(
+        questions,
+        sous,
+        parent_champ=parent_champ,
+        parent_valeur=parent_valeur,
+    )
+
+
+def _ajouter_question(
+    questions: list[QuestionFormulaire],
+    noeud: dict,
+    parent_champ: str | None = None,
+    parent_valeur: Any = None,
+) -> None:
     """Ajoute une question si pas deja presente (par champ)."""
     champ = noeud["champ"]
     if any(q.champ == champ for q in questions):
@@ -401,6 +458,8 @@ def _ajouter_question(questions: list[QuestionFormulaire], noeud: dict) -> None:
                 {"valeur": b["valeur"], "libelle": b.get("libelle")}
                 for b in noeud.get("branches", [])
             ],
+            parent_champ=parent_champ,
+            parent_valeur=parent_valeur,
         )
     )
 

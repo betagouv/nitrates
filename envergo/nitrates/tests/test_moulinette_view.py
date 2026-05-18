@@ -87,7 +87,9 @@ def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata)
     assert b"glementation nitrates applicable" in response.content
     # Question subsidiaire rendue dans le panneau resultat
     assert b"resultat-panel--questions" in response.content
-    assert b"Une question compl" in response.content
+    # Titre du panneau questions subsidiaires (au pluriel depuis #58.1 :
+    # on peut maintenant rendre plusieurs questions en cascade).
+    assert b"Questions compl" in response.content
 
 
 def test_panneaux_debug_actifs_par_flag_dedie(

@@ -407,6 +407,56 @@ def test_pan_colza_type_II_zone_note_5_true(arbre_pan):
     assert res.note == "note_5"
 
 
+# ─── Cascade questions conditionnelles (#58.1) ─────────────────────────────
+
+
+def test_questions_conditionnelles_remontees_avec_parent_champ(arbre_pan):
+    """Cas mais irrigue : sans culture_irriguee dans le contexte, on doit
+    recevoir AUSSI la sous-question culture_irriguee_type (sur la branche
+    culture_irriguee=true), annotee parent_champ=culture_irriguee +
+    parent_valeur=True. Resultat : 1 seul aller-retour serveur, le front
+    cachera la sous-question jusqu'au clic sur "Oui" (cf. #58.1)."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+        },
+    )
+    assert isinstance(res, QuestionsSubsidiaires)
+    champs = {q.champ for q in res.questions}
+    assert "culture_irriguee" in champs
+    assert "culture_irriguee_type" in champs
+    q_type = next(q for q in res.questions if q.champ == "culture_irriguee_type")
+    assert q_type.parent_champ == "culture_irriguee"
+    assert q_type.parent_valeur is True
+    q_irr = next(q for q in res.questions if q.champ == "culture_irriguee")
+    assert q_irr.parent_champ is None
+
+
+def test_questions_conditionnelles_pas_remontees_si_parent_repondu(arbre_pan):
+    """Cas mais irrigue, culture_irriguee=False deja dans l'URL : on n'a
+    plus besoin de proposer culture_irriguee_type (la branche non-irriguee
+    pointe direct vers une regle). La question conditionnelle ne doit
+    pas etre remontee."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+            "culture_irriguee": False,
+        },
+    )
+    # culture_irriguee=False mene direct a une regle, pas de question.
+    assert isinstance(res, Resultat)
+
+
 # ─── has_borne_flottante ───────────────────────────────────────────────────
 
 
