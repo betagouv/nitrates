@@ -174,6 +174,23 @@
       }
       document.addEventListener('showToast', _handleShowToast);
       document.body.addEventListener('showToast', _handleShowToast);
+      // Overlay global "en cours" pendant les requetes htmx mutatives
+      // (sauf forms d'edition inline qui ont leur propre spinner).
+      // On garantit une visibilite minimale de ~400ms pour qu'on voie
+      // toujours quelque chose, meme si la reponse serveur revient en 50ms.
+      let _busyShownAt = 0;
+      const MIN_BUSY_VISIBLE_MS = 400;
+      const _showBusy = () => {
+        _busyShownAt = Date.now();
+        document.body.classList.add('yaml-admin--busy');
+      };
+      const _hideBusy = () => {
+        const elapsed = Date.now() - _busyShownAt;
+        const wait = Math.max(0, MIN_BUSY_VISIBLE_MS - elapsed);
+        setTimeout(() => {
+          document.body.classList.remove('yaml-admin--busy');
+        }, wait);
+      };
       document.addEventListener('htmx:beforeRequest', function(evt) {
         // On sauve le scrollY juste avant les requetes qui vont
         // declencher un HX-Redirect/HX-Refresh.
@@ -181,25 +198,15 @@
         if (verb === 'post' || verb === 'delete' || verb === 'put') {
           sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
         }
-        // Active l'overlay "en cours" full-page sur toute requete mutative
-        // (sauf si la requete a deja un hx-indicator inline -- ex: les
-        // forms d'edition inline ont leur propre spinner via .htmx-request
-        // sur .yaml-tree__inline-form).
         const trigger = evt.detail.elt;
         const isInlineForm = trigger && trigger.closest('.yaml-tree__inline-form');
         if (!isInlineForm && (verb === 'post' || verb === 'delete' || verb === 'put')) {
-          document.body.classList.add('yaml-admin--busy');
+          _showBusy();
         }
       });
-      document.addEventListener('htmx:afterRequest', function() {
-        document.body.classList.remove('yaml-admin--busy');
-      });
-      document.addEventListener('htmx:responseError', function() {
-        document.body.classList.remove('yaml-admin--busy');
-      });
-      document.addEventListener('htmx:sendError', function() {
-        document.body.classList.remove('yaml-admin--busy');
-      });
+      document.addEventListener('htmx:afterRequest', _hideBusy);
+      document.addEventListener('htmx:responseError', _hideBusy);
+      document.addEventListener('htmx:sendError', _hideBusy);
 
       // ─── Persistance cross-session du fold ────────────────────────────
       // Quand l'utilisateur deplie/replie un noeud (<details>), on stocke

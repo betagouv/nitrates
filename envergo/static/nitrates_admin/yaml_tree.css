@@ -840,10 +840,12 @@ button.yaml-admin__btn {
   color: #f8f8f2;
   border-radius: 4px;
   padding: 0.75rem 1rem;
-  overflow: auto;
+  overflow: auto scroll; /* scrollbar visible en permanence -- Mac la masque sinon */
   font-size: 0.8rem;
-  max-height: 80vh;
+  height: 85vh; /* hauteur fixe : la box prend toujours toute la hauteur dispo */
+  min-height: 500px;
   box-sizing: border-box;
+  scrollbar-gutter: stable;
 }
 
 .yaml-admin__raw pre {
@@ -852,7 +854,6 @@ button.yaml-admin__btn {
   color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre;
-  overflow-x: auto;
 }
 
 .yaml-admin__raw .yaml-raw .linenos {
