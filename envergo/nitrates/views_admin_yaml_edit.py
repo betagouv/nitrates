@@ -58,6 +58,49 @@ def _evenements_phenologiques() -> list[dict]:
     return out
 
 
+def _regle_referentiel_choices() -> dict:
+    """Choices fermees pour les champs canoniques d'une regle.
+
+    - code_prescription : alimente depuis referentiels.yaml::codes_prescription.
+      Affiche `pcN — mots_cles`, tooltip = texte_court.
+    - note : alimente depuis referentiels.yaml::notes.
+      Affiche `note_N — libelle_court`, tooltip = condition_declenchement.
+
+    Une entree vide est toujours acceptee : toutes les regles n'ont pas
+    un code de prescription ni une note (cas frequent).
+    """
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ref = load_referentiels() or {}
+    except Exception:
+        return {"code_prescription": [], "note": []}
+
+    codes_pc = []
+    for slug, data in (ref.get("codes_prescription") or {}).items():
+        data = data or {}
+        codes_pc.append(
+            {
+                "value": slug,
+                "libelle": data.get("mots_cles") or slug,
+                "description": (data.get("texte_court") or "").strip(),
+            }
+        )
+
+    notes = []
+    for slug, data in (ref.get("notes") or {}).items():
+        data = data or {}
+        notes.append(
+            {
+                "value": slug,
+                "libelle": data.get("libelle_court") or slug,
+                "description": (data.get("condition_declenchement") or "").strip(),
+            }
+        )
+
+    return {"code_prescription": codes_pc, "note": notes}
+
+
 def _parse_path(raw: str | None) -> tuple[str, ...]:
     """Convertit `?path=n_root/q_culture` en tuple ('n_root', 'q_culture').
     Vide ou None -> tuple vide (=racine).
@@ -384,6 +427,7 @@ class EditRegleView(View):
                 "valeur": valeur,
                 "errors": [],
                 "evenements_phenologiques": _evenements_phenologiques(),
+                "regle_choices": _regle_referentiel_choices(),
             },
         )
 
@@ -422,6 +466,7 @@ class EditRegleView(View):
                     "valeur": valeur,
                     "errors": form_errors,
                     "evenements_phenologiques": _evenements_phenologiques(),
+                    "regle_choices": _regle_referentiel_choices(),
                 },
                 status=422,
             )
@@ -447,6 +492,7 @@ class EditRegleView(View):
                     "valeur": valeur,
                     "errors": result.errors,
                     "evenements_phenologiques": _evenements_phenologiques(),
+                    "regle_choices": _regle_referentiel_choices(),
                 },
                 status=422,
             )
@@ -525,6 +571,7 @@ class EditBrancheView(View):
                     if "renvoi_vers" in branche
                     else []
                 ),
+                "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
             },
         )
 
@@ -640,9 +687,61 @@ def _render_branche_error(request, tree, branche, parent_path, valeur, field, ms
             "parent_path_str": "/".join(parent_path),
             "valeur": valeur,
             "errors": [FieldError(field, msg)],
+            "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
         },
         status=422,
     )
+
+
+# Mapping niveau d'un noeud formulaire -> cle de referentiels.yaml. Si un
+# parent appartient a ce mapping, l'edition de ses branches enfants force la
+# selection de la valeur dans un dropdown ferme (les slugs canoniques du
+# referentiel). Source unique : envergo/nitrates/specs/referentiels.yaml.
+_NIVEAU_TO_REFERENTIEL_KEY = {
+    "type_fertilisant": "types_fertilisants",
+    "sous_culture": "sous_cultures",
+}
+
+
+def _branche_value_choices(arbre: dict, parent_path: tuple[str, ...]) -> list[dict]:
+    """Liste fermee des valeurs canoniques pour les branches enfants d'un
+    parent dont le niveau est mappe a une cle de referentiels.yaml.
+
+    Retourne [] si le parent n'a pas de niveau mappe -> le template
+    retombera sur un <input> libre. Sinon retourne
+    [{value, libelle, description}] pour alimenter un <select> ferme.
+    """
+    parent = editor.get_node_at(arbre, parent_path)
+    if not isinstance(parent, dict):
+        return []
+    if parent.get("type_noeud") != "formulaire":
+        return []
+    ref_key = _NIVEAU_TO_REFERENTIEL_KEY.get(parent.get("niveau"))
+    if not ref_key:
+        return []
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ref = load_referentiels() or {}
+    except Exception:
+        return []
+    items = ref.get(ref_key) or {}
+    out = []
+    for slug, data in items.items():
+        data = data or {}
+        out.append(
+            {
+                "value": slug,
+                "libelle": data.get("libelle_court")
+                or data.get("libelle_public")
+                or data.get("libelle")
+                or slug,
+                "description": data.get("libelle_public")
+                or data.get("description")
+                or "",
+            }
+        )
+    return out
 
 
 def _coerce_valeur(raw: str, target_type):

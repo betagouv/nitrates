@@ -155,19 +155,47 @@
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>code_prescription</span>
-        <input type="text"
-               name="code_prescription"
-               value="{{ regle.code_prescription|default_if_none:'' }}"
-               placeholder="ex: pc4">
+        {% if regle_choices.code_prescription %}
+          <select name="code_prescription">
+            <option value="">— (aucun)</option>
+            {% for c in regle_choices.code_prescription %}
+              <option value="{{ c.value }}"
+                      {% if c.value == regle.code_prescription %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text"
+                 name="code_prescription"
+                 value="{{ regle.code_prescription|default_if_none:'' }}"
+                 placeholder="ex: pc4">
+        {% endif %}
       </label>
     </div>
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>note</span>
-        <input type="text"
-               name="note"
-               value="{{ regle.note|default_if_none:'' }}"
-               placeholder="ex: note_5">
+        {% if regle_choices.note %}
+          <select name="note">
+            <option value="">— (aucune)</option>
+            {% for c in regle_choices.note %}
+              <option value="{{ c.value }}"
+                      {% if c.value == regle.note %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text"
+                 name="note"
+                 value="{{ regle.note|default_if_none:'' }}"
+                 placeholder="ex: note_5">
+        {% endif %}
       </label>
     </div>
     <div class="yaml-tree__form-row">
