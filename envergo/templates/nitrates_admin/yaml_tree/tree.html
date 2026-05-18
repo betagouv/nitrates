@@ -57,13 +57,13 @@
 
           <nav class="yaml-admin__quick" aria-label="Filtres rapides par tag">
             <span class="yaml-admin__label">Filtres :</span>
-            <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}&{% endif %}tree_id={{ tree.pk }}"
+            <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}&{% endif %}tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-tag yaml-admin__quick-btn{% if not filtre %} is-active{% endif %}"
                title="Aucun filtre">
               <span class="yaml-tag__label">Tout</span>
             </a>
             {% for key, tag in quick_filters %}
-              <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}&tree_id={{ tree.pk }}"
+              <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                  class="yaml-tag {{ tag.css }} yaml-admin__quick-btn{% if filtre == key %} is-active{% endif %}"
                  title="{{ tag.label }}">
                 {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
@@ -76,11 +76,11 @@
         <nav class="yaml-admin__toolbar" aria-label="Vues et fold">
           <div class="yaml-admin__vues">
             <span class="yaml-admin__label">Vue :</span>
-            <a href="?{% if filtre %}filtre={{ filtre }}&{% endif %}tree_id={{ tree.pk }}"
+            <a href="?{% if filtre %}filtre={{ filtre }}&{% endif %}tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'arbre' %} is-active{% endif %}">Arbre</a>
-            <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}"
+            <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'split' %} is-active{% endif %}">Arbre + YAML</a>
-            <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}"
+            <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'brut' %} is-active{% endif %}">YAML brut</a>
           </div>
           {% if expand or expand_deep %}

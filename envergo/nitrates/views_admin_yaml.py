@@ -126,7 +126,7 @@ class YamlTreeView(TemplateView):
                 "open_paths": open_paths,
                 "quick_filters": QUICK_FILTERS,
                 "stats": _compute_stats(items),
-                "querystring_base": _querystring_base(vue, filtre, tree.pk),
+                "querystring_base": _querystring_base(vue, filtre, tree.pk, mode),
                 "tree": tree,
                 "active_tree": active_tree,
                 "is_viewing_active": active_tree and active_tree.pk == tree.pk,
@@ -311,9 +311,14 @@ def _resolve_tree(tree_id) -> DecisionTree | None:
     return DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
 
 
-def _querystring_base(vue: str, filtre: str, tree_pk) -> str:
+def _querystring_base(vue: str, filtre: str, tree_pk, mode: str = "lecture") -> str:
     """Querystring pour les liens de la barre de fold (sans expand/expand_deep,
-    ces deux la sont gerees au cas par cas dans le template)."""
+    ces deux la sont gerees au cas par cas dans le template).
+
+    Inclut `mode=edition` quand l'utilisateur est en train d'editer : sans
+    ca, les liens filtre/vue/reset fold faisaient sortir silencieusement du
+    mode edition (drop de `mode=edition` au passage de page).
+    """
     parts = []
     if vue and vue != "arbre":
         parts.append(f"vue={vue}")
@@ -321,6 +326,8 @@ def _querystring_base(vue: str, filtre: str, tree_pk) -> str:
         parts.append(f"filtre={filtre}")
     if tree_pk is not None:
         parts.append(f"tree_id={tree_pk}")
+    if mode == "edition":
+        parts.append("mode=edition")
     return "&".join(parts)
 
 
