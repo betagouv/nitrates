@@ -210,38 +210,16 @@ body {
    l'emporte sinon). */
 
 .resultat-panel.resultat-panel--questions {
-  /* Fond violet fonce validé par la designeuse (cf. #58.2). Le contraste
-     fort distingue clairement les questions complementaires (etape 2) du
-     reste de la page (form principal a gauche, calendrier a droite). */
-  background: #24244b;
-  color: #fff;
+  /* Fond violet pastel valide par la designeuse (cf. #58.2). Distingue
+     visuellement les questions complementaires (etape 2) du reste de la
+     page. Le mode dark sera traite a part dans une carte transverse. */
+  background: #cecefc;
   padding: 30px;
   border-radius: 4px;
 }
 
-.resultat-panel.resultat-panel--questions h2,
-.resultat-panel.resultat-panel--questions h3,
-.resultat-panel.resultat-panel--questions p,
-.resultat-panel.resultat-panel--questions label,
-.resultat-panel.resultat-panel--questions .form-question-text,
-.resultat-panel.resultat-panel--questions .fr-label {
-  color: #fff;
-}
-
 .resultat-panel.resultat-panel--questions .form-question-group {
   margin-top: 18px;
-}
-
-/* Sur fond fonce, le bouton DSFR primary devient peu lisible : on
-   bascule sur un bouton blanc avec texte violet. */
-.resultat-panel.resultat-panel--questions .fr-btn {
-  background-color: #fff;
-  color: #24244b;
-}
-
-.resultat-panel.resultat-panel--questions .fr-btn:hover {
-  background-color: #e5e5f4;
-  color: #24244b;
 }
 
 /* ─── Result panel sticky en desktop ──────────────────────────────── */
