@@ -237,10 +237,24 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>code prescription</span>
-      <input type="text"
-             name="c_code_prescription"
-             value="{{ form_data.c_code_prescription|default_if_none:'' }}"
-             placeholder="ex: PC1, PC4">
+      {% if regle_choices.code_prescription %}
+        <select name="c_code_prescription">
+          <option value="">— (aucun)</option>
+          {% for c in regle_choices.code_prescription %}
+            <option value="{{ c.value }}"
+                    {% if c.value == form_data.c_code_prescription %}selected{% endif %}
+                    {% if c.description %}title="{{ c.description }}"{% endif %}>
+              {{ c.value }}
+              {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="text"
+               name="c_code_prescription"
+               value="{{ form_data.c_code_prescription|default_if_none:'' }}"
+               placeholder="ex: PC1, PC4">
+      {% endif %}
     </label>
   </div>
   <div class="yaml-tree__form-row">
@@ -254,9 +268,23 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>note (optionnel)</span>
-      <input type="text"
-             name="c_note"
-             value="{{ form_data.c_note|default_if_none:'' }}">
+      {% if regle_choices.note %}
+        <select name="c_note">
+          <option value="">— (aucune)</option>
+          {% for c in regle_choices.note %}
+            <option value="{{ c.value }}"
+                    {% if c.value == form_data.c_note %}selected{% endif %}
+                    {% if c.description %}title="{{ c.description }}"{% endif %}>
+              {{ c.value }}
+              {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="text"
+               name="c_note"
+               value="{{ form_data.c_note|default_if_none:'' }}">
+      {% endif %}
     </label>
   </div>
   <details class="yaml-tree__form-advanced">
@@ -278,12 +306,26 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
 {% elif kind == "renvoi_vers" %}
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>id de la cible (q_, n_, r_…)</span>
-      <input type="text"
-             name="c_renvoi_vers"
-             value="{{ form_data.c_renvoi_vers|default_if_none:'' }}"
-             placeholder="ex: r_colza_type_0"
-             required>
+      <span>cible du renvoi</span>
+      {% if renvoi_targets %}
+        <select name="c_renvoi_vers" required>
+          <option value="">— choisir une cible —</option>
+          {% for t in renvoi_targets %}
+            <option value="{{ t.id }}"
+                    {% if t.id == form_data.c_renvoi_vers %}selected{% endif %}
+                    title="{{ t.label }}">
+              {% if t.group != "arbre" %}[{{ t.group }}]{% endif %}
+              {{ t.label }} ({{ t.id }})
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="text"
+               name="c_renvoi_vers"
+               value="{{ form_data.c_renvoi_vers|default_if_none:'' }}"
+               placeholder="ex: r_colza_type_0"
+               required>
+      {% endif %}
     </label>
     {% for err in errors %}
       {% if err.field == "renvoi_vers" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}

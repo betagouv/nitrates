@@ -20,7 +20,20 @@
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>valeur</span>
-        <input type="text" name="valeur_new" value="{{ branche.valeur }}" required>
+        {% if valeur_choices %}
+          <select name="valeur_new" required>
+            {% for c in valeur_choices %}
+              <option value="{{ c.value }}"
+                      {% if c.value == branche.valeur|stringformat:"s" %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text" name="valeur_new" value="{{ branche.valeur }}" required>
+        {% endif %}
       </label>
       {% for err in errors %}
         {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}

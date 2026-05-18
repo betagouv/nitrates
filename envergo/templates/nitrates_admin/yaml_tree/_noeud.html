@@ -8,13 +8,6 @@
     id="node-{{ path|slugify }}"
     data-path="{{ path }}"
     role="treeitem">
-  {% if noeud.branches %}
-    <a class="yaml-tree__deep-btn"
-       href="{{ deep_url }}#node-{{ path|slugify }}"
-       title="Déplier ce sous-arbre en profondeur (récursif)"
-       data-path="{{ path }}">▾▾</a>
-  {% endif %}
-
   <details {% if opened %}open{% endif %}>
     <summary class="yaml-tree__row" id="node-row-{{ path|slugify }}">
       <span class="yaml-tree__tags">
@@ -34,6 +27,13 @@
       {% if noeud.reference %}<span class="yaml-tree__meta">→ {{ noeud.reference }}</span>{% endif %}
       {% if noeud.aide %}
         <span class="yaml-tree__aide-inline" title="Aide affichée à l'utilisateur">💡 {{ noeud.aide }}</span>
+      {% endif %}
+
+      {% if noeud.branches %}
+        <a class="yaml-tree__deep-btn"
+           href="{{ deep_url }}#node-{{ path|slugify }}"
+           title="Déplier ce sous-arbre en profondeur (récursif)"
+           data-path="{{ path }}">▾▾</a>
       {% endif %}
 
       {% if is_editing %}

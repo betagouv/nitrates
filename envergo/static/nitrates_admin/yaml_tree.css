@@ -184,9 +184,19 @@
 
   /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
      Avec margin-left:auto en flex container, le span occupe l'espace
-     residuel apres les autres elements, ce qui le pousse a droite. */
+     residuel apres les autres elements, ce qui le pousse a droite.
+     En presence du .yaml-tree__deep-btn (lui aussi en margin-left:auto),
+     le deep-btn capte tout l'espace en premier et nous on se cale juste
+     a sa droite -- on ne se gene plus. */
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Sur les rows qui contiennent un .yaml-tree__deep-btn, c'est lui qui
+   absorbe l'espace residuel (margin-left:auto). Les edit-actions
+   viennent juste apres lui en flux normal. */
+.yaml-tree__row > .yaml-tree__deep-btn ~ .yaml-tree__edit-actions {
+  margin-left: 0;
 }
 
 .yaml-tree__edit-btn {
@@ -247,7 +257,94 @@
   background: #ffebee;
 }
 
+/* Overlay full-page affiche pendant les requetes htmx mutatives globales.
+   Active via body.yaml-admin--busy. Bloque les clics, montre un message
+   "en cours" + curseur wait, evite que l'utilisateur clique 10 fois en
+   attendant la reponse serveur (utile sur staging avec latence). */
+
+.yaml-admin__global-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 25%);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+body.yaml-admin--busy {
+  cursor: wait;
+}
+
+body.yaml-admin--busy .yaml-admin__global-overlay {
+  display: flex;
+}
+
+.yaml-admin__global-overlay-msg {
+  padding: 1rem 2rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
+/* Highlight persistant d'une ligne ciblee par un deeplink #regle=X.
+   Applique par JS sur la ligne au scrollIntoView. Reste visible jusqu'a
+   la prochaine navigation : utile quand on partage un lien et qu'on veut
+   garder le contexte visuel pendant la lecture. */
+
+.yaml-tree__deeplink-highlight {
+  background: #fff3a8 !important;
+}
+
 /* Formulaire d'edition inline (htmx) */
+
+/* Spinner d'attente affiche pendant un POST htmx du formulaire inline.
+   htmx ajoute la classe `htmx-request` au form (declencheur) le temps
+   de la requete. On affiche un overlay avec spinner par-dessus le form
+   pour indiquer clairement "en cours de sauvegarde" -- utile sur les
+   environnements avec latence (staging Scalingo, etc.). */
+
+.yaml-tree__inline-form.htmx-request::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 70%);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.yaml-tree__inline-form.htmx-request::before {
+  content: "⏳ Sauvegarde en cours…";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 11;
+  padding: 0.5rem 1rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes yaml-tree-spinner-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
 
 .yaml-tree__row--editing,
 .yaml-tree__regle--editing,
@@ -283,6 +380,7 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
+  position: relative;
 }
 
 .yaml-tree__form-row {
@@ -345,6 +443,13 @@
   border-radius: 3px;
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
+}
+
+/* Si le wrapper d'erreurs ne contient AUCUNE erreur globale visible
+   (toutes les erreurs ont un field et sont affichees inline a cote des
+   inputs), on cache la barre rouge vide. */
+.yaml-tree__form-errors:not(:has(.yaml-tree__form-error-global)) {
+  display: none;
 }
 
 .yaml-tree__form-error-global {
@@ -729,13 +834,18 @@ button.yaml-admin__btn {
 
 .yaml-admin__layout--split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+
+  /* minmax(0, 1fr) au lieu de 1fr : contraint chaque colonne a la largeur
+     disponible meme si son contenu (lignes YAML longues) deborde, sinon
+     la colonne YAML s'etire et casse la mise en page. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
 .yaml-admin__layout--brut .yaml-admin__raw {
-  max-width: 1100px;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .yaml-admin__raw {
@@ -743,9 +853,14 @@ button.yaml-admin__btn {
   color: #f8f8f2;
   border-radius: 4px;
   padding: 0.75rem 1rem;
-  overflow: auto;
+  overflow: auto scroll; /* scrollbar visible en permanence -- Mac la masque sinon */
   font-size: 0.8rem;
-  max-height: 80vh;
+  height: 85vh; /* hauteur fixe : la box prend toujours toute la hauteur dispo */
+  min-height: 500px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+  width: 100%;
+  min-width: 0; /* permet a la box de se contraindre dans une grid */
 }
 
 .yaml-admin__raw pre {
@@ -753,6 +868,7 @@ button.yaml-admin__btn {
   background: transparent !important;
   color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
 }
 
 .yaml-admin__raw .yaml-raw .linenos {
@@ -780,8 +896,8 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__raw-textarea {
-  width: 100%;
-  min-height: 60vh;
+  width: 94%;
+  min-height: 71vh;
   background: #272822;
   color: #f8f8f2;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -856,19 +972,20 @@ details[open] > summary.yaml-tree__row::before {
   position: relative;
 }
 
+/* Bouton "deplier en profondeur" : place inline dans la row, pousse a
+   droite via margin-left:auto. En mode edition, les .yaml-tree__edit-actions
+   viennent juste apres lui (cf. regle ~ plus haut). */
 .yaml-tree__deep-btn {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.4rem;
+  margin-left: auto;
   font-size: 0.8rem;
   text-decoration: none;
   color: #888;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   letter-spacing: -0.15em;
-  background: rgb(255 255 255 / 85%);
-  z-index: 2;
   border: 1px solid transparent;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .yaml-tree__deep-btn:hover {

@@ -56,7 +56,20 @@
         hx-swap="outerHTML">
     {% csrf_token %}
 
-    <p class="yaml-tree__add-form-title">Ajout d'une valeur (et de son contenu, si présent)</p>
+    <p class="yaml-tree__add-form-title">
+      {% if parent_niveau == "culture" %}
+        Ajout d'une culture
+      {% elif parent_niveau == "sous_culture" %}
+        Ajout d'une sous-culture
+      {% elif parent_niveau == "type_fertilisant" %}
+        Ajout d'un type de fertilisant
+      {% elif parent_niveau == "complement" %}
+        Ajout d'une réponse possible (ex: true/false)
+      {% else %}
+        Ajout d'une valeur
+      {% endif %}
+      <small style="font-weight: normal; color: #555;">(et de son contenu, si prévu)</small>
+    </p>
 
     {% if errors %}
       <div class="yaml-tree__form-errors">
@@ -68,12 +81,38 @@
 
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
-        <span>valeur de la branche</span>
-        <input type="text"
-               name="valeur"
-               value="{{ form_data.valeur|default_if_none:'' }}"
-               placeholder="ex: colza, true, 2"
-               required>
+        <span>
+          {% if parent_niveau == "culture" %}
+            culture
+          {% elif parent_niveau == "sous_culture" %}
+            sous-culture
+          {% elif parent_niveau == "type_fertilisant" %}
+            type de fertilisant
+          {% elif parent_niveau == "complement" %}
+            réponse (true / false)
+          {% else %}
+            valeur de la branche
+          {% endif %}
+        </span>
+        {% if valeur_choices %}
+          <select name="valeur" required>
+            <option value="">— choisir —</option>
+            {% for c in valeur_choices %}
+              <option value="{{ c.value }}"
+                      {% if c.value == form_data.valeur %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text"
+                 name="valeur"
+                 value="{{ form_data.valeur|default_if_none:'' }}"
+                 placeholder="ex: colza, true, 2"
+                 required>
+        {% endif %}
       </label>
       {% for err in errors %}
         {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
@@ -92,7 +131,7 @@
 
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
-        <span>type de contenu</span>
+        <span>type de contenu de l'enfant</span>
         <select name="kind"
                 hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
                 hx-trigger="change"

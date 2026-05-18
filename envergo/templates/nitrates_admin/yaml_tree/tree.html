@@ -57,13 +57,13 @@
 
           <nav class="yaml-admin__quick" aria-label="Filtres rapides par tag">
             <span class="yaml-admin__label">Filtres :</span>
-            <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}&{% endif %}tree_id={{ tree.pk }}"
+            <a href="?{% if vue and vue != 'arbre' %}vue={{ vue }}&{% endif %}tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-tag yaml-admin__quick-btn{% if not filtre %} is-active{% endif %}"
                title="Aucun filtre">
               <span class="yaml-tag__label">Tout</span>
             </a>
             {% for key, tag in quick_filters %}
-              <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}&tree_id={{ tree.pk }}"
+              <a href="?filtre={{ key }}{% if vue and vue != 'arbre' %}&vue={{ vue }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                  class="yaml-tag {{ tag.css }} yaml-admin__quick-btn{% if filtre == key %} is-active{% endif %}"
                  title="{{ tag.label }}">
                 {% if tag.icon %}<span class="yaml-tag__icon" aria-hidden="true">{{ tag.icon }}</span>{% endif %}
@@ -76,11 +76,11 @@
         <nav class="yaml-admin__toolbar" aria-label="Vues et fold">
           <div class="yaml-admin__vues">
             <span class="yaml-admin__label">Vue :</span>
-            <a href="?{% if filtre %}filtre={{ filtre }}&{% endif %}tree_id={{ tree.pk }}"
+            <a href="?{% if filtre %}filtre={{ filtre }}&{% endif %}tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'arbre' %} is-active{% endif %}">Arbre</a>
-            <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}"
+            <a href="?vue=split{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'split' %} is-active{% endif %}">Arbre + YAML</a>
-            <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}"
+            <a href="?vue=brut{% if filtre %}&filtre={{ filtre }}{% endif %}&tree_id={{ tree.pk }}{% if is_editing %}&mode=edition{% endif %}"
                class="yaml-admin__btn{% if vue == 'brut' %} is-active{% endif %}">YAML brut</a>
           </div>
           {% if expand or expand_deep %}
@@ -226,13 +226,16 @@
           // Scroll apres un tick pour laisser le navigateur calculer la layout.
           setTimeout(() => {
             target.scrollIntoView({ behavior: 'instant', block: 'center' });
-            // Highlight visuel temporaire.
+            // Highlight visuel persistant : reste jaune jusqu'a la prochaine
+            // navigation (changement de hash) ou modif de la ligne. On retire
+            // d'abord la classe d'eventuels highlights precedents pour ne
+            // pas multiplier les rows surlignes.
+            document.querySelectorAll('.yaml-tree__deeplink-highlight').forEach(
+              (el) => el.classList.remove('yaml-tree__deeplink-highlight')
+            );
             const row = target.closest('.yaml-tree__row, summary, li, div');
             if (row) {
-              row.style.transition = 'background 0.4s';
-              const orig = row.style.background;
-              row.style.background = '#fff3a8';
-              setTimeout(() => { row.style.background = orig; }, 1500);
+              row.classList.add('yaml-tree__deeplink-highlight');
             }
             // Si mode edition demande, auto-clique le crayon de la regle.
             if (isEditMode && wantsEdit) {
