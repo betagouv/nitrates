@@ -870,6 +870,7 @@ class AddChildView(View):
                 "form_data": form_data,
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 "catalogue_refs": CATALOGUE_RESOLVERS,
+                "renvoi_targets": _list_renvoi_targets(tree.contenu),
             },
         )
 
@@ -1155,6 +1156,7 @@ def _render_add_errors(
             "selected_kind": kind,
             "errors": errors,
             "form_data": form_data or {},
+            "renvoi_targets": _list_renvoi_targets(tree.contenu),
             "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
         },
         status=422,

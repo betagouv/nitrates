@@ -278,12 +278,26 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
 {% elif kind == "renvoi_vers" %}
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
-      <span>id de la cible (q_, n_, r_…)</span>
-      <input type="text"
-             name="c_renvoi_vers"
-             value="{{ form_data.c_renvoi_vers|default_if_none:'' }}"
-             placeholder="ex: r_colza_type_0"
-             required>
+      <span>cible du renvoi</span>
+      {% if renvoi_targets %}
+        <select name="c_renvoi_vers" required>
+          <option value="">— choisir une cible —</option>
+          {% for t in renvoi_targets %}
+            <option value="{{ t.id }}"
+                    {% if t.id == form_data.c_renvoi_vers %}selected{% endif %}
+                    title="{{ t.label }}">
+              {% if t.group != "arbre" %}[{{ t.group }}]{% endif %}
+              {{ t.label }} ({{ t.id }})
+            </option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="text"
+               name="c_renvoi_vers"
+               value="{{ form_data.c_renvoi_vers|default_if_none:'' }}"
+               placeholder="ex: r_colza_type_0"
+               required>
+      {% endif %}
     </label>
     {% for err in errors %}
       {% if err.field == "renvoi_vers" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
