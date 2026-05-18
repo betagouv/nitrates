@@ -824,7 +824,8 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__layout--brut .yaml-admin__raw {
-  max-width: 1100px;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .yaml-admin__raw {
@@ -835,6 +836,7 @@ button.yaml-admin__btn {
   overflow: auto;
   font-size: 0.8rem;
   max-height: 80vh;
+  box-sizing: border-box;
 }
 
 .yaml-admin__raw pre {
@@ -842,6 +844,8 @@ button.yaml-admin__btn {
   background: transparent !important;
   color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .yaml-admin__raw .yaml-raw .linenos {
