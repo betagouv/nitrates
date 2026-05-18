@@ -56,7 +56,17 @@ def validation_index(request):
 def validation_detail(request, pk):
     """Detail d'une feuille avec les 4 colonnes (Miro, YAML, Simulateur,
     Playwright) cote a cote."""
-    branche = get_object_or_404(BrancheValidation, pk=pk)
+    # Prefetch les actions + leur user pour eviter le N+1 dans le bloc
+    # d'historique des validations (1 + 1 query au lieu de 1 + N + N).
+    qs = BrancheValidation.objects.prefetch_related(
+        Prefetch(
+            "actions",
+            queryset=BrancheValidationAction.objects.select_related("user").order_by(
+                "created_at"
+            ),
+        )
+    )
+    branche = get_object_or_404(qs, pk=pk)
     return render(
         request,
         "nitrates_admin/validation/detail.html",

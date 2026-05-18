@@ -63,6 +63,9 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("name",)
     ordering = ("-activated_at", "-created_at")
+    # `created_by` est affiche dans list_display : sans select_related,
+    # 1 query par ligne pour resoudre le User. Avec, 1 JOIN unique.
+    list_select_related = ("created_by",)
     readonly_fields = (
         "yaml_preview",
         "edit_link",
