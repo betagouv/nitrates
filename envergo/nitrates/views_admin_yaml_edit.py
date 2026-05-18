@@ -126,6 +126,35 @@ def _parse_valeur(raw):
     return raw
 
 
+def _render_banner_oob(request, tree) -> str:
+    """Re-rendu du bandeau d'edition en mode hx-swap-oob.
+
+    Permet au bouton '↩ Annuler' (et au bloc historique) de refleter les
+    revisions a jour sans full reload. Sinon le bandeau garde l'etat
+    initial du chargement de page : si on est entre en edition sans
+    revisions, '↩ Annuler' restait disabled meme apres une modif.
+
+    Appele dans chaque vue d'edition inline qui modifie l'arbre.
+    """
+    from envergo.nitrates.views_admin_yaml import _edited_origin_name
+
+    banner_html = render(
+        request,
+        "nitrates_admin/yaml_tree/_edit_banner.html",
+        {
+            "tree": tree,
+            "edited_origin_name": _edited_origin_name(tree),
+            "recent_revisions": list(tree.revisions.order_by("-created_at")[:5]),
+        },
+    ).content.decode("utf-8")
+    return banner_html.replace(
+        '<div class="yaml-admin__edit-banner" id="yaml-admin-edit-banner">',
+        '<div class="yaml-admin__edit-banner" id="yaml-admin-edit-banner"'
+        ' hx-swap-oob="outerHTML">',
+        1,
+    )
+
+
 def _render_partial_node_response(
     request, tree, parent_path: tuple[str, ...], message: str
 ) -> HttpResponse:
@@ -199,6 +228,8 @@ def _render_partial_node_response(
             f"</div>"
         )
         rendered = rendered + toast_html
+
+    rendered = rendered + _render_banner_oob(request, tree)
 
     response = HttpResponse(rendered)
     response["HX-Retarget"] = f"#node-{slugify(parent_path_str)}"
@@ -384,7 +415,7 @@ class EditNodeView(View):
         # dans le row, sans les enfants -- htmx swap outerHTML sur le row).
         tree.refresh_from_db()
         node = editor.get_node_at(tree.contenu, path)
-        return render(
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_node_row.html",
             {
@@ -394,7 +425,8 @@ class EditNodeView(View):
                 "path_str": "/".join(path),
                 "tags": get_tags("noeud", node),
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -499,7 +531,7 @@ class EditRegleView(View):
         # Succes : re-render la regle entiere (pas juste une ligne)
         tree.refresh_from_db()
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
-        return render(
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_regle_block.html",
             {
@@ -509,7 +541,8 @@ class EditRegleView(View):
                 "parent_path": "/".join(parent_path),
                 "valeur": valeur,
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -662,7 +695,7 @@ class EditBrancheView(View):
             tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
 
         # Re-render le bloc branche en lecture
-        return render(
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_branche_block.html",
             {
@@ -672,7 +705,8 @@ class EditBrancheView(View):
                 "valeur": new_valeur,
                 "is_editing": True,
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
 
 
 def _render_branche_error(request, tree, branche, parent_path, valeur, field, msg):
