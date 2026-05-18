@@ -1129,10 +1129,18 @@ def _render_add_errors(
 
 @method_decorator(staff_member_required, name="dispatch")
 class CancelAddChildView(View):
-    """GET : ferme le formulaire d'ajout (renvoie un fragment vide)."""
+    """GET : ferme le formulaire d'ajout.
+
+    Retourne le `<div id="add-zone-{path}"></div>` vide reinitialise plutot
+    qu'une chaine vide. Sinon le swap outerHTML supprime carrement la zone
+    cible, et le prochain clic sur le bouton `+` du noeud genere un
+    htmx:targetError (le selecteur ne matche plus rien dans le DOM).
+    """
 
     def get(self, request, tree_pk):
-        return HttpResponse("")
+        path = request.GET.get("path", "")
+        slug = slugify(path)
+        return HttpResponse(f'<div id="add-zone-{slug}"></div>')
 
 
 @method_decorator(staff_member_required, name="dispatch")
