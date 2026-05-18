@@ -436,6 +436,13 @@ body.yaml-admin--busy .yaml-admin__global-overlay {
   font-size: 0.85rem;
 }
 
+/* Si le wrapper d'erreurs ne contient AUCUNE erreur globale visible
+   (toutes les erreurs ont un field et sont affichees inline a cote des
+   inputs), on cache la barre rouge vide. */
+.yaml-tree__form-errors:not(:has(.yaml-tree__form-error-global)) {
+  display: none;
+}
+
 .yaml-tree__form-error-global {
   margin: 0;
   color: #b71c1c;
