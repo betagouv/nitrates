@@ -1,11 +1,9 @@
 import json
 from math import sqrt
 
-import numpy as np
 from django.contrib.gis.geos import Point
 from django.db import connection
 from django.views.generic import FormView
-from scipy.interpolate import griddata
 
 from envergo.geodata.forms import LatLngForm
 from envergo.geodata.utils import (
@@ -16,6 +14,10 @@ from envergo.geodata.utils import (
 )
 from envergo.hedges.forms import HedgeForm
 from envergo.utils.urls import remove_mtm_params, update_qs
+
+# scipy + numpy lazy-loaded sur le seul site d'usage (CatchmentAreaDemo vue).
+# Non utilise par le simulateur nitrates.
+
 
 EPSG_WGS84 = 4326
 EPSG_LAMB93 = 2154
@@ -234,6 +236,9 @@ class CatchmentArea(LatLngDemoMixin, FormView):
     mtm_campaign_tag = "share-demo-bv"
 
     def get_result_data(self, lng, lat):
+        import numpy as np
+        from scipy.interpolate import griddata
+
         context = {}
         lng_lat = Point(float(lng), float(lat), srid=EPSG_WGS84)
         lamb93_coords = lng_lat.transform(EPSG_LAMB93, clone=True)

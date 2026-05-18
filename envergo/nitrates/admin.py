@@ -12,6 +12,11 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from envergo.nitrates.models import DecisionTree, RpgCulture
+from envergo.nitrates.permissions import (
+    can_change_tree,
+    can_delete_tree,
+    can_edit_active,
+)
 
 
 @admin.register(RpgCulture)
@@ -26,6 +31,26 @@ class RpgCultureAdmin(admin.ModelAdmin):
 class DecisionTreeAdmin(admin.ModelAdmin):
     change_list_template = "admin/nitrates/decisiontree/change_list.html"
 
+    def has_change_permission(self, request, obj=None):
+        # Liste : on laisse l'acces (les actions par ligne sont filtrees
+        # par actions_links + les vues yaml_admin reverifient).
+        if obj is None:
+            return super().has_change_permission(request, obj)
+        return can_change_tree(request.user, obj)
+
+    def changelist_view(self, request, extra_context=None):
+        # Injecte `can_edit_active` dans le contexte pour le template
+        # custom change_list (qui cache le bouton "Editer l'arbre actif"
+        # aux external_observator).
+        extra_context = extra_context or {}
+        extra_context["can_edit_active"] = can_edit_active(request.user)
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return super().has_delete_permission(request, obj)
+        return can_delete_tree(request.user, obj)
+
     list_display = (
         "name",
         "status_badge",
@@ -38,6 +63,9 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("name",)
     ordering = ("-activated_at", "-created_at")
+    # `created_by` est affiche dans list_display : sans select_related,
+    # 1 query par ligne pour resoudre le User. Avec, 1 JOIN unique.
+    list_select_related = ("created_by",)
     readonly_fields = (
         "yaml_preview",
         "edit_link",
@@ -152,21 +180,32 @@ class DecisionTreeAdmin(admin.ModelAdmin):
 
     @admin.display(description="Actions")
     def actions_links(self, obj):
+        # Note : on n'a pas acces a request ici (limitation Django admin).
+        # On affiche tous les boutons ; ceux qui menent a une vue non
+        # autorisee retourneront 403 cote serveur. Les observateurs voient
+        # donc le bouton Editer mais s'ils cliquent dessus ils sont
+        # bloques par _check_editable / can_edit_active dans les vues.
         view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
         edit_url = view_url + "&mode=edition"
         clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
         edit_active_url = reverse("nitrates_admin_yaml_edit_active")
         if obj.status == DecisionTree.STATUS_DRAFT:
-            # Draft : on ouvre directement en mode edition.
+            # Draft : Voir + Éditer + Cloner (utile aux external_observator
+            # pour cloner un draft d'autrui en faire le leur).
             return mark_safe(
                 f'<a class="button" href="{view_url}">Voir</a> '
-                f'<a class="button" href="{edit_url}">Éditer</a>'
+                f'<a class="button" href="{edit_url}">Éditer</a> '
+                f'<a class="button" href="{clone_url}">Cloner</a>'
             )
         if obj.status == DecisionTree.STATUS_ACTIVE:
-            # Active : Voir + "Éditer" qui clone vers un draft puis bascule.
+            # Active : Voir + "Éditer" (intra : clone vers un draft puis
+            # bascule) + Cloner explicite (utile aux observateurs externes
+            # qui ne peuvent pas utiliser "Éditer" et ont besoin d'un point
+            # d'entree pour creer leur propre brouillon).
             return mark_safe(
                 f'<a class="button" href="{view_url}">Voir</a> '
-                f'<a class="button" href="{edit_active_url}">Éditer</a>'
+                f'<a class="button" href="{edit_active_url}">Éditer</a> '
+                f'<a class="button" href="{clone_url}">Cloner</a>'
             )
         # Archive : Voir + Cloner (pas d'edition directe sur un archive).
         return mark_safe(

@@ -3,7 +3,6 @@ import uuid
 from functools import reduce
 from typing import Self
 
-import shapely
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry, MultiLineString, Polygon
 from django.contrib.postgres.fields import ArrayField
@@ -12,8 +11,6 @@ from django.db import models
 from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
 from model_utils import Choices
-from pyproj import Geod, Transformer
-from shapely import LineString, centroid, union_all
 
 from envergo.geodata.models import Department, Zone
 from envergo.geodata.utils import (
@@ -21,6 +18,11 @@ from envergo.geodata.utils import (
     compute_hedge_density_around_lines,
     get_department_from_coords,
 )
+
+# shapely + pyproj lazy-loaded dans Hedge.__init__ et methodes geometriques :
+# evite ~15 MiB RSS au boot du process Django (chaine d'imports moulinette).
+# Non utilise par le simulateur nitrates.
+
 
 TO_PLANT = "TO_PLANT"
 TO_REMOVE = "TO_REMOVE"
@@ -92,6 +94,8 @@ class Hedge:
     """Represent a single hedge."""
 
     def __init__(self, id, latLngs, type, additionalData=None):
+        from shapely import LineString
+
         self.id = id  # The edge reference, e.g A1, A2…
         self.latLngs = latLngs
         self.geometry = LineString(
@@ -120,6 +124,9 @@ class Hedge:
     def geometry_lamb93(self):
         """Return a shapely geometry with a Lambert 93 projection."""
 
+        import shapely
+        from pyproj import Transformer
+
         transformer = Transformer.from_crs(EPSG_WGS84, EPSG_LAMB93, always_xy=True)
         lamb93 = shapely.transform(
             self.geometry, transformer.transform, interleaved=False
@@ -129,6 +136,8 @@ class Hedge:
     @property
     def length(self):
         """Returns the geodesic length (in meters) of the line."""
+
+        from pyproj import Geod
 
         geod = Geod(ellps="WGS84")
         length = geod.geometry_length(self.geometry)
@@ -453,6 +462,8 @@ class HedgeData(models.Model):
 
     def get_centroid_to_remove(self):
         """Returns hedges to remove centroid"""
+        from shapely import centroid, union_all
+
         hedges_to_remove_geometries = [h.geometry for h in self.hedges_to_remove()]
         hedges_centroid = centroid(union_all(hedges_to_remove_geometries))
         return hedges_centroid

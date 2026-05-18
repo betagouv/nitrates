@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-import numpy as np
 import requests
 from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.geos import GEOSGeometry, MultiLineString, MultiPolygon, Point
@@ -17,9 +16,12 @@ from django.core.serializers import serialize
 from django.db import connection
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
-from scipy.interpolate import griddata
 
 from envergo.geodata.models import MAP_TYPES, Department, Line, Zone
+
+# numpy + scipy lazy-loaded dans get_catchment_area : evite ~60 MiB RSS au boot
+# du process Django. Non utilise par le simulateur nitrates.
+
 
 if TYPE_CHECKING:
     from envergo.hedges.models import HedgeData
@@ -477,6 +479,9 @@ def fill_polygon_stats():
 
 def get_catchment_area(lng, lat):
     """Return the catchment area of a point."""
+
+    import numpy as np
+    from scipy.interpolate import griddata
 
     pixels = get_catchment_area_pixel_values(lng, lat)
     if not pixels:
