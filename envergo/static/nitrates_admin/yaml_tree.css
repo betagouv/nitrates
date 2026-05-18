@@ -184,9 +184,19 @@
 
   /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
      Avec margin-left:auto en flex container, le span occupe l'espace
-     residuel apres les autres elements, ce qui le pousse a droite. */
+     residuel apres les autres elements, ce qui le pousse a droite.
+     En presence du .yaml-tree__deep-btn (lui aussi en margin-left:auto),
+     le deep-btn capte tout l'espace en premier et nous on se cale juste
+     a sa droite -- on ne se gene plus. */
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Sur les rows qui contiennent un .yaml-tree__deep-btn, c'est lui qui
+   absorbe l'espace residuel (margin-left:auto). Les edit-actions
+   viennent juste apres lui en flux normal. */
+.yaml-tree__row > .yaml-tree__deep-btn ~ .yaml-tree__edit-actions {
+  margin-left: 0;
 }
 
 .yaml-tree__edit-btn {
@@ -856,19 +866,20 @@ details[open] > summary.yaml-tree__row::before {
   position: relative;
 }
 
+/* Bouton "deplier en profondeur" : place inline dans la row, pousse a
+   droite via margin-left:auto. En mode edition, les .yaml-tree__edit-actions
+   viennent juste apres lui (cf. regle ~ plus haut). */
 .yaml-tree__deep-btn {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.4rem;
+  margin-left: auto;
   font-size: 0.8rem;
   text-decoration: none;
   color: #888;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   letter-spacing: -0.15em;
-  background: rgb(255 255 255 / 85%);
-  z-index: 2;
   border: 1px solid transparent;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .yaml-tree__deep-btn:hover {
