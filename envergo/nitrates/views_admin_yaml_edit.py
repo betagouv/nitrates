@@ -871,6 +871,8 @@ class AddChildView(View):
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 "catalogue_refs": CATALOGUE_RESOLVERS,
                 "renvoi_targets": _list_renvoi_targets(tree.contenu),
+                "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
+                "regle_choices": _regle_referentiel_choices(),
             },
         )
 
@@ -1157,6 +1159,8 @@ def _render_add_errors(
             "errors": errors,
             "form_data": form_data or {},
             "renvoi_targets": _list_renvoi_targets(tree.contenu),
+            "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
+            "regle_choices": _regle_referentiel_choices(),
             "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
         },
         status=422,

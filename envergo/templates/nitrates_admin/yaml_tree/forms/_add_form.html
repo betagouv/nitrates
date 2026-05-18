@@ -69,11 +69,25 @@
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>valeur de la branche</span>
-        <input type="text"
-               name="valeur"
-               value="{{ form_data.valeur|default_if_none:'' }}"
-               placeholder="ex: colza, true, 2"
-               required>
+        {% if valeur_choices %}
+          <select name="valeur" required>
+            <option value="">— choisir —</option>
+            {% for c in valeur_choices %}
+              <option value="{{ c.value }}"
+                      {% if c.value == form_data.valeur %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text"
+                 name="valeur"
+                 value="{{ form_data.valeur|default_if_none:'' }}"
+                 placeholder="ex: colza, true, 2"
+                 required>
+        {% endif %}
       </label>
       {% for err in errors %}
         {% if err.field == "valeur" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
