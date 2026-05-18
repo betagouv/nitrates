@@ -238,28 +238,21 @@ def _render_partial_node_response(
 
 
 def _refresh_response(request, message: str) -> HttpResponse:
-    """Reponse htmx qui declenche un rechargement de la page courante en
-    preservant son URL complete (et donc tous les ?expand=...).
+    """Reponse htmx qui force un rechargement complet de la page courante.
 
     Le message est passe via Django messages framework -- il sera
-    affiche en toaster sur la page rechargee.
+    affiche en toaster sur la page rechargee. Le scroll est restaure
+    par le JS de base.html (sessionStorage).
 
-    htmx envoie l'URL courante du navigateur dans `HX-Current-URL`, ce
-    qui permet de la rejouer en redirect (preserve fold/unfold). En
-    fallback on tente Referer, puis HX-Refresh.
+    On utilise HX-Refresh:true qui force un vrai reload navigateur. C'est
+    plus brutal que HX-Redirect mais garantit qu'on voit l'arbre apres
+    annulation/restauration -- sinon le HTML cote client reste sur l'etat
+    pre-mutation.
     """
     if message:
         messages.info(request, message)
-    # `message` peut transiter par les vues a partir de strings construites
-    # (ex incluant valeur de branche). On escape pour CodeQL XSS.
     response = HttpResponse(f"<div class='yaml-tree__add-ok'>{escape(message)}</div>")
-    current_url = request.META.get("HTTP_HX_CURRENT_URL") or request.META.get(
-        "HTTP_REFERER"
-    )
-    if current_url:
-        response["HX-Redirect"] = current_url
-    else:
-        response["HX-Refresh"] = "true"
+    response["HX-Refresh"] = "true"
     return response
 
 
