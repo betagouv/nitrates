@@ -259,6 +259,50 @@
 
 /* Formulaire d'edition inline (htmx) */
 
+/* Spinner d'attente affiche pendant un POST htmx du formulaire inline.
+   htmx ajoute la classe `htmx-request` au form (declencheur) le temps
+   de la requete. On affiche un overlay avec spinner par-dessus le form
+   pour indiquer clairement "en cours de sauvegarde" -- utile sur les
+   environnements avec latence (staging Scalingo, etc.). */
+
+.yaml-tree__inline-form.htmx-request::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 70%);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.yaml-tree__inline-form.htmx-request::before {
+  content: "⏳ Sauvegarde en cours…";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 11;
+  padding: 0.5rem 1rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes yaml-tree-spinner-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .yaml-tree__row--editing,
 .yaml-tree__regle--editing,
 .yaml-tree__branche-header--editing {
@@ -293,6 +337,7 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
+  position: relative;
 }
 
 .yaml-tree__form-row {
