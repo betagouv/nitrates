@@ -857,6 +857,9 @@ class AddChildView(View):
             {
                 "tree": tree,
                 "parent_path_str": "/".join(parent_path),
+                "parent_niveau": (
+                    parent.get("niveau") if isinstance(parent, dict) else None
+                ),
                 "allowed_kinds": allowed,
                 "selected_kind": kind,
                 "errors": [],
@@ -1141,12 +1144,14 @@ def _render_add_error(
 def _render_add_errors(
     request, tree, parent_path, allowed, kind, errors, form_data=None
 ):
+    parent = editor.get_node_at(tree.contenu, parent_path)
     return render(
         request,
         "nitrates_admin/yaml_tree/forms/_add_form.html",
         {
             "tree": tree,
             "parent_path_str": "/".join(parent_path),
+            "parent_niveau": parent.get("niveau") if isinstance(parent, dict) else None,
             "allowed_kinds": allowed,
             "selected_kind": kind,
             "errors": errors,

@@ -56,7 +56,20 @@
         hx-swap="outerHTML">
     {% csrf_token %}
 
-    <p class="yaml-tree__add-form-title">Ajout d'une valeur (et de son contenu, si présent)</p>
+    <p class="yaml-tree__add-form-title">
+      {% if parent_niveau == "culture" %}
+        Ajout d'une culture
+      {% elif parent_niveau == "sous_culture" %}
+        Ajout d'une sous-culture
+      {% elif parent_niveau == "type_fertilisant" %}
+        Ajout d'un type de fertilisant
+      {% elif parent_niveau == "complement" %}
+        Ajout d'une réponse possible (true / false)
+      {% else %}
+        Ajout d'une valeur
+      {% endif %}
+      <small style="font-weight: normal; color: #555;">(et de son contenu, si prévu)</small>
+    </p>
 
     {% if errors %}
       <div class="yaml-tree__form-errors">
@@ -68,7 +81,19 @@
 
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
-        <span>valeur de la branche</span>
+        <span>
+          {% if parent_niveau == "culture" %}
+            culture
+          {% elif parent_niveau == "sous_culture" %}
+            sous-culture
+          {% elif parent_niveau == "type_fertilisant" %}
+            type de fertilisant
+          {% elif parent_niveau == "complement" %}
+            réponse (true / false)
+          {% else %}
+            valeur de la branche
+          {% endif %}
+        </span>
         {% if valeur_choices %}
           <select name="valeur" required>
             <option value="">— choisir —</option>
@@ -106,7 +131,7 @@
 
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
-        <span>type de contenu</span>
+        <span>type de contenu de l'enfant</span>
         <select name="kind"
                 hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ parent_path_str }}"
                 hx-trigger="change"
