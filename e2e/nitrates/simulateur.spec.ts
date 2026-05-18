@@ -190,9 +190,11 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
     await expect(page).toHaveURL(/\/simulateur\/\?/);
     await expect(page.locator('body')).toContainText('r_sol_non_cultive');
     await expect(page.locator('body')).toContainText('interdi');
-    // Periode : toute l'annee
-    await expect(page.locator('body')).toContainText('01/01');
-    await expect(page.locator('body')).toContainText('31/12');
+    // Periode : toute l'annee, ecrite en annee agricole (01/07 -> 30/06)
+    // pour que le calendrier d'epandage rende une zone rouge pleine
+    // sur l'axe juil-juin (cf. #54).
+    await expect(page.locator('body')).toContainText('01/07');
+    await expect(page.locator('body')).toContainText('30/06');
   });
 
   test('flow complet colza + compost_jeunes (type_0) -> regle r_colza_type_0', async ({
