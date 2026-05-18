@@ -93,46 +93,52 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% if ev.regle.periodes %}
             {% if ev.regle.type == "mixte" %}
               {% comment %}
-              Ordre d'affichage : on remonte les periodes avec borne
-              phenologique (cas particulier "autorise sous condition jusqu'a
-              tel evenement"), puis on rappelle la regle de base avec
-              "Sinon, regle de base :" pour signaler que c'est le fallback.
+              Ordre d'affichage : on remonte d'abord les periodes avec
+              borne phenologique (cas particulier "autorise sous condition
+              jusqu'a tel evenement"), puis on rappelle la regle de base.
+              Le prefixe "Sinon, regle de base —" n'a de sens que si au
+              moins une periode phenologique a ete affichee avant (sinon
+              c'est un mixte purement a dates fixes, et il n'y a rien a
+              "completer"). On calcule donc has_phenologique pour gater
+              ce prefixe (fix #81).
               {% endcomment %}
-              <ul class="fr-mb-0">
-                {% for p in ev.regle.periodes %}
-                  {% if p.du|slice:"2:3" != "/" or p.au|slice:"2:3" != "/" %}
-                    <li>
-                      {% if p.regime == "autorisation_sous_condition" %}
-                        <strong>Autorisation sous conditions phénologiques :</strong>
-                      {% elif p.regime == "interdiction" %}
-                        <strong>Interdiction (dates flottantes) :</strong>
-                      {% elif p.regime == "plafonnement" %}
-                        <strong>Plafond (dates flottantes) :</strong>
-                      {% else %}
-                        <strong>{{ p.regime|default:"Période" }} :</strong>
-                      {% endif %}
-                      du {{ p.du }} au {{ p.au }}.
-                    </li>
-                  {% endif %}
-                {% endfor %}
-                {% for p in ev.regle.periodes %}
-                  {% if p.du|slice:"2:3" == "/" and p.au|slice:"2:3" == "/" %}
-                    <li>
-                      <em>Sinon, règle de base —</em>
-                      {% if p.regime == "interdiction" %}
-                        <strong>Interdiction :</strong>
-                      {% elif p.regime == "autorisation_sous_condition" %}
-                        <strong>Autorisation sous condition :</strong>
-                      {% elif p.regime == "plafonnement" %}
-                        <strong>Plafond :</strong>
-                      {% else %}
-                        <strong>{{ p.regime|default:"Période" }} :</strong>
-                      {% endif %}
-                      du {{ p.du }} au {{ p.au }}.
-                    </li>
-                  {% endif %}
-                {% endfor %}
-              </ul>
+              {% with has_phenologique=ev.regle.has_borne_flottante %}
+                <ul class="fr-mb-0">
+                  {% for p in ev.regle.periodes %}
+                    {% if p.du|slice:"2:3" != "/" or p.au|slice:"2:3" != "/" %}
+                      <li>
+                        {% if p.regime == "autorisation_sous_condition" %}
+                          <strong>Autorisé sous conditions, sinon interdit :</strong>
+                        {% elif p.regime == "interdiction" %}
+                          <strong>Interdiction (dates flottantes) :</strong>
+                        {% elif p.regime == "plafonnement" %}
+                          <strong>Plafond (dates flottantes) :</strong>
+                        {% else %}
+                          <strong>{{ p.regime|default:"Période" }} :</strong>
+                        {% endif %}
+                        du {{ p.du }} au {{ p.au }}.
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+                  {% for p in ev.regle.periodes %}
+                    {% if p.du|slice:"2:3" == "/" and p.au|slice:"2:3" == "/" %}
+                      <li>
+                        {% if has_phenologique %}<em>Sinon, règle de base —</em>{% endif %}
+                        {% if p.regime == "interdiction" %}
+                          <strong>Interdiction :</strong>
+                        {% elif p.regime == "autorisation_sous_condition" %}
+                          <strong>Autorisation sous condition :</strong>
+                        {% elif p.regime == "plafonnement" %}
+                          <strong>Plafond :</strong>
+                        {% else %}
+                          <strong>{{ p.regime|default:"Période" }} :</strong>
+                        {% endif %}
+                        du {{ p.du }} au {{ p.au }}.
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              {% endwith %}
             {% else %}
               <p>
                 <strong>Période d'interdiction :</strong>

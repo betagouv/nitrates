@@ -48,6 +48,30 @@ class Resultat:
     parametres: dict | None = None
     a_completer: bool = False
 
+    @property
+    def has_borne_flottante(self) -> bool:
+        """True si au moins une periode contient une borne phenologique
+        (slug type `brunissement_des_soies`, `derniere_coupe_luzerne`,
+        etc.) plutot qu'une date fixe JJ/MM.
+
+        Utilise par le template pour gater le prefixe "Sinon, regle de
+        base —" qui n'a de sens que dans le cas mixte phenologique
+        (un fallback complete une regle conditionnelle). En mixte
+        purement a dates fixes, ce prefixe est trompeur (fix #81).
+        """
+        if not self.periodes:
+            return False
+        for p in self.periodes:
+            du = p.get("du", "")
+            au = p.get("au", "")
+            # Une date fixe est de la forme JJ/MM (caractere 2 = '/').
+            # Toute autre forme (slug phenologique) est une borne flottante.
+            if len(du) != 5 or du[2] != "/":
+                return True
+            if len(au) != 5 or au[2] != "/":
+                return True
+        return False
+
     def to_json_dict(self) -> dict:
         """Serialise pour exposition JSON cote front (json_script Django).
 

@@ -405,3 +405,48 @@ def test_pan_colza_type_II_zone_note_5_true(arbre_pan):
     assert isinstance(res, Resultat)
     assert res.regle_id == "r_colza_type_II_note5"
     assert res.note == "note_5"
+
+
+# ─── has_borne_flottante ───────────────────────────────────────────────────
+
+
+def test_has_borne_flottante_false_si_que_dates_fixes():
+    """Cas mixte standard (que des bornes JJ/MM) : pas de borne
+    flottante. Le template ne doit pas afficher "Sinon, regle de base —"
+    dans ce cas (fix #81)."""
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_borne_flottante is False
+
+
+def test_has_borne_flottante_true_si_borne_phenologique():
+    """Cas mixte phenologique : une periode a un slug `brunissement_des_soies`
+    comme borne. Le template doit afficher "Sinon, regle de base —" pour
+    le fallback dates fixes."""
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {
+                "du": "15/07",
+                "au": "brunissement_des_soies",
+                "regime": "autorisation_sous_condition",
+            },
+            {"du": "15/07", "au": "15/02", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_borne_flottante is True
+
+
+def test_has_borne_flottante_false_si_pas_de_periodes():
+    """Cas degenere : pas de periodes, has_borne_flottante=False."""
+    res = Resultat(regle_id="r_test", type="libre", periodes=None)
+    assert res.has_borne_flottante is False
+    res2 = Resultat(regle_id="r_test", type="libre", periodes=[])
+    assert res2.has_borne_flottante is False
