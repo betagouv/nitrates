@@ -855,10 +855,14 @@ evenements_phenologiques:
     date_calendrier: "15/09"
   brunissement_soies:
     libelle_public: "Brunissement des soies (maïs)"
-    date_calendrier: "01/08"
+    # Date conventionnelle de rendu calendrier reportee a mi-aout suite au
+    # retour Louise (2026-05-13) : sur le terrain, le brunissement des
+    # soies peut survenir jusque vers le 15/08, etendre la zone hachuree
+    # jusque la colle mieux a la realite.
+    date_calendrier: "15/08"
   brunissement_des_soies:
     libelle_public: "Brunissement des soies (maïs)"
-    date_calendrier: "01/08"
+    date_calendrier: "15/08"
   derniere_coupe_luzerne:
     libelle_public: "Dernière coupe de la luzerne"
     # Date conventionnelle de rendu calendrier : place au milieu de la fenetre
