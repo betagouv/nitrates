@@ -298,9 +298,6 @@ body.yaml-admin--busy .yaml-admin__global-overlay {
 
 .yaml-tree__deeplink-highlight {
   background: #fff3a8 !important;
-  outline: 2px solid #f5c518;
-  outline-offset: 1px;
-  border-radius: 3px;
 }
 
 /* Formulaire d'edition inline (htmx) */
@@ -837,7 +834,11 @@ button.yaml-admin__btn {
 
 .yaml-admin__layout--split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+
+  /* minmax(0, 1fr) au lieu de 1fr : contraint chaque colonne a la largeur
+     disponible meme si son contenu (lignes YAML longues) deborde, sinon
+     la colonne YAML s'etire et casse la mise en page. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -858,6 +859,8 @@ button.yaml-admin__btn {
   min-height: 500px;
   box-sizing: border-box;
   scrollbar-gutter: stable;
+  width: 100%;
+  min-width: 0; /* permet a la box de se contraindre dans une grid */
 }
 
 .yaml-admin__raw pre {

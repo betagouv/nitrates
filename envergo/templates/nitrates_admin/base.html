@@ -79,7 +79,7 @@
        depuis les listeners htmx ci-dessous. Les forms d'edition inline ont leur
     propre spinner local (cf. .yaml-tree__inline-form.htmx-request).{% endcomment %}
     <div class="yaml-admin__global-overlay" aria-hidden="true">
-      <div class="yaml-admin__global-overlay-msg">⏳ Sauvegarde en cours…</div>
+      <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
     </div>
 
     <main>
@@ -176,12 +176,17 @@
       document.body.addEventListener('showToast', _handleShowToast);
       // Overlay global "en cours" pendant les requetes htmx mutatives
       // (sauf forms d'edition inline qui ont leur propre spinner).
-      // On garantit une visibilite minimale de ~400ms pour qu'on voie
-      // toujours quelque chose, meme si la reponse serveur revient en 50ms.
+      // Visibilite minimale de 400ms. Si la reponse declenche un reload
+      // navigateur (HX-Refresh / HX-Redirect), on NE retire PAS l'overlay --
+      // on le laisse jusqu'a ce que la nouvelle page soit montee, sinon il
+      // y a un gap visible "page blanche" entre la disparition du spinner
+      // et le rechargement.
       let _busyShownAt = 0;
       const MIN_BUSY_VISIBLE_MS = 400;
-      const _showBusy = () => {
+      const _showBusy = (msg) => {
         _busyShownAt = Date.now();
+        const msgEl = document.getElementById('yaml-admin-overlay-msg');
+        if (msgEl && msg) msgEl.textContent = msg;
         document.body.classList.add('yaml-admin--busy');
       };
       const _hideBusy = () => {
@@ -190,6 +195,25 @@
         setTimeout(() => {
           document.body.classList.remove('yaml-admin--busy');
         }, wait);
+      };
+      // Detecte le libelle contextuel a afficher selon le bouton qui declenche.
+      const _busyMsgForTrigger = (trigger) => {
+        if (!trigger) return '⏳ Action en cours…';
+        const title = (trigger.getAttribute('title') || '').toLowerCase();
+        const text = (trigger.textContent || '').toLowerCase();
+        if (title.includes('annuler') || text.includes('annuler')) {
+          return '⏳ Annulation en cours…';
+        }
+        if (title.includes('restaurer') || text.includes('restaurer')) {
+          return '⏳ Restauration en cours…';
+        }
+        if (title.includes('publier') || text.includes('publier')) {
+          return '⏳ Publication en cours…';
+        }
+        if (title.includes('vérifier') || text.includes('vérifier')) {
+          return '⏳ Vérification en cours…';
+        }
+        return '⏳ Sauvegarde en cours…';
       };
       document.addEventListener('htmx:beforeRequest', function(evt) {
         // On sauve le scrollY juste avant les requetes qui vont
@@ -201,10 +225,20 @@
         const trigger = evt.detail.elt;
         const isInlineForm = trigger && trigger.closest('.yaml-tree__inline-form');
         if (!isInlineForm && (verb === 'post' || verb === 'delete' || verb === 'put')) {
-          _showBusy();
+          _showBusy(_busyMsgForTrigger(trigger));
         }
       });
-      document.addEventListener('htmx:afterRequest', _hideBusy);
+      document.addEventListener('htmx:afterRequest', function(evt) {
+        // Si la reponse va declencher un reload (HX-Refresh/HX-Redirect),
+        // on garde l'overlay visible -- il disparaitra naturellement avec
+        // le mount de la nouvelle page.
+        const xhr = evt.detail.xhr;
+        if (xhr && (xhr.getResponseHeader('HX-Refresh') === 'true' ||
+                    xhr.getResponseHeader('HX-Redirect'))) {
+          return;
+        }
+        _hideBusy();
+      });
       document.addEventListener('htmx:responseError', _hideBusy);
       document.addEventListener('htmx:sendError', _hideBusy);
 
