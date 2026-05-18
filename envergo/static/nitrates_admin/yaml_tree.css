@@ -896,8 +896,8 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__raw-textarea {
-  width: 100%;
-  min-height: 60vh;
+  width: 94%;
+  min-height: 71vh;
   background: #272822;
   color: #f8f8f2;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

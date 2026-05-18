@@ -242,6 +242,22 @@
       document.addEventListener('htmx:responseError', _hideBusy);
       document.addEventListener('htmx:sendError', _hideBusy);
 
+      // Pour les formulaires NATIFS (POST sans htmx, ex: "💾 Sauvegarder"
+      // qui sort de l'edition), on montre aussi l'overlay au submit. La
+      // navigation vers la page suivante l'enlevera naturellement.
+      document.addEventListener('submit', function(evt) {
+        const form = evt.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        // On exclut les forms htmx (deja gere par htmx:beforeRequest).
+        if (form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+        // On exclut les forms cherchant a juste rafraichir (GET).
+        const method = (form.method || 'get').toLowerCase();
+        if (method !== 'post' && method !== 'delete' && method !== 'put') return;
+        // Detecte le bouton qui a soumis pour adapter le message.
+        const submitter = evt.submitter;
+        _showBusy(_busyMsgForTrigger(submitter));
+      });
+
       // ─── Persistance cross-session du fold ────────────────────────────
       // Quand l'utilisateur deplie/replie un noeud (<details>), on stocke
       // la liste des paths ouverts dans localStorage, par tree_id. Au

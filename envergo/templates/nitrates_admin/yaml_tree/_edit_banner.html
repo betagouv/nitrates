@@ -43,7 +43,6 @@
             hx-post="{% url 'nitrates_admin_yaml_activate_tree' tree_pk=tree.pk %}"
             hx-target="#yaml-admin-validation-zone"
             hx-swap="innerHTML"
-            hx-confirm="Publier ce brouillon ? L'arbre actif courant sera archivé. Cette action est réversible (en réactivant l'archive)."
             title="Valide la cohérence du brouillon puis le bascule en arbre actif (l'archive remplace).">
       Sauvegarder et publier
     </button>
@@ -64,8 +63,9 @@
             <span class="yaml-admin__history-desc">{{ rev.description }}</span>
             <button type="button"
                     class="yaml-admin__btn yaml-admin__btn--small"
-                    hx-post="{% url 'nitrates_admin_yaml_restore_revision' tree_pk=tree.pk %}?revision_id={{ rev.pk }}"
-                    hx-confirm="Restaurer l'état d'avant « {{ rev.description }} » ?">Restaurer</button>
+                    hx-post="{% url 'nitrates_admin_yaml_restore_revision' tree_pk=tree.pk %}?revision_id={{ rev.pk }}">
+              Restaurer
+            </button>
           </li>
         {% endfor %}
       </ul>
