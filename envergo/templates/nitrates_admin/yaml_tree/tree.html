@@ -226,13 +226,16 @@
           // Scroll apres un tick pour laisser le navigateur calculer la layout.
           setTimeout(() => {
             target.scrollIntoView({ behavior: 'instant', block: 'center' });
-            // Highlight visuel temporaire.
+            // Highlight visuel persistant : reste jaune jusqu'a la prochaine
+            // navigation (changement de hash) ou modif de la ligne. On retire
+            // d'abord la classe d'eventuels highlights precedents pour ne
+            // pas multiplier les rows surlignes.
+            document.querySelectorAll('.yaml-tree__deeplink-highlight').forEach(
+              (el) => el.classList.remove('yaml-tree__deeplink-highlight')
+            );
             const row = target.closest('.yaml-tree__row, summary, li, div');
             if (row) {
-              row.style.transition = 'background 0.4s';
-              const orig = row.style.background;
-              row.style.background = '#fff3a8';
-              setTimeout(() => { row.style.background = orig; }, 1500);
+              row.classList.add('yaml-tree__deeplink-highlight');
             }
             // Si mode edition demande, auto-clique le crayon de la regle.
             if (isEditMode && wantsEdit) {
