@@ -7,7 +7,7 @@ Les inputs portent form="form-simulateur" pour partager la soumission
 avec le form principal a gauche : un seul submit, tous les champs partent
 ensemble. Apres reponse, le panneau resultat repasse en mode normal
 (header + calendrier) et un recap des reponses apparait sous le form
-principal a gauche (cf. _qc_recap.html).
+principal a gauche (cf. _qc_recap.html, meme partial _qc_question_item).
 
 Cascade dynamique (#58.1) : les questions conditionnelles (avec un
 parent_champ non None) sont rendues mais initialement cachees. Le script
@@ -24,34 +24,7 @@ que soit le nombre de questions en cascade.
   </p>
 
   {% for q in ev.questions_subsidiaires.questions %}
-    {% with valeur_parent_str=q.parent_valeur|stringformat:"s" %}
-      <div class="form-question-group qc-question{% if not forloop.first %} qc-question--spaced{% endif %}"
-           data-qc-champ="{{ q.champ }}"
-           {% if q.parent_champ %}data-qc-parent-champ="{{ q.parent_champ }}" data-qc-parent-valeur="{{ valeur_parent_str }}" hidden{% endif %}>
-        <p class="form-question-text">{{ q.texte }} *</p>
-        {% for c in q.choix %}
-          {% with valeur_str=c.valeur|stringformat:"s" %}
-            {% with id="id_qc_right_"|add:q.champ|add:"_"|add:valeur_str %}
-              <div class="fr-radio-group">
-                <input type="radio"
-                       name="{{ q.champ }}"
-                       id="{{ id }}"
-                       form="form-simulateur"
-                       value="{{ valeur_str }}"
-                       {% if data|get_item:q.champ|stringformat:"s" == valeur_str %}checked{% endif %}>
-                <label class="fr-label" for="{{ id }}">
-                  {% if c.libelle %}
-                    {{ c.libelle }}
-                  {% else %}
-                    {{ valeur_str }}
-                  {% endif %}
-                </label>
-              </div>
-            {% endwith %}
-          {% endwith %}
-        {% endfor %}
-      </div>
-    {% endwith %}
+    {% include "nitrates/fragments/_qc_question_item.html" with q=q id_prefix="id_qc_right_" form_attr="form-simulateur" selected_valeur=data|get_item:q.champ forloop_first=forloop.first %}
   {% endfor %}
 
   <div style="margin-top: 24px;">
