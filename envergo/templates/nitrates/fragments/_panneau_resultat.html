@@ -108,7 +108,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% if p.du|slice:"2:3" != "/" or p.au|slice:"2:3" != "/" %}
                       <li>
                         {% if p.regime == "autorisation_sous_condition" %}
-                          <strong>Autorisé sous conditions, sinon interdit :</strong>
+                          <strong>Autorisé sous conditions :</strong>
                         {% elif p.regime == "interdiction" %}
                           <strong>Interdiction (dates flottantes) :</strong>
                         {% elif p.regime == "plafonnement" %}

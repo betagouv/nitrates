@@ -568,9 +568,10 @@ def calendrier_epandage(regle):
     # Legende dynamique : on liste uniquement les categories presentes dans
     # le calendrier (interdit / autorise sous condition / plafonnement) et on
     # signale les segments a date flottante via une variante hachuree
-    # "Autorise sous conditions, sinon interdit" (cf. retour Louise
-    # 2026-05-13 : on retire "phenologiques" car le vocabulaire est trop
-    # technique pour un agriculteur, on insiste plutot sur le fallback).
+    # "Autorise sous conditions" (cf. retour Louise 2026-05-13 : on retire
+    # "phenologiques", vocabulaire trop technique pour un agriculteur).
+    # Le "sinon interdit" est porte par le texte detaille ("Sinon, regle
+    # de base —"), pas redondant dans la legende.
     legende = []
     couleurs_simples = set()
     couleurs_flottantes = set()
@@ -585,7 +586,7 @@ def calendrier_epandage(regle):
         "violet": "Plafond",
     }
     libelle_legende_flottant = {
-        "orange": "Autorisé sous conditions, sinon interdit",
+        "orange": "Autorisé sous conditions",
         "rouge": "Interdit (dates flottantes)",
         "violet": "Plafond (dates flottantes)",
     }
