@@ -88,7 +88,9 @@ def test_sol_non_cultive_court_circuit(setup):
     assert ev.result == RESULTS.interdit
     assert ev.result_code == "r_sol_non_cultive"
     assert ev.regle.type == "interdiction"
-    assert ev.regle.periodes == [{"du": "01/01", "au": "31/12"}]
+    # Bornes annee agricole (cf. #54) : couvre toute l'annee mais s'aligne
+    # sur l'axe juil-juin du calendrier d'epandage.
+    assert ev.regle.periodes == [{"du": "01/07", "au": "30/06"}]
 
 
 # ─── Resultats par type de regle ──────────────────────────────────────────

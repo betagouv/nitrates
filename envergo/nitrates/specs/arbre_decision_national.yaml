@@ -21,8 +21,12 @@ arbre:
             type: interdiction
             message: Épandage interdit toute l'année sur sol non cultivé.
             periodes:
-            - au: 31/12
-              du: 01/01
+            # Bornes annee agricole (01/07 -> 30/06) plutot que calendaire :
+            # le calendrier d'epandage est rendu sur l'axe juil-juin, et
+            # cette ecriture lui permet d'afficher une zone rouge pleine
+            # de bout en bout (cf. #54).
+            - au: 30/06
+              du: 01/07
           valeur: sol_non_cultive
           libelle: Sol non cultivé
         - noeud:
@@ -1070,8 +1074,9 @@ arbre:
                         type: interdiction
                         message: Apport interdit toute l'année.
                         periodes:
-                        - au: 31/12
-                          du: 01/01
+                        # cf. #54 : bornes annee agricole pour calendrier propre.
+                        - au: 30/06
+                          du: 01/07
                       valeur: type_III
                     - noeud:
                         id: q_cine_avant_3112_peu_charge_icpe
@@ -1310,8 +1315,9 @@ arbre:
                         type: interdiction
                         message: Apport interdit.
                         periodes:
-                        - au: 31/12
-                          du: 01/01
+                        # cf. #54 : bornes annee agricole pour calendrier propre.
+                        - au: 30/06
+                          du: 01/07
                       valeur: type_III
                     type_noeud: formulaire
                   valeur: cine_courte

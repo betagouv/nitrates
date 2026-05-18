@@ -133,6 +133,8 @@ def test_resultat_rendu_chemin_complet_sol_non_cultive(
     # juste "Épandage" + phrase "L'épandage est interdit..."). On verifie
     # la presence du libelle "interdit" dans la phrase.
     assert b"interdit" in response.content
-    # Periode toute l'annee (1er janvier au 31 decembre)
-    assert b"01/01" in response.content
-    assert b"31/12" in response.content
+    # Periode toute l'annee, ecrite en annee agricole (01/07 -> 30/06)
+    # pour que le calendrier d'epandage rende une zone rouge pleine
+    # sur l'axe juil-juin (cf. #54).
+    assert b"01/07" in response.content
+    assert b"30/06" in response.content
