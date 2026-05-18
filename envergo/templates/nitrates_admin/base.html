@@ -74,6 +74,14 @@
       {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
     </div>
 
+    {% comment %}Overlay full-page affiche pendant les requetes globales mutatives
+       (Annuler, Restaurer, Sauvegarder, Activer, etc.). Active par body.yaml-admin--busy
+       depuis les listeners htmx ci-dessous. Les forms d'edition inline ont leur
+    propre spinner local (cf. .yaml-tree__inline-form.htmx-request).{% endcomment %}
+    <div class="yaml-admin__global-overlay" aria-hidden="true">
+      <div class="yaml-admin__global-overlay-msg">⏳ Sauvegarde en cours…</div>
+    </div>
+
     <main>
       {% block content %}{% endblock %}
     </main>
@@ -173,6 +181,24 @@
         if (verb === 'post' || verb === 'delete' || verb === 'put') {
           sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
         }
+        // Active l'overlay "en cours" full-page sur toute requete mutative
+        // (sauf si la requete a deja un hx-indicator inline -- ex: les
+        // forms d'edition inline ont leur propre spinner via .htmx-request
+        // sur .yaml-tree__inline-form).
+        const trigger = evt.detail.elt;
+        const isInlineForm = trigger && trigger.closest('.yaml-tree__inline-form');
+        if (!isInlineForm && (verb === 'post' || verb === 'delete' || verb === 'put')) {
+          document.body.classList.add('yaml-admin--busy');
+        }
+      });
+      document.addEventListener('htmx:afterRequest', function() {
+        document.body.classList.remove('yaml-admin--busy');
+      });
+      document.addEventListener('htmx:responseError', function() {
+        document.body.classList.remove('yaml-admin--busy');
+      });
+      document.addEventListener('htmx:sendError', function() {
+        document.body.classList.remove('yaml-admin--busy');
       });
 
       // ─── Persistance cross-session du fold ────────────────────────────

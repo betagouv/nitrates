@@ -257,6 +257,40 @@
   background: #ffebee;
 }
 
+/* Overlay full-page affiche pendant les requetes htmx mutatives globales.
+   Active via body.yaml-admin--busy. Bloque les clics, montre un message
+   "en cours" + curseur wait, evite que l'utilisateur clique 10 fois en
+   attendant la reponse serveur (utile sur staging avec latence). */
+
+.yaml-admin__global-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 25%);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+body.yaml-admin--busy {
+  cursor: wait;
+}
+
+body.yaml-admin--busy .yaml-admin__global-overlay {
+  display: flex;
+}
+
+.yaml-admin__global-overlay-msg {
+  padding: 1rem 2rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
 /* Formulaire d'edition inline (htmx) */
 
 /* Spinner d'attente affiche pendant un POST htmx du formulaire inline.
