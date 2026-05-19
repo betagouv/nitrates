@@ -56,12 +56,20 @@
   background: #ffeaeb;
   border-left: 1px solid #f95a5c;
   border-right: 1px solid #f95a5c;
+
+  /* Interdiction = fond du regime de base, doit rester derriere les zones
+     d'autorisation sous condition (cf. #88). */
+  z-index: 0;
 }
 
 .calendrier-epandage__zone--orange {
   background: #fff3e0;
   border-left: 1px solid #f93;
   border-right: 1px solid #f93;
+
+  /* Autorisation sous condition = derogation locale qui doit etre visible
+     par-dessus l'interdiction de base, peu importe l'ordre DOM (#88). */
+  z-index: 1;
 }
 
 .calendrier-epandage__today {
