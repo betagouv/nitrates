@@ -53,11 +53,6 @@ class Resultat:
         """True si au moins une periode contient une borne phenologique
         (slug type `brunissement_des_soies`, `derniere_coupe_luzerne`,
         etc.) plutot qu'une date fixe JJ/MM.
-
-        Utilise par le template pour gater le prefixe "Sinon, regle de
-        base —" qui n'a de sens que dans le cas mixte phenologique
-        (un fallback complete une regle conditionnelle). En mixte
-        purement a dates fixes, ce prefixe est trompeur (fix #81).
         """
         if not self.periodes:
             return False
@@ -71,6 +66,27 @@ class Resultat:
             if len(au) != 5 or au[2] != "/":
                 return True
         return False
+
+    @property
+    def has_autorisation_sous_condition(self) -> bool:
+        """True si au moins une periode est de regime
+        `autorisation_sous_condition`. Utilise par le template pour
+        gater le prefixe "Sinon, regle de base —" (cf. #88)."""
+        if not self.periodes:
+            return False
+        return any(
+            p.get("regime") == "autorisation_sous_condition" for p in self.periodes
+        )
+
+    @property
+    def has_interdiction(self) -> bool:
+        """True si au moins une periode est de regime `interdiction`
+        (regle de base). Combine avec has_autorisation_sous_condition,
+        sert a decider si on affiche la mention "Sinon, regle de base —"
+        au-dessus de la ligne d'interdiction (#88)."""
+        if not self.periodes:
+            return False
+        return any(p.get("regime") == "interdiction" for p in self.periodes)
 
     def to_json_dict(self) -> dict:
         """Serialise pour exposition JSON cote front (json_script Django).

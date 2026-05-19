@@ -310,6 +310,18 @@ body {
   color: var(--text-default-grey);
 }
 
+/* Sinon, regle de base — : ligne separatrice italic entre les periodes
+   autorisation_sous_condition (en haut) et les periodes interdiction
+   (en dessous), pour expliciter le fallback (cf. #88). */
+.periodes-mixte__fallback-intro {
+  list-style: none;
+  margin-left: -1.25em;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  color: var(--text-mention-grey);
+  font-size: 0.95em;
+}
+
 .resultat-panel h2,
 .resultat-panel h3,
 .resultat-panel h4 {
