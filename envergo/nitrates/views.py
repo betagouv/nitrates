@@ -223,6 +223,13 @@ class MoulinetteView(View):
         except FileNotFoundError:
             referentiels = {}
 
+        # Mode preview admin : si ?draft_tree_id=<pk> est fourni ET que
+        # l'utilisateur a le droit de voir ce draft, l'evaluateur charge
+        # ce tree au lieu de l'actif. Sinon on strip le param (fallback
+        # silencieux sur l'actif, pas d'erreur) pour eviter qu'un visiteur
+        # non-staff puisse voir un brouillon non publie via une URL devinee.
+        self._guard_draft_tree_id(request)
+
         # Champs deja rendus dans le form principal (cascade + lat/lng +
         # code_insee + hidden type_fertilisant). On les exclut du
         # passthrough. Liste (et pas set) car Django templates rendent
@@ -302,9 +309,21 @@ class MoulinetteView(View):
         # de zero). Les choix sont issus DIRECTEMENT de l'arbre YAML
         # (pas d'une table hardcodee), donc seules les valeurs reellement
         # presentes dans la branche en cours sont proposees.
-        from envergo.nitrates.yaml_tree import collecter_qc_du_chemin, load_active_tree
+        from envergo.nitrates.yaml_tree import (
+            collecter_qc_du_chemin,
+            load_active_tree,
+            load_tree_by_id,
+        )
 
-        arbre_actif = load_active_tree()
+        # Si on est en preview d'un draft, on collecte les QC du draft.
+        draft_id = request.GET.get("draft_tree_id")
+        if draft_id:
+            try:
+                arbre_actif = load_tree_by_id(int(draft_id))
+            except (DecisionTree.DoesNotExist, ValueError, TypeError):
+                arbre_actif = load_active_tree()
+        else:
+            arbre_actif = load_active_tree()
         contexte_courant = dict(request.GET.items())
         # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
         # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
@@ -369,3 +388,29 @@ class MoulinetteView(View):
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)
+
+    def _guard_draft_tree_id(self, request) -> None:
+        """Si `?draft_tree_id=<pk>` est present mais que l'utilisateur n'a
+        pas la permission de previsualiser ce tree, on retire le param
+        en mutant `request.GET` (devient mutable temporairement).
+
+        Strategie fail-safe : pas d'erreur 403 / 404 -- on tombe
+        silencieusement sur l'arbre actif. Empeche un visiteur non-staff
+        de voir un brouillon non publie via une URL devinee, tout en
+        gardant le simulateur fonctionnel.
+        """
+        draft_id = request.GET.get("draft_tree_id")
+        if not draft_id:
+            return
+        from envergo.nitrates.permissions import can_preview_tree
+
+        try:
+            tree = DecisionTree.objects.get(pk=int(draft_id))
+        except (DecisionTree.DoesNotExist, ValueError, TypeError):
+            tree = None
+        allowed = tree is not None and can_preview_tree(request.user, tree)
+        if not allowed:
+            mutable = request.GET._mutable
+            request.GET._mutable = True
+            request.GET.pop("draft_tree_id", None)
+            request.GET._mutable = mutable
