@@ -227,6 +227,17 @@
   cursor: not-allowed;
 }
 
+/* Preview -- ambre */
+
+.yaml-tree__edit-btn--preview {
+  color: #b06a00;
+  text-decoration: none;
+}
+
+.yaml-tree__edit-btn--preview:hover {
+  background: #fff3e0;
+}
+
 /* Edit -- bleu */
 
 .yaml-tree__edit-btn--edit {

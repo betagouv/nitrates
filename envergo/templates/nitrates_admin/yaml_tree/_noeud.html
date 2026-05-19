@@ -37,7 +37,13 @@
       {% endif %}
 
       {% if is_editing %}
+        {% preview_url arbre path tree.pk as preview_link %}
         <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
+          <a class="yaml-tree__edit-btn yaml-tree__edit-btn--preview"
+             href="{{ preview_link }}"
+             target="_blank"
+             rel="noopener"
+             title="Prévisualiser ce nœud dans le simulateur (nouvel onglet)">👁</a>
           <button type="button"
                   class="yaml-tree__edit-btn yaml-tree__edit-btn--edit"
                   title="Éditer ce nœud"

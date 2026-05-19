@@ -424,6 +424,14 @@ class EditNodeView(View):
         # dans le row, sans les enfants -- htmx swap outerHTML sur le row).
         tree.refresh_from_db()
         node = editor.get_node_at(tree.contenu, path)
+        from envergo.nitrates.yaml_admin.preview import (
+            build_preview_url,
+            compute_simulator_params,
+        )
+
+        preview_link = build_preview_url(
+            tree.pk, compute_simulator_params(tree.contenu, path)
+        )
         body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_node_row.html",
@@ -433,6 +441,7 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "tags": get_tags("noeud", node),
+                "preview_link": preview_link,
             },
         ).content.decode("utf-8")
         return HttpResponse(body + _render_banner_oob(request, tree))

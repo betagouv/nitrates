@@ -101,3 +101,28 @@ def reset_link(querystring_base):
     if querystring_base:
         return "?" + querystring_base
     return "?"
+
+
+@register.simple_tag
+def preview_url(arbre, path_str, tree_pk):
+    """Construit l'URL preview du simulateur pour un noeud du draft.
+
+    `arbre` : dict de l'arbre (root key "arbre").
+    `path_str` : path slash-joined (ex: "n_zvn/q_occupation_sol/q_colza").
+    `tree_pk` : pk du draft.
+
+    Retourne `/simulateur/?draft_tree_id=<pk>&<param1>=<val1>...`
+    Le simulateur cote vue (MoulinetteView) accepte ce param si l'user a
+    les droits (cf. can_preview_tree).
+    """
+    from envergo.nitrates.yaml_admin.preview import (
+        build_preview_url,
+        compute_simulator_params,
+    )
+
+    if not path_str:
+        path: tuple = ()
+    else:
+        path = tuple(p for p in path_str.split("/") if p)
+    params = compute_simulator_params(arbre, path)
+    return build_preview_url(tree_pk, params)
