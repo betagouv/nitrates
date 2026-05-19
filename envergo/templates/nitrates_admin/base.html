@@ -43,6 +43,28 @@
       code {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
+
+      /* Dark mode : Django admin auto-applique son theme sombre via
+         prefers-color-scheme. Sans override, nos liens bleu DSFR (#1f4789)
+         deviennent illisibles sur fond sombre. On bascule sur un bleu
+         clair contraste suffisant (#99c4ff ~ AA sur fond #222). */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1e1e1e;
+          color: #e8e8e8;
+        }
+
+        a {
+          color: #99c4ff;
+        }
+
+        code {
+          background: #2a2a2a;
+          color: #f0d090;
+          padding: 0.1em 0.3em;
+          border-radius: 3px;
+        }
+      }
     </style>
     {% block extra_css %}{% endblock %}
   </head>
