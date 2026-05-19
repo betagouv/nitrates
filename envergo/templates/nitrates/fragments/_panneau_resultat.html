@@ -113,26 +113,20 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% if p.regime == "autorisation_sous_condition" %}
                       <li>
                         <strong>Autorisé sous conditions :</strong>
-                        du {{ p.du }} au {{ p.au }}.
+                        {% periode_phrase p %}.
                       </li>
                     {% endif %}
                   {% endfor %}
                   {% if has_autorisation and has_interdiction %}
                     <li class="periodes-mixte__fallback-intro">
-                      <em>Sinon, règle de base —</em>
+                      <em>Sinon, règle de base</em>
                     </li>
                   {% endif %}
                   {% for p in ev.regle.periodes %}
                     {% if p.regime == "interdiction" %}
                       <li>
-                        {% if p.regime == "interdiction" %}
-                          <strong>Interdiction :</strong>
-                        {% elif p.regime == "plafonnement" %}
-                          <strong>Plafond :</strong>
-                        {% else %}
-                          <strong>{{ p.regime|default:"Période" }} :</strong>
-                        {% endif %}
-                        du {{ p.du }} au {{ p.au }}.
+                        <strong>Interdiction :</strong>
+                        {% periode_phrase p %}.
                       </li>
                     {% endif %}
                   {% endfor %}
@@ -140,7 +134,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% if p.regime == "plafonnement" %}
                       <li>
                         <strong>Plafond :</strong>
-                        du {{ p.du }} au {{ p.au }}.
+                        {% periode_phrase p %}.
                       </li>
                     {% endif %}
                   {% endfor %}
