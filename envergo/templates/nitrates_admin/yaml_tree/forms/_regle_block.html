@@ -78,6 +78,16 @@
     {% if regle.source_juridique %}<span class="yaml-tree__source"><em>{{ regle.source_juridique }}</em></span>{% endif %}
     {% if regle.a_completer %}<span class="yaml-tree__todo">⚠ à compléter</span>{% endif %}
 
+    {# Bouton preview de la feuille (regle) -- mode lecture ET edition #}
+    {% if tree %}
+      {% preview_url_regle arbre parent_path valeur tree.pk tree.status as preview_link %}
+      <a class="yaml-tree__edit-btn yaml-tree__edit-btn--preview yaml-tree__preview-standalone"
+         href="{{ preview_link }}"
+         target="_blank"
+         rel="noopener"
+         title="Prévisualiser cette règle dans le simulateur (nouvel onglet)">↗</a>
+    {% endif %}
+
     {% if is_editing %}
       <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
         <button type="button"

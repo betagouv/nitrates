@@ -104,16 +104,54 @@ def reset_link(querystring_base):
 
 
 @register.simple_tag
-def preview_url(arbre, path_str, tree_pk):
-    """Construit l'URL preview du simulateur pour un noeud du draft.
+def preview_url_regle(arbre, parent_path_str, valeur, tree_pk, tree_status="draft"):
+    """Construit l'URL preview pour une règle (feuille) d'une branche.
+
+    Une règle est dans une branche d'un nœud parent. On calcule les params
+    via le path parent + on injecte {champ_du_parent: valeur} pour que le
+    simulateur descende jusqu'à la branche correspondante.
+    """
+    from envergo.nitrates.yaml_admin import editor
+    from envergo.nitrates.yaml_admin.preview import (
+        build_preview_url,
+        compute_simulator_params,
+    )
+
+    if not parent_path_str:
+        parent_path: tuple = ()
+    else:
+        parent_path = tuple(p for p in parent_path_str.split("/") if p)
+    params = compute_simulator_params(arbre, parent_path)
+    # Champ du parent + valeur de la branche : permet au simulateur de
+    # descendre jusqu'à la regle ciblee.
+    parent = editor.get_node_at(arbre, parent_path)
+    if isinstance(parent, dict):
+        champ = parent.get("champ")
+        if champ and valeur is not None:
+            params[champ] = _stringify_valeur_for_url(valeur)
+    use_draft_id = tree_status != "active"
+    return build_preview_url(tree_pk if use_draft_id else None, params)
+
+
+def _stringify_valeur_for_url(v):
+    if v is True:
+        return "True"
+    if v is False:
+        return "False"
+    return str(v)
+
+
+@register.simple_tag
+def preview_url(arbre, path_str, tree_pk, tree_status="draft"):
+    """Construit l'URL preview du simulateur pour un noeud.
 
     `arbre` : dict de l'arbre (root key "arbre").
     `path_str` : path slash-joined (ex: "n_zvn/q_occupation_sol/q_colza").
-    `tree_pk` : pk du draft.
+    `tree_pk` : pk du tree.
+    `tree_status` : "draft" / "active" / "archive". Si "active" on n'ajoute
+       pas `draft_tree_id` (le simulateur charge deja l'actif par defaut).
 
-    Retourne `/simulateur/?draft_tree_id=<pk>&<param1>=<val1>...`
-    Le simulateur cote vue (MoulinetteView) accepte ce param si l'user a
-    les droits (cf. can_preview_tree).
+    Retourne `/simulateur/?[draft_tree_id=<pk>&]<param1>=<val1>...`
     """
     from envergo.nitrates.yaml_admin.preview import (
         build_preview_url,
@@ -125,4 +163,8 @@ def preview_url(arbre, path_str, tree_pk):
     else:
         path = tuple(p for p in path_str.split("/") if p)
     params = compute_simulator_params(arbre, path)
-    return build_preview_url(tree_pk, params)
+    # Si on previsualise un draft (statut != active), on injecte draft_tree_id.
+    # Sur l'arbre actif, l'URL n'a pas besoin de ce param (le simulateur le
+    # charge par defaut) -- ca evite une URL avec un id qui pointe sur l'actif.
+    use_draft_id = tree_status != "active"
+    return build_preview_url(tree_pk if use_draft_id else None, params)

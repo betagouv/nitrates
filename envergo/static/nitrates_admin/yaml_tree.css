@@ -238,6 +238,15 @@
   background: #fff3e0;
 }
 
+/* Bouton preview en mode lecture (hors .yaml-tree__edit-actions) : on le
+   pousse a droite manuellement pour qu'il s'aligne comme les autres
+   boutons d'edition. */
+.yaml-tree__preview-standalone {
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+  align-self: center;
+}
+
 /* Edit -- bleu */
 
 .yaml-tree__edit-btn--edit {
