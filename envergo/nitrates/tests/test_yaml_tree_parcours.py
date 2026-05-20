@@ -457,6 +457,32 @@ def test_questions_conditionnelles_pas_remontees_si_parent_repondu(arbre_pan):
     assert isinstance(res, Resultat)
 
 
+def test_question_conditionnelle_pre_resolue_par_contexte(arbre_pan):
+    """Cas mais sous-culture cliquee : cascade.js pre-remplit
+    culture_irriguee_type=mais via mapping_sous_culture_vers_branche.flags.
+    Du coup, meme si culture_irriguee n'est pas encore repondu, on ne
+    doit PAS proposer la sous-question culture_irriguee_type (elle est
+    deja resolue) -- juste demander culture_irriguee."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+            # pre-fill via cascade.js depuis mapping referentiel
+            "culture_irriguee_type": "mais",
+        },
+    )
+    assert isinstance(res, QuestionsSubsidiaires)
+    champs = {q.champ for q in res.questions}
+    assert "culture_irriguee" in champs
+    # La sous-question culture_irriguee_type ne doit PAS apparaitre
+    # puisqu'elle est deja pre-remplie cote front.
+    assert "culture_irriguee_type" not in champs
+
+
 # ─── has_borne_flottante ───────────────────────────────────────────────────
 
 

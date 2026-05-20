@@ -436,6 +436,11 @@ def _collecter_aval_conditionnel(
     `parent_valeur` cote utilisateur, et les revelera au clic. Aucun
     aller-retour serveur intermediaire necessaire.
 
+    Si la sous-question est DEJA repondue dans le contexte (typiquement
+    via un pre-fill cascade.js -> mapping_sous_culture_vers_branche.flags,
+    cf. culture_irriguee_type=mais quand on a clique 'Mais' en sous-culture),
+    on ne la propose pas : c'est de la redondance UX.
+
     On ne descend pas les catalogues internes (resolus serveur uniquement)
     ni les sous-branches conditionnelles a 2 niveaux (rare en pratique,
     et ca alourdirait inutilement le rendu)."""
@@ -444,6 +449,9 @@ def _collecter_aval_conditionnel(
     sous = branche["noeud"]
     type_noeud = sous.get("type_noeud")
     if type_noeud != "formulaire":
+        return
+    # Skip si la sous-question est deja resolue par le contexte (pre-fill).
+    if contexte.get(sous["champ"]) is not None:
         return
     _ajouter_question(
         questions,
