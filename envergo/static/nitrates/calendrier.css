@@ -28,27 +28,34 @@
   position: relative;
   height: 46px;
   border-radius: 8px;
+
+  /* Clip les zones d'overlay aux coins arrondis (sinon les segments qui
+     touchent les bords gauche/droit debordent visuellement). */
+  overflow: hidden;
 }
 
+/* Bordure remplacee par un trait interne via box-shadow inset : ca evite
+   le liseret de fond visible quand un overlay touche le bord (le bord
+   du bar ne mange pas 1px a l'interieur). */
 .calendrier-epandage--vert .calendrier-epandage__bar {
   background: #c3fad5;
-  border: 1px solid #4b9f6c;
+  box-shadow: inset 0 0 0 1px #4b9f6c;
 }
 
 .calendrier-epandage--gris .calendrier-epandage__bar {
   background: #eaeaea;
-  border: 1px solid #b8b8b8;
+  box-shadow: inset 0 0 0 1px #b8b8b8;
 }
 
 .calendrier-epandage--orange .calendrier-epandage__bar {
   background: #ffe0b2;
-  border: 1px solid #f93;
+  box-shadow: inset 0 0 0 1px #f93;
 }
 
 .calendrier-epandage__zone {
   position: absolute;
-  top: -1px;
-  bottom: -1px;
+  top: 0;
+  bottom: 0;
   cursor: help;
 }
 
