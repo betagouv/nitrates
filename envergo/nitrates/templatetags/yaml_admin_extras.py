@@ -180,3 +180,79 @@ def preview_url(arbre, path_str, tree_pk, tree_status="draft"):
     # charge par defaut) -- ca evite une URL avec un id qui pointe sur l'actif.
     use_draft_id = tree_status != "active"
     return build_preview_url(tree_pk if use_draft_id else None, params)
+
+
+@register.simple_tag(takes_context=True)
+def admin_url_for_resultat(context, chemin, draft_tree_id=None):
+    """Lien retour depuis le simulateur (panneau debug "Chemin parcouru")
+    vers l'admin YAML, ciblé sur le dernier nœud du chemin de résolution.
+
+    Symétrique du bouton ↗ depuis l'admin vers le simulateur.
+
+    - Si `draft_tree_id` est fourni, on cible ce tree (perm verifiee via
+      can_preview_tree).
+    - Sinon on cible l'arbre actif courant.
+    - Visible uniquement pour staff (= acces admin YAML).
+    Retourne "" si l'utilisateur ne peut pas / n'a rien a voir.
+    """
+    user = getattr(context.get("request"), "user", None)
+    if not user or not getattr(user, "is_staff", False):
+        return ""
+    if not chemin:
+        return ""
+
+    from django.utils import timezone
+
+    from envergo.nitrates.models import DecisionTree
+    from envergo.nitrates.permissions import can_preview_tree
+
+    tree = None
+    is_draft = False
+    if draft_tree_id:
+        try:
+            tree = DecisionTree.objects.filter(pk=int(draft_tree_id)).first()
+        except (TypeError, ValueError):
+            tree = None
+        if tree is None or not can_preview_tree(user, tree):
+            return ""
+        is_draft = tree.status == DecisionTree.STATUS_DRAFT
+    else:
+        tree = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
+        if tree is None:
+            return ""
+
+    # `chemin` = liste d'ids du parcours (ex: ["n_zvn", "q_occupation_sol",
+    # "n_zone_note_5", "r_truc"]). Le dernier est la feuille resolue.
+    # On construit la liste des paths cumulatifs pour les params expand=,
+    # ce qui depliera la cascade jusqu'a la feuille.
+    parts = [str(p) for p in chemin if p]
+    cumul: list[str] = []
+    prefix = ""
+    for p in parts:
+        prefix = f"{prefix}/{p}" if prefix else p
+        cumul.append(prefix)
+
+    # Choix du mode :
+    # - actif : toujours lecture (l'edition se fait via un draft)
+    # - draft + le user detient deja un lock valide : edition (cas nominal,
+    #   on continue le travail en cours sans creer un nouveau draft fantome)
+    # - draft + verrouille par un autre OU sans lock : lecture (laisse l'user
+    #   decider d'acquerir le lock depuis l'admin)
+    mode = "lecture"
+    if is_draft and tree.locked_by_id == user.pk and tree.locked_at is not None:
+        if tree.locked_at >= timezone.now() - DecisionTree.LOCK_TIMEOUT:
+            mode = "edition"
+
+    from urllib.parse import urlencode
+
+    qs = [("tree_id", str(tree.pk)), ("mode", mode)]
+    for path in cumul:
+        qs.append(("expand", path))
+    # Fragment d'ancre : conforme au _noeud.html (id="node-{{ path|slugify }}").
+    last_path = cumul[-1] if cumul else ""
+    fragment = ""
+    if last_path:
+        from django.utils.text import slugify
+
+        fragment = "#node-" + slugify(last_path)
+    return f"/admin/nitrates/arbre-decision/?{urlencode(qs)}{fragment}"

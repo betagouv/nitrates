@@ -1,4 +1,5 @@
 {% load nitrates_tags %}
+{% load yaml_admin_extras %}
 
 {% comment %}
 Panneau droit : reglementations applicables.
@@ -318,7 +319,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
             {% if ev.chemin %}
               <div class="nitrates-debug-panel__section">
-                <h5 class="nitrates-debug-panel__title">Chemin parcouru</h5>
+                <h5 class="nitrates-debug-panel__title">
+                  Chemin parcouru
+                  {% admin_url_for_resultat ev.chemin request.GET.draft_tree_id as admin_link %}
+                  {% if admin_link %}
+                    <a class="nitrates-debug-panel__admin-link"
+                       href="{{ admin_link }}"
+                       target="_blank"
+                       rel="noopener"
+                       title="Ouvrir ce nœud dans l'éditeur YAML (admin, nouvel onglet)">↗ Modifier dans l'admin</a>
+                  {% endif %}
+                </h5>
                 <ol class="nitrates-debug-panel__path">
                   {% for n in ev.chemin %}
                     <li>
