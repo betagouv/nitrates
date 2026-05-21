@@ -455,6 +455,20 @@ body {
   margin: 0 0 6px;
 }
 
+.nitrates-debug-panel__admin-link {
+  margin-left: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #b06a00;
+  text-decoration: none;
+}
+
+.nitrates-debug-panel__admin-link:hover {
+  text-decoration: underline;
+}
+
 /* Liste cle/valeur en 2 colonnes : libelle a gauche, valeur a droite,
    les valeurs longues passent a la ligne sans deborder. */
 .nitrates-debug-panel__dl {

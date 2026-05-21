@@ -83,6 +83,29 @@ def can_activate_tree(user, tree) -> bool:
     return True
 
 
+def can_preview_tree(user, tree) -> bool:
+    """True si l'utilisateur peut prévisualiser ce tree via le simulateur
+    avec `?draft_tree_id=<pk>` (cf. killer feature #80 - issue close).
+
+    Règles :
+      - non-staff : non (le simulateur public ne doit voir que l'actif)
+      - superuser : oui sur tout draft / actif / archive
+      - intra (staff non-observator) : oui sur tout
+      - external_observator : oui uniquement sur ses propres drafts
+    """
+    if not user or not user.is_authenticated or not user.is_staff:
+        return False
+    if user.is_superuser:
+        return True
+    if is_external_observator(user):
+        from envergo.nitrates.models import DecisionTree
+
+        if tree.status != DecisionTree.STATUS_DRAFT:
+            return False
+        return tree.created_by_id == user.pk
+    return True
+
+
 def can_edit_active(user) -> bool:
     """True si l'utilisateur peut declencher l'edition de l'arbre actif
     (= creation d'un draft a partir de l'actif, qui sera ensuite active).

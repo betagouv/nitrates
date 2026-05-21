@@ -117,6 +117,7 @@ class YamlTreeView(TemplateView):
 
         ctx.update(
             {
+                "arbre": arbre,
                 "metadata": arbre.get("metadata") or {},
                 "racine": racine,
                 "items": items,

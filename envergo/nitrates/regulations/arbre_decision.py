@@ -32,6 +32,7 @@ from django import forms
 
 from envergo.evaluations.models import RESULTS
 from envergo.moulinette.regulations import CriterionEvaluator
+from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.yaml_admin.catalogue_refs import (
     CATALOGUE_NON_RESOLVABLE,
     ResolveContext,
@@ -42,6 +43,7 @@ from envergo.nitrates.yaml_tree import (
     QuestionsSubsidiaires,
     Resultat,
     load_active_tree,
+    load_tree_by_id,
     parcours,
 )
 
@@ -86,6 +88,7 @@ CHAMPS_EXCLUS_CONTEXTE = {
     "sous_culture_form",  # tracabilite front (libelle UI)
     "categorie_fertilisant",  # tracabilite front (cf. mapping_sous_fertilisant_vers_type)
     "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
+    "draft_tree_id",  # preview admin d'un brouillon, route le chargement de l'arbre
 }
 
 # Garde-fou contre une boucle infinie de resolutions catalogue (un arbre
@@ -157,6 +160,19 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
 
     def _load_decision_tree(self) -> dict:
         # Source de verite : la table DecisionTree (un seul actif a la fois).
+        # Cas preview admin : si `draft_tree_id` est dans le QS, on charge
+        # ce draft a la place de l'actif (cf. killer feature #80). La
+        # verification d'autorisation est faite cote vue (MoulinetteView)
+        # qui strip le parametre si l'utilisateur n'a pas le droit.
+        raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
+        draft_id = raw_data.get("draft_tree_id")
+        if draft_id:
+            try:
+                return load_tree_by_id(int(draft_id))
+            except (DecisionTree.DoesNotExist, ValueError, TypeError):
+                # Draft inexistant : fallback silencieux sur l'actif. Mieux
+                # vaut une eval sur l'actif qu'une 500.
+                pass
         # La gestion du PAR R44 viendra plus tard via un champ region_code
         # sur le modele.
         return load_active_tree()

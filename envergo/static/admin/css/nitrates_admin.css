@@ -46,3 +46,44 @@
 .login #branding #site-name a {
   color: #fff;
 }
+
+/* Dark mode : le bleu Marianne #000091 devient illisible sur fond sombre
+   (sections sidebar "ANALYTICS / AUTHENTIFICATION / ..." et liens
+   "Groupes / Avis / ..."). On bascule sur du blanc / bleu pale + on
+   eclaircit le bleu link. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #99c4ff;
+    --secondary: #99c4ff;
+    --link-fg: #99c4ff;
+    --link-hover-color: #c8ddff;
+    --header-bg: #1a1a3a;
+    --header-link-color: #fff;
+    --header-color: #fff;
+    --button-bg: #1a1a3a;
+    --button-hover-bg: #2a2a5a;
+    --default-button-bg: #1a1a3a;
+    --default-button-hover-bg: #2a2a5a;
+  }
+
+  /* Les sections de la sidebar : background bleu Marianne sur fond noir
+     -> texte du libelle bleu (illisible). On force le texte en blanc. */
+  #nav-sidebar caption,
+  .module h2,
+  .module caption,
+  .module .section,
+  #content-related .module h2 {
+    color: #fff !important;
+    background: #1a1a3a !important;
+  }
+
+  /* Liens des modèles dans la sidebar : eclaircis */
+  #nav-sidebar .current-model a,
+  #nav-sidebar table a {
+    color: #cfd6e4 !important;
+  }
+
+  #nav-sidebar table a:hover {
+    color: #fff !important;
+  }
+}

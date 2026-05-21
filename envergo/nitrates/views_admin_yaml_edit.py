@@ -134,8 +134,15 @@ def _render_banner_oob(request, tree) -> str:
     initial du chargement de page : si on est entre en edition sans
     revisions, '↩ Annuler' restait disabled meme apres une modif.
 
+    IMPORTANT : on doit reproduire ICI tout le contexte que `YamlTreeView`
+    passe au template `_edit_banner.html`, sinon le rerender perd des
+    variables conditionnelles (#87 : `can_activate_this_tree` manquant
+    -> branche else -> bouton 'Sauvegarder et publier' disparait apres
+    chaque modif inline).
+
     Appele dans chaque vue d'edition inline qui modifie l'arbre.
     """
+    from envergo.nitrates.permissions import can_activate_tree
     from envergo.nitrates.views_admin_yaml import _edited_origin_name
 
     banner_html = render(
@@ -143,7 +150,8 @@ def _render_banner_oob(request, tree) -> str:
         "nitrates_admin/yaml_tree/_edit_banner.html",
         {
             "tree": tree,
-            "edited_origin_name": _edited_origin_name(tree),
+            "edited_origin_name": _edited_origin_name(tree, request.user),
+            "can_activate_this_tree": can_activate_tree(request.user, tree),
             "recent_revisions": list(tree.revisions.order_by("-created_at")[:5]),
         },
     ).content.decode("utf-8")
@@ -416,6 +424,14 @@ class EditNodeView(View):
         # dans le row, sans les enfants -- htmx swap outerHTML sur le row).
         tree.refresh_from_db()
         node = editor.get_node_at(tree.contenu, path)
+        from envergo.nitrates.yaml_admin.preview import (
+            build_preview_url,
+            compute_simulator_params,
+        )
+
+        preview_link = build_preview_url(
+            tree.pk, compute_simulator_params(tree.contenu, path)
+        )
         body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_node_row.html",
@@ -425,6 +441,7 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "tags": get_tags("noeud", node),
+                "preview_link": preview_link,
             },
         ).content.decode("utf-8")
         return HttpResponse(body + _render_banner_oob(request, tree))
