@@ -121,16 +121,28 @@ def preview_url_regle(arbre, parent_path_str, valeur, tree_pk, tree_status="draf
         parent_path: tuple = ()
     else:
         parent_path = tuple(p for p in parent_path_str.split("/") if p)
-    params = compute_simulator_params(arbre, parent_path)
     # Champ du parent + valeur de la branche : permet au simulateur de
-    # descendre jusqu'à la regle ciblee.
+    # descendre jusqu'à la regle ciblee. On passe la combinaison comme
+    # leaf_branch a compute_simulator_params pour qu'elle soit aussi prise
+    # en compte par le resolveur SIG / cascade form (typiquement quand la
+    # branche feuille est sur un catalogue note_5/montagne).
     parent = editor.get_node_at(arbre, parent_path)
+    leaf_branch = None
     if isinstance(parent, dict):
         champ = parent.get("champ")
         if champ and valeur is not None:
-            params[champ] = _stringify_valeur_for_url(valeur)
+            leaf_branch = (champ, _coerce_valeur_for_constraint(valeur))
+    params = compute_simulator_params(arbre, parent_path, leaf_branch=leaf_branch)
     use_draft_id = tree_status != "active"
     return build_preview_url(tree_pk if use_draft_id else None, params)
+
+
+def _coerce_valeur_for_constraint(v):
+    """Garde le typage natif (bool/str) pour matcher les comparaisons des
+    resolveurs SIG (qui utilisent `is True`, `== "montagne_note_6"`, etc.).
+    Sert pour leaf_branch ; pour les params URL on continue d'utiliser
+    `_stringify_valeur_for_url`."""
+    return v
 
 
 def _stringify_valeur_for_url(v):
