@@ -1,4 +1,24 @@
 # =============================================================================
+# ⚠️ DEPRECATED (2026-05-22) — Source de seed uniquement
+# =============================================================================
+# Ce fichier n'est plus consulté en runtime depuis la phase 4 de la carte #61.
+# Les référentiels sont désormais en base de données (cf. modèles Django dans
+# `envergo/nitrates/models_referentiels.py` : CategorieCulture, Culture,
+# BrancheCulturale, Fertilisant, NoteReglementaire, CodePrescription,
+# EvenementPhenologique).
+#
+# Ce fichier sert UNIQUEMENT de source initiale pour :
+#   - la migration 0012_seed_referentiels (RunPython idempotent)
+#   - la commande `python manage.py seed_referentiels`
+#
+# Pour modifier un référentiel : utiliser l'admin Django (/admin/nitrates/).
+# Modifier ce fichier ne change RIEN en runtime tant que le seed n'est pas
+# rejoué (et le seed écrase la DB avec update_or_create, donc à éviter sans
+# coordination avec les modifs admin déjà faites).
+#
+# Conservé pour mémoire : structure historique des référentiels, post-its
+# Karine, rédaction juridique brute des PCs.
+# =============================================================================
 # RÉFÉRENTIELS — listes fermées utilisées dans l'arbre de décision
 # =============================================================================
 # Modifier ce fichier uniquement si la réglementation change (nouveau type de
