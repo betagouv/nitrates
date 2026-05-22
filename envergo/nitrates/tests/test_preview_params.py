@@ -7,6 +7,10 @@ from envergo.nitrates.yaml_admin.preview import (
     compute_simulator_params,
 )
 
+# Les helpers cascade consomment les referentiels depuis la DB
+# (cf. #61 phase 4 — load_referentiels lit l'ORM). Acces DB requis.
+pytestmark = pytest.mark.django_db
+
 
 @pytest.fixture
 def arbre_minimal():

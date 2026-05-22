@@ -449,11 +449,15 @@ def test_note_inconnue_echoue():
 # ─── Sur le vrai arbre PAN brouillon (charge depuis NITRATES_SPECS_DIR) ────
 
 
+@pytest.mark.django_db
 def test_vrai_arbre_pan_brouillon_structurellement_valide():
     """Le brouillon vit dans NITRATES_SPECS_DIR. Il doit etre structurellement
     valide (JSON Schema). Les erreurs semantiques residuelles (renvois vers
     des ids non encore crees, etc.) sont acceptees tant que c'est un brouillon ;
-    on les remonte juste pour info au lieu de faire echouer le test."""
+    on les remonte juste pour info au lieu de faire echouer le test.
+
+    Marquage django_db ajoute en phase 4 #61 : load_referentiels() lit la DB
+    desormais."""
     from envergo.nitrates.yaml_tree.loader import load_arbre, load_referentiels
     from envergo.nitrates.yaml_tree.validator import _validate_structure
 
