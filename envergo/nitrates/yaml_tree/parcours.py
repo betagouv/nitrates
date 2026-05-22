@@ -239,8 +239,17 @@ def _descendre_branche(
 
 def _choisir_branche(noeud: dict, valeur: Any) -> dict:
     for branche in noeud.get("branches", []):
-        if _valeurs_egales(branche.get("valeur"), valeur):
+        # Cas branche `valeur:` (singulier, valeur unique).
+        if "valeur" in branche and _valeurs_egales(branche.get("valeur"), valeur):
             return branche
+        # Cas branche `valeurs:` (pluriel, liste de valeurs équivalentes,
+        # cf. grammaire #61 phase 3). Ex `valeurs: [icpe_e, icpe_d]` pour
+        # regrouper enregistrement + déclaration sur la même branche.
+        valeurs_liste = branche.get("valeurs")
+        if valeurs_liste:
+            for v in valeurs_liste:
+                if _valeurs_egales(v, valeur):
+                    return branche
 
     # Fallback metier : sur un noeud `type_fertilisant`, l'arbre peut avoir
     # une branche generique `type_I` qui couvre l'union {type_Ia, type_Ib}.
@@ -252,10 +261,16 @@ def _choisir_branche(noeud: dict, valeur: Any) -> dict:
             if branche.get("valeur") == "type_I":
                 return branche
 
+    valeurs_disponibles = []
+    for b in noeud.get("branches", []):
+        if "valeur" in b:
+            valeurs_disponibles.append(b["valeur"])
+        elif "valeurs" in b:
+            valeurs_disponibles.extend(b["valeurs"])
     raise ParcoursError(
         f"noeud '{noeud['id']}' (champ={noeud['champ']!r}) : aucune branche "
         f"ne correspond a la valeur {valeur!r}. "
-        f"Valeurs possibles : {[b.get('valeur') for b in noeud.get('branches', [])]}"
+        f"Valeurs possibles : {valeurs_disponibles}"
     )
 
 

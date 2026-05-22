@@ -526,3 +526,66 @@ def test_has_borne_flottante_false_si_pas_de_periodes():
     assert res.has_borne_flottante is False
     res2 = Resultat(regle_id="r_test", type="libre", periodes=[])
     assert res2.has_borne_flottante is False
+
+
+# ─── Branche `valeurs: [a, b]` (regroupement, cf. #61 phase 3) ──────────────
+
+
+def _arbre_avec_valeurs_regroupees() -> dict:
+    """Arbre qui regroupe icpe_e et icpe_d sur une seule branche via
+    `valeurs: [icpe_e, icpe_d]`."""
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_plan",
+                "champ": "plan_epandage",
+                "texte": "Plan d'épandage ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "regle": {"id": "r_icpe_a", "type": "interdiction"},
+                    },
+                    {
+                        "valeurs": ["icpe_e", "icpe_d"],
+                        "libelle": "ICPE E ou D",
+                        "regle": {"id": "r_icpe_ed_groupe", "type": "interdiction"},
+                    },
+                    {
+                        "valeur": "non_concerne",
+                        "regle": {"id": "r_non_concerne", "type": "libre"},
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_branche_valeurs_pluriel_matche_icpe_e():
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_e"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_ed_groupe"
+
+
+def test_branche_valeurs_pluriel_matche_icpe_d():
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_d"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_ed_groupe"
+
+
+def test_branche_valeur_singulier_prime_si_specifique():
+    """icpe_a a une branche singulier dédiée : ne tombe pas sur le groupe."""
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_a"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_a"

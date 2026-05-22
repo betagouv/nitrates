@@ -81,11 +81,16 @@ exemple_noeud_catalogue:
 # ─────────────────────────────────────────────────────────────────────────────
 # PRIMITIVE 2 — `branche`
 # ─────────────────────────────────────────────────────────────────────────────
-# Une branche représente UNE réponse à la question/dimension parente.
-# Elle contient :
-#   - `valeur`     : la réponse (code stable ; bool, string snake_case, ou int)
-#   - `libelle`    : texte affiché (optionnel, défaut = valeur prettifiée)
-#   - EXACTEMENT UN des suivants :
+# Une branche représente UNE réponse (ou un groupe de réponses) à la
+# question/dimension parente.
+# Elle contient EXACTEMENT UN de :
+#   - `valeur`     : une réponse unique (bool, string snake_case, ou int)
+#   - `valeurs`    : une liste de réponses qui mènent toutes vers le même
+#                     sous-arbre. Utile pour les regroupements (ex
+#                     `valeurs: [icpe_e, icpe_d]` représente "ICPE E ou D",
+#                     plus simple que dupliquer 2 branches).
+# Et `libelle`     : texte affiché (optionnel, défaut = valeur prettifiée)
+# Et EXACTEMENT UN des suivants :
 #       * `noeud`        : sous-arbre (récursion)
 #       * `regle`        : feuille terminale
 #       * `renvoi_vers`  : alias vers une règle déjà définie

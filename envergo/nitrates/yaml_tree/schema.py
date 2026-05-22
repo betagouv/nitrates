@@ -117,22 +117,43 @@ NOEUD_SCHEMA = {
 }
 
 # Primitive `branche` : reponse possible. Doit contenir EXACTEMENT UN de
-# {noeud, regle, renvoi_vers}.
+# {noeud, regle, renvoi_vers} et EXACTEMENT UN de {valeur, valeurs}.
+#
+# `valeurs: [a, b]` (pluriel) permet de grouper plusieurs valeurs sur une
+# meme branche (ex `plan_epandage` qui matche `icpe_e_ou_d` = soit `icpe_e`
+# soit `icpe_d`). Le walker du parcours teste l'appartenance a la liste.
+# Cf. #61 phase 3 : extension de la grammaire pour les regroupements DB.
 BRANCHE_SCHEMA = {
     "type": "object",
-    "required": ["valeur"],
     "additionalProperties": False,
     "properties": {
         "valeur": {"type": ["string", "boolean", "integer"]},
+        "valeurs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": ["string", "boolean", "integer"]},
+        },
         "libelle": {"type": "string"},
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
     },
-    "oneOf": [
-        {"required": ["noeud"]},
-        {"required": ["regle"]},
-        {"required": ["renvoi_vers"]},
+    "allOf": [
+        # Exactement un de {valeur, valeurs} :
+        {
+            "oneOf": [
+                {"required": ["valeur"]},
+                {"required": ["valeurs"]},
+            ]
+        },
+        # Exactement un de {noeud, regle, renvoi_vers} :
+        {
+            "oneOf": [
+                {"required": ["noeud"]},
+                {"required": ["regle"]},
+                {"required": ["renvoi_vers"]},
+            ]
+        },
     ],
 }
 
