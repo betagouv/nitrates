@@ -237,3 +237,90 @@ class DecisionTreeAdmin(admin.ModelAdmin):
             f"Draft « {draft.name} » créé. Redirection vers l'éditeur.",
         )
         return redirect(url)
+
+
+# ─── Référentiels (cf. carte #61 — migration referentiels.yaml) ───────────────
+
+
+from envergo.nitrates.models import (  # noqa: E402
+    BrancheCulturale,
+    CategorieCulture,
+    CodePrescription,
+    Culture,
+    EvenementPhenologique,
+    Fertilisant,
+    NoteReglementaire,
+)
+
+
+@admin.register(CategorieCulture)
+class CategorieCultureAdmin(admin.ModelAdmin):
+    list_display = ("identifiant", "libelle_public", "ordre_affichage")
+    search_fields = ("identifiant", "libelle_public")
+    ordering = ("ordre_affichage", "libelle_public")
+
+
+@admin.register(BrancheCulturale)
+class BrancheCulturaleAdmin(admin.ModelAdmin):
+    list_display = ("identifiant", "libelle_court", "ordre_affichage")
+    search_fields = ("identifiant", "libelle_court")
+    ordering = ("ordre_affichage", "identifiant")
+
+
+@admin.register(Culture)
+class CultureAdmin(admin.ModelAdmin):
+    list_display = (
+        "identifiant",
+        "libelle_public",
+        "categorie",
+        "branche_culturale",
+        "occupation_sol",
+        "ordre_affichage",
+    )
+    list_filter = ("categorie", "occupation_sol", "branche_culturale")
+    search_fields = ("identifiant", "libelle_public")
+    autocomplete_fields = ("categorie", "branche_culturale")
+    ordering = ("categorie__ordre_affichage", "ordre_affichage", "libelle_public")
+
+
+@admin.register(Fertilisant)
+class FertilisantAdmin(admin.ModelAdmin):
+    list_display = (
+        "identifiant",
+        "libelle_public",
+        "categorie",
+        "type_reglementaire",
+        "ordre_affichage",
+    )
+    list_filter = ("categorie", "type_reglementaire")
+    search_fields = ("identifiant", "libelle_public")
+    ordering = ("categorie", "ordre_affichage", "libelle_public")
+
+
+@admin.register(NoteReglementaire)
+class NoteReglementaireAdmin(admin.ModelAdmin):
+    list_display = ("identifiant", "libelle_court", "ordre_affichage")
+    search_fields = ("identifiant", "libelle_court")
+    ordering = ("ordre_affichage", "identifiant")
+
+
+@admin.register(CodePrescription)
+class CodePrescriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        "identifiant",
+        "mots_cles",
+        "toujours_affiche",
+        "note_reglementaire",
+        "ordre_affichage",
+    )
+    list_filter = ("toujours_affiche", "note_reglementaire")
+    search_fields = ("identifiant", "mots_cles", "texte_court")
+    autocomplete_fields = ("note_reglementaire",)
+    ordering = ("ordre_affichage", "identifiant")
+
+
+@admin.register(EvenementPhenologique)
+class EvenementPhenologiqueAdmin(admin.ModelAdmin):
+    list_display = ("identifiant", "libelle_public", "date_calendrier")
+    search_fields = ("identifiant", "libelle_public")
+    ordering = ("identifiant",)
