@@ -52,12 +52,12 @@ def test_segment_interdit_pivot_annee_agricole():
 
 
 def test_segment_interdit_phenologique():
-    """Une borne phenologique avec date_calendrier dans referentiels.yaml
-    produit un vrai segment. Sans date_calendrier (ou evenement inconnu),
-    retombe sur une liste vide."""
-    # `brunissement_soies` a `date_calendrier: "15/08"` dans referentiels.yaml,
+    """Une borne phenologique avec date_calendrier en DB produit un vrai
+    segment. Sans date_calendrier (ou evenement inconnu), retombe sur
+    une liste vide."""
+    # `brunissement_des_soies` a `date_calendrier: "15/08"` en DB,
     # donc on produit un segment 15/08 -> 15/02.
-    segs = _segment_interdit({"du": "brunissement_soies", "au": "15/02"})
+    segs = _segment_interdit({"du": "brunissement_des_soies", "au": "15/02"})
     assert len(segs) >= 1, "Borne phenologique connue doit produire un segment"
     # Evenement inexistant : pas de date_calendrier -> liste vide.
     segs = _segment_interdit({"du": "evenement_inexistant", "au": "15/02"})
@@ -130,7 +130,7 @@ def test_calendrier_phenologique_dans_liste_a_part():
     ctx = calendrier_epandage(
         _regle(
             type="interdiction",
-            periodes=[{"du": "brunissement_soies", "au": "15/02"}],
+            periodes=[{"du": "brunissement_des_soies", "au": "15/02"}],
         )
     )
     assert len(ctx["segments"]) >= 1

@@ -79,7 +79,8 @@
                    font-size:0.9rem">
       <strong>Admin nitrates</strong>
       <nav style="display:flex;gap:1rem;">
-        <a href="{% url 'admin:index' %}" style="color:#fff;">← Django admin</a>
+        <a href="{% url 'admin:app_list' app_label='nitrates' %}"
+           style="color:#fff">← Django admin</a>
         <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
            style="color:#fff">Arbres (liste)</a>
         <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>

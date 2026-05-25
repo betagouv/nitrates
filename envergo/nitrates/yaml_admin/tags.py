@@ -22,8 +22,11 @@ class Tag:
 # ─── Definitions ─────────────────────────────────────────────────────────────
 
 _FORMULAIRE_NIVEAUX = {
-    "culture": Tag("culture", "tag-form-culture", "📋"),
-    "sous_culture": Tag("sous-culture", "tag-form-sous-culture", "📋"),
+    # Note 2026-05-25 : on n'expose plus de tag visuel pour le niveau
+    # "culture" parce qu'il correspond a une question structurelle
+    # (occupation_sol) qui n'a pas d'utilite a etre identifiee par un tag
+    # dans le viewer. On garde la cle dans la grammaire pour back-compat.
+    "sous_culture": Tag("branche culturale", "tag-form-sous-culture", "📋"),
     "type_fertilisant": Tag("fertilisant", "tag-form-fertilisant", "📋"),
     "complement": Tag("complement", "tag-form-complement", "📋"),
 }
@@ -46,7 +49,6 @@ _A_COMPLETER_TAG = Tag("a completer", "tag-a-completer", "⚠️")
 # Liste des filtres rapides exposes en barre d'outils (ordre = ordre d'affichage).
 # Chaque filtre est (cle GET, Tag affiche pour le bouton).
 QUICK_FILTERS: list[tuple[str, Tag]] = [
-    ("culture", _FORMULAIRE_NIVEAUX["culture"]),
     ("sous_culture", _FORMULAIRE_NIVEAUX["sous_culture"]),
     ("type_fertilisant", _FORMULAIRE_NIVEAUX["type_fertilisant"]),
     ("complement", _FORMULAIRE_NIVEAUX["complement"]),
@@ -76,6 +78,11 @@ def get_tags(entry_kind: str, data: dict) -> list[Tag]:
             niveau = data.get("niveau")
             if niveau and niveau in _FORMULAIRE_NIVEAUX:
                 tags.append(_FORMULAIRE_NIVEAUX[niveau])
+            elif niveau == "culture":
+                # Pas de tag visuel pour niveau=culture (= question
+                # structurelle occupation_sol, cf. 2026-05-25). On garde
+                # la cle dans la grammaire mais on n'encombre pas le viewer.
+                pass
             else:
                 tags.append(Tag("formulaire", "tag-formulaire", "📋"))
     elif entry_kind == "regle":

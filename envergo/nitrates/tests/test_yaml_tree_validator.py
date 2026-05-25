@@ -449,11 +449,15 @@ def test_note_inconnue_echoue():
 # ─── Sur le vrai arbre PAN brouillon (charge depuis NITRATES_SPECS_DIR) ────
 
 
+@pytest.mark.django_db
 def test_vrai_arbre_pan_brouillon_structurellement_valide():
     """Le brouillon vit dans NITRATES_SPECS_DIR. Il doit etre structurellement
     valide (JSON Schema). Les erreurs semantiques residuelles (renvois vers
     des ids non encore crees, etc.) sont acceptees tant que c'est un brouillon ;
-    on les remonte juste pour info au lieu de faire echouer le test."""
+    on les remonte juste pour info au lieu de faire echouer le test.
+
+    Marquage django_db ajoute en phase 4 #61 : load_referentiels() lit la DB
+    desormais."""
     from envergo.nitrates.yaml_tree.loader import load_arbre, load_referentiels
     from envergo.nitrates.yaml_tree.validator import _validate_structure
 
@@ -678,3 +682,47 @@ def test_arbre_national_passe_le_check_exhaustivite():
     with open("envergo/nitrates/specs/arbre_decision_national.yaml") as f:
         arbre = yaml.safe_load(f)
     validate_arbre(arbre)
+
+
+# ─── ORM-strict : checks de reference depuis la DB sans dict explicite ──────
+
+
+@pytest.mark.django_db
+def test_validate_arbre_lit_orm_quand_referentiels_omis():
+    """Sans `referentiels` explicite, le validator lit directement les
+    sets d'identifiants depuis l'ORM (CodePrescription, NoteReglementaire,
+    EvenementPhenologique). Un code_prescription inconnu doit donc faire
+    echouer la validation meme si l'appelant ne fournit pas de dict.
+
+    Couvre la regression carte #61 : avant le fix, les 3 vues admin
+    appelaient `validate_arbre(arbre)` sans referentiels et sautaient
+    silencieusement les checks de reference."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_test_orm",
+        "type": "interdiction",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "code_prescription": "pc_inexistant_orm",
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("pc_inexistant_orm" in e for e in exc.value.errors)
+
+
+@pytest.mark.django_db
+def test_validate_arbre_orm_reconnait_codes_seedes():
+    """Reciproque : un code_prescription qui existe en DB (seede via
+    migration 0012) ne doit PAS faire echouer la validation."""
+    from envergo.nitrates.models import CodePrescription
+
+    pc_existant = CodePrescription.objects.values_list("identifiant", flat=True).first()
+    assert pc_existant, "Pre-condition : au moins un CodePrescription seede"
+
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_test_orm_ok",
+        "type": "interdiction",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "code_prescription": pc_existant,
+    }
+    validate_arbre(a)

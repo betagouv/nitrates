@@ -776,3 +776,19 @@ class BrancheValidationAction(models.Model):
     def __str__(self):
         user_disp = self.user.email if self.user_id else "?"
         return f"{user_disp} -> {self.statut} ({self.created_at:%d/%m/%Y %H:%M})"
+
+
+# ─── Référentiels (cf. carte #61 — migration referentiels.yaml) ───────────────
+# Modèles définis dans un module séparé pour la lisibilité ; ré-exportés ici
+# pour que Django les enregistre dans l'app nitrates et que les imports
+# `from envergo.nitrates.models import X` fonctionnent.
+
+from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
+    BrancheCulturale,
+    CodePrescription,
+    Culture,
+    EvenementPhenologique,
+    Fertilisant,
+    GroupeCultureUI,
+    NoteReglementaire,
+)
