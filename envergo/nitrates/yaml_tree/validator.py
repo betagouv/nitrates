@@ -40,8 +40,13 @@ def validate_arbre(
 ) -> None:
     """Lance toute la chaine de validation. Leve ValidationError si KO.
 
-    referentiels (optionnel) : si fourni, on verifie aussi que les
-    code_prescription / note / evenements_phenologiques referencees existent.
+    referentiels (optionnel) : ensemble d'ids attendu par les checks
+    semantiques (codes_prescription, notes, evenements_phenologiques).
+    Si non fourni, on les lit DIRECTEMENT depuis l'ORM (CodePrescription,
+    NoteReglementaire, EvenementPhenologique) -- pas via le rewrap dict
+    de `load_referentiels()`. Garantit que l'admin qui ajoute une nouvelle
+    note via l'admin Django la voit immediatement reconnue par le validator
+    (carte #61).
 
     references_sig_supportees (optionnel) : set des references SIG que le
     backend sait resoudre (cf. catalogue_refs.CATALOGUE_RESOLVERS).
@@ -57,6 +62,9 @@ def validate_arbre(
         # Inutile de continuer si la structure est cassee, les checks
         # semantiques peuvent crasher sur des champs manquants.
         raise ValidationError(errors)
+
+    if referentiels is None:
+        referentiels = _referentiels_depuis_orm()
 
     ids_definis = _collect_ids(arbre)
     errors.extend(_check_ids_uniques(ids_definis))
@@ -77,6 +85,48 @@ def validate_arbre(
 
     if errors:
         raise ValidationError(errors)
+
+
+def _referentiels_depuis_orm() -> dict:
+    """Construit le dict minimal attendu par les checks semantiques
+    en lisant directement les modeles ORM. Beaucoup plus leger que
+    `load_referentiels()` qui materialise tout le YAML : ici on n'a
+    besoin que des sets d'identifiants pour valider les references.
+
+    Renvoie {} si l'ORM n'est pas dispo (cas import_decision_tree
+    appele hors contexte Django, ou tests qui mockent). Le validator
+    saute alors silencieusement les checks de reference, ce qui est le
+    comportement historique avant la migration #61.
+    """
+    try:
+        from envergo.nitrates.models import (
+            CodePrescription,
+            EvenementPhenologique,
+            NoteReglementaire,
+        )
+    except ImportError:
+        return {}
+
+    try:
+        codes = dict.fromkeys(
+            CodePrescription.objects.values_list("identifiant", flat=True), {}
+        )
+        notes = dict.fromkeys(
+            NoteReglementaire.objects.values_list("identifiant", flat=True), {}
+        )
+        evenements = dict.fromkeys(
+            EvenementPhenologique.objects.values_list("identifiant", flat=True), {}
+        )
+    except Exception:
+        # DB indispo (tests sans django_db, ou ORM non initialise) :
+        # on retombe sur les checks structurels seulement.
+        return {}
+
+    return {
+        "codes_prescription": codes,
+        "notes": notes,
+        "evenements_phenologiques": evenements,
+    }
 
 
 def collect_references_sig(arbre: dict) -> list[tuple[str, str]]:
