@@ -11,7 +11,7 @@ Usage :
     python manage.py seed_referentiels --dry-run    # n'écrit rien
 
 Comportement :
-  1. CategorieCulture (depuis `categories_cultures`)
+  1. GroupeCultureUI (depuis `categories_cultures` du YAML legacy)
   2. BrancheCulturale (déduit depuis `mapping_sous_culture_vers_branche`)
   3. Culture (depuis `sous_cultures` + `mapping_sous_culture_vers_branche`)
   4. Fertilisant (depuis `sous_fertilisants` + `categories_fertilisants`
@@ -34,11 +34,11 @@ from django.db import transaction
 
 from envergo.nitrates.models import (
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 
@@ -91,10 +91,10 @@ class Command(BaseCommand):
         stats = {}
 
         # 1. Catégories de culture
-        stats["CategorieCulture"] = self._seed_categories_culture(data)
+        stats["GroupeCultureUI"] = self._seed_categories_culture(data)
         # 2. Branches culturales (déduit du mapping)
         stats["BrancheCulturale"] = self._seed_branches_culturales(data)
-        # 3. Cultures (avec FK CategorieCulture + BrancheCulturale)
+        # 3. Cultures (avec FK GroupeCultureUI + BrancheCulturale)
         stats["Culture"] = self._seed_cultures(data)
         # 4. Fertilisants (catégorie en choices, type depuis mapping)
         stats["Fertilisant"] = self._seed_fertilisants(data)
@@ -121,7 +121,7 @@ class Command(BaseCommand):
             # cas particulier sol_non_cultive : pré-remplit occupation_sol
             if identifiant == "sol_non_cultive":
                 defaults["champs_prefill"] = {"occupation_sol": "sol_non_cultive"}
-            obj, was_created = CategorieCulture.objects.update_or_create(
+            obj, was_created = GroupeCultureUI.objects.update_or_create(
                 identifiant=identifiant, defaults=defaults
             )
             if was_created:
@@ -192,7 +192,7 @@ class Command(BaseCommand):
                     )
                 )
                 continue
-            cat = CategorieCulture.objects.get(identifiant=cat_id)
+            cat = GroupeCultureUI.objects.get(identifiant=cat_id)
 
             # Mapping vers branche d'arbre + flags
             map_entry = mapping.get(ident, {})

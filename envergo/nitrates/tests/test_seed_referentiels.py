@@ -3,7 +3,7 @@
 Valide :
   - le seed produit le bon volume (counts) depuis le YAML packagé
   - la commande est idempotente (2e passage = 0 created, X updated)
-  - les FK Culture→CategorieCulture / BrancheCulturale sont cohérentes
+  - les FK Culture→GroupeCultureUI / BrancheCulturale sont cohérentes
   - le dédoublonnage brunissement_soies → brunissement_des_soies
   - le mapping mais → champs_prefill {culture_irriguee_type: mais}
   - la note_5 a bien ses régions/dépts JSONField
@@ -16,11 +16,11 @@ from django.core.management import call_command
 
 from envergo.nitrates.models import (
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 
@@ -42,7 +42,7 @@ def _reset():
     Fertilisant.objects.all().delete()
     Culture.objects.all().delete()
     BrancheCulturale.objects.all().delete()
-    CategorieCulture.objects.all().delete()
+    GroupeCultureUI.objects.all().delete()
 
 
 # ─── Volumes ─────────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ def test_seed_produit_volumes_attendus():
     _reset()
     _seed()
     # Volumes attendus selon le YAML packagé actuel
-    assert CategorieCulture.objects.count() == 7
+    assert GroupeCultureUI.objects.count() == 7
     assert BrancheCulturale.objects.count() == 13
     assert Culture.objects.count() == 19
     assert Fertilisant.objects.count() == 29
@@ -68,9 +68,9 @@ def test_seed_produit_volumes_attendus():
 def test_seed_idempotent():
     _reset()
     _seed()
-    count_first = CategorieCulture.objects.count()
+    count_first = GroupeCultureUI.objects.count()
     out = _seed()
-    count_second = CategorieCulture.objects.count()
+    count_second = GroupeCultureUI.objects.count()
     assert count_first == count_second
     # Le 2e passage doit dire "X mis à jour", pas "X créés"
     assert "0 créé(s), 7 mis à jour" in out
@@ -161,7 +161,7 @@ def test_categorie_sol_non_cultive_a_champs_prefill():
     directement occupation_sol pour la cascade frontend."""
     _reset()
     _seed()
-    cat = CategorieCulture.objects.get(identifiant="sol_non_cultive")
+    cat = GroupeCultureUI.objects.get(identifiant="sol_non_cultive")
     assert cat.champs_prefill == {"occupation_sol": "sol_non_cultive"}
 
 

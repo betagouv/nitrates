@@ -5,7 +5,7 @@ Couverture :
   - CheckConstraint `Fertilisant.type_reglementaire != "type_I"`
   - RegexValidator JJ/MM sur `EvenementPhenologique.date_calendrier`
   - ordering par défaut
-  - FK PROTECT sur CategorieCulture / BrancheCulturale
+  - FK PROTECT sur GroupeCultureUI / BrancheCulturale
   - FK SET_NULL sur CodePrescription.note_reglementaire
 """
 
@@ -20,11 +20,11 @@ from envergo.nitrates.constants import (
 )
 from envergo.nitrates.models import (
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 
@@ -35,7 +35,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _make_categorie(identifiant="test_categorie_unique", **kwargs):
-    return CategorieCulture.objects.create(
+    return GroupeCultureUI.objects.create(
         identifiant=identifiant,
         libelle_public=kwargs.get("libelle_public", identifiant.replace("_", " ")),
         ordre_affichage=kwargs.get("ordre_affichage", 0),
@@ -264,7 +264,7 @@ def test_categorie_culture_ordering_par_ordre_affichage():
     _make_categorie("ord_z_cat", ordre_affichage=10000)
     _make_categorie("ord_a_cat", ordre_affichage=9999)
     ids = list(
-        CategorieCulture.objects.filter(
+        GroupeCultureUI.objects.filter(
             identifiant__in=["ord_z_cat", "ord_a_cat"]
         ).values_list("identifiant", flat=True)
     )

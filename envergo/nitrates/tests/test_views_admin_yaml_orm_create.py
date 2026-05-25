@@ -5,11 +5,11 @@ from django.urls import reverse
 
 from envergo.nitrates.models import (
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     DecisionTree,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 from envergo.nitrates.views_admin_yaml_orm_create import _path_choices_for_test
@@ -124,7 +124,7 @@ def test_get_panel_culture_resout_fk_si_chemin_complet(client):
     on doit pouvoir créer une Culture sans erreur."""
     _login(client)
     # On a besoin que les FK existent en DB.
-    cat = CategorieCulture.objects.filter(identifiant="culture_principale").first()
+    cat = GroupeCultureUI.objects.filter(identifiant="culture_principale").first()
     assert cat, "Pré-condition : seed culture_principale présent"
     branche = BrancheCulturale.objects.filter(identifiant="culture_printemps").first()
     assert branche, "Pré-condition : seed culture_printemps présent"
@@ -219,7 +219,7 @@ def test_post_identifiant_duplique_renvoie_erreur(client, tree):
 def test_post_culture_avec_fk_resolues(client):
     """Création complète d'une Culture avec FK auto-résolues depuis le chemin."""
     _login(client)
-    cat = CategorieCulture.objects.filter(identifiant="culture_principale").first()
+    cat = GroupeCultureUI.objects.filter(identifiant="culture_principale").first()
     branche = BrancheCulturale.objects.filter(identifiant="culture_printemps").first()
     assert cat and branche
 

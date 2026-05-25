@@ -244,11 +244,11 @@ class DecisionTreeAdmin(admin.ModelAdmin):
 
 from envergo.nitrates.models import (  # noqa: E402
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 
@@ -263,8 +263,15 @@ class _ReferentielsListMixin:
         css = {"all": ("nitrates_admin/referentiels_list.css",)}
 
 
-@admin.register(CategorieCulture)
-class CategorieCultureAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+@admin.register(GroupeCultureUI)
+class GroupeCultureUIAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+    """Groupe affiché au 1er niveau de la cascade formulaire (UX seulement).
+
+    Sert UNIQUEMENT à regrouper visuellement les cultures dans le 1er
+    select du formulaire front. Aucune logique métier de l'arbre ne
+    branche dessus -- l'arbre passe par Culture -> BrancheCulturale.
+    """
+
     list_display = ("identifiant", "libelle_public", "ordre_affichage")
     search_fields = ("identifiant", "libelle_public")
     ordering = ("ordre_affichage", "libelle_public")

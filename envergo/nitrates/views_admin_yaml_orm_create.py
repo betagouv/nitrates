@@ -26,12 +26,12 @@ from django.views import View
 
 from envergo.nitrates.models import (
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     DecisionTree,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )
 
@@ -98,7 +98,7 @@ class OrmModelSpec:
 
 
 def _culture_resolve_fk(choices: dict[str, str]) -> dict:
-    """Pour Culture : occupation_sol (str enum), categorie (FK CategorieCulture),
+    """Pour Culture : occupation_sol (str enum), categorie (FK GroupeCultureUI),
     branche_culturale (FK BrancheCulturale).
 
     On résout depuis le chemin parent : `occupation_sol` est une enum,
@@ -110,10 +110,10 @@ def _culture_resolve_fk(choices: dict[str, str]) -> dict:
         resolved["occupation_sol"] = choices["occupation_sol"]
     if "categorie_culture" in choices:
         try:
-            resolved["categorie"] = CategorieCulture.objects.get(
+            resolved["categorie"] = GroupeCultureUI.objects.get(
                 identifiant=choices["categorie_culture"]
             )
-        except CategorieCulture.DoesNotExist:
+        except GroupeCultureUI.DoesNotExist:
             return {}
     if "branche_culturale" in choices:
         try:

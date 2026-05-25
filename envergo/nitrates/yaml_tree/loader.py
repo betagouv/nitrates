@@ -82,11 +82,11 @@ def load_referentiels() -> dict:
         TypeFertilisant,
     )
     from envergo.nitrates.models import (
-        CategorieCulture,
         CodePrescription,
         Culture,
         EvenementPhenologique,
         Fertilisant,
+        GroupeCultureUI,
         NoteReglementaire,
     )
 
@@ -117,7 +117,7 @@ def load_referentiels() -> dict:
     sous_cultures = {}
     mapping_sous_culture_vers_branche = {}
 
-    for cat in CategorieCulture.objects.prefetch_related("cultures").all():
+    for cat in GroupeCultureUI.objects.prefetch_related("cultures").all():
         sc_ids = list(cat.cultures.all().values_list("identifiant", flat=True))
         categories_cultures[cat.identifiant] = {
             "libelle_public": cat.libelle_public,

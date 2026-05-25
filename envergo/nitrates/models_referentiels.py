@@ -4,7 +4,7 @@ Migré depuis `envergo/nitrates/specs/referentiels.yaml` (cf. carte #61).
 Les juristes peuvent éditer ces tables via l'admin Django sans
 intervention dev :
 
-  - CategorieCulture / Culture / BrancheCulturale : cascade form +
+  - GroupeCultureUI / Culture / BrancheCulturale : cascade form +
     routage vers les branches de l'arbre de décision.
   - Fertilisant : sous-fertilisants utilisateur, mappés vers les types
     réglementaires PAN.
@@ -30,12 +30,18 @@ from envergo.nitrates.constants import (
 # ─── Cultures ────────────────────────────────────────────────────────────────
 
 
-class CategorieCulture(models.Model):
-    """Catégorie de culture affichée au 1er niveau de la cascade
-    formulaire (ex 'Culture d'hiver', 'Prairies ou luzerne').
+class GroupeCultureUI(models.Model):
+    """Groupe de cultures affiché au 1er niveau de la cascade formulaire
+    (ex 'Culture d'hiver', 'Prairies ou luzerne').
 
-    En table parce que les juristes peuvent vouloir réorganiser
-    (séparer luzerne de prairie, créer 'cultures pérennes irriguées'...).
+    Sert UNIQUEMENT à structurer la cascade du formulaire front (1er
+    select 'catégorie de culture'). Aucune logique métier ne s'appuie
+    dessus -- l'arbre de décision branche sur BrancheCulturale +
+    OccupationSol via la table Culture (qui sert de mapper UI <-> arbre).
+
+    En table parce que les juristes peuvent vouloir réorganiser ces
+    groupes (séparer luzerne de prairie, créer 'cultures pérennes
+    irriguées', etc.) sans intervention dev.
     """
 
     identifiant = models.SlugField(max_length=64, unique=True)
@@ -44,16 +50,16 @@ class CategorieCulture(models.Model):
         default=dict,
         blank=True,
         help_text=(
-            "Champs à injecter dans le contexte quand cette catégorie "
-            "est choisie SANS sous-culture (cas 'Sol non cultivé')."
+            "Champs à injecter dans le contexte quand ce groupe est "
+            "choisi SANS sous-culture (cas 'Sol non cultivé')."
         ),
     )
     ordre_affichage = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ("ordre_affichage", "libelle_public")
-        verbose_name = "Catégorie de culture"
-        verbose_name_plural = "Catégories de culture"
+        verbose_name = "Groupe de culture (UI cascade)"
+        verbose_name_plural = "Groupes de culture (UI cascade)"
 
     def __str__(self):
         return self.libelle_public
@@ -95,7 +101,7 @@ class Culture(models.Model):
     """Culture utilisateur du formulaire (ex 'Colza', 'Maïs', 'Luzerne').
 
     Une Culture est rattachée à :
-      - `CategorieCulture` (niveau 1 cascade form)
+      - `GroupeCultureUI` (niveau 1 cascade form, regroupement UX)
       - `BrancheCulturale` (niveau routage arbre YAML)
       - `occupation_sol` (niveau 1 arbre YAML)
 
@@ -107,7 +113,7 @@ class Culture(models.Model):
     identifiant = models.SlugField(max_length=64, unique=True)
     libelle_public = models.CharField(max_length=255)
     categorie = models.ForeignKey(
-        CategorieCulture, on_delete=models.PROTECT, related_name="cultures"
+        GroupeCultureUI, on_delete=models.PROTECT, related_name="cultures"
     )
     branche_culturale = models.ForeignKey(
         BrancheCulturale, on_delete=models.PROTECT, related_name="cultures"
@@ -128,7 +134,11 @@ class Culture(models.Model):
     ordre_affichage = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        ordering = ("categorie__ordre_affichage", "ordre_affichage", "libelle_public")
+        ordering = (
+            "categorie__ordre_affichage",
+            "ordre_affichage",
+            "libelle_public",
+        )
         verbose_name = "Culture"
         verbose_name_plural = "Cultures"
 

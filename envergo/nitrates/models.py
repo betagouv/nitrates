@@ -785,10 +785,10 @@ class BrancheValidationAction(models.Model):
 
 from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
     BrancheCulturale,
-    CategorieCulture,
     CodePrescription,
     Culture,
     EvenementPhenologique,
     Fertilisant,
+    GroupeCultureUI,
     NoteReglementaire,
 )

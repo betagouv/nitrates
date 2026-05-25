@@ -3,7 +3,7 @@
 # =============================================================================
 # Ce fichier n'est plus consulté en runtime depuis la phase 4 de la carte #61.
 # Les référentiels sont désormais en base de données (cf. modèles Django dans
-# `envergo/nitrates/models_referentiels.py` : CategorieCulture, Culture,
+# `envergo/nitrates/models_referentiels.py` : GroupeCultureUI, Culture,
 # BrancheCulturale, Fertilisant, NoteReglementaire, CodePrescription,
 # EvenementPhenologique).
 #
