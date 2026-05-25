@@ -207,9 +207,11 @@ def test_subtree_matches_finds_deep():
 
 
 def test_quick_filter_keys_complete():
-    """Toutes les cles de filtre rapide sont bien declarees."""
+    """Toutes les cles de filtre rapide sont bien declarees.
+
+    Note 2026-05-25 : 'culture' retiree des filtres rapides (niveau
+    structurel occupation_sol, pas un tag metier utile dans le viewer)."""
     expected = {
-        "culture",
         "sous_culture",
         "type_fertilisant",
         "complement",
