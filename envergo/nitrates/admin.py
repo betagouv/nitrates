@@ -253,22 +253,32 @@ from envergo.nitrates.models import (  # noqa: E402
 )
 
 
+class _ReferentielsListMixin:
+    """Charge le CSS qui autorise le wrap des colonnes libelle_*/mots_cles
+    sur les changelist des referentiels nitrates (carte #61). Sans ca,
+    une longue valeur force une seule ligne et masque les colonnes
+    suivantes."""
+
+    class Media:
+        css = {"all": ("nitrates_admin/referentiels_list.css",)}
+
+
 @admin.register(CategorieCulture)
-class CategorieCultureAdmin(admin.ModelAdmin):
+class CategorieCultureAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_public", "ordre_affichage")
     search_fields = ("identifiant", "libelle_public")
     ordering = ("ordre_affichage", "libelle_public")
 
 
 @admin.register(BrancheCulturale)
-class BrancheCulturaleAdmin(admin.ModelAdmin):
+class BrancheCulturaleAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_court", "ordre_affichage")
     search_fields = ("identifiant", "libelle_court")
     ordering = ("ordre_affichage", "identifiant")
 
 
 @admin.register(Culture)
-class CultureAdmin(admin.ModelAdmin):
+class CultureAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = (
         "identifiant",
         "libelle_public",
@@ -277,35 +287,35 @@ class CultureAdmin(admin.ModelAdmin):
         "occupation_sol",
         "ordre_affichage",
     )
-    list_filter = ("categorie", "occupation_sol", "branche_culturale")
     search_fields = ("identifiant", "libelle_public")
     autocomplete_fields = ("categorie", "branche_culturale")
     ordering = ("categorie__ordre_affichage", "ordre_affichage", "libelle_public")
 
 
 @admin.register(Fertilisant)
-class FertilisantAdmin(admin.ModelAdmin):
+class FertilisantAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = (
         "identifiant",
         "libelle_public",
         "categorie",
         "type_reglementaire",
-        "ordre_affichage",
     )
-    list_filter = ("categorie", "type_reglementaire")
     search_fields = ("identifiant", "libelle_public")
-    ordering = ("categorie", "ordre_affichage", "libelle_public")
+    # Ordre liste admin : par type reglementaire (type_0, type_Ia, ...)
+    # puis alphabetique. Plus parlant que l'ordre d'affichage UI quand
+    # on revoit le seed depuis l'admin.
+    ordering = ("type_reglementaire", "libelle_public")
 
 
 @admin.register(NoteReglementaire)
-class NoteReglementaireAdmin(admin.ModelAdmin):
+class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_court", "ordre_affichage")
     search_fields = ("identifiant", "libelle_court")
     ordering = ("ordre_affichage", "identifiant")
 
 
 @admin.register(CodePrescription)
-class CodePrescriptionAdmin(admin.ModelAdmin):
+class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = (
         "identifiant",
         "mots_cles",
@@ -313,14 +323,13 @@ class CodePrescriptionAdmin(admin.ModelAdmin):
         "note_reglementaire",
         "ordre_affichage",
     )
-    list_filter = ("toujours_affiche", "note_reglementaire")
     search_fields = ("identifiant", "mots_cles", "texte_court")
     autocomplete_fields = ("note_reglementaire",)
     ordering = ("ordre_affichage", "identifiant")
 
 
 @admin.register(EvenementPhenologique)
-class EvenementPhenologiqueAdmin(admin.ModelAdmin):
+class EvenementPhenologiqueAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_public", "date_calendrier")
     search_fields = ("identifiant", "libelle_public")
     ordering = ("identifiant",)
