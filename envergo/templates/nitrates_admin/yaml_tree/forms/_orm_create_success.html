@@ -1,0 +1,42 @@
+{% comment %}
+Reponse htmx apres creation reussie d'un objet ORM.
+
+Strategie : on remplace le panel par un toast bref qui auto-disparait,
+et on utilise hx-swap-oob pour injecter <option> dans le <select> cible
+ET re-selectionner la nouvelle valeur. Le selecteur cible est passe
+en data-attribute, lu par un petit listener inline.
+{% endcomment %}
+<div class="yaml-tree__orm-create yaml-tree__orm-create--success"
+     data-orm-create-panel
+     data-target-select="{{ target_select }}"
+     data-new-value="{{ value }}"
+     data-new-label="{{ label }}">
+  <p>
+    ✓ <strong>{{ label }}</strong> créé(e) et sélectionné(e) dans la liste.
+  </p>
+  <script>
+    (function () {
+      var panel = document.currentScript.closest('[data-orm-create-panel]');
+      if (!panel) return;
+      var sel = panel.dataset.targetSelect;
+      var value = panel.dataset.newValue;
+      var label = panel.dataset.newLabel;
+      var target = sel ? document.querySelector(sel) : null;
+      if (target && target.tagName === 'SELECT') {
+        var opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        opt.selected = true;
+        target.appendChild(opt);
+        target.value = value;
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+      } else if (target && target.tagName === 'INPUT') {
+        // Cas datalist (input list="..."), on met juste la valeur.
+        target.value = value;
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      // Auto-disparait apres 2s.
+      setTimeout(function () { panel.remove(); }, 2000);
+    })();
+  </script>
+</div>
