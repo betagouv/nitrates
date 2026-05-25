@@ -53,16 +53,7 @@
 
     <fieldset class="yaml-tree__form-fieldset"
               data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte">
-      <legend>
-        Périodes (du / au + régime optionnel)
-        <button type="button"
-                class="yaml-tree__orm-create-trigger"
-                title="Créer un nouvel événement phénologique"
-                hx-get="{% url 'nitrates_admin_yaml_orm_create' model_key='evenement_phenologique' %}?tree_pk={{ tree.pk }}&parent_path={{ parent_path_str }}&target_select=%23evenements-phenologiques-list"
-                hx-target="next .yaml-tree__orm-create-slot"
-                hx-swap="innerHTML">+ événement</button>
-      </legend>
-      <span class="yaml-tree__orm-create-slot"></span>
+      <legend>Périodes (du / au + régime optionnel)</legend>
       {% if evenements_phenologiques %}
         <datalist id="evenements-phenologiques-list">
           {% for ev in evenements_phenologiques %}<option value="{{ ev.slug }}" label="{{ ev.libelle }}"></option>{% endfor %}
@@ -165,28 +156,17 @@
       <label class="yaml-tree__form-label">
         <span>code_prescription</span>
         {% if regle_choices.code_prescription %}
-          {% with select_id="orm-select-code_prescription-"|add:parent_path_str|slugify|add:"-"|add:valeur|slugify %}
-            <span class="yaml-tree__form-field-row">
-              <select name="code_prescription" id="{{ select_id }}">
-                <option value="">— (aucun)</option>
-                {% for c in regle_choices.code_prescription %}
-                  <option value="{{ c.value }}"
-                          {% if c.value == regle.code_prescription %}selected{% endif %}
-                          {% if c.description %}title="{{ c.description }}"{% endif %}>
-                    {{ c.value }}
-                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-              <button type="button"
-                      class="yaml-tree__orm-create-trigger"
-                      title="Créer un nouveau code de prescription"
-                      hx-get="{% url 'nitrates_admin_yaml_orm_create' model_key='code_prescription' %}?tree_pk={{ tree.pk }}&parent_path={{ parent_path_str }}&target_select=%23{{ select_id }}"
-                      hx-target="next .yaml-tree__orm-create-slot"
-                      hx-swap="innerHTML">+</button>
-            </span>
-            <span class="yaml-tree__orm-create-slot"></span>
-          {% endwith %}
+          <select name="code_prescription">
+            <option value="">— (aucun)</option>
+            {% for c in regle_choices.code_prescription %}
+              <option value="{{ c.value }}"
+                      {% if c.value == regle.code_prescription %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
         {% else %}
           <input type="text"
                  name="code_prescription"
@@ -199,28 +179,17 @@
       <label class="yaml-tree__form-label">
         <span>note</span>
         {% if regle_choices.note %}
-          {% with select_id_n="orm-select-note-"|add:parent_path_str|slugify|add:"-"|add:valeur|slugify %}
-            <span class="yaml-tree__form-field-row">
-              <select name="note" id="{{ select_id_n }}">
-                <option value="">— (aucune)</option>
-                {% for c in regle_choices.note %}
-                  <option value="{{ c.value }}"
-                          {% if c.value == regle.note %}selected{% endif %}
-                          {% if c.description %}title="{{ c.description }}"{% endif %}>
-                    {{ c.value }}
-                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-              <button type="button"
-                      class="yaml-tree__orm-create-trigger"
-                      title="Créer une nouvelle note règlementaire"
-                      hx-get="{% url 'nitrates_admin_yaml_orm_create' model_key='note' %}?tree_pk={{ tree.pk }}&parent_path={{ parent_path_str }}&target_select=%23{{ select_id_n }}"
-                      hx-target="next .yaml-tree__orm-create-slot"
-                      hx-swap="innerHTML">+</button>
-            </span>
-            <span class="yaml-tree__orm-create-slot"></span>
-          {% endwith %}
+          <select name="note">
+            <option value="">— (aucune)</option>
+            {% for c in regle_choices.note %}
+              <option value="{{ c.value }}"
+                      {% if c.value == regle.note %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
         {% else %}
           <input type="text"
                  name="note"

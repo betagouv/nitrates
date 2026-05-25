@@ -21,25 +21,16 @@
       <label class="yaml-tree__form-label">
         <span>valeur</span>
         {% if valeur_choices %}
-          {% with select_id_v="orm-select-valeur-"|add:parent_path_str|slugify|add:"-"|add:valeur|slugify %}
-            <span class="yaml-tree__form-field-row">
-              <select name="valeur_new" id="{{ select_id_v }}" required>
-                {% for c in valeur_choices %}
-                  <option value="{{ c.value }}"
-                          {% if c.value == branche.valeur|stringformat:"s" %}selected{% endif %}
-                          {% if c.description %}title="{{ c.description }}"{% endif %}>
-                    {{ c.value }}
-                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-              {% comment %}V1 #103 : bouton "+" pour Culture/Fertilisant
-                  desactive tant que l'arbre n'expose pas le niveau categorie_*
-                  necessaire a l'auto-resolution des FK. L'utilisateur passe
-              par l'admin Django pour ces 2 modeles.{% endcomment %}
-            </span>
-            <span class="yaml-tree__orm-create-slot"></span>
-          {% endwith %}
+          <select name="valeur_new" required>
+            {% for c in valeur_choices %}
+              <option value="{{ c.value }}"
+                      {% if c.value == branche.valeur|stringformat:"s" %}selected{% endif %}
+                      {% if c.description %}title="{{ c.description }}"{% endif %}>
+                {{ c.value }}
+                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
         {% else %}
           <input type="text" name="valeur_new" value="{{ branche.valeur }}" required>
         {% endif %}

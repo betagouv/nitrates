@@ -45,7 +45,6 @@ from envergo.nitrates.views_admin_yaml_edit import (
     UndoLastView,
     ValidateTreeView,
 )
-from envergo.nitrates.views_admin_yaml_orm_create import OrmCreatePanelView
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
     YamlBrowserListView,
@@ -195,12 +194,6 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/raw-yaml/",
         EditRawYamlView.as_view(),
         name="nitrates_admin_yaml_edit_raw",
-    ),
-    # Creation htmx d'objets ORM referentiels depuis l'editeur (issue #103).
-    path(
-        "admin/nitrates/yaml-tree/orm-create/<str:model_key>/",
-        OrmCreatePanelView.as_view(),
-        name="nitrates_admin_yaml_orm_create",
     ),
     path(
         _("contact-us/"),

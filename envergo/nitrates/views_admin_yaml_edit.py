@@ -608,7 +608,6 @@ class EditBrancheView(View):
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
         if branche is None:
             return HttpResponseForbidden("Branche introuvable.")
-        parent_node = editor.get_node_at(tree.contenu, parent_path) or {}
         return render(
             request,
             "nitrates_admin/yaml_tree/forms/_branche_form.html",
@@ -624,7 +623,6 @@ class EditBrancheView(View):
                     else []
                 ),
                 "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
-                "parent_champ": parent_node.get("champ", ""),
             },
         )
 
