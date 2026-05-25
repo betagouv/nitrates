@@ -511,3 +511,17 @@ body {
 .nitrates-debug-panel__path li {
   list-style: decimal;
 }
+
+/* ─── Form bloque tant que pas de clic carte (issues #89, #96) ────────── */
+.form-locked-message {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: #f0f4fa;
+  border-left: 4px solid #1f4789;
+  border-radius: 4px;
+  color: #1d1d1d;
+}
+
+.form-locked-message p {
+  margin: 0;
+}

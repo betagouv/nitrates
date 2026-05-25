@@ -18,6 +18,18 @@ const OFFSHORE_LAT = 30.0;
  * conteneur dedie a la 1re cascade (categorie_culture).
  */
 async function waitForCascadeReady(page) {
+  // Issues #89 + #96 (2026-05-25) : le form Culture est cache tant que
+  // l'utilisateur n'a pas clique sur la carte. On simule un clic Reims
+  // pour deverrouiller la zone du form avant de tester la cascade.
+  // Idempotent : si lat/lng deja remplis (rechargement avec params),
+  // la zone est deja visible et le clic supplementaire est sans effet.
+  await page.evaluate(([lng, lat]) => {
+    const w = window as any;
+    if (w.nitratesMap && w.L) {
+      w.nitratesMap.fire('click', { latlng: w.L.latLng(lat, lng) });
+    }
+  }, [REIMS_LNG, REIMS_LAT]);
+
   // Note 2026-05-12 : la cascade n'utilise plus des <select> mais des
   // radios DSFR dans des conteneurs [data-cascade]. On attend qu'au moins
   // un radio soit rendu dans le conteneur categorie_culture.
@@ -88,6 +100,47 @@ test.describe('Simulateur nitrates : page formulaire', () => {
     // lat/lng pre-remplis
     await expect(page.locator('#id_lat')).toHaveValue(/49\.258/);
     await expect(page.locator('#id_lng')).toHaveValue(/4\.034/);
+  });
+
+  test('form Culture cache tant que pas de clic carte (issues #89, #96)', async ({
+    page,
+  }) => {
+    await page.goto('/simulateur/');
+    await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
+
+    // Etat initial : message d'invite visible, zone form cachee.
+    await expect(page.locator('#form-locked-message')).toBeVisible();
+    await expect(page.locator('#form-locked-message')).toContainText(
+      'Cliquez sur la carte'
+    );
+    await expect(page.locator('#form-after-localisation')).toBeHidden();
+    // Le bouton submit fait partie de la zone cachee.
+    await expect(
+      page.locator('button[type="submit"]', { hasText: 'Lancer la simulation' })
+    ).toBeHidden();
+
+    // Clic carte : devoile la zone form, masque le message d'invite.
+    await page.evaluate(([lng, lat]) => {
+      const w = window as any;
+      w.nitratesMap.fire('click', { latlng: w.L.latLng(lat, lng) });
+    }, [REIMS_LNG, REIMS_LAT]);
+
+    await expect(page.locator('#form-after-localisation')).toBeVisible();
+    await expect(page.locator('#form-locked-message')).toBeHidden();
+    await expect(
+      page.locator('button[type="submit"]', { hasText: 'Lancer la simulation' })
+    ).toBeVisible();
+  });
+
+  test('form Culture visible direct si lat/lng dans URL (issues #89, #96)', async ({
+    page,
+  }) => {
+    // Rechargement avec params URL : zone deverrouilee cote serveur,
+    // pas de clic carte necessaire.
+    await page.goto(`/simulateur/?lat=${REIMS_LAT}&lng=${REIMS_LNG}`);
+    await expect(page.locator('#form-after-localisation')).toBeVisible();
+    // Message d'invite pas rendu (cote serveur).
+    await expect(page.locator('#form-locked-message')).toHaveCount(0);
   });
 });
 
