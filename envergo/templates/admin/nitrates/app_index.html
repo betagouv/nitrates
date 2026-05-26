@@ -1,5 +1,9 @@
 {% extends "admin/app_index.html" %}
 
+{# Force layout 1 colonne pleine largeur (par defaut admin = colMS = #}
+{# margin-right: 300px reserve pour sidebar). #}
+{% block coltype %}colM{% endblock %}
+
 {% block content_title %}
   <h1>{{ app_label|capfirst }}</h1>
   <div class="module" style="margin-bottom:1rem;">
@@ -116,8 +120,7 @@ classDiagram
 
           <dt>💩 Fertilisant</dt>
           <dd>
-            Fertilisant utilisateur (« Fientes de volailles », « Lisier
-            porcin »…).
+            Fertilisant utilisateur (« Fientes de volailles », « Lisier porcin »…).
           </dd>
 
           <dt>📜 CodePrescription</dt>
@@ -159,13 +162,13 @@ classDiagram
   <style>
     .nitrates-explainer-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
       gap: 1.5rem;
       padding: 1rem;
       align-items: start;
     }
 
-    @media (max-width: 1000px) {
+    @media (max-width: 1100px) {
       .nitrates-explainer-grid {
         grid-template-columns: 1fr;
       }
@@ -177,10 +180,12 @@ classDiagram
       border-radius: 4px;
       padding: 0.75rem;
       overflow: auto;
+      min-height: 480px;
     }
 
     .nitrates-data-model-explainer #nitrates-mermaid svg {
       max-width: 100%;
+      width: 100%;
       height: auto !important;
       display: block;
       margin: 0 auto;
