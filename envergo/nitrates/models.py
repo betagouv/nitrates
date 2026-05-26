@@ -145,6 +145,11 @@ class DecisionTree(models.Model):
             models.Index(fields=["status"]),
         ]
         ordering = ["-activated_at", "-created_at"]
+        # Affiche "Arbre de décision" dans l'admin Django (au lieu de
+        # "Decision tree" derive du nom de classe). La classe Python reste
+        # `DecisionTree` pour ne pas casser les ~45 fichiers qui l'importent.
+        verbose_name = "Arbre de décision"
+        verbose_name_plural = "Arbres de décision"
 
     def __str__(self):
         return f"{self.name} ({self.status})"

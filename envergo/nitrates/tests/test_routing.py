@@ -13,11 +13,25 @@ def nitrates_site(settings):
     return site
 
 
-def test_home_served_on_nitrates_site(client, nitrates_site):
-    """The nitrates home is served when the middleware matches the nitrates domain."""
+def test_home_redirects_unauth_to_login(client, nitrates_site):
+    """La racine `/` est desormais protegee par ProConnect (login_required).
+    Un visiteur non authentifie doit etre redirige vers la page de login."""
+    response = client.get("/")
+    assert response.status_code == 302
+    assert "login" in response["Location"].lower()
+
+
+def test_home_served_to_authenticated_user(client, nitrates_site, django_user_model):
+    """Un utilisateur connecte (juriste/admin) voit le meme simulateur que
+    `/simulateur/` quand il visite `/`."""
+    user = django_user_model.objects.create_user(
+        email="juriste@test.local", name="Juriste", password="x", is_active=True
+    )
+    client.force_login(user)
     response = client.get("/")
     assert response.status_code == 200
-    assert b"Simulateur nitrates" in response.content
+    # Le simulateur affiche son h1.
+    assert b"r\xc3\xa8gles d'\xc3\xa9pandage" in response.content
 
 
 def test_middleware_uses_nitrates_urlconf(client, nitrates_site):
