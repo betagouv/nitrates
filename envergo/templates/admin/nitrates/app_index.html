@@ -1,9 +1,5 @@
 {% extends "admin/app_index.html" %}
 
-{# Force layout 1 colonne pleine largeur (par defaut admin = colMS = #}
-{# margin-right: 300px reserve pour sidebar). #}
-{% block coltype %}colM{% endblock %}
-
 {% block content_title %}
   <h1>{{ app_label|capfirst }}</h1>
   <div class="module" style="margin-bottom:1rem;">
@@ -25,14 +21,11 @@
   </div>
 {% endblock %}
 
-{% block content %}
-  {{ block.super }}
+{% block sidebar %}
+  <div id="content-related" class="nitrates-admin-sidebar">
+    <div class="module" id="nitrates-data-model-explainer">
+      <h2>Modèle de données nitrates</h2>
 
-  <div class="module nitrates-data-model-explainer"
-       style="margin-top:1.5rem">
-    <h2>Modèle de données nitrates</h2>
-
-    <div class="nitrates-explainer-grid">
       {# djlint:off #}
       <div class="mermaid" id="nitrates-mermaid">
 classDiagram
@@ -87,63 +80,61 @@ classDiagram
       </div>
       {# djlint:on #}
 
-      <div class="nitrates-classes-list">
-        <h3>Rôle de chaque modèle</h3>
-        <dl class="nitrates-classes-dl">
-          <dt>🌳 ArbreDeDecision</dt>
-          <dd>
-            Source de vérité runtime de la moulinette.
-          </dd>
+      <h3 style="margin-top:1.2rem;">Rôle de chaque modèle</h3>
+      <dl class="nitrates-classes-dl">
+        <dt>🌳 ArbreDeDecision</dt>
+        <dd>
+          Source de vérité runtime de la moulinette.
+        </dd>
 
-          <dt>🌱 GroupeCultureUI</dt>
-          <dd>
-            Regroupement <strong>UX uniquement</strong> pour le 1er select
-            de la cascade formulaire (« Culture d'hiver », « Prairies ou
-            luzerne »…). Aucune logique métier ne branche dessus.
-          </dd>
+        <dt>🌱 GroupeCultureUI</dt>
+        <dd>
+          Regroupement <strong>UX uniquement</strong> pour le 1er select
+          de la cascade formulaire (« Culture d'hiver », « Prairies ou
+          luzerne »…). Aucune logique métier ne branche dessus.
+        </dd>
 
-          <dt>🌾 Culture</dt>
-          <dd>
-            Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
-            Sert de <strong>mapper</strong> entre la cascade UI et la branche
-            d'arbre empruntée (FK <code>branche_culturale</code> +
-            <code>occupation_sol</code>).
-          </dd>
+        <dt>🌾 Culture</dt>
+        <dd>
+          Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
+          Sert de <strong>mapper</strong> entre la cascade UI et la branche
+          d'arbre empruntée (FK <code>branche_culturale</code> +
+          <code>occupation_sol</code>).
+        </dd>
 
-          <dt>🌿 BrancheCulturale</dt>
-          <dd>
-            Identifiant de sous-arbre du YAML (« colza »,
-            « culture_printemps »…). Plusieurs cultures peuvent emprunter
-            la même branche. C'est ce sur quoi l'arbre branche réellement
-            au niveau <code>culture</code>.
-          </dd>
+        <dt>🌿 BrancheCulturale</dt>
+        <dd>
+          Identifiant de sous-arbre du YAML (« colza »,
+          « culture_printemps »…). Plusieurs cultures peuvent emprunter
+          la même branche. C'est ce sur quoi l'arbre branche réellement
+          au niveau <code>culture</code>.
+        </dd>
 
-          <dt>💩 Fertilisant</dt>
-          <dd>
-            Fertilisant utilisateur (« Fientes de volailles », « Lisier porcin »…).
-          </dd>
+        <dt>💩 Fertilisant</dt>
+        <dd>
+          Fertilisant utilisateur (« Fientes de volailles », « Lisier porcin »…).
+        </dd>
 
-          <dt>📜 CodePrescription</dt>
-          <dd>
-            Prescription affichée en résultat de simulation (PC1, PC2…).
-            Lié optionnellement à une <strong>NoteReglementaire</strong>.
-          </dd>
+        <dt>📜 CodePrescription</dt>
+        <dd>
+          Prescription affichée en résultat de simulation (PC1, PC2…).
+          Lié optionnellement à une <strong>NoteReglementaire</strong>.
+        </dd>
 
-          <dt>📑 NoteReglementaire</dt>
-          <dd>
-            Note de l'arrêté PAN (note_5, note_7…). Porte la liste des
-            régions / départements concernés (utilisé pour résoudre les
-            zones type « note_5 »).
-          </dd>
+        <dt>📑 NoteReglementaire</dt>
+        <dd>
+          Note de l'arrêté PAN (note_5, note_7…). Porte la liste des
+          régions / départements concernés (utilisé pour résoudre les
+          zones type « note_5 »).
+        </dd>
 
-          <dt>🌸 EvenementPhenologique</dt>
-          <dd>
-            Borne flottante de période (« brunissement_des_soies »,
-            « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
-            pour le rendu calendrier.
-          </dd>
-        </dl>
-      </div>
+        <dt>🌸 EvenementPhenologique</dt>
+        <dd>
+          Borne flottante de période (« brunissement_des_soies »,
+          « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
+          pour le rendu calendrier.
+        </dd>
+      </dl>
     </div>
   </div>
 
@@ -160,30 +151,43 @@ classDiagram
   </script>
 
   <style>
-    .nitrates-explainer-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-      gap: 1.5rem;
-      padding: 1rem;
-      align-items: start;
+    /* Override Django admin : la sidebar fait 300px par defaut, ce qui
+       est trop etroit pour notre diagramme Mermaid. On force 50% de
+       l'ecran (avec un min/max raisonnables). */
+    body.colMS #content-main {
+      margin-right: clamp(560px, 50%, 760px);
+    }
+
+    body.colMS #content-related {
+      width: clamp(540px, calc(50% - 20px), 740px);
+      float: right;
+      position: static;
+      margin-top: 0;
     }
 
     @media (max-width: 1100px) {
-      .nitrates-explainer-grid {
-        grid-template-columns: 1fr;
+      body.colMS #content-main {
+        margin-right: 0;
+        float: none;
+        width: 100%;
+      }
+
+      body.colMS #content-related {
+        float: none;
+        width: 100%;
+        margin-top: 1.5rem;
       }
     }
 
-    .nitrates-data-model-explainer #nitrates-mermaid {
+    .nitrates-admin-sidebar #nitrates-mermaid {
       background: #fff;
       border: 1px solid #e1e1e1;
       border-radius: 4px;
       padding: 0.75rem;
       overflow: auto;
-      min-height: 480px;
     }
 
-    .nitrates-data-model-explainer #nitrates-mermaid svg {
+    .nitrates-admin-sidebar #nitrates-mermaid svg {
       max-width: 100%;
       width: 100%;
       height: auto !important;
@@ -192,7 +196,7 @@ classDiagram
     }
 
     @media (prefers-color-scheme: dark) {
-      .nitrates-data-model-explainer #nitrates-mermaid {
+      .nitrates-admin-sidebar #nitrates-mermaid {
         background: #1e1e1e;
         border-color: #333;
       }
