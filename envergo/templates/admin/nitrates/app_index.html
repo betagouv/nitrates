@@ -21,10 +21,14 @@
 
   <div class="nitrates-admin-top">
 
-    {# ─── Outils ─────────────────────────────────────────────── #}
+    {# ─── Acces rapide ────────────────────────────────────────── #}
     <div class="module nitrates-admin-tools">
-      <h2>Outils nitrates</h2>
+      <h2>Accès rapide</h2>
       <ul class="actionlist" style="padding-left:1.2rem; margin:0.5rem 0;">
+        <li>
+          <a href="{% url 'nitrates_simulateur' %}">🧮 Simulateur public</a>
+          — version utilisateur final (sans authentification)
+        </li>
         <li>
           <a href="{% url 'nitrates_admin_validation_index' %}">📋 Dashboard validation des feuilles</a>
           — tableau Miro × YAML × simulateur × Playwright
@@ -51,19 +55,9 @@ classDiagram
       +status (draft/active/archive)
       +Source de vérité runtime
     }
-    class Culture {
-      +identifiant
-      +libelle_public
-      +occupation_sol (enum)
-    }
     class BrancheCulturale {
       +identifiant
       +Sous-arbre emprunté
-    }
-    class GroupeCultureUI {
-      +identifiant
-      +libelle_public
-      +Regroupement UX (cascade form)
     }
     class Fertilisant {
       +identifiant
@@ -87,13 +81,24 @@ classDiagram
       +libelle_public
       +date_calendrier
     }
+    class Culture {
+      +identifiant
+      +libelle_public
+      +occupation_sol (enum)
+    }
+    class GroupeCultureUI {
+      +identifiant
+      +libelle_public
+      +Regroupement UX (cascade form)
+    }
+    BrancheCulturale ..> ArbreDeDecision : feed (branche sur)
+    Fertilisant ..> ArbreDeDecision : référencé par
+    CodePrescription ..> ArbreDeDecision : référencé par
+    NoteReglementaire ..> ArbreDeDecision : référencé par
+    EvenementPhenologique ..> ArbreDeDecision : référencé par (bornes)
+    NoteReglementaire ..> CodePrescription : référencé par
     Culture --o GroupeCultureUI : cascade UI
     Culture --o BrancheCulturale : route arbre
-    CodePrescription --o NoteReglementaire : peut référencer
-    ArbreDeDecision ..> BrancheCulturale : branche sur
-    ArbreDeDecision ..> CodePrescription : référence
-    ArbreDeDecision ..> NoteReglementaire : référence
-    ArbreDeDecision ..> EvenementPhenologique : référence bornes
       </div>
       {# djlint:on #}
     </div>
