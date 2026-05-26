@@ -235,6 +235,8 @@ classDiagram
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 1.5rem;
       align-items: start;
+      /* Marge a droite pour eviter que le contenu colle au bord viewport. */
+      padding-right: 1rem;
     }
 
     @media (max-width: 1100px) {
@@ -243,8 +245,22 @@ classDiagram
       }
     }
 
+    /* min-width: 0 sur les colonnes grid : sans ca, les enfants peuvent
+       prendre leur taille intrinseque et faire deborder la cellule. */
+    .nitrates-admin-col-left,
+    .nitrates-admin-col-right {
+      min-width: 0;
+    }
+
     .nitrates-admin-col-right .module {
       padding-bottom: 1rem;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+    }
+
+    .nitrates-admin-col-right .module table {
+      max-width: 100%;
+      table-layout: auto;
     }
 
     #nitrates-mermaid {
