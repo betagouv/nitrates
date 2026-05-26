@@ -4,7 +4,7 @@
 
 {# Layout custom pour la page d'accueil admin nitrates : on sort
    completement du carcan colMS/colM de l'admin Django pour avoir
-   un grid 2 colonnes 50/50 propre. #}
+   un layout plein-largeur propre. #}
 {% block coltype %}flex{% endblock %}
 
 {% block bodyclass %}{{ block.super }} app-{{ app_label }} nitrates-admin-index{% endblock %}
@@ -19,80 +19,32 @@
 {% block content %}
   <h1>{{ app_label|capfirst }}</h1>
 
-  <div class="nitrates-admin-grid">
+  <div class="nitrates-admin-top">
 
-    {# ─── Colonne gauche ─────────────────────────────────────── #}
-    <div class="nitrates-admin-col-left">
-
-      <div class="module" style="margin-bottom:1rem;">
-        <h2>Outils nitrates</h2>
-        <ul class="actionlist" style="padding-left:1.2rem; margin:0.5rem 0;">
-          <li>
-            <a href="{% url 'nitrates_admin_validation_index' %}">📋 Dashboard validation des feuilles</a>
-            — tableau Miro × YAML × simulateur × Playwright
-          </li>
-          <li>
-            <a href="{% url 'admin:nitrates_decisiontree_changelist' %}">🌳 Arbres de décision</a>
-            — liste de tous les arbres (actif, brouillons, archives) avec actions
-          </li>
-          <li>
-            <a href="{% url 'nitrates_yaml_browser_list' %}">📝 Mini browser YAML pleine page</a>
-            — coloration syntaxique + Darcula
-          </li>
-        </ul>
-      </div>
-
-      {# Liste des modeles ORM Django (reproduit le rendu admin standard). #}
-      {% for app in app_list %}
-        <div class="app-{{ app.app_label }} module">
-          <table>
-            <caption>
-              <a href="{{ app.app_url }}" class="section">{{ app.name }}</a>
-            </caption>
-            {% for model in app.models %}
-              <tr class="model-{{ model.object_name|lower }}">
-                {% if model.admin_url %}
-                  <th scope="row">
-                    <a href="{{ model.admin_url }}">{{ model.name }}</a>
-                  </th>
-                {% else %}
-                  <th scope="row">{{ model.name }}</th>
-                {% endif %}
-                {% if model.add_url %}
-                  <td>
-                    <a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a>
-                  </td>
-                {% else %}
-                  <td></td>
-                {% endif %}
-                {% if model.admin_url %}
-                  {% if model.view_only %}
-                    <td>
-                      <a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a>
-                    </td>
-                  {% else %}
-                    <td>
-                      <a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a>
-                    </td>
-                  {% endif %}
-                {% else %}
-                  <td></td>
-                {% endif %}
-              </tr>
-            {% endfor %}
-          </table>
-        </div>
-      {% endfor %}
-
+    {# ─── Outils ─────────────────────────────────────────────── #}
+    <div class="module nitrates-admin-tools">
+      <h2>Outils nitrates</h2>
+      <ul class="actionlist" style="padding-left:1.2rem; margin:0.5rem 0;">
+        <li>
+          <a href="{% url 'nitrates_admin_validation_index' %}">📋 Dashboard validation des feuilles</a>
+          — tableau Miro × YAML × simulateur × Playwright
+        </li>
+        <li>
+          <a href="{% url 'admin:nitrates_decisiontree_changelist' %}">🌳 Arbres de décision</a>
+          — liste de tous les arbres (actif, brouillons, archives) avec actions
+        </li>
+        <li>
+          <a href="{% url 'nitrates_yaml_browser_list' %}">📝 Mini browser YAML pleine page</a>
+          — coloration syntaxique + Darcula
+        </li>
+      </ul>
     </div>
 
-    {# ─── Colonne droite : Modele de donnees ───────────────── #}
-    <div class="nitrates-admin-col-right">
-      <div class="module">
-        <h2>Modèle de données nitrates</h2>
-
-        {# djlint:off #}
-        <div class="mermaid" id="nitrates-mermaid">
+    {# ─── Diagramme Mermaid ──────────────────────────────────── #}
+    <div class="module nitrates-admin-diagram">
+      <h2>Modèle de données nitrates</h2>
+      {# djlint:off #}
+      <div class="mermaid" id="nitrates-mermaid">
 classDiagram
     class ArbreDeDecision {
       +contenu (JSON YAML)
@@ -142,67 +94,99 @@ classDiagram
     ArbreDeDecision ..> CodePrescription : référence
     ArbreDeDecision ..> NoteReglementaire : référence
     ArbreDeDecision ..> EvenementPhenologique : référence bornes
-        </div>
-        {# djlint:on #}
-
-        <h3 style="margin-top:1.5rem;">Rôle de chaque modèle</h3>
-        <dl class="nitrates-classes-dl">
-          <dt>🌳 ArbreDeDecision</dt>
-          <dd>
-            Source de vérité runtime de la moulinette.
-          </dd>
-
-          <dt>🌱 GroupeCultureUI</dt>
-          <dd>
-            Regroupement <strong>UX uniquement</strong> pour le 1er select
-            de la cascade formulaire (« Culture d'hiver », « Prairies ou
-            luzerne »…). Aucune logique métier ne branche dessus.
-          </dd>
-
-          <dt>🌾 Culture</dt>
-          <dd>
-            Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
-            Sert de <strong>mapper</strong> entre la cascade UI et la branche
-            d'arbre empruntée (FK <code>branche_culturale</code> +
-            <code>occupation_sol</code>).
-          </dd>
-
-          <dt>🌿 BrancheCulturale</dt>
-          <dd>
-            Identifiant de sous-arbre du YAML (« colza »,
-            « culture_printemps »…). Plusieurs cultures peuvent emprunter
-            la même branche. C'est ce sur quoi l'arbre branche réellement
-            au niveau <code>culture</code>.
-          </dd>
-
-          <dt>💩 Fertilisant</dt>
-          <dd>
-            Fertilisant utilisateur (« Fientes de volailles », « Lisier porcin »…).
-          </dd>
-
-          <dt>📜 CodePrescription</dt>
-          <dd>
-            Prescription affichée en résultat de simulation (PC1, PC2…).
-            Lié optionnellement à une <strong>NoteReglementaire</strong>.
-          </dd>
-
-          <dt>📑 NoteReglementaire</dt>
-          <dd>
-            Note de l'arrêté PAN (note_5, note_7…). Porte la liste des
-            régions / départements concernés (utilisé pour résoudre les
-            zones type « note_5 »).
-          </dd>
-
-          <dt>🌸 EvenementPhenologique</dt>
-          <dd>
-            Borne flottante de période (« brunissement_des_soies »,
-            « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
-            pour le rendu calendrier.
-          </dd>
-        </dl>
       </div>
+      {# djlint:on #}
     </div>
   </div>
+
+  {# ─── Liste des modeles avec description integree ──────────── #}
+  {% for app in app_list %}
+    <div class="app-{{ app.app_label }} module nitrates-admin-models">
+      <table>
+        <caption>
+          <a href="{{ app.app_url }}" class="section">{{ app.name }}</a>
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Modèle</th>
+            <th scope="col">{% translate 'Add' %}</th>
+            <th scope="col">{% translate 'Change' %}</th>
+            <th scope="col">Rôle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for model in app.models %}
+            <tr class="model-{{ model.object_name|lower }}">
+              {% if model.admin_url %}
+                <th scope="row">
+                  <a href="{{ model.admin_url }}">{{ model.name }}</a>
+                </th>
+              {% else %}
+                <th scope="row">{{ model.name }}</th>
+              {% endif %}
+              {% if model.add_url %}
+                <td>
+                  <a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a>
+                </td>
+              {% else %}
+                <td></td>
+              {% endif %}
+              {% if model.admin_url %}
+                {% if model.view_only %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a>
+                  </td>
+                {% else %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a>
+                  </td>
+                {% endif %}
+              {% else %}
+                <td></td>
+              {% endif %}
+              <td class="nitrates-model-role">
+                {% if model.object_name == "DecisionTree" %}
+                  🌳 Source de vérité runtime de la moulinette.
+                {% elif model.object_name == "GroupeCultureUI" %}
+                  🌱 Regroupement <strong>UX uniquement</strong> pour le 1er select
+                  de la cascade formulaire (« Culture d'hiver », « Prairies ou
+                  luzerne »…). Aucune logique métier ne branche dessus.
+                {% elif model.object_name == "Culture" %}
+                  🌾 Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
+                  Sert de <strong>mapper</strong> entre la cascade UI et la branche
+                  d'arbre empruntée (FK <code>branche_culturale</code> +
+                  <code>occupation_sol</code>).
+                {% elif model.object_name == "BrancheCulturale" %}
+                  🌿 Identifiant de sous-arbre du YAML (« colza »,
+                  « culture_printemps »…). Plusieurs cultures peuvent emprunter
+                  la même branche. C'est ce sur quoi l'arbre branche réellement
+                  au niveau <code>culture</code>.
+                {% elif model.object_name == "Fertilisant" %}
+                  💩 Fertilisant utilisateur (« Fientes de volailles »,
+                  « Lisier porcin »…).
+                {% elif model.object_name == "CodePrescription" %}
+                  📜 Prescription affichée en résultat de simulation (PC1, PC2…).
+                  Lié optionnellement à une <strong>NoteReglementaire</strong>.
+                {% elif model.object_name == "NoteReglementaire" %}
+                  📑 Note de l'arrêté PAN (note_5, note_7…). Porte la liste
+                  des régions / départements concernés (utilisé pour résoudre
+                  les zones type « note_5 »).
+                {% elif model.object_name == "EvenementPhenologique" %}
+                  🌸 Borne flottante de période (« brunissement_des_soies »,
+                  « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
+                  pour le rendu calendrier.
+                {% elif model.object_name == "RpgCulture" %}
+                  📊 Référentiel officiel IGN/ASP des codes culture du RPG
+                  (Registre Parcellaire Graphique). Utilisé pour mapper les
+                  codes parcelles vers des libellés métier.
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
 
   {# Mermaid via CDN — chargé uniquement sur cette page admin. #}
   <script type="module">
@@ -218,8 +202,8 @@ classDiagram
 
   <style>
     /* On extend base_site.html directement (pas app_index.html), donc
-       le carcan colMS/colM n'est pas applique. On force quand meme
-       float:none au cas ou. */
+       le carcan colMS/colM n'est pas applique. On force float:none au
+       cas ou. */
     body.nitrates-admin-index #content {
       width: 100%;
     }
@@ -230,40 +214,26 @@ classDiagram
       margin-right: 0 !important;
     }
 
-    .nitrates-admin-grid {
+    .nitrates-admin-top {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
       gap: 1.5rem;
       align-items: start;
-      /* Marge a droite pour eviter que le contenu colle au bord viewport. */
+      margin-bottom: 1.5rem;
       padding-right: 1rem;
     }
 
     @media (max-width: 1100px) {
-      .nitrates-admin-grid {
+      .nitrates-admin-top {
         grid-template-columns: 1fr;
       }
     }
 
-    /* min-width: 0 sur les colonnes grid : sans ca, les enfants peuvent
-       prendre leur taille intrinseque et faire deborder la cellule. */
-    .nitrates-admin-col-left,
-    .nitrates-admin-col-right {
-      min-width: 0;
+    .nitrates-admin-diagram {
+      margin-right: 1rem;
     }
 
-    .nitrates-admin-col-right .module {
-      padding-bottom: 1rem;
-      overflow-wrap: break-word;
-      word-wrap: break-word;
-    }
-
-    .nitrates-admin-col-right .module table {
-      max-width: 100%;
-      table-layout: auto;
-    }
-
-    #nitrates-mermaid {
+    .nitrates-admin-diagram .mermaid {
       background: #fff;
       border: 1px solid #e1e1e1;
       border-radius: 4px;
@@ -272,7 +242,7 @@ classDiagram
       overflow: auto;
     }
 
-    #nitrates-mermaid svg {
+    .nitrates-admin-diagram .mermaid svg {
       max-width: 100%;
       width: 100%;
       height: auto !important;
@@ -281,45 +251,48 @@ classDiagram
     }
 
     @media (prefers-color-scheme: dark) {
-      #nitrates-mermaid {
+      .nitrates-admin-diagram .mermaid {
         background: #1e1e1e;
         border-color: #333;
       }
     }
 
-    .nitrates-classes-dl {
-      padding: 0 1rem 0.5rem;
-      margin: 0;
+    /* Table des modeles : 4e colonne descriptive. */
+    .nitrates-admin-models {
+      margin-right: 1rem;
     }
 
-    .nitrates-classes-dl dt {
-      font-weight: 600;
-      margin-top: 0.6rem;
-      font-size: 0.95rem;
+    .nitrates-admin-models table {
+      width: 100%;
+      table-layout: auto;
     }
 
-    .nitrates-classes-dl dd {
-      margin: 0.2rem 0 0 1.2rem;
+    .nitrates-admin-models th[scope="row"] {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    .nitrates-admin-models td.nitrates-model-role {
       font-size: 0.85rem;
       color: #444;
-      line-height: 1.4;
+      line-height: 1.45;
+      padding: 0.4rem 0.6rem;
+      overflow-wrap: break-word;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .nitrates-classes-dl dd {
-        color: #ccc;
-      }
-    }
-
-    .nitrates-classes-dl code {
+    .nitrates-admin-models td.nitrates-model-role code {
       background: #f0f0f0;
       padding: 1px 4px;
       border-radius: 3px;
-      font-size: 0.85em;
+      font-size: 0.9em;
     }
 
     @media (prefers-color-scheme: dark) {
-      .nitrates-classes-dl code {
+      .nitrates-admin-models td.nitrates-model-role {
+        color: #ccc;
+      }
+
+      .nitrates-admin-models td.nitrates-model-role code {
         background: #2a2a2a;
         color: #f0d090;
       }
