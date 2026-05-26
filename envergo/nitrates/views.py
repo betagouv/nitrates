@@ -1,11 +1,12 @@
 import json
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from django.views.generic import TemplateView, View
+from django.views.generic import View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import (
@@ -40,8 +41,19 @@ _QC_LIBELLES = {
 }
 
 
-class HomeView(TemplateView):
-    template_name = "nitrates/home.html"
+@method_decorator(login_required, name="dispatch")
+class HomeView(View):
+    """Racine `/` : sert le meme simulateur que `/simulateur/`, mais
+    protege par ProConnect. Permet de differencier les URL d'admin
+    (accessibles aux juristes connectes) du parcours user public.
+
+    On delegue tout a `MoulinetteView.get()` pour eviter la duplication.
+    """
+
+    def get(self, request, *args, **kwargs):
+        # Import retarde pour eviter d'instancier MoulinetteView avant que
+        # ses dependances (referentiels DB, etc.) soient chargees.
+        return MoulinetteView().get(request, *args, **kwargs)
 
 
 @method_decorator(cache_page(60 * 60 * 24), name="dispatch")

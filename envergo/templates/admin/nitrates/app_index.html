@@ -20,3 +20,195 @@
     </ul>
   </div>
 {% endblock %}
+
+{% block sidebar %}
+  <div id="content-related" class="nitrates-admin-sidebar">
+    <div class="module" id="nitrates-data-model-explainer">
+      <h2>Modèle de données nitrates</h2>
+      <p style="font-size:0.85rem; color:#555; margin:0.5rem 0 1rem;">
+        Vue d'ensemble des modèles ORM et de leur rôle dans l'application
+        (simulateur public + admin de référentiel).
+      </p>
+
+      {# djlint:off #}
+      <div class="mermaid" id="nitrates-mermaid">
+classDiagram
+    class ArbreDeDecision {
+      +contenu (JSON YAML)
+      +status (draft/active/archive)
+      +Source de vérité runtime
+    }
+    class Culture {
+      +identifiant
+      +libelle_public
+      +occupation_sol (enum)
+    }
+    class BrancheCulturale {
+      +identifiant
+      +Sous-arbre emprunté
+    }
+    class GroupeCultureUI {
+      +identifiant
+      +libelle_public
+      +Regroupement UX (cascade form)
+    }
+    class Fertilisant {
+      +identifiant
+      +libelle_public
+      +categorie (enum)
+      +type_reglementaire
+    }
+    class CodePrescription {
+      +identifiant
+      +mots_cles
+      +texte_court
+    }
+    class NoteReglementaire {
+      +identifiant
+      +libelle_court
+      +regions_concernees
+      +departements_concernes
+    }
+    class EvenementPhenologique {
+      +identifiant
+      +libelle_public
+      +date_calendrier
+    }
+    Culture --o GroupeCultureUI : cascade UI
+    Culture --o BrancheCulturale : route arbre
+    CodePrescription --o NoteReglementaire : peut référencer
+    ArbreDeDecision ..> BrancheCulturale : branche sur
+    ArbreDeDecision ..> CodePrescription : référence
+    ArbreDeDecision ..> NoteReglementaire : référence
+    ArbreDeDecision ..> EvenementPhenologique : référence bornes
+      </div>
+      {# djlint:on #}
+
+      <h3 style="margin-top:1.5rem;">Rôle de chaque modèle</h3>
+      <dl class="nitrates-classes-dl">
+        <dt>🌳 ArbreDeDecision</dt>
+        <dd>
+          Source de vérité runtime de la moulinette. JSON YAML versionné
+          (draft / active / archive). Édité via le viewer
+          <code>/admin/nitrates/arbre-decision/</code>.
+        </dd>
+
+        <dt>🌱 GroupeCultureUI</dt>
+        <dd>
+          Regroupement <strong>UX uniquement</strong> pour le 1er select
+          de la cascade formulaire (« Culture d'hiver », « Prairies ou
+          luzerne »…). Aucune logique métier ne branche dessus.
+        </dd>
+
+        <dt>🌾 Culture</dt>
+        <dd>
+          Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
+          Sert de <strong>mapper</strong> entre la cascade UI et la branche
+          d'arbre empruntée (FK <code>branche_culturale</code> +
+          <code>occupation_sol</code>).
+        </dd>
+
+        <dt>🌿 BrancheCulturale</dt>
+        <dd>
+          Identifiant de sous-arbre du YAML (« colza »,
+          « culture_printemps »…). Plusieurs cultures peuvent emprunter
+          la même branche. C'est ce sur quoi l'arbre branche réellement
+          au niveau <code>sous_culture</code>.
+        </dd>
+
+        <dt>💩 Fertilisant</dt>
+        <dd>
+          Fertilisant utilisateur (« Fientes de volailles », « Lisier
+          porcin »…). Catégorie + type réglementaire (type_0/Ia/Ib/II/III)
+          en choices figés par l'arrêté. La liste est dynamique.
+        </dd>
+
+        <dt>📜 CodePrescription</dt>
+        <dd>
+          Prescription affichée en résultat de simulation (PC1, PC2…).
+          Lié optionnellement à une <strong>NoteReglementaire</strong>.
+        </dd>
+
+        <dt>📑 NoteReglementaire</dt>
+        <dd>
+          Note de l'arrêté PAN (note_5, note_7…). Porte la liste des
+          régions / départements concernés (utilisé pour résoudre les
+          zones type « note_5 »).
+        </dd>
+
+        <dt>🌸 EvenementPhenologique</dt>
+        <dd>
+          Borne flottante de période (« brunissement_des_soies »,
+          « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
+          pour le rendu calendrier.
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  {# Mermaid via CDN — chargé uniquement sur cette page admin. #}
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'default',
+      securityLevel: 'strict',
+    });
+  </script>
+
+  <style>
+    .nitrates-admin-sidebar {
+      max-width: 480px;
+    }
+
+    .nitrates-admin-sidebar #nitrates-mermaid {
+      background: #fff;
+      border: 1px solid #e1e1e1;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .nitrates-admin-sidebar #nitrates-mermaid {
+        background: #1e1e1e;
+        border-color: #333;
+      }
+    }
+
+    .nitrates-classes-dl dt {
+      font-weight: 600;
+      margin-top: 0.6rem;
+      font-size: 0.95rem;
+    }
+
+    .nitrates-classes-dl dd {
+      margin: 0.2rem 0 0 1.2rem;
+      font-size: 0.85rem;
+      color: #444;
+      line-height: 1.4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .nitrates-classes-dl dd {
+        color: #ccc;
+      }
+    }
+
+    .nitrates-classes-dl code {
+      background: #f0f0f0;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .nitrates-classes-dl code {
+        background: #2a2a2a;
+        color: #f0d090;
+      }
+    }
+  </style>
+{% endblock %}
