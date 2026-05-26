@@ -73,6 +73,7 @@ def validate_arbre(
     errors.extend(_check_niveaux_formulaire(arbre))
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
+    errors.extend(_check_calculatrice(arbre))
     errors.extend(_check_branches_booleennes_exhaustives(arbre))
 
     if referentiels:
@@ -395,6 +396,227 @@ def _check_regime_mixte(arbre: dict) -> list[str]:
                 f"[mixte] regle '{rid}' : type='mixte' exige >=2 regimes "
                 f"distincts dans les periodes. Trouve : {sorted(regimes_vus)}."
             )
+    return errors
+
+
+# ─── Type "calculatrice" : inputs_requis + bornes event +/- offset ─────────
+
+
+# Borne calculatrice :
+#   date_fixe       : "JJ/MM"
+#   event nu        : "<event_id>"
+#   event + offset  : "<event_id>(+|-)<n>(jours|semaines|mois)"
+_CALCULATRICE_REGIMES = {
+    "interdiction",
+    "autorisation_sous_condition",
+    "plafonnement",
+    "libre",
+    "non_applicable",
+}
+_CALCULATRICE_COMPOSANTS = {
+    "calendrier_dynamique_couvert",
+    # Composants legacy de l'arbre PAN actuel (a migrer plus tard vers
+    # le nouveau composant calendrier_dynamique_couvert).
+    "luzerne_post_coupe",
+    "fenetre_epandage",
+}
+
+# Composants legacy : on saute la nouvelle validation grammaire calculatrice
+# pour eux (ils suivent l'ancienne shape : inputs_requis = [str], pas de
+# periodes). A migrer vers calendrier_dynamique_couvert plus tard.
+_CALCULATRICE_COMPOSANTS_LEGACY = {"luzerne_post_coupe", "fenetre_epandage"}
+_CALCULATRICE_OFFSET_UNITES = {"jours", "semaines", "mois"}
+_CALCULATRICE_INPUT_TYPES = {"date"}
+_SLUG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_BORNE_EVENT_OFFSET_RE = re.compile(
+    r"^(?P<event>[a-z][a-z0-9_]*)"
+    r"(?:(?P<sign>[+-])(?P<n>\d+)(?P<unit>jours|semaines|mois))?$"
+)
+
+
+def _parse_borne_calculatrice(val: str, input_ids: set[str]) -> tuple[bool, str | None]:
+    """Parse une borne calculatrice. Retourne (is_event_based, error).
+
+    - "JJ/MM" valide -> (False, None) -> borne date fixe
+    - "<event>" ou "<event>±N<unit>" avec event dans input_ids -> (True, None)
+    - sinon -> (False, "message d'erreur")
+    """
+    if not isinstance(val, str) or not val:
+        return False, "valeur vide"
+    if DATE_FIXE_RE.match(val):
+        return (False, None) if _is_valid_date(val) else (False, "date invalide")
+    m = _BORNE_EVENT_OFFSET_RE.match(val)
+    if not m:
+        return (
+            False,
+            f"borne {val!r} : ni date JJ/MM, ni event nu, ni event±N(jours|semaines|mois)",
+        )
+    event_id = m.group("event")
+    if event_id not in input_ids:
+        return (
+            True,
+            f"borne {val!r} : event {event_id!r} absent de inputs_requis",
+        )
+    if m.group("sign"):
+        try:
+            n = int(m.group("n"))
+        except ValueError:
+            return True, f"borne {val!r} : offset numerique invalide"
+        if n < 1:
+            return True, f"borne {val!r} : offset doit etre >= 1"
+    return True, None
+
+
+def _check_calculatrice(arbre: dict) -> list[str]:
+    """Validation specifique au type=calculatrice (cf. spec grammaire
+    calculatrice 2026-05-26). Vit en parallele des autres types : aucun
+    impact sur interdiction / autorisation_sous_condition / plafonnement /
+    libre / non_applicable / mixte.
+
+    Regles (1-9 de la spec) :
+      1. `inputs_requis` obligatoire et non vide.
+      2. Chaque input : id (slug), label (str), type ('date'), placeholder (JJ/MM).
+      3. Unicite des `id` dans inputs_requis.
+      4. `periodes` obligatoire et non vide.
+      5. Chaque borne (du, au) : date fixe OU event nu OU event+/-N(unit),
+         avec event dans inputs_requis et N >= 1.
+      6. Au moins une borne reference un event.
+      7. `regime` dans l'enum standard.
+      8. `composant` obligatoire, valeur dans la liste fermee.
+      9. Tout id de inputs_requis doit etre reference par au moins une borne
+         (warning sinon -- input mort).
+    """
+    errors: list[str] = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict) or obj.get("type") != "calculatrice":
+            continue
+        # La nouvelle grammaire calculatrice ne s'applique qu'au composant
+        # `calendrier_dynamique_couvert`. Les composants legacy
+        # (luzerne_post_coupe, fenetre_epandage) suivent l'ancienne shape
+        # (inputs_requis = [str], pas de periodes) et sont laisses passer
+        # en attendant leur migration. Une calculatrice SANS composant
+        # explicit reste validee par la nouvelle grammaire (regle 8 : composant
+        # obligatoire).
+        if obj.get("composant") in _CALCULATRICE_COMPOSANTS_LEGACY:
+            continue
+        rid = obj.get("id", "?")
+
+        # Regle 1 : inputs_requis obligatoire et non vide
+        inputs = obj.get("inputs_requis") or []
+        if not inputs:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `inputs_requis` obligatoire et non vide."
+            )
+
+        # Regle 2-3 : chaque input bien forme + unicite des ids
+        input_ids: list[str] = []
+        for i, inp in enumerate(inputs, start=1):
+            if not isinstance(inp, dict):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : doit etre un "
+                    f"objet {{id, label, type, placeholder}}, pas {type(inp).__name__}."
+                )
+                continue
+            iid = inp.get("id")
+            if not isinstance(iid, str) or not iid or not _SLUG_RE.match(iid):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `id` "
+                    f"obligatoire au format slug snake_case (recu {iid!r})."
+                )
+            else:
+                input_ids.append(iid)
+            label = inp.get("label")
+            if not isinstance(label, str) or not label.strip():
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `label` "
+                    f"obligatoire (chaine non vide)."
+                )
+            itype = inp.get("type")
+            if itype not in _CALCULATRICE_INPUT_TYPES:
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `type` doit "
+                    f"etre dans {sorted(_CALCULATRICE_INPUT_TYPES)} "
+                    f"(recu {itype!r})."
+                )
+            ph = inp.get("placeholder")
+            if ph is not None:
+                if (
+                    not isinstance(ph, str)
+                    or not DATE_FIXE_RE.match(ph)
+                    or not _is_valid_date(ph)
+                ):
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' input #{i} : "
+                        f"`placeholder` doit etre une date JJ/MM valide "
+                        f"(recu {ph!r})."
+                    )
+        # Regle 3 : unicite des ids
+        if len(input_ids) != len(set(input_ids)):
+            from collections import Counter
+
+            dup = [k for k, n in Counter(input_ids).items() if n > 1]
+            errors.append(
+                f"[calculatrice] regle '{rid}' : ids d'inputs dupliques : {dup}."
+            )
+
+        input_ids_set = set(input_ids)
+
+        # Regle 4 : periodes obligatoire et non vide
+        periodes = obj.get("periodes") or []
+        if not periodes:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `periodes` obligatoire et non vide."
+            )
+
+        # Regles 5 + 6 + 7 : bornes valides, au moins une event, regime ok
+        events_utilises: set[str] = set()
+        au_moins_une_event = False
+        for i, p in enumerate(periodes, start=1):
+            for borne_name in ("du", "au"):
+                val = p.get(borne_name)
+                if val is None:
+                    continue
+                is_event, err = _parse_borne_calculatrice(val, input_ids_set)
+                if err:
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' periode #{i} {borne_name} : {err}"
+                    )
+                if is_event:
+                    au_moins_une_event = True
+                    m = _BORNE_EVENT_OFFSET_RE.match(val)
+                    if m and m.group("event") in input_ids_set:
+                        events_utilises.add(m.group("event"))
+            preg = p.get("regime")
+            if preg is not None and preg not in _CALCULATRICE_REGIMES:
+                errors.append(
+                    f"[calculatrice] regle '{rid}' periode #{i} : regime "
+                    f"{preg!r} inconnu (attendu : {sorted(_CALCULATRICE_REGIMES)})."
+                )
+        if periodes and not au_moins_une_event:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : aucune borne ne reference un "
+                f"event (auquel cas un `type: mixte` suffit, calculatrice "
+                f"n'a pas de sens)."
+            )
+
+        # Regle 8 : composant obligatoire et dans la liste fermee
+        composant = obj.get("composant")
+        if not composant:
+            errors.append(f"[calculatrice] regle '{rid}' : `composant` obligatoire.")
+        elif composant not in _CALCULATRICE_COMPOSANTS:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `composant` {composant!r} "
+                f"inconnu (attendu : {sorted(_CALCULATRICE_COMPOSANTS)})."
+            )
+
+        # Regle 9 : tout input declare doit etre utilise par au moins une borne
+        orphans = sorted(input_ids_set - events_utilises)
+        if orphans:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : inputs declares mais non "
+                f"reference par aucune borne (inputs morts) : {orphans}."
+            )
+
     return errors
 
 

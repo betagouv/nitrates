@@ -248,35 +248,60 @@ exemple_regle_non_applicable:
 
 
 # ── Type "calculatrice" ──────────────────────────────────────────────────────
-# Délègue le rendu et le calcul à un composant nommé (côté backend Django),
-# versionné côté code, paramétré par le YAML.
+# Spec grammaire calculatrice 2026-05-26.
 #
-# Champs :
-#   - composant       : identifiant du composant (liste blanche côté code)
-#   - inputs_requis   : champs saisis par l'utilisateur dans la mini-UI
-#   - parametres      : constantes réglementaires injectées au composant
-#                       (périodes, délais, codes PC) — éditables par le métier
-#                       sans toucher au code.
+# Une feuille `type: calculatrice` modélise un calendrier dynamique alimenté
+# par 1-2 dates saisies par l'utilisateur (date de semis, date de destruction
+# prévue), avec des sous-périodes calculées en relatif. Vit en parallèle des
+# autres types — aucun impact sur interdiction / autorisation_sous_condition /
+# plafonnement / libre / non_applicable / mixte.
 #
-# Le YAML décrit QUOI (composant, inputs, paramètres réglementaires).
-# Le composant Django décrit COMMENT (algo, rendu, messages, alertes, erreurs).
-# Les fixtures de test du composant (ex: "fenêtre confortable", "J-20 absorbé"
-# pour fenetre_epandage) vivent à côté du composant, pas dans le YAML.
+# Champs spécifiques :
+#   - inputs_requis : liste ordonnée d'inputs typés (id, label, type, placeholder).
+#                     L'ordre = ordre d'affichage dans le mini-form de saisie.
+#                     `type` ∈ {date}. `placeholder` = date par défaut JJ/MM.
+#                     Chaque id doit être référencé par au moins une borne.
+#   - periodes      : comme `mixte`, sauf que chaque borne (du, au) accepte
+#                     3 formats au lieu de 2 :
+#                       1. date fixe          : "15/12"
+#                       2. event nu           : "date_semis_couvert"
+#                       3. event + offset     : "date_semis_couvert+4semaines"
+#                                               "date_destruction_prevue-20jours"
+#                     Offsets : `jours` | `semaines` | `mois`, N entier >= 1.
+#                     Au moins une borne doit être event-based (sinon `mixte`
+#                     suffit).
+#   - composant     : enum fermé (cf. validator). MVP : calendrier_dynamique_couvert.
+#
+# Évaluation runtime (hors scope grammaire) : substituer chaque borne event
+# par sa valeur user (+ offset), produire des périodes JJ/MM, retomber dans
+# le pipeline `mixte`.
 
 exemple_regle_calculatrice:
   regle:
-    id: "r_cipan_fenetre_epandage"
+    id: "r_cipan_couvert_dynamique"
     type: "calculatrice"
-    composant: "fenetre_epandage"
+    composant: "calendrier_dynamique_couvert"
     inputs_requis:
-      - "date_semis_couvert"
-      - "date_destruction_prevue"
-    parametres:
-      periode_reglementaire:
-        du: "15/11"
+      - id: "date_semis_couvert"
+        label: "Date de semis du couvert"
+        type: "date"
+        placeholder: "25/07"
+      - id: "date_destruction_prevue"
+        label: "Date de destruction prévue"
+        type: "date"
+        placeholder: "23/03"
+    periodes:
+      - du: "15/12"
         au: "15/01"
-      delai_avant_destruction_jours: 20
-      code_prescription: "pc4"
+        regime: "autorisation_sous_condition"
+      - du: "date_semis_couvert"
+        au: "date_semis_couvert+4semaines"
+        regime: "interdiction"
+      - du: "date_destruction_prevue-20jours"
+        au: "date_destruction_prevue"
+        regime: "interdiction"
+    code_prescription: "pc1"
+    note: "note_1"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

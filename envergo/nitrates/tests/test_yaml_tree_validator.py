@@ -726,3 +726,214 @@ def test_validate_arbre_orm_reconnait_codes_seedes():
         "code_prescription": pc_existant,
     }
     validate_arbre(a)
+
+
+# ─── Type "calculatrice" : grammaire (spec 2026-05-26) ─────────────────────
+
+
+def _calculatrice_regle_valide(rid="r_calc_test"):
+    """Regle calculatrice minimale valide : 2 inputs, 3 periodes (dont 2
+    event-based), composant ok."""
+    return {
+        "id": rid,
+        "type": "calculatrice",
+        "composant": "calendrier_dynamique_couvert",
+        "inputs_requis": [
+            {
+                "id": "date_semis_couvert",
+                "label": "Date de semis",
+                "type": "date",
+                "placeholder": "25/07",
+            },
+            {
+                "id": "date_destruction_prevue",
+                "label": "Date de destruction",
+                "type": "date",
+                "placeholder": "23/03",
+            },
+        ],
+        "periodes": [
+            {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+            {
+                "du": "date_semis_couvert",
+                "au": "date_semis_couvert+4semaines",
+                "regime": "interdiction",
+            },
+            {
+                "du": "date_destruction_prevue-20jours",
+                "au": "date_destruction_prevue",
+                "regime": "interdiction",
+            },
+        ],
+    }
+
+
+def _arbre_avec_calculatrice(regle):
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = regle
+    return a
+
+
+def test_calculatrice_minimale_valide_passe():
+    validate_arbre(_arbre_avec_calculatrice(_calculatrice_regle_valide()))
+
+
+def test_calculatrice_sans_inputs_requis_echoue():
+    r = _calculatrice_regle_valide()
+    r.pop("inputs_requis")
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("inputs_requis" in e for e in exc.value.errors)
+
+
+def test_calculatrice_inputs_requis_vide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"] = []
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("inputs_requis" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_id_non_slug_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["id"] = "Date Semis"  # espace + majuscule
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("slug" in e.lower() or "snake_case" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_label_vide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["label"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("label" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_type_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["type"] = "datetime"
+    # Schema JSON refuse avant validator semantique : ValidationError attendue.
+    with pytest.raises(ValidationError):
+        validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_input_placeholder_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["placeholder"] = "99/99"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("placeholder" in e for e in exc.value.errors)
+
+
+def test_calculatrice_ids_dupliques_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["id"] = "date_semis_couvert"  # duplique le 1er
+    # En sortant l'event "date_destruction_prevue" des inputs, les bornes
+    # qui le referencent vont aussi echouer -- on garde la duplication
+    # comme erreur principale.
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("duplique" in e for e in exc.value.errors)
+
+
+def test_calculatrice_sans_periodes_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"] = []
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("periodes" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_event_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["du"] = "date_inexistante"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("date_inexistante" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_offset_unite_inconnue_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["au"] = "date_semis_couvert+4annees"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("annees" in e or "4annees" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_offset_negatif_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["au"] = "date_semis_couvert+0jours"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any(">= 1" in e for e in exc.value.errors)
+
+
+def test_calculatrice_aucune_borne_event_echoue():
+    """Si toutes les bornes sont des dates fixes JJ/MM, calculatrice n'a
+    pas de sens -> on demande d'utiliser `type: mixte` a la place."""
+    r = _calculatrice_regle_valide()
+    r["periodes"] = [
+        {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+        {"du": "01/03", "au": "31/05", "regime": "interdiction"},
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("event" in e for e in exc.value.errors)
+
+
+def test_calculatrice_regime_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["regime"] = "yolo"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("yolo" in e for e in exc.value.errors)
+
+
+def test_calculatrice_composant_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["composant"] = "composant_imaginaire"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    # JSON schema enum ferme : erreur de structure attendue.
+    assert any(
+        "composant" in e or "composant_imaginaire" in e for e in exc.value.errors
+    )
+
+
+def test_calculatrice_sans_composant_echoue():
+    r = _calculatrice_regle_valide()
+    r.pop("composant")
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("composant" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_mort_echoue():
+    """Un input declare mais non reference par aucune borne -> erreur."""
+    r = _calculatrice_regle_valide()
+    # Ajoute un input qui n'est utilise nulle part.
+    r["inputs_requis"].append(
+        {
+            "id": "date_orpheline",
+            "label": "Orpheline",
+            "type": "date",
+            "placeholder": "01/01",
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("date_orpheline" in e for e in exc.value.errors)
+
+
+def test_calculatrice_back_compat_inputs_requis_legacy_strings():
+    """Une regle non-calculatrice peut toujours utiliser inputs_requis sous
+    forme de liste de strings (cf. pc6 fertirrigation existant)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_legacy",
+        "type": "autorisation_sous_condition",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "inputs_requis": ["fertirrigation"],
+    }
+    validate_arbre(a)

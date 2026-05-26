@@ -66,11 +66,43 @@ REGLE_SCHEMA = {
         "plafond_azote_kg_n_ha": {"type": "number"},
         # Libre
         "plafonnement_associe": {"type": "string"},
-        # Calculatrice
-        "composant": {"type": "string"},
+        # Calculatrice : composant front fermé (cf. spec grammaire calculatrice
+        # 2026-05-26). On garde les 2 composants legacy de l'arbre PAN actuel
+        # (`luzerne_post_coupe`, `fenetre_epandage`) en attendant leur
+        # migration vers la nouvelle grammaire / le nouveau composant.
+        "composant": {
+            "type": "string",
+            "enum": [
+                "calendrier_dynamique_couvert",
+                "luzerne_post_coupe",
+                "fenetre_epandage",
+            ],
+        },
+        # `inputs_requis` accepte 2 shapes (back-compat) :
+        #   - array de strings : forme legacy utilisée par types non-calculatrice
+        #     (ex pc6 `fertirrigation`), simple liste de slugs.
+        #   - array d'objets {id, label, type, placeholder} : forme calculatrice
+        #     pour le mini-formulaire de saisie utilisateur (cf. spec
+        #     grammaire calculatrice 2026-05-26).
+        # Le validator durcit la shape selon `type` de la règle.
         "inputs_requis": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+                "oneOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "required": ["id", "label", "type"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "id": {"type": "string"},
+                            "label": {"type": "string"},
+                            "type": {"enum": ["date"]},
+                            "placeholder": {"type": "string"},
+                        },
+                    },
+                ]
+            },
         },
         "parametres": {"type": "object"},
         # Marqueur brouillon : regle non finalisee, a completer plus tard.
