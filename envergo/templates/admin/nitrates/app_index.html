@@ -109,21 +109,79 @@ classDiagram
         <thead>
           <tr>
             <th scope="col">Modèle</th>
+            <th scope="col">Rôle</th>
             <th scope="col">{% translate 'Add' %}</th>
             <th scope="col">{% translate 'Change' %}</th>
-            <th scope="col">Rôle</th>
           </tr>
         </thead>
         <tbody>
           {% for model in app.models %}
             <tr class="model-{{ model.object_name|lower }}">
-              {% if model.admin_url %}
-                <th scope="row">
+              <th scope="row">
+                <span class="nitrates-model-icon">
+                  {% if model.object_name == "DecisionTree" %}
+                    🌳
+                  {% elif model.object_name == "GroupeCultureUI" %}
+                    🌱
+                  {% elif model.object_name == "Culture" %}
+                    🌾
+                  {% elif model.object_name == "BrancheCulturale" %}
+                    🌿
+                  {% elif model.object_name == "Fertilisant" %}
+                    💩
+                  {% elif model.object_name == "CodePrescription" %}
+                    📜
+                  {% elif model.object_name == "NoteReglementaire" %}
+                    📑
+                  {% elif model.object_name == "EvenementPhenologique" %}
+                    🌸
+                  {% elif model.object_name == "RpgCulture" %}
+                    📊
+                  {% endif %}
+                </span>
+                {% if model.admin_url %}
                   <a href="{{ model.admin_url }}">{{ model.name }}</a>
-                </th>
-              {% else %}
-                <th scope="row">{{ model.name }}</th>
-              {% endif %}
+                {% else %}
+                  {{ model.name }}
+                {% endif %}
+              </th>
+              <td class="nitrates-model-role">
+                {% if model.object_name == "DecisionTree" %}
+                  Source de vérité runtime de la moulinette.
+                {% elif model.object_name == "GroupeCultureUI" %}
+                  Regroupement <strong>UX uniquement</strong> pour le 1er select
+                  de la cascade formulaire (« Culture d'hiver », « Prairies ou
+                  luzerne »…). Aucune logique métier ne branche dessus.
+                {% elif model.object_name == "Culture" %}
+                  Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
+                  Sert de <strong>mapper</strong> entre la cascade UI et la branche
+                  d'arbre empruntée (FK <code>branche_culturale</code> +
+                  <code>occupation_sol</code>).
+                {% elif model.object_name == "BrancheCulturale" %}
+                  Identifiant de sous-arbre du YAML (« colza »,
+                  « culture_printemps »…). Plusieurs cultures peuvent emprunter
+                  la même branche. C'est ce sur quoi l'arbre branche réellement
+                  au niveau <code>culture</code>.
+                {% elif model.object_name == "Fertilisant" %}
+                  Fertilisant utilisateur (« Fientes de volailles »,
+                  « Lisier porcin »…).
+                {% elif model.object_name == "CodePrescription" %}
+                  Prescription affichée en résultat de simulation (PC1, PC2…).
+                  Lié optionnellement à une <strong>NoteReglementaire</strong>.
+                {% elif model.object_name == "NoteReglementaire" %}
+                  Note de l'arrêté PAN (note_5, note_7…). Porte la liste
+                  des régions / départements concernés (utilisé pour résoudre
+                  les zones type « note_5 »).
+                {% elif model.object_name == "EvenementPhenologique" %}
+                  Borne flottante de période (« brunissement_des_soies »,
+                  « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
+                  pour le rendu calendrier.
+                {% elif model.object_name == "RpgCulture" %}
+                  Référentiel officiel IGN/ASP des codes culture du RPG
+                  (Registre Parcellaire Graphique). Utilisé pour mapper les
+                  codes parcelles vers des libellés métier.
+                {% endif %}
+              </td>
               {% if model.add_url %}
                 <td>
                   <a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a>
@@ -144,43 +202,6 @@ classDiagram
               {% else %}
                 <td></td>
               {% endif %}
-              <td class="nitrates-model-role">
-                {% if model.object_name == "DecisionTree" %}
-                  🌳 Source de vérité runtime de la moulinette.
-                {% elif model.object_name == "GroupeCultureUI" %}
-                  🌱 Regroupement <strong>UX uniquement</strong> pour le 1er select
-                  de la cascade formulaire (« Culture d'hiver », « Prairies ou
-                  luzerne »…). Aucune logique métier ne branche dessus.
-                {% elif model.object_name == "Culture" %}
-                  🌾 Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
-                  Sert de <strong>mapper</strong> entre la cascade UI et la branche
-                  d'arbre empruntée (FK <code>branche_culturale</code> +
-                  <code>occupation_sol</code>).
-                {% elif model.object_name == "BrancheCulturale" %}
-                  🌿 Identifiant de sous-arbre du YAML (« colza »,
-                  « culture_printemps »…). Plusieurs cultures peuvent emprunter
-                  la même branche. C'est ce sur quoi l'arbre branche réellement
-                  au niveau <code>culture</code>.
-                {% elif model.object_name == "Fertilisant" %}
-                  💩 Fertilisant utilisateur (« Fientes de volailles »,
-                  « Lisier porcin »…).
-                {% elif model.object_name == "CodePrescription" %}
-                  📜 Prescription affichée en résultat de simulation (PC1, PC2…).
-                  Lié optionnellement à une <strong>NoteReglementaire</strong>.
-                {% elif model.object_name == "NoteReglementaire" %}
-                  📑 Note de l'arrêté PAN (note_5, note_7…). Porte la liste
-                  des régions / départements concernés (utilisé pour résoudre
-                  les zones type « note_5 »).
-                {% elif model.object_name == "EvenementPhenologique" %}
-                  🌸 Borne flottante de période (« brunissement_des_soies »,
-                  « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
-                  pour le rendu calendrier.
-                {% elif model.object_name == "RpgCulture" %}
-                  📊 Référentiel officiel IGN/ASP des codes culture du RPG
-                  (Registre Parcellaire Graphique). Utilisé pour mapper les
-                  codes parcelles vers des libellés métier.
-                {% endif %}
-              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -257,19 +278,29 @@ classDiagram
       }
     }
 
-    /* Table des modeles : 4e colonne descriptive. */
+    /* Table des modeles : colonne Role en position 2. */
     .nitrates-admin-models {
       margin-right: 1rem;
+      max-width: calc(100% - 1rem);
+      overflow-x: auto;
     }
 
     .nitrates-admin-models table {
       width: 100%;
       table-layout: auto;
+      max-width: 100%;
     }
 
     .nitrates-admin-models th[scope="row"] {
       white-space: nowrap;
       width: 1%;
+    }
+
+    .nitrates-model-icon {
+      display: inline-block;
+      width: 1.2em;
+      text-align: center;
+      margin-right: 0.25rem;
     }
 
     .nitrates-admin-models td.nitrates-model-role {
