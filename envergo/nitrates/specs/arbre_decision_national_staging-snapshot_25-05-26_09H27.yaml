@@ -21,12 +21,8 @@ arbre:
             type: interdiction
             message: Épandage interdit toute l'année sur sol non cultivé.
             periodes:
-            # Bornes annee agricole (01/07 -> 30/06) plutot que calendaire :
-            # le calendrier d'epandage est rendu sur l'axe juil-juin, et
-            # cette ecriture lui permet d'afficher une zone rouge pleine
-            # de bout en bout (cf. #54).
-            - au: 30/06
-              du: 01/07
+            - au: 31/12
+              du: 01/01
           valeur: sol_non_cultive
           libelle: Sol non cultivé
         - noeud:
@@ -854,6 +850,7 @@ arbre:
                             - au: 31/01
                               du: 15/10
                             texte_condition: Apport possible selon les conditions du PAR ou à défaut du semis ou dans les 15 jours suivant le semis jusqu'au 31/01.
+                            code_prescription: pc5
                           valeur: false
                           libelle: Pas concerné par la note 5
                         reference: zone_note_5
