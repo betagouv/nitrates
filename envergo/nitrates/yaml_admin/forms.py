@@ -222,10 +222,11 @@ class RegleForm(_BaseYamlForm):
         while True:
             iid = (data.get(f"inputs_requis-{i}-id") or "").strip()
             label = (data.get(f"inputs_requis-{i}-label") or "").strip()
+            label_court = (data.get(f"inputs_requis-{i}-label_court") or "").strip()
             itype = (data.get(f"inputs_requis-{i}-type") or "").strip()
             placeholder = (data.get(f"inputs_requis-{i}-placeholder") or "").strip()
             legacy = (data.get(f"inputs_requis-{i}-legacy") or "").strip()
-            if not (iid or label or itype or placeholder or legacy):
+            if not (iid or label or label_court or itype or placeholder or legacy):
                 break
             if legacy:
                 out.append(legacy)
@@ -235,6 +236,8 @@ class RegleForm(_BaseYamlForm):
                     entry["id"] = iid
                 if label:
                     entry["label"] = label
+                if label_court:
+                    entry["label_court"] = label_court
                 if itype:
                     entry["type"] = itype
                 if placeholder:

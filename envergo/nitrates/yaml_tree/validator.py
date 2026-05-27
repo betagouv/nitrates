@@ -550,6 +550,17 @@ def _check_calculatrice(arbre: dict) -> list[str]:
                         f"`placeholder` doit etre une date JJ/MM valide "
                         f"(recu {ph!r})."
                     )
+            # label_court optionnel (cf. spec_rendu_simulateur_calculatrice.md).
+            # Si present, doit etre une chaine non vide.
+            label_court = inp.get("label_court")
+            if label_court is not None and (
+                not isinstance(label_court, str) or not label_court.strip()
+            ):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : "
+                    f"`label_court` doit etre une chaine non vide "
+                    f"si present (recu {label_court!r})."
+                )
         # Regle 3 : unicite des ids
         if len(input_ids) != len(set(input_ids)):
             from collections import Counter

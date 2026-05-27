@@ -214,6 +214,16 @@
                 </div>
                 <div class="yaml-tree__form-row">
                   <label class="yaml-tree__form-label">
+                    <span>label court (étiquettes calendrier, optionnel)</span>
+                    <input type="text"
+                           name="inputs_requis-{{ forloop.counter0 }}-label_court"
+                           value="{{ inp.label_court|default_if_none:'' }}"
+                           placeholder="semis"
+                           style="max-width:20ch">
+                  </label>
+                </div>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
                     <span>placeholder (JJ/MM)</span>
                     <input type="text"
                            name="inputs_requis-{{ forloop.counter0 }}-placeholder"
@@ -265,6 +275,16 @@
                        value=""
                        placeholder="Date de semis du couvert"
                        required>
+              </label>
+            </div>
+            <div class="yaml-tree__form-row">
+              <label class="yaml-tree__form-label">
+                <span>label court (étiquettes calendrier, optionnel)</span>
+                <input type="text"
+                       name="inputs_requis-__IDX__-label_court"
+                       value=""
+                       placeholder="semis"
+                       style="max-width:20ch">
               </label>
             </div>
             <div class="yaml-tree__form-row">

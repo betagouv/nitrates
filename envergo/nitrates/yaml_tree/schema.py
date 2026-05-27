@@ -97,6 +97,12 @@ REGLE_SCHEMA = {
                         "properties": {
                             "id": {"type": "string"},
                             "label": {"type": "string"},
+                            # Libelle court pour les etiquettes du calendrier
+                            # dynamique (cf. spec_rendu_simulateur_calculatrice.md).
+                            # Optionnel : fallback heuristique cote rendu si
+                            # absent (prendre les 1-2 premiers mots du `label`
+                            # apres "de").
+                            "label_court": {"type": "string"},
                             "type": {"enum": ["date"]},
                             "placeholder": {"type": "string"},
                         },
