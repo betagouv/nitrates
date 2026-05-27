@@ -467,9 +467,17 @@
           // On NE PURGE JAMAIS sel.value : un switch de type ne doit pas
           // detruire silencieusement les regimes par-periode existants.
           // Le validator backend assure la coherence au save.
+          // Calculatrice : regime obligatoire par periode (les bornes event±
+          // offset definissent des fenetres specifiques, chacune avec son regime).
+          const calculatrice = t === 'calculatrice';
           regimeSelects.forEach(sel => {
-            sel.style.display = sousCondition || mixte ? '' : 'none';
+            sel.style.display = sousCondition || mixte || calculatrice ? '' : 'none';
           });
+          // Spec form admin calculatrice : Inputs requis (bloc Calculatrice)
+          // AVANT bloc Periodes. CSS order: calculatrice = -1 (avant tout),
+          // sinon ordre par defaut. Le parent form doit etre flex-column.
+          const formEl = typeSelect.closest('form');
+          if (formEl) formEl.classList.toggle('yaml-tree__inline-form--calc', calculatrice);
           if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
           // fieldsets et rows marques avec data-type-fieldset/row
           fieldsets.forEach(el => {

@@ -1516,3 +1516,16 @@ details[open] > summary.yaml-tree__row::before {
     color: #f0d090;
   }
 }
+
+/* Spec form admin calculatrice : Inputs requis AVANT Periodes
+   quand type=calculatrice. On bascule le form en flex-column et
+   on met l'order=-1 au fieldset Calculatrice (qui contient les
+   Inputs requis), sinon il vient apres Periodes par ordre HTML. */
+.yaml-tree__inline-form--calc {
+  display: flex;
+  flex-direction: column;
+}
+
+.yaml-tree__inline-form--calc .yaml-tree__calculatrice {
+  order: -1;
+}
