@@ -1,0 +1,27 @@
+{% load static %}
+
+{% comment %}
+Container pour le composant calendrier dynamique (cf. spec_rendu_simulateur_calculatrice.md).
+Le serveur expose la regle calculatrice serialisee en JSON ; le JS prend
+le relais pour rendre titre + intro + mini-form inputs + barre 12 mois +
+etiquettes + recap.
+
+Ce template ne fait PAS de rendu fallback en SSR : si le JS est desactive
+ou plante, l'utilisateur voit le JSON brut (acceptable pour MVP-2 vu que
+c'est un composant interactif). Le titre et le paragraphe d'intro sont
+posses cote serveur pour eviter un flash de container vide au load.
+{% endcomment %}
+
+<div class="calc-cal" data-calc-cal-root>
+  <h3 class="calc-cal__title">Calendrier des périodes d'épandage</h3>
+  <p class="calc-cal__intro">
+    Pour ce type d'interculture, la réglementation définit la période
+    d'épandage autorisée en fonction des dates de semis et de destruction
+    du couvert. Saisissez ces dates pour voir le calendrier.
+  </p>
+  <div data-calc-cal-mount>{# Le JS construit ici : mini-form + barre 12 mois + etiquettes + recap. #}</div>
+</div>
+
+{{ ev.regle.to_json_dict|json_script:"nitrates-calculatrice-data" }}
+
+<script defer src="{% static 'nitrates/calculatrice-calendrier.js' %}"></script>

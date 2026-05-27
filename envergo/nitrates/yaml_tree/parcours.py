@@ -44,7 +44,11 @@ class Resultat:
     plafond_azote_kg_n_ha: float | None = None
     plafonnement_associe: str | None = None
     composant: str | None = None
-    inputs_requis: list[str] | None = None
+    # inputs_requis : liste polymorphe (cf. spec_grammaire_calculatrice.md) :
+    #   - list[str] pour les composants legacy (luzerne_post_coupe, fenetre_epandage)
+    #   - list[dict{id,label,type,placeholder,label_court?}] pour la
+    #     nouvelle grammaire calculatrice (calendrier_dynamique_couvert).
+    inputs_requis: list | None = None
     parametres: dict | None = None
     a_completer: bool = False
 
@@ -91,11 +95,12 @@ class Resultat:
     def to_json_dict(self) -> dict:
         """Serialise pour exposition JSON cote front (json_script Django).
 
-        Utilise par le module epandage_aujourdhui.js pour calculer le
-        statut effectif a la date du jour : besoin uniquement des champs
-        regle_id / type / periodes (avec regime) / texte_condition.
-        On expose aussi message / code_prescription pour info debug, mais
-        le calcul de statut ne s'en sert pas.
+        Utilise par :
+          - epandage_aujourdhui.js : calcul du statut effectif a la date
+            du jour. Besoin de regle_id / type / periodes / texte_condition.
+          - calculatrice-calendrier.js : rendu du calendrier dynamique
+            pour les feuilles type=calculatrice. Besoin en plus de
+            composant / inputs_requis / verdict (= message).
         """
         return {
             "regle_id": self.regle_id,
@@ -104,6 +109,9 @@ class Resultat:
             "texte_condition": self.texte_condition,
             "message": self.message,
             "code_prescription": self.code_prescription,
+            # Champs calculatrice (None si type != calculatrice).
+            "composant": self.composant,
+            "inputs_requis": self.inputs_requis or [],
         }
 
 

@@ -75,8 +75,13 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
           {% endif %}
 
-          {# Calendrier visuel #}
-          {% calendrier_epandage ev.regle %}
+          {# Calendrier visuel : dynamique si calculatrice (calendrier_dynamique_couvert),
+             sinon le templatetag standard 12 mois. #}
+          {% if ev.regle.type == "calculatrice" and ev.regle.composant == "calendrier_dynamique_couvert" %}
+            {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
+          {% else %}
+            {% calendrier_epandage ev.regle %}
+          {% endif %}
 
           {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
           {% if ev.regle.texte_condition %}
