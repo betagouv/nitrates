@@ -52,11 +52,21 @@
     </div>
 
     <fieldset class="yaml-tree__form-fieldset"
-              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte">
+              data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte,calculatrice">
       <legend>Périodes (du / au + régime optionnel)</legend>
       {% if evenements_phenologiques %}
         <datalist id="evenements-phenologiques-list">
           {% for ev in evenements_phenologiques %}<option value="{{ ev.slug }}" label="{{ ev.libelle }}"></option>{% endfor %}
+          {% comment %}
+          Inputs requis de la regle calculatrice : ajoutes a la meme datalist
+          pour que l'admin puisse les selectionner en autocomplete sur du/au.
+          {% endcomment %}
+          {% for inp in regle.inputs_requis|default_if_none:"" %}
+            {% if inp.id %}
+              <option value="{{ inp.id }}"
+                      label="{{ inp.label|default:inp.id }} (input calculatrice)"></option>
+            {% endif %}
+          {% endfor %}
         </datalist>
       {% endif %}
       {% with regle.periodes|default_if_none:"" as periodes %}
@@ -130,25 +140,112 @@
       {% endwith %}
     </fieldset>
 
-    <fieldset class="yaml-tree__form-fieldset" data-type-fieldset="calculatrice">
-      <legend>Calculatrice</legend>
+    {% comment %}
+    Bloc "Composants de la calculatrice" (cf. spec form admin calculatrice
+    2026-05-26). N'apparait que si type=calculatrice. Voir aussi
+    spec_grammaire_calculatrice.md pour la grammaire YAML cible.
+    {% endcomment %}
+    <fieldset class="yaml-tree__form-fieldset yaml-tree__calculatrice"
+              data-type-fieldset="calculatrice">
+      <legend>Composants de la calculatrice</legend>
+
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>composant</span>
-          <input type="text"
-                 name="composant"
-                 value="{{ regle.composant|default_if_none:'' }}"
-                 placeholder="ex: fenetre_fertirrigation">
+          <select name="composant">
+            <option value="">— choisir —</option>
+            {% comment %}
+            Liste fermee : calendrier_dynamique_couvert pour les nouvelles
+            regles (cf. spec MVP-2). Composants legacy laisses dispo
+            tant qu'ils ne sont pas migres dans l'arbre PAN.
+            {% endcomment %}
+            {% for c in "calendrier_dynamique_couvert,luzerne_post_coupe,fenetre_epandage"|split:"," %}
+              <option value="{{ c }}" {% if regle.composant == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
         </label>
       </div>
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>inputs_requis</span>
-          <input type="text"
-                 name="inputs_requis"
-                 value="{% if regle.inputs_requis %}{{ regle.inputs_requis|join:', ' }}{% endif %}"
-                 placeholder="liste séparée par des virgules, ex: culture, parcelle_communique">
-        </label>
+
+      {# ─── Inputs requis ─────────────────────────────────────────── #}
+      <div class="yaml-tree__calculatrice-inputs">
+        <h4 class="yaml-tree__form-sublegend">Inputs requis</h4>
+        {% with regle.inputs_requis|default_if_none:"" as inputs %}
+          {% for inp in inputs %}
+            {% if inp.id is None %}
+              {% comment %}Input legacy (string brut) : on l'affiche en read-only avec une note migration.{% endcomment %}
+              <div class="yaml-tree__calculatrice-input yaml-tree__calculatrice-input--legacy">
+                <p class="yaml-tree__form-hint">
+                  ⚠ Input requis legacy (string brut) : <code>{{ inp }}</code>.
+                  Le composant <code>{{ regle.composant }}</code> est en attente de migration vers la nouvelle grammaire.
+                </p>
+                <input type="hidden"
+                       name="inputs_requis-{{ forloop.counter0 }}-legacy"
+                       value="{{ inp }}">
+              </div>
+            {% else %}
+              <div class="yaml-tree__calculatrice-input">
+                <header class="yaml-tree__calculatrice-input-header">
+                  <strong>Input #{{ forloop.counter }}</strong>
+                  {# Bouton suppression : ajoute dans le commit htmx 2. #}
+                </header>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
+                    <span>id</span>
+                    <input type="text"
+                           name="inputs_requis-{{ forloop.counter0 }}-id"
+                           value="{{ inp.id|default_if_none:'' }}"
+                           placeholder="date_semis_couvert"
+                           pattern="^[a-z][a-z0-9_]*$"
+                           required>
+                  </label>
+                </div>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
+                    <span>label</span>
+                    <input type="text"
+                           name="inputs_requis-{{ forloop.counter0 }}-label"
+                           value="{{ inp.label|default_if_none:'' }}"
+                           placeholder="Date de semis du couvert"
+                           required>
+                  </label>
+                </div>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
+                    <span>placeholder (JJ/MM)</span>
+                    <input type="text"
+                           name="inputs_requis-{{ forloop.counter0 }}-placeholder"
+                           value="{{ inp.placeholder|default_if_none:'' }}"
+                           placeholder="25/07"
+                           pattern="^\d{2}/\d{2}$"
+                           style="max-width:10ch">
+                  </label>
+                </div>
+                {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
+                <input type="hidden"
+                       name="inputs_requis-{{ forloop.counter0 }}-type"
+                       value="{{ inp.type|default:'date' }}">
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endwith %}
+        {# Bouton "+ Ajouter un input requis" : ajoute dans commit htmx 2. #}
+      </div>
+
+      {# ─── Aide saisie des bornes ────────────────────────────────── #}
+      <div class="yaml-tree__form-hint yaml-tree__calculatrice-aide">
+        <strong>Aide saisie des bornes (du / au)</strong>
+        <ul>
+          <li>
+            Date fixe : <code>15/12</code>
+          </li>
+          <li>
+            Événement : <code>date_semis_couvert</code>
+          </li>
+          <li>
+            Événement décalé : <code>date_semis_couvert+4semaines</code>, <code>date_destruction_prevue-20jours</code>
+          </li>
+        </ul>
+        Unités : <code>jours</code> | <code>semaines</code> | <code>mois</code>. Signe : <code>+</code> ou <code>-</code> suivi d'un entier ≥ 1.
       </div>
     </fieldset>
 

@@ -133,17 +133,58 @@ def test_regle_form_regime_inconnu_rejete():
     assert not f.is_valid()
 
 
-def test_regle_form_calculatrice_inputs_csv():
+def test_regle_form_calculatrice_inputs_nouvelle_grammaire():
+    """Nouvelle grammaire calculatrice (spec form admin 2026-05-26) :
+    inputs_requis parses depuis inputs_requis-{i}-id/-label/-type/-placeholder."""
     f = RegleForm(
         {
             "type": "calculatrice",
-            "composant": "fenetre_x",
-            "inputs_requis": "culture, parcelle, date",
+            "composant": "calendrier_dynamique_couvert",
+            "inputs_requis-0-id": "date_semis_couvert",
+            "inputs_requis-0-label": "Date de semis du couvert",
+            "inputs_requis-0-type": "date",
+            "inputs_requis-0-placeholder": "25/07",
+            "inputs_requis-1-id": "date_destruction_prevue",
+            "inputs_requis-1-label": "Date de destruction prévue",
+            "inputs_requis-1-type": "date",
+            "inputs_requis-1-placeholder": "23/03",
         }
     )
     assert f.is_valid()
     nd = f.to_new_data()
-    assert nd["composant"] == "fenetre_x"
+    assert nd["composant"] == "calendrier_dynamique_couvert"
+    assert nd["inputs_requis"] == [
+        {
+            "id": "date_semis_couvert",
+            "label": "Date de semis du couvert",
+            "type": "date",
+            "placeholder": "25/07",
+        },
+        {
+            "id": "date_destruction_prevue",
+            "label": "Date de destruction prévue",
+            "type": "date",
+            "placeholder": "23/03",
+        },
+    ]
+
+
+def test_regle_form_calculatrice_inputs_legacy():
+    """Back-compat : inputs_requis legacy (string brut) parses depuis
+    inputs_requis-{i}-legacy (pour composants luzerne_post_coupe /
+    fenetre_epandage non encore migres)."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "composant": "luzerne_post_coupe",
+            "inputs_requis-0-legacy": "culture",
+            "inputs_requis-1-legacy": "parcelle",
+            "inputs_requis-2-legacy": "date",
+        }
+    )
+    assert f.is_valid()
+    nd = f.to_new_data()
+    assert nd["composant"] == "luzerne_post_coupe"
     assert nd["inputs_requis"] == ["culture", "parcelle", "date"]
 
 
