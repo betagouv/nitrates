@@ -183,10 +183,13 @@
                        value="{{ inp }}">
               </div>
             {% else %}
-              <div class="yaml-tree__calculatrice-input">
+              <div class="yaml-tree__calculatrice-input" data-input-requis-row>
                 <header class="yaml-tree__calculatrice-input-header">
                   <strong>Input #{{ forloop.counter }}</strong>
-                  {# Bouton suppression : ajoute dans le commit htmx 2. #}
+                  <button type="button"
+                          class="yaml-admin__btn yaml-admin__btn--small yaml-tree__calculatrice-input-remove"
+                          title="Supprimer cet input"
+                          data-remove-input-requis>🗑</button>
                 </header>
                 <div class="yaml-tree__form-row">
                   <label class="yaml-tree__form-label">
@@ -228,7 +231,62 @@
             {% endif %}
           {% endfor %}
         {% endwith %}
-        {# Bouton "+ Ajouter un input requis" : ajoute dans commit htmx 2. #}
+
+        {% comment %}
+        Template d'input requis (cache, sert au clone JS pour bouton
+        '+ Ajouter un input requis'). L'index __IDX__ est remplace au
+        clic par le prochain index libre.
+        {% endcomment %}
+        <template data-input-requis-template>
+          <div class="yaml-tree__calculatrice-input" data-input-requis-row>
+            <header class="yaml-tree__calculatrice-input-header">
+              <strong>Input #__N__</strong>
+              <button type="button"
+                      class="yaml-admin__btn yaml-admin__btn--small yaml-tree__calculatrice-input-remove"
+                      title="Supprimer cet input"
+                      data-remove-input-requis>🗑</button>
+            </header>
+            <div class="yaml-tree__form-row">
+              <label class="yaml-tree__form-label">
+                <span>id</span>
+                <input type="text"
+                       name="inputs_requis-__IDX__-id"
+                       value=""
+                       placeholder="date_semis_couvert"
+                       pattern="^[a-z][a-z0-9_]*$"
+                       required>
+              </label>
+            </div>
+            <div class="yaml-tree__form-row">
+              <label class="yaml-tree__form-label">
+                <span>label</span>
+                <input type="text"
+                       name="inputs_requis-__IDX__-label"
+                       value=""
+                       placeholder="Date de semis du couvert"
+                       required>
+              </label>
+            </div>
+            <div class="yaml-tree__form-row">
+              <label class="yaml-tree__form-label">
+                <span>placeholder (JJ/MM)</span>
+                <input type="text"
+                       name="inputs_requis-__IDX__-placeholder"
+                       value=""
+                       placeholder="25/07"
+                       pattern="^\d{2}/\d{2}$"
+                       style="max-width:10ch">
+              </label>
+            </div>
+            <input type="hidden" name="inputs_requis-__IDX__-type" value="date">
+          </div>
+        </template>
+
+        <div class="yaml-tree__form-row">
+          <button type="button"
+                  class="yaml-admin__btn yaml-admin__btn--small"
+                  data-add-input-requis>+ Ajouter un input requis</button>
+        </div>
       </div>
 
       {# ─── Aide saisie des bornes ────────────────────────────────── #}
@@ -439,6 +497,52 @@
           // Re-applique le toggle visibilite regime selon type courant.
           const typeSelect = form.querySelector('[data-regle-type-select]');
           if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
+        });
+      })();
+    </script>
+
+    <script>
+      // Calculatrice : bouton "+ Ajouter un input requis" + bouton 🗑 par carte.
+      // Pas d'aller-retour serveur : le DOM est modifie cote client, persiste
+      // au submit comme les periodes.
+      (function () {
+        const form = document.currentScript.closest('form');
+        const container = form.querySelector('.yaml-tree__calculatrice-inputs');
+        if (!container) return;
+
+        // Calcule le prochain index libre en regardant les name="inputs_requis-N-id".
+        function nextIndex() {
+          const inputs = container.querySelectorAll('input[name^="inputs_requis-"]');
+          let max = -1;
+          inputs.forEach((el) => {
+            const m = el.name.match(/^inputs_requis-(\d+)-/);
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+          });
+          return max + 1;
+        }
+
+        const addBtn = container.querySelector('[data-add-input-requis]');
+        const template = container.querySelector('[data-input-requis-template]');
+        if (addBtn && template) {
+          addBtn.addEventListener('click', () => {
+            const idx = nextIndex();
+            const html = template.innerHTML
+              .replaceAll('__IDX__', String(idx))
+              .replaceAll('__N__', String(idx + 1));
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html.trim();
+            const newRow = tmp.firstElementChild;
+            // Insere juste avant le template (et donc avant le bouton "+").
+            template.parentNode.insertBefore(newRow, template);
+          });
+        }
+
+        // Suppression : delegation pour couvrir les cartes ajoutees dynamiquement.
+        container.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-remove-input-requis]');
+          if (!btn) return;
+          const row = btn.closest('[data-input-requis-row]');
+          if (row) row.remove();
         });
       })();
     </script>

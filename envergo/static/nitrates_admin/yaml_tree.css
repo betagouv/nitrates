@@ -1427,3 +1427,92 @@ details[open] > summary.yaml-tree__row::before {
 .yaml-tree__regle .yaml-tree__source {
   font-style: italic;
 }
+
+/* ─── Calculatrice (cf. spec_form_admin_calculatrice.md) ────────────── */
+
+.yaml-tree__calculatrice-inputs {
+  margin-top: 0.75rem;
+}
+
+.yaml-tree__form-sublegend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.yaml-tree__calculatrice-input {
+  border: 1px solid #d0d4dc;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.4rem 0;
+  background: #fafbfd;
+}
+
+.yaml-tree__calculatrice-input--legacy {
+  background: #fff8e1;
+  border-color: #f0c674;
+}
+
+.yaml-tree__calculatrice-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.yaml-tree__calculatrice-input-remove {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.yaml-tree__calculatrice-input-remove:hover {
+  background: #fdecea;
+}
+
+.yaml-tree__calculatrice-aide {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f0f4fa;
+  border-left: 3px solid #1f4789;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__calculatrice-aide ul {
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
+}
+
+.yaml-tree__calculatrice-aide code {
+  background: #e7ecf5;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .yaml-tree__calculatrice-input {
+    background: #2a2f38;
+    border-color: #444a55;
+  }
+
+  .yaml-tree__calculatrice-input--legacy {
+    background: #3a3220;
+    border-color: #76601e;
+  }
+
+  .yaml-tree__calculatrice-aide {
+    background: #2a3344;
+    border-left-color: #99c4ff;
+  }
+
+  .yaml-tree__calculatrice-aide code {
+    background: #1e2530;
+    color: #f0d090;
+  }
+}
