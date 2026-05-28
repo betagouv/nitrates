@@ -1,6 +1,12 @@
 {% load yaml_admin_extras %}
 
-<li class="yaml-tree__item yaml-tree__item--branche{% if branche.regle %} yaml-tree__item--leaf-regle{% endif %}">
+<li class="yaml-tree__item yaml-tree__item--branche{% if branche.regle %} yaml-tree__item--leaf-regle{% endif %}"
+    data-branche-valeur="{{ branche.valeur }}">
+  {% if is_editing %}
+    <span class="yaml-tree__drag-handle"
+          title="Glisser pour réordonner les branches au même niveau"
+          aria-label="Poignée de réordonnancement">⋮⋮</span>
+  {% endif %}
   {% include "nitrates_admin/yaml_tree/forms/_branche_block.html" with branche=branche parent_path=ancestors_path valeur=branche.valeur %}
 
   {% if branche.noeud %}

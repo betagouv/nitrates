@@ -351,5 +351,184 @@
         opacity: 1 !important;
       }
     </style>
+
+    {% if is_editing %}
+      {% comment %}
+      Drag & drop reorder des branches au sein d'un meme noeud.
+      SortableJS v1.15.2 servi en local (sortable.min.js, 44 KB) pour
+      eviter la dependance reseau (CDN peut etre bloque ou lent en
+      enterprise).
+      {% endcomment %}
+      <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
+      <script>
+        (function () {
+          const TREE_PK = {{ tree.pk|default:'null' }};
+          const ENDPOINT = TREE_PK
+            ? `/admin/nitrates/arbre-decision/${TREE_PK}/edit/reorder-branches/`
+            : null;
+
+          function getCsrfToken() {
+            // Priorite : input hidden {% csrf_token %} dans le DOM (synchro
+            // avec le token attendu cote serveur, contrairement au cookie
+            // qui peut etre stale ou de longueur differente).
+            const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (input && input.value) return input.value;
+            const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            return m ? decodeURIComponent(m[1]) : '';
+          }
+
+          function attachSortable(ul) {
+            if (ul.dataset.sortableAttached === '1') return;
+            ul.dataset.sortableAttached = '1';
+            // eslint-disable-next-line no-undef
+            new Sortable(ul, {
+              handle: '.yaml-tree__drag-handle',
+              draggable: '.yaml-tree__item--branche',
+              animation: 140,
+              ghostClass: 'yaml-tree__item--sortable-ghost',
+              chosenClass: 'yaml-tree__item--sortable-chosen',
+              dragClass: 'yaml-tree__item--sortable-drag',
+              // Strict reordering au sein du meme parent : pas de
+              // promotion / demotion entre niveaux. Empeche aussi qu'un
+              // drag tombe dans un sous-arbre nested (autre <ul>).
+              group: { name: 'yaml-branches', pull: false, put: false },
+              // Items volumineux (sous-arbres deployes) : threshold
+              // bas pour declencher le swap plus tot. invertSwap permet
+              // de "passer" un item meme s'il est plus grand que le drag.
+              swapThreshold: 0.55,
+              invertSwap: true,
+              fallbackOnBody: true,
+              // Empeche de drag dans des UL imbriques (sous-arbres) :
+              // on retient au niveau du conteneur d'origine.
+              sort: true,
+              onMove: (evt) => {
+                // Refuse les moves vers un autre conteneur ; SortableJS
+                // gère deja via group.put=false, mais ce predicat est
+                // une ceinture+bretelles.
+                return evt.from === evt.to;
+              },
+              onEnd: (evt) => onReorderEnd(ul, evt),
+            });
+          }
+
+          function onReorderEnd(ul, evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+            if (!ENDPOINT) return;
+            const parentPath = ul.dataset.parentPath || '';
+            // Recolte des valeurs dans le nouvel ordre depuis le DOM.
+            const valeurs = Array.from(ul.children)
+              .filter((li) => li.classList.contains('yaml-tree__item--branche'))
+              .map((li) => li.dataset.brancheValeur)
+              .filter((v) => v !== undefined && v !== null);
+            const fd = new FormData();
+            fd.set('order', valeurs.join(','));
+            fd.set('csrfmiddlewaretoken', getCsrfToken());
+            fetch(`${ENDPOINT}?path=${encodeURIComponent(parentPath)}`, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'X-CSRFToken': getCsrfToken() },
+              body: fd,
+            }).then((resp) => {
+              if (!resp.ok) {
+                console.error('reorder-branches failed', resp.status);
+                // Rollback visuel : on remet l'element a sa place.
+                const moved = evt.item;
+                if (evt.oldIndex < ul.children.length) {
+                  ul.insertBefore(moved, ul.children[evt.oldIndex]);
+                } else {
+                  ul.appendChild(moved);
+                }
+              } else {
+                // Refresh banner OOB pour rafraichir l'historique de revisions.
+                resp.text().then((html) => {
+                  // htmx-style OOB swap : on cherche un element marque
+                  // hx-swap-oob et on remplace son equivalent dans le DOM.
+                  if (window.htmx && window.htmx.process) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    window.htmx.process(tmp);
+                    // Force swap manuel pour les elements oob.
+                    Array.from(tmp.querySelectorAll('[hx-swap-oob]')).forEach((el) => {
+                      const target = document.getElementById(el.id);
+                      if (target) target.replaceWith(el);
+                    });
+                  }
+                });
+              }
+            }).catch((err) => {
+              console.error('reorder-branches network error', err);
+            });
+          }
+
+          function initAll() {
+            document.querySelectorAll('ul[data-sortable-branches]').forEach(attachSortable);
+          }
+          initAll();
+          document.addEventListener('htmx:afterSwap', initAll);
+        })();
+      </script>
+
+      <style>
+        /* Poignee de drag positionnee en absolute a gauche du <li> de
+           branche, en dehors du flow normal. Permet de ne PAS toucher
+           au layout des contenus de branche (qui contient des icones
+           d'action en fin de ligne et qui debordait si on flexboxait
+           le <li>). */
+        .yaml-admin--editing .yaml-tree__item--branche {
+          position: relative;
+        }
+
+        .yaml-tree__drag-handle {
+          position: absolute;
+          left: -0.8rem;
+          top: 0.25rem;
+          width: 1rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: grab;
+          color: var(--text-mention-grey, #bbb);
+          font-size: 0.95rem;
+          user-select: none;
+          line-height: 1;
+          letter-spacing: -2px;
+          opacity: 0;
+          transition: opacity 0.1s;
+          z-index: 5;
+        }
+
+        /* Visible au hover du <li> (parent). Permet de cacher la poignee
+           tant qu'on n'a pas l'intention de drag, et de la révéler quand
+           on s'approche -- moins envahissant que toujours visible. */
+        .yaml-admin--editing .yaml-tree__item--branche:hover>.yaml-tree__drag-handle {
+          opacity: 0.85;
+        }
+
+        .yaml-tree__drag-handle:hover {
+          color: var(--text-title-blue-france, #000091);
+          opacity: 1 !important;
+        }
+
+        .yaml-tree__drag-handle:active {
+          cursor: grabbing;
+        }
+
+        .yaml-tree__item--sortable-ghost {
+          opacity: 0.35;
+          background: var(--background-alt-blue-france, #e3e3fd);
+        }
+
+        .yaml-tree__item--sortable-chosen {
+          background: var(--background-alt-grey, #f6f6f6);
+        }
+
+        /* Pendant un drag, on rend la poignee visible meme sans hover
+           (sinon le ghost element est sans poignee). */
+        .yaml-tree__item--sortable-drag .yaml-tree__drag-handle,
+        .yaml-tree__item--sortable-chosen .yaml-tree__drag-handle {
+          opacity: 1;
+        }
+      </style>
+    {% endif %}
   {% endif %}
 {% endblock %}

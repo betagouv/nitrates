@@ -375,3 +375,45 @@ def test_undo_via_restore(draft, alice):
         node["texte"]
         == avant_contenu["arbre"]["noeud"]["branches"][0]["noeud"]["texte"]
     )
+
+
+# ─── reorder_branches ──────────────────────────────────────────────────────
+
+
+def test_reorder_branches_permute(draft, alice):
+    """Ajoute 2 branches puis permute leur ordre. Les contenus suivent."""
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "luzerne"}, alice)
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "ble"}, alice)
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_root", "q_culture"))
+    valeurs_avant = [b["valeur"] for b in node["branches"]]
+    assert valeurs_avant == ["colza", "luzerne", "ble"]
+
+    # Permute : ble en premier, puis colza, puis luzerne.
+    res = editor.reorder_branches(
+        draft, ("n_root", "q_culture"), ["ble", "colza", "luzerne"], alice
+    )
+    assert res.ok, res.errors
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_root", "q_culture"))
+    valeurs_apres = [b["valeur"] for b in node["branches"]]
+    assert valeurs_apres == ["ble", "colza", "luzerne"]
+    # Le contenu de la branche colza (avec sa regle r_colza) est preserve.
+    colza = next(b for b in node["branches"] if b["valeur"] == "colza")
+    assert colza["regle"]["id"] == "r_colza"
+
+
+def test_reorder_branches_refuse_si_valeurs_mismatch(draft, alice):
+    """Si la liste d'ordre ne matche pas exactement les branches existantes,
+    on refuse (pas d'ajout ni suppression possible via reorder)."""
+    res = editor.reorder_branches(
+        draft, ("n_root", "q_culture"), ["valeur_inconnue"], alice
+    )
+    assert not res.ok
+
+
+def test_reorder_branches_revision_creee(draft, alice):
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "luzerne"}, alice)
+    avant = draft.revisions.count()
+    editor.reorder_branches(draft, ("n_root", "q_culture"), ["luzerne", "colza"], alice)
+    assert draft.revisions.count() == avant + 1

@@ -41,6 +41,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditNodeView,
     EditRawYamlView,
     EditRegleView,
+    ReorderBranchesView,
     RestoreRevisionView,
     UndoLastView,
     ValidateTreeView,
@@ -157,6 +158,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-noeud/",
         DeleteNodeView.as_view(),
         name="nitrates_admin_yaml_delete_node",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/reorder-branches/",
+        ReorderBranchesView.as_view(),
+        name="nitrates_admin_yaml_reorder_branches",
     ),
     path(
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/undo/",

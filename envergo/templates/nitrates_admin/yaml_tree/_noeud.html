@@ -76,7 +76,8 @@
     {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
 
     {% if noeud.branches %}
-      <ul class="yaml-tree__branches">
+      <ul class="yaml-tree__branches"
+          {% if is_editing %}data-sortable-branches data-parent-path="{{ path }}"{% endif %}>
         {% for branche in noeud.branches %}
           {% include "nitrates_admin/yaml_tree/_branche.html" with branche=branche ancestors_path=path depth=depth|add:1 %}
         {% endfor %}
