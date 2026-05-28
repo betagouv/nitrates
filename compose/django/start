@@ -6,4 +6,19 @@ set -o nounset
 
 
 python manage.py migrate
-python manage.py runserver_plus 0.0.0.0:8000
+# `--threaded` : Werkzeug sert les requetes en parallele (1 thread par
+# requete) au lieu du single-thread par defaut. Crucial pour les pages
+# admin avec 10+ assets statiques en parallele -- sinon chaque asset
+# se queue sequentiellement et le browser attend 2-5s pour avoir tout.
+#
+# `--exclude-pattern` : sans ca Werkzeug autoreload polle 24k+ fichiers
+# (`/app/node_modules` = 21k, `/app/.git`, etc) ce qui sature 100% CPU
+# en boucle. La fix donne un container qui idle a ~1% CPU au lieu de 99%.
+python manage.py runserver_plus \
+    --threaded \
+    --exclude-pattern '*/node_modules/*' \
+    --exclude-pattern '*/.git/*' \
+    --exclude-pattern '*/__pycache__/*' \
+    --exclude-pattern '*/staticfiles/*' \
+    --exclude-pattern '*.pyc' \
+    0.0.0.0:8000

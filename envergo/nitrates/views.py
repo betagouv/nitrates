@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
@@ -16,6 +17,21 @@ from envergo.nitrates.bassins import (
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
+
+
+def _cache_in_prod(seconds):
+    """Decorateur cache_page activé uniquement quand DEBUG=False (prod).
+    En dev (DEBUG=True), no-op : pas de cache, refresh instantané quand
+    on modifie un referentiel cote ORM ou un YAML.
+    """
+    if settings.DEBUG:
+
+        def _noop(view):
+            return view
+
+        return _noop
+    return cache_page(seconds)
+
 
 # Mapping pour le recap des QC repondues (rendu dans le panneau gauche apres
 # que l'utilisateur a repondu via le mini-form du panneau droit). Donne le
@@ -56,7 +72,7 @@ class HomeView(View):
         return MoulinetteView().get(request, *args, **kwargs)
 
 
-@method_decorator(cache_page(60 * 60 * 24), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
 class ZoneVulnerableGeoJSONView(View):
     """Renvoie les polygones ZV nitrates au format GeoJSON.
 
@@ -173,7 +189,7 @@ class DebugView(View):
         )
 
 
-@method_decorator(cache_page(60 * 60), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class ReferentielsView(View):
     """Expose les listes fermees du YAML referentiels (types fertilisants,
     cultures, codes prescription, notes...) en JSON pour le front.
@@ -189,7 +205,7 @@ class ReferentielsView(View):
         return JsonResponse(load_referentiels())
 
 
-@method_decorator(cache_page(60 * 60), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class DecisionTreeView(View):
     """Expose l'arbre de decision actif en JSON pour que le front puisse
     construire les selects en cascade (occupation_sol, sous_culture,

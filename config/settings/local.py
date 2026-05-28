@@ -58,7 +58,16 @@ EMAIL_BACKEND = env(
 # WhiteNoise
 # ------------------------------------------------------------------------------
 # http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
-INSTALLED_APPS = ["whitenoise.runserver_nostatic"] + INSTALLED_APPS  # noqa F405
+#
+# `whitenoise.runserver_nostatic` desactive le serveur de statics de Django
+# en dev pour que WhiteNoise prenne le relais et "simule" la production.
+# Probleme : WhiteNoise sert UN seul fichier a la fois (serveur Werkzeug
+# single-threaded), donc 14 assets de la page admin = ~7s de queueing.
+# On laisse Django servir les statics en dev (django.contrib.staticfiles)
+# qui supporte le multi-thread + parallelisme connexion.
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : remettre la ligne ci-dessous
+# si on bench la prod fidelement.
+# INSTALLED_APPS = ["whitenoise.runserver_nostatic"] + INSTALLED_APPS
 
 
 # django-debug-toolbar

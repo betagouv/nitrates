@@ -243,8 +243,14 @@
     if (prairiePermanenteHidden && flags.prairie_permanente !== undefined) {
       prairiePermanenteHidden.value = String(flags.prairie_permanente);
     }
-    if (sousCultureCouvertHidden && flags.sous_culture_couvert) {
-      sousCultureCouvertHidden.value = flags.sous_culture_couvert;
+    // sous_culture_couvert : par defaut c'est l'identifiant de la Culture
+    // choisie (cas nominal pour les variantes de couverts d'interculture).
+    // Un `flags.sous_culture_couvert` explicite reste prioritaire pour les
+    // cas exotiques (ex: mapping force vers un alias arbre legacy), mais
+    // ce n'est plus le cas par defaut.
+    if (sousCultureCouvertHidden) {
+      sousCultureCouvertHidden.value =
+        flags.sous_culture_couvert || sc;
     }
   }
 

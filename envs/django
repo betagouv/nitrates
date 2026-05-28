@@ -2,3 +2,11 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+
+# Performance dev local
+# ------------------------------------------------------------------------------
+# Debug toolbar tres couteuse sur les pages riches (admin YAML editor :
+# 14+ assets a charger, hooks middleware sur chaque requete). On la
+# desactive par defaut en dev pour garder un refresh rapide. Mettre
+# `USE_DEBUG_TOOLBAR=yes` ponctuellement pour debugger ORM/queries.
+USE_DEBUG_TOOLBAR=no

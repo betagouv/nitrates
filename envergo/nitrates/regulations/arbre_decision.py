@@ -40,6 +40,7 @@ from envergo.nitrates.yaml_admin.catalogue_refs import (
 )
 from envergo.nitrates.yaml_tree import (
     BesoinCatalogue,
+    ParcoursError,
     QuestionsSubsidiaires,
     Resultat,
     load_active_tree,
@@ -119,7 +120,18 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         # catalogue interne (genre zone_note_5), on resout via SIG et
         # on relance.
         for _ in range(MAX_ITERATIONS_CATALOGUE):
-            res = parcours(arbre, contexte)
+            try:
+                res = parcours(arbre, contexte)
+            except ParcoursError as exc:
+                # Cas typique : la valeur d'URL n'a pas de branche
+                # correspondante dans le draft en cours (incoherence
+                # arbre vs form, ou regroupement de branches modifie
+                # apres saisie). On ne veut pas 500 : on bascule en
+                # non_disponible avec le message en debug.
+                self._parcours_error = str(exc)
+                self._result_code = RESULTS.non_disponible
+                self._result = RESULTS.non_disponible
+                return
 
             if isinstance(res, BesoinCatalogue):
                 resolu = self._resoudre_catalogue(res)
