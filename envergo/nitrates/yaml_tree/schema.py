@@ -53,6 +53,15 @@ REGLE_SCHEMA = {
                             "non_applicable",
                         ]
                     },
+                    # Masque : pertinent uniquement pour type=calculatrice.
+                    # Une période avec masque=true ne s'applique que sur
+                    # l'intersection avec les périodes non-masque déjà
+                    # posées (cf. spec_grammaire_calculatrice §masque).
+                    # Si l'intersection est vide, le simulateur ignore
+                    # silencieusement la période. Pas de validation
+                    # d'intersection cote backend : c'est dynamique
+                    # (depend des inputs utilisateur a runtime).
+                    "masque": {"type": "boolean"},
                 },
             },
         },

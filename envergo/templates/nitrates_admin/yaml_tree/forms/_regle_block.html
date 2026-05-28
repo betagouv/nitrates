@@ -57,24 +57,8 @@
     {% if regle.plafonnement_associe %}
       <span class="yaml-tree__assoc">→ <code>{{ regle.plafonnement_associe }}</code></span>
     {% endif %}
-    {% if regle.composant %}
-      <span class="yaml-tree__calc">🧮 <code>{{ regle.composant }}</code>
-        {% if regle.inputs_requis %}
-          (
-          {% for inp in regle.inputs_requis %}
-            <code>{{ inp }}</code>
-            {% if not forloop.last %},{% endif %}
-          {% endfor %}
-          )
-        {% endif %}
-      </span>
-    {% endif %}
-
     {% if regle.message %}<span class="yaml-tree__message">{{ regle.message }}</span>{% endif %}
     {% if regle.texte %}<span class="yaml-tree__texte">{{ regle.texte }}</span>{% endif %}
-    {% if regle.texte_condition %}
-      <span class="yaml-tree__condition">Condition : {{ regle.texte_condition }}</span>
-    {% endif %}
     {% if regle.source_juridique %}<span class="yaml-tree__source"><em>{{ regle.source_juridique }}</em></span>{% endif %}
     {% if regle.a_completer %}<span class="yaml-tree__todo">⚠ à compléter</span>{% endif %}
 

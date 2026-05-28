@@ -355,6 +355,32 @@ def test_cascade_form_type_fertilisant_via_inversion_yaml():
     assert p["categorie_fertilisant"] == "composts"
 
 
+def test_cascade_form_disambig_sous_culture_couvert():
+    """Plusieurs sous_culture_form partagent (couvert_intercultures,
+    interculture_longue) ; ils se distinguent par `flags.sous_culture_couvert`.
+    Sans ce flag, l'ancien comportement renvoyait le PREMIER (i.e.
+    `couvert_recolte_plus_en_place_apres_3112`). Avec le flag
+    `cine_apres_0101`, on doit retomber sur la bonne variante
+    `couvert_recolte_toujours_en_place_apres_0101`.
+    """
+    from envergo.nitrates.yaml_admin.preview import _cascade_form_params
+
+    # Sans flag : fallback premier candidat.
+    p = _cascade_form_params(
+        "couvert_intercultures", "interculture_longue", None, flags={}
+    )
+    assert p["sous_culture_form"] == "couvert_recolte_plus_en_place_apres_3112"
+
+    # Avec flag explicite : match la bonne variante.
+    p = _cascade_form_params(
+        "couvert_intercultures",
+        "interculture_longue",
+        None,
+        flags={"sous_culture_couvert": "cine_apres_0101"},
+    )
+    assert p["sous_culture_form"] == "couvert_recolte_toujours_en_place_apres_0101"
+
+
 # ─── Regression tests : bugs remontes par Max en preview manuelle ───────────
 
 

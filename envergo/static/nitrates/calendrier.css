@@ -56,7 +56,6 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  cursor: help;
 }
 
 .calendrier-epandage__zone--rouge {
@@ -143,16 +142,81 @@
   pointer-events: none;
 }
 
-/* Empilage 2e ligne : decale verticalement pour eviter l'overlap textuel
-   quand 2 bornes sont a moins de 10% de distance horizontale. */
+/* Empilage : chaque row supplementaire decale de 18px vers le bas.
+   row0 = top:0 (default) | row2 = 18px | row3 = 36px | row4 = 54px.
+   Le calculatrice dynamique en utilise jusqu'a 4 simultanees ; le
+   templatetag standard se limite a row0 / row2. */
 .calendrier-epandage__period-date--row2 {
   top: 18px;
 }
 
-/* Trait phenologique sur row2 : plus long pour atteindre la barre, qui est
-   ~26px au-dessus (vs 12px pour row1 / row0). */
+.calendrier-epandage__period-date--row3 {
+  top: 36px;
+}
+
+.calendrier-epandage__period-date--row4 {
+  top: 54px;
+}
+
+/* Trait phenologique : par defaut court (12px = jusqu'a la barre).
+   Sur les rows decalees, on le rallonge pour qu'il atteigne toujours
+   la barre du calendrier. */
 .calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row2::before {
   height: 26px;
+}
+
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row3::before {
+  height: 44px;
+}
+
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row4::before {
+  height: 62px;
+}
+
+/* Tick pleine hauteur (semis / destruction) : trait noir epais (2px) qui
+   va du label jusqu'au top de la barre, peu importe la row (row1 = inputs
+   par defaut). Marche en additionnant : hauteur depuis le label vers le
+   haut = (row offset top) + (top de la barre depuis le bas de --period) =
+   (row*18) + (margin-top:8) + (bar:46) = 18N + 54. */
+.calendrier-epandage__period-date--big-tick::before {
+  width: 2px !important;
+  margin-left: -1px !important;
+  height: 54px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row2::before {
+  height: 72px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row3::before {
+  height: 90px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row4::before {
+  height: 108px;
+}
+
+/* Bornes calculees (row2) en couleur du regime. Les triples classes
+   ci-dessous override la couleur noire/rouge par defaut de
+   .calendrier-epandage__period-date / --phenologique. */
+.calendrier-epandage__period-date--rouge {
+  color: #c53030;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.calendrier-epandage__period-date--rouge::before {
+  background: #c53030;
+}
+
+.calendrier-epandage__period-date--orange {
+  color: #b45309;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.calendrier-epandage__period-date--orange::before {
+  background: #b45309;
 }
 
 /* Zone hachuree : segment dont une borne est phenologique (date flottante).
@@ -291,6 +355,221 @@
   margin: 12px 0 0;
   color: var(--text-default-grey);
   line-height: 1.5;
+}
+
+/* ─── Calendrier dynamique (calculatrice) ───────────────────────────────
+   Composant calendrier_dynamique_couvert : reuse intégralement les classes
+   .calendrier-epandage__* ci-dessus pour la barre/zones/today/period.
+   Les classes .calc-cal__* ci-dessous ne servent qu'au mini-form en haut
+   et au récap textuel en bas, pas a la barre elle-meme. */
+
+.calc-cal {
+  margin: 1.5rem 0;
+}
+
+.calc-cal__title {
+  margin: 0 0 0.5rem;
+}
+
+.calc-cal__intro {
+  margin: 0 0 1.25rem;
+  color: var(--text-mention-grey);
+  line-height: 1.45;
+}
+
+.calc-cal__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  align-items: flex-end; /* labels de hauteurs differentes -> input aligne en bas */
+}
+
+/* Input "date" type JJ/MM : large pour matcher le figma, avec un picto
+   calendrier en suffix pour signaler que c'est un champ date. La valeur
+   initiale (placeholder du YAML) est grisee tant que l'utilisateur n'a
+   pas saisi -- on tag via [data-default] cote JS. */
+.calc-cal__field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.calc-cal__field-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-title-grey);
+
+  /* Hauteur fixe = 2 lignes -> labels longs ne decalent pas l'input. */
+  min-height: calc(2 * 1.35rem);
+  line-height: 1.35;
+}
+
+.calc-cal__field input.fr-input {
+  width: 100%;
+  max-width: none;
+
+  /* Place pour le picto a droite. */
+  padding-right: 2.25rem;
+  font-size: 1rem;
+}
+
+.calc-cal__field input.fr-input[data-default="true"] {
+  color: var(--text-mention-grey, #6b7280);
+}
+
+.calc-cal__field-icon {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.65rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  pointer-events: none;
+  opacity: 0.55;
+  color: var(--text-mention-grey, #6b7280);
+}
+
+/* Popup picker JJ/MM : grille calendrier d'un mois (navigation par mois,
+   pas d'annee). */
+.calc-cal__picker {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--background-default-grey, #fff);
+  color: var(--text-default-grey, #1f2937);
+  border: 1px solid var(--border-default-grey, #d1d5db);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 268px;
+}
+
+.calc-cal__picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.calc-cal__picker-mois-label {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: 1rem;
+}
+
+.calc-cal__picker-nav {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-title-blue-france, #000091);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calc-cal__picker-nav:hover {
+  background: var(--background-alt-grey, #f3f4f6);
+}
+
+.calc-cal__picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey, #6b7280);
+  text-align: center;
+}
+
+.calc-cal__picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calc-cal__picker-day {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-default-grey, #1f2937);
+  font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.calc-cal__picker-day:hover {
+  background: var(--background-action-low-blue-france, #e3e3fd);
+  border-color: var(--border-action-low-blue-france, #cacafb);
+}
+
+.calc-cal__picker-day--selected {
+  background: var(--background-action-high-blue-france, #000091);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calc-cal__picker-day--empty {
+  cursor: default;
+  background: transparent;
+}
+
+.calc-cal__picker-day--empty:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Tooltip JS instantane (cf. bindTooltips dans calculatrice-calendrier.js).
+   Pinned en `position: fixed` (place via JS via window.scrollX/Y), apparait
+   au mouseenter avec opacite 1 instantanee. */
+.calc-cal__tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(33 33 33 / 95%);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 1000;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 80ms;
+  max-width: 320px;
+}
+
+.calc-cal__recap {
+  margin-top: 1.5rem;
+}
+
+.calc-cal__recap h4 {
+  margin: 0 0 0.5rem;
+}
+
+.calc-cal__recap ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+
+.calc-cal__recap-annot {
+  color: var(--text-mention-grey);
+  font-size: 0.92em;
 }
 
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */

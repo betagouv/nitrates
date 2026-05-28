@@ -1517,15 +1517,70 @@ details[open] > summary.yaml-tree__row::before {
   }
 }
 
-/* Spec form admin calculatrice : Inputs requis AVANT Periodes
-   quand type=calculatrice. On bascule le form en flex-column et
-   on met l'order=-1 au fieldset Calculatrice (qui contient les
-   Inputs requis), sinon il vient apres Periodes par ordre HTML. */
+/* Spec form admin calculatrice : ordre des sections demande par l'editeur :
+     1. id, type, a_completer (form-rows simples)
+     2. fieldset Calculatrice (composant + inputs requis)
+     3. fieldset Periodes (du/au/regime + masque)
+     4. code_prescription, note, ... (form-rows simples)
+     5. boutons d'actions (Enregistrer/Annuler)
+   La source HTML met Periodes en pos 4 et Calculatrice en pos 5, et les
+   form-rows code_prescription en pos 6+. Pour reordonner sans toucher la
+   source (et donc ne rien casser pour les autres types), on tague chaque
+   bloc en mode flex avec un order explicite.
+   Periodes est designe via .yaml-tree__form-fieldset:not(.yaml-tree__calculatrice)
+   (c'est l'unique fieldset non-calculatrice). */
 .yaml-tree__inline-form--calc {
   display: flex;
   flex-direction: column;
 }
 
-.yaml-tree__inline-form--calc .yaml-tree__calculatrice {
-  order: -1;
+/* Calculatrice (composant + inputs) juste apres id/type/a_completer (order 0). */
+.yaml-tree__inline-form--calc > .yaml-tree__calculatrice {
+  order: 1;
+}
+
+/* Periodes juste apres Calculatrice. */
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-fieldset:not(.yaml-tree__calculatrice) {
+  order: 2;
+}
+
+/* code_prescription, note, message, source juridique... viennent apres
+   Periodes. On vise les form-rows dont le name d'input est dans
+   {code_prescription, note, message, texte, texte_condition,
+   plafond_azote_kg_n_ha, plafonnement_associe, source_juridique}.
+   En pratique on peut simplement leur donner order 3 via un selecteur
+   :has() sur les form-row qui ne sont pas l'a_completer / id / type. */
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(input[name="code_prescription"]),
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(select[name="code_prescription"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(input[name="note"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(select[name="note"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(input[name="message"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row[data-regle-condition-row],
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(input[name="source_juridique"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row[data-type-row],
+.yaml-tree__inline-form--calc > .yaml-tree__form-advanced {
+  order: 3;
+}
+
+.yaml-tree__inline-form--calc > .yaml-tree__form-actions {
+  order: 99;
+}
+
+/* Case a cocher masque sur chaque ligne de periode du form calculatrice. */
+.yaml-tree__periode-masque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-default-grey);
+  margin-left: 0.5rem;
+  cursor: help;
+}
+
+.yaml-tree__periode-masque input[type="checkbox"] {
+  margin: 0;
 }

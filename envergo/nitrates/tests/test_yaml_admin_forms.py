@@ -98,6 +98,21 @@ def test_regle_form_periode_evenement_phenologique_ok():
     assert f.is_valid()
 
 
+def test_regle_form_periode_borne_event_offset_ok():
+    """Borne calculatrice : event±N(jours|semaines|mois) accepte par
+    le form, cf. spec_grammaire_calculatrice."""
+    f = RegleForm(
+        {
+            "id": "r_calc",
+            "type": "calculatrice",
+            "periodes-0-du": "date_semis_couvert+4semaines",
+            "periodes-0-au": "date_destruction_couvert-20jours",
+            "periodes-0-regime": "interdiction",
+        }
+    )
+    assert f.is_valid(), f.errors
+
+
 def test_regle_form_periode_format_invalide_rejete():
     f = RegleForm(
         {
@@ -169,23 +184,49 @@ def test_regle_form_calculatrice_inputs_nouvelle_grammaire():
     ]
 
 
-def test_regle_form_calculatrice_inputs_legacy():
-    """Back-compat : inputs_requis legacy (string brut) parses depuis
-    inputs_requis-{i}-legacy (pour composants luzerne_post_coupe /
-    fenetre_epandage non encore migres)."""
+def test_regle_form_calculatrice_inputs_legacy_ignores():
+    """Les inputs_requis legacy (string brut, via -N-legacy) ne sont plus
+    supportes au save. Ils etaient transitoires pendant la migration vers
+    la nouvelle grammaire calculatrice. Confirme que le form ignore les
+    `inputs_requis-N-legacy=...` au POST -- les inputs en string brut
+    doivent etre migres directement en DB."""
     f = RegleForm(
         {
             "type": "calculatrice",
             "composant": "luzerne_post_coupe",
             "inputs_requis-0-legacy": "culture",
             "inputs_requis-1-legacy": "parcelle",
-            "inputs_requis-2-legacy": "date",
         }
     )
-    assert f.is_valid()
+    f.is_valid()
+    # Aucun input retenu : pas de cle legacy, pas de cle nouvelle grammaire.
+    assert f.inputs_requis == []
+
+
+def test_regle_form_calculatrice_suppression_input_non_final():
+    """Si l'utilisateur supprime l'input #0 et garde l'input #1 (cas
+    classique apres click sur 🗑 d'une carte non-finale), le parser
+    doit toujours lire l'input #1 -- pas s'arreter au #0 manquant.
+    """
+    f = RegleForm(
+        {
+            "id": "r_calc",
+            "type": "calculatrice",
+            "composant": "calendrier_dynamique_couvert",
+            # Pas de inputs_requis-0-* (supprime cote front)
+            "inputs_requis-1-id": "date_destruction_couvert",
+            "inputs_requis-1-label": "Date destruction",
+            "inputs_requis-1-type": "date",
+            "inputs_requis-1-placeholder": "01/11",
+            "periodes-0-du": "15/12",
+            "periodes-0-au": "15/01",
+            "periodes-0-regime": "autorisation_sous_condition",
+        }
+    )
+    assert f.is_valid(), f.errors
     nd = f.to_new_data()
-    assert nd["composant"] == "luzerne_post_coupe"
-    assert nd["inputs_requis"] == ["culture", "parcelle", "date"]
+    assert len(nd["inputs_requis"]) == 1
+    assert nd["inputs_requis"][0]["id"] == "date_destruction_couvert"
 
 
 def test_regle_form_plafond_float_ok():

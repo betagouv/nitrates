@@ -239,13 +239,22 @@ def _walk_node_branches(noeud: dict) -> Iterable[dict]:
 
 def _check_dates(arbre: dict, referentiels: dict | None) -> list[str]:
     """Une date est soit "JJ/MM" valide, soit un evenement phenologique
-    declare dans referentiels.yaml (si referentiels fourni)."""
+    declare dans referentiels.yaml (si referentiels fourni).
+
+    Cas particulier : les feuilles `type=calculatrice` ont leur propre
+    grammaire de bornes (event nu, event+offset, cf. spec_grammaire_calculatrice),
+    validee par `_check_calculatrice`. On les skip ici pour eviter les faux
+    positifs (`date_semis_couvert+4semaines` n'est pas un evenement
+    phenologique mais c'est une borne calculatrice legitime).
+    """
     errors = []
     evenements = set()
     if referentiels:
         evenements = set(referentiels.get("evenements_phenologiques", {}).keys())
 
     for obj in _walk_objects(arbre):
+        if obj.get("type") == "calculatrice":
+            continue  # delegue a _check_calculatrice
         for periode in obj.get("periodes", []) or []:
             for borne in ("du", "au"):
                 val = periode.get(borne)

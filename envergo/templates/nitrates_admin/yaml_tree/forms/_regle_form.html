@@ -12,7 +12,13 @@
     {% if errors %}
       <div class="yaml-tree__form-errors">
         {% for err in errors %}
-          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+          {% comment %}Django ajoute les erreurs sans champ dans __all__,
+          on les affiche en global ici. Les erreurs localisees sur un champ
+          (id, type, ...) sont rendues a cote de l'input concerne plus bas.
+          {% endcomment %}
+          {% if not err.field or err.field == "__all__" %}
+            <p class="yaml-tree__form-error-global">⚠ {{ err.message }}</p>
+          {% endif %}
         {% endfor %}
       </div>
     {% endif %}
@@ -51,7 +57,7 @@
       </label>
     </div>
 
-    <fieldset class="yaml-tree__form-fieldset"
+    <fieldset class="yaml-tree__form-fieldset yaml-tree__periodes"
               data-type-fieldset="interdiction,autorisation_sous_condition,plafonnement,mixte,calculatrice">
       <legend>Périodes (du / au + régime optionnel)</legend>
       {% if evenements_phenologiques %}
@@ -94,6 +100,15 @@
                   <option value="{{ r }}" {% if p.regime == r %}selected{% endif %}>{{ r }}</option>
                 {% endfor %}
               </select>
+              <span class="yaml-tree__periode-masque"
+                    data-masque-cell
+                    title="Cette periode ne s'applique que sur l'intersection avec les periodes principales (non-masque) deja posees. Cf. spec_grammaire_calculatrice §masque.">
+                <input type="checkbox"
+                       name="periodes-{{ forloop.counter0 }}-masque"
+                       value="true"
+                       {% if p.masque %}checked{% endif %}>
+                masque
+              </span>
             </label>
             {% for err in errors %}
               {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
@@ -129,6 +144,14 @@
                 <option value="{{ r }}">{{ r }}</option>
               {% endfor %}
             </select>
+            <span class="yaml-tree__periode-masque"
+                  data-masque-cell
+                  title="Cette periode ne s'applique que sur l'intersection avec les periodes principales (non-masque) deja posees. Cf. spec_grammaire_calculatrice §masque.">
+              <input type="checkbox"
+                     name="periodes-{{ regle.periodes|length|default:0 }}-masque"
+                     value="true">
+              masque
+            </span>
           </label>
         </div>
         <div class="yaml-tree__form-row">
@@ -171,18 +194,13 @@
         <h4 class="yaml-tree__form-sublegend">Inputs requis</h4>
         {% with regle.inputs_requis|default_if_none:"" as inputs %}
           {% for inp in inputs %}
-            {% if inp.id is None %}
-              {% comment %}Input legacy (string brut) : on l'affiche en read-only avec une note migration.{% endcomment %}
-              <div class="yaml-tree__calculatrice-input yaml-tree__calculatrice-input--legacy">
-                <p class="yaml-tree__form-hint">
-                  ⚠ Input requis legacy (string brut) : <code>{{ inp }}</code>.
-                  Le composant <code>{{ regle.composant }}</code> est en attente de migration vers la nouvelle grammaire.
-                </p>
-                <input type="hidden"
-                       name="inputs_requis-{{ forloop.counter0 }}-legacy"
-                       value="{{ inp }}">
-              </div>
-            {% else %}
+            {% comment %}
+            On ne rend que les inputs nouvelle shape (objets {id, label,
+            type, placeholder}). Les anciens inputs string brut ne sont
+            plus supportes au save -- ils etaient transitoires pendant la
+            migration vers la nouvelle grammaire calculatrice.
+            {% endcomment %}
+            {% if inp.id %}
               <div class="yaml-tree__calculatrice-input" data-input-requis-row>
                 <header class="yaml-tree__calculatrice-input-header">
                   <strong>Input #{{ forloop.counter }}</strong>
@@ -473,6 +491,13 @@
           regimeSelects.forEach(sel => {
             sel.style.display = sousCondition || mixte || calculatrice ? '' : 'none';
           });
+          // Cases a cocher `masque` sur chaque ligne de periode : pertinent
+          // uniquement pour calculatrice (cf. spec_grammaire_calculatrice
+          // §masque). On les masque pour les autres types.
+          const masqueCells = Array.from(root.querySelectorAll('[data-masque-cell]'));
+          masqueCells.forEach(cell => {
+            cell.style.display = calculatrice ? '' : 'none';
+          });
           // Spec form admin calculatrice : Inputs requis (bloc Calculatrice)
           // AVANT bloc Periodes. CSS order: calculatrice = -1 (avant tout),
           // sinon ordre par defaut. Le parent form doit etre flex-column.
@@ -514,7 +539,13 @@
               el.name = el.name.replace(/^periodes-\d+-/, `periodes-${nextIndex}-`);
             }
             // Reset les valeurs
-            if (el.tagName === 'INPUT') el.value = '';
+            if (el.tagName === 'INPUT') {
+              if (el.type === 'checkbox') {
+                el.checked = false;
+              } else {
+                el.value = '';
+              }
+            }
             if (el.tagName === 'SELECT') el.selectedIndex = 0;
           });
           // Renomme le span "+ ajouter" en "période #N+1" pour la lisibilite
@@ -551,6 +582,25 @@
 
         const addBtn = container.querySelector('[data-add-input-requis]');
         const template = container.querySelector('[data-input-requis-template]');
+        // Pre-remplissage : les 2 inputs canoniques d'une calculatrice
+        // "calendrier_dynamique_couvert" sont presque toujours
+        // date_semis_couvert et date_destruction_prevue (cas a 90%
+        // selon spec_form_admin_calculatrice). On les propose en defaut
+        // pour les 2 premiers add, mais on ne les force pas (editable).
+        const DEFAULTS = [
+          {
+            id: 'date_semis_couvert',
+            label: 'Date de semis du couvert',
+            label_court: 'semis',
+            placeholder: '15/08',
+          },
+          {
+            id: 'date_destruction_couvert',
+            label: 'Date de destruction du couvert',
+            label_court: 'destruction',
+            placeholder: '01/11',
+          },
+        ];
         if (addBtn && template) {
           addBtn.addEventListener('click', () => {
             const idx = nextIndex();
@@ -560,6 +610,20 @@
             const tmp = document.createElement('div');
             tmp.innerHTML = html.trim();
             const newRow = tmp.firstElementChild;
+            // Compte les inputs deja presents (hors legacy) pour decider
+            // si on pre-remplit le slot 0 ou 1 (les 2 canoniques).
+            const existingRows = container.querySelectorAll('[data-input-requis-row]').length;
+            if (existingRows < DEFAULTS.length) {
+              const d = DEFAULTS[existingRows];
+              const setVal = (selector, value) => {
+                const el = newRow.querySelector(selector);
+                if (el) el.value = value;
+              };
+              setVal(`input[name="inputs_requis-${idx}-id"]`, d.id);
+              setVal(`input[name="inputs_requis-${idx}-label"]`, d.label);
+              setVal(`input[name="inputs_requis-${idx}-label_court"]`, d.label_court);
+              setVal(`input[name="inputs_requis-${idx}-placeholder"]`, d.placeholder);
+            }
             // Insere juste avant le template (et donc avant le bouton "+").
             template.parentNode.insertBefore(newRow, template);
           });

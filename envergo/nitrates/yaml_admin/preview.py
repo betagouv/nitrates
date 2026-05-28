@@ -231,10 +231,15 @@ def compute_simulator_params(
 
     # Cascade form (categorie_culture, sous_culture_form, categorie_fertilisant,
     # sous_fertilisant) : reconstruite depuis referentiels.yaml.
+    # On passe l'ensemble des params arbre comme `flags` candidats pour
+    # disambiguer entre plusieurs sous_culture_form qui partagent
+    # (occupation_sol, sous_culture) -- cf. les 4 variantes du couvert
+    # d'interculture longue, qui se distinguent par sous_culture_couvert.
     cascade = _cascade_form_params(
         params.get("occupation_sol"),
         params.get("sous_culture"),
         params.get("type_fertilisant"),
+        flags=params,
     )
     for k, v in cascade.items():
         if v:
@@ -269,13 +274,22 @@ def _cascade_form_params(
     occupation_sol: str | None,
     sous_culture: str | None,
     type_fertilisant: str | None,
+    flags: dict | None = None,
 ) -> dict:
     """Retourne le dict des params UI a injecter dans l'URL pour que la
-    cascade form du simulateur reflete les valeurs arbre."""
+    cascade form du simulateur reflete les valeurs arbre.
+
+    `flags` est l'ensemble des params arbre (occupation_sol, sous_culture,
+    sous_culture_couvert, etc.) deja resolus -- on s'en sert pour
+    disambiguer entre plusieurs sous_culture_form qui partagent
+    (occupation_sol, sous_culture).
+    """
     out: dict = {}
 
     if occupation_sol and sous_culture:
-        sc_form = _find_sous_culture_form(occupation_sol, sous_culture)
+        sc_form = _find_sous_culture_form(
+            occupation_sol, sous_culture, flags=flags or {}
+        )
         if sc_form:
             out["sous_culture_form"] = sc_form
             cat = _find_categorie_culture(sc_form)
@@ -293,26 +307,61 @@ def _cascade_form_params(
     return out
 
 
-def _find_sous_culture_form(occupation_sol: str, sous_culture: str) -> str | None:
-    """Mapping inverse : (occupation_sol, sous_culture) -> sous_culture_form.
+def _find_sous_culture_form(
+    occupation_sol: str, sous_culture: str, flags: dict
+) -> str | None:
+    """Mapping inverse : (occupation_sol, sous_culture, flags...)
+    -> sous_culture_form.
 
-    Parcourt mapping_sous_culture_vers_branche (referentiels.yaml), retourne
-    la PREMIERE cle qui matche les 2 champs arbre. Plusieurs sous_culture_form
-    peuvent donner les memes champs arbre (ex: mais et
-    culture_principale_printemps_autre_que_mais -> culture_printemps), on
-    prend le premier dans le YAML sans plus d'info.
+    Parcourt mapping_sous_culture_vers_branche (referentiels.yaml). On
+    selectionne le sous_culture_form dont :
+      1. `occupation_sol` et `sous_culture` matchent.
+      2. Le maximum de `flags.<champ> == flags[<champ>]` matche aussi
+         (cas typique : `flags.sous_culture_couvert`).
+    Plusieurs candidats peuvent matcher (1) mais un seul matche (2) avec
+    le bon flag. En l'absence de flag de disambig, fallback au PREMIER.
     """
     ref = _load_ref()
     mapping = (ref or {}).get("mapping_sous_culture_vers_branche") or {}
+    candidats = []
     for sc_form, target in mapping.items():
         if not isinstance(target, dict):
             continue
         if (
-            target.get("occupation_sol") == occupation_sol
-            and target.get("sous_culture") == sous_culture
+            target.get("occupation_sol") != occupation_sol
+            or target.get("sous_culture") != sous_culture
         ):
+            continue
+        candidats.append((sc_form, target))
+
+    if not candidats:
+        return None
+
+    # 1 seul candidat : ambiguite resolue, on prend.
+    if len(candidats) == 1:
+        return candidats[0][0]
+
+    # 2+ candidats : priorite a celui dont l'IDENTIFIANT MATCHE la valeur
+    # `sous_culture_couvert` des flags fournis. C'est la convention nominale
+    # post-migration ORM : 1 Culture = 1 identifiant unique, qui est aussi
+    # la valeur cible cote arbre.
+    scc = flags.get("sous_culture_couvert")
+    if scc:
+        for sc_form, _target in candidats:
+            if sc_form == scc:
+                return sc_form
+
+    # Sinon : on prefere celui dont les `flags` legacy de la cible matchent
+    # les flags fournis (mapping_sous_culture_vers_branche.<X>.flags ==
+    # flags fournis). Utile pour les Cultures qui gardent encore un prefill
+    # explicite (cas exotiques type mais / culture_irriguee_type).
+    for sc_form, target in candidats:
+        cible_flags = target.get("flags") or {}
+        if cible_flags and all(flags.get(k) == v for k, v in cible_flags.items()):
             return sc_form
-    return None
+
+    # Fallback ultime : premier candidat.
+    return candidats[0][0]
 
 
 def _find_categorie_culture(sous_culture_form: str) -> str | None:
