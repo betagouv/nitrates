@@ -155,16 +155,67 @@
     };
   }
 
-  // Construit le tableau régime-par-jour en 2 passes (cf.
-  // spec_grammaire_calculatrice §masque) :
+  // Evalue `condition` (mini-DSL "<input_id> <op> <JJ/MM>") sur les
+  // valeurs courantes du form. La comparaison utilise l'ordre de
+  // l'annee agricole (juillet=0 ... juin~365). Cf.
+  // spec_extension_grammaire_condition.
   //
-  //   Passe 1 — Périodes PRINCIPALES (masque ≠ true). Elles sont posées
-  //     telles quelles sur le tableau (override en cas de chevauchement).
+  // Retourne true si la condition est vraie ou absente, false sinon.
+  // Si la valeur user pour input_id est manquante / non-parseable, on
+  // retourne true (mode "permissif") -- la periode reste affichee, sans
+  // distorsion, jusqu'a ce que l'utilisateur saisisse une valeur valide.
+  const CONDITION_RE = /^\s*([a-z][a-z0-9_]*)\s*(<=|>=|==|!=|<|>)\s*(\d{2}\/\d{2})\s*$/;
+  function evalCondition(rawCond, valeurs) {
+    if (!rawCond) return true;
+    const m = CONDITION_RE.exec(rawCond);
+    if (!m) return true; // condition mal formee : permissif (validator backend l'aura rejete)
+    const inputId = m[1];
+    const op = m[2];
+    const dateLit = m[3];
+    const valUser = valeurs[inputId];
+    const jourUser = valUser ? jjmmToJourAgricole(valUser) : null;
+    const jourCible = jjmmToJourAgricole(dateLit);
+    if (jourUser === null || jourCible === null) return true;
+    switch (op) {
+      case "<": return jourUser < jourCible;
+      case "<=": return jourUser <= jourCible;
+      case ">": return jourUser > jourCible;
+      case ">=": return jourUser >= jourCible;
+      case "==": return jourUser === jourCible;
+      case "!=": return jourUser !== jourCible;
+    }
+    return true;
+  }
+
+  // Hierarchie de severite des regimes pour la linearisation visuelle
+  // (cf. spec_extension_grammaire_condition §Linearisation). Plus la
+  // valeur est haute, plus le regime est severe -> il "gagne" quand
+  // 2 periodes principales se chevauchent au meme jour. Hors masque
+  // uniquement : les masques ont leur propre passe et ne participent
+  // pas a la hierarchie principale.
+  const SEVERITE_REGIME = {
+    libre: 0,
+    plafonnement: 1,
+    autorisation_sous_condition: 2,
+    interdiction: 3,
+    non_applicable: -1,
+  };
+
+  // Construit le tableau régime-par-jour en 2 passes (cf.
+  // spec_grammaire_calculatrice §masque + spec_extension_grammaire_condition) :
+  //
+  //   Filtrage prealable — Periodes dont la `condition` est fausse sont
+  //     retirees avant la 1re passe (idem que si elles n'existaient pas).
+  //
+  //   Passe 1 — Périodes PRINCIPALES (masque ≠ true). Sur chevauchement,
+  //     le regime LE PLUS SEVERE gagne (linearisation visuelle).
   //
   //   Passe 2 — Périodes MASQUE (masque === true). Elles ne s'appliquent
   //     QUE sur l'intersection avec les jours déjà couverts par une
   //     période principale en passe 1. Hors intersection : silence
-  //     (la période est sans effet, pas d'affichage).
+  //     (la période est sans effet, pas d'affichage). Sur la zone
+  //     intersection, le masque ecrase la principale (override : c'est
+  //     le but du masque, ex 'interdit avant 4 semaines apres semis').
   //
   // Le `libre` initial = pas de zone overlay (fond vert visible).
   function computeRegimePerDay(periodes, valeurs) {
@@ -174,16 +225,24 @@
     // si une période masque peut écrire à cet index ou non.
     const principalCovers = new Array(TOTAL_JOURS).fill(false);
 
-    const poserPeriode = (p, allowed) => {
+    const poserPrincipale = (p) => {
       const du = parseBorne(p.du, valeurs).jour;
       const au = parseBorne(p.au, valeurs).jour;
       const regime = p.regime || data.type || "interdiction";
       if (du === null || au === null) return;
       const apply = (i) => {
-        if (allowed === null || allowed[i]) {
+        // Hierarchie : on ecrit seulement si le nouveau regime est >=
+        // celui deja en place (sur cet index). 'libre' a severite 0,
+        // donc tout regime principal l'ecrase. Si 2 principales se
+        // chevauchent, la plus severe gagne.
+        const cur = result[i];
+        if (
+          !principalCovers[i] ||
+          (SEVERITE_REGIME[regime] ?? 0) >= (SEVERITE_REGIME[cur] ?? 0)
+        ) {
           result[i] = regime;
-          if (!p.masque) principalCovers[i] = true;
         }
+        principalCovers[i] = true;
       };
       if (du <= au) {
         for (let i = du; i <= au; i++) apply(i);
@@ -193,15 +252,37 @@
       }
     };
 
-    // Passe 1 : périodes principales (allowed=null -> ecriture libre).
-    for (const p of periodes || []) {
+    const poserMasque = (p) => {
+      const du = parseBorne(p.du, valeurs).jour;
+      const au = parseBorne(p.au, valeurs).jour;
+      const regime = p.regime || data.type || "interdiction";
+      if (du === null || au === null) return;
+      const apply = (i) => {
+        if (principalCovers[i]) result[i] = regime;
+      };
+      if (du <= au) {
+        for (let i = du; i <= au; i++) apply(i);
+      } else {
+        for (let i = du; i < TOTAL_JOURS; i++) apply(i);
+        for (let i = 0; i <= au; i++) apply(i);
+      }
+    };
+
+    // Filtrage : retire les periodes dont la condition est fausse pour
+    // les valeurs courantes (cf. spec_extension_grammaire_condition).
+    const periodesActives = (periodes || []).filter((p) =>
+      evalCondition(p.condition, valeurs)
+    );
+
+    // Passe 1 : principales avec hierarchie.
+    for (const p of periodesActives) {
       if (p.masque) continue;
-      poserPeriode(p, null);
+      poserPrincipale(p);
     }
     // Passe 2 : masques sur intersection seulement.
-    for (const p of periodes || []) {
+    for (const p of periodesActives) {
       if (!p.masque) continue;
-      poserPeriode(p, principalCovers);
+      poserMasque(p);
     }
     return result;
   }
@@ -269,7 +350,7 @@
     `;
   }
 
-  function renderCalendrier(regimeParJour) {
+  function renderCalendrier(regimeParJour, actives) {
     // Segments contigus de même régime. On ne génère une zone overlay
     // QUE pour rouge/orange : le vert est le fond global de la barre.
     const segmentsRaw = [];
@@ -290,7 +371,7 @@
         if (!couleur) return "";
         const w = ((s.au - s.du + 1) / TOTAL_JOURS) * 100;
         const left = (s.du / TOTAL_JOURS) * 100;
-        const flottant = isPeriodeFlottante(s, data.periodes);
+        const flottant = isPeriodeFlottante(s, actives);
         const classes = [
           "calendrier-epandage__zone",
           `calendrier-epandage__zone--${couleur}`,
@@ -300,7 +381,7 @@
         // periode YAML d'origine qui couvre ce segment (premier match)
         // pour reutiliser sa structure (du, au, regime) et generer une
         // annotation event+offset si applicable.
-        const tooltip = buildTooltipForSegment(s);
+        const tooltip = buildTooltipForSegment(s, actives);
         return `<div class="${classes.join(" ")}"
                      style="left:${left.toFixed(3)}%; width:${w.toFixed(3)}%"
                      aria-label="${escapeHtml(tooltip)}"
@@ -323,7 +404,7 @@
     //     pleine hauteur (= marker user-input).
     //   - row1 = date concrete des bornes event+offset (ex "12 sept."),
     //     en couleur du regime de la periode (rouge/orange/vert).
-    const bornesHtml = renderBornes(regimeParJour);
+    const bornesHtml = renderBornes(regimeParJour, actives);
 
     return `
       <div class="calendrier-epandage calendrier-epandage--vert">
@@ -342,9 +423,9 @@
   // Construit le tooltip humain pour un segment de la barre. Cherche la
   // periode YAML qui couvre la zone (au sens jours) ; si elle est
   // event+offset, genere une phrase « jusqu'a N semaines apres semis ».
-  function buildTooltipForSegment(segment) {
+  function buildTooltipForSegment(segment, actives) {
     const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
-    for (const p of data.periodes || []) {
+    for (const p of actives || []) {
       const partDu = parseBorne(p.du, valeurs);
       const partAu = parseBorne(p.au, valeurs);
       if (partDu.jour === null || partAu.jour === null) continue;
@@ -733,14 +814,20 @@
   }
 
   // Retourne le Set des periodes "actives" pour les render-helpers :
-  //   - toutes les periodes principales (masque != true), meme si bornes
-  //     non resolues -- elles seront ignorees plus loin via parseBorne null.
-  //   - les periodes masque dont l'intersection avec les principales est
+  //   - les periodes dont la `condition` est vraie pour les valeurs
+  //     courantes du form (cf. spec_extension_grammaire_condition) ;
+  //   - parmi celles-la : toutes les principales (masque != true), meme
+  //     si bornes non resolues -- elles seront ignorees plus loin via
+  //     parseBorne null ;
+  //   - et les masques dont l'intersection avec les principales est
   //     non vide.
   function activePeriodesSet() {
-    const principalCovers = computePrincipalCovers();
+    const periodes = (data.periodes || []).filter((p) =>
+      evalCondition(p.condition, valeurs)
+    );
+    const principalCovers = computePrincipalCovers(periodes);
     const result = new Set();
-    for (const p of data.periodes || []) {
+    for (const p of periodes) {
       if (!p.masque) {
         result.add(p);
         continue;
@@ -756,9 +843,14 @@
     return result;
   }
 
-  function computePrincipalCovers() {
+  function computePrincipalCovers(periodes) {
+    // `periodes` peut etre fourni (deja filtre par condition) ou non
+    // (fallback : on lit data.periodes et on filtre ici).
+    const liste = periodes || (data.periodes || []).filter((p) =>
+      evalCondition(p.condition, valeurs)
+    );
     const covers = new Array(TOTAL_JOURS).fill(false);
-    for (const p of data.periodes || []) {
+    for (const p of liste) {
       if (p.masque) continue;
       const du = parseBorne(p.du, valeurs).jour;
       const au = parseBorne(p.au, valeurs).jour;
@@ -816,6 +908,36 @@
     return `<ul class="calendrier-epandage__legende">${items}</ul>`;
   }
 
+  // Traduit une condition "<input_id> <op> <JJ/MM>" en phrase humaine
+  // pour le recap, ex "date_destruction_couvert < 05/12" ->
+  // "car destruction avant le 5 déc.". Utilise le label_court de l'input
+  // pour nommer la date utilisateur. Retourne null si non parseable.
+  function conditionToText(rawCond, inputById) {
+    if (!rawCond) return null;
+    const m = CONDITION_RE.exec(rawCond);
+    if (!m) return null;
+    const inputId = m[1];
+    const op = m[2];
+    const dateLit = m[3];
+    const inp = inputById[inputId];
+    const nom = inp ? deduireLabelCourt(inp) : inputId;
+    // Date litterale en forme lisible (5 déc.) via l'index agricole.
+    const jour = jjmmToJourAgricole(dateLit);
+    const dateStr = jour != null ? jourAgricoleToLisible(jour) : dateLit;
+    // Operateur -> tournure FR. On parle de la date `nom` par rapport au
+    // seuil `dateStr`.
+    const tournure = {
+      "<": `avant le ${dateStr}`,
+      "<=": `au plus tard le ${dateStr}`,
+      ">": `après le ${dateStr}`,
+      ">=": `à partir du ${dateStr}`,
+      "==": `le ${dateStr}`,
+      "!=": `différent du ${dateStr}`,
+    }[op];
+    if (!tournure) return null;
+    return `car ${nom} ${tournure}`;
+  }
+
   function renderRecap(periodes) {
     // Pour chaque période : phrase courte expliquant la fenêtre concrète.
     // Periodes masque sans intersection : silencieux (cf. spec masque).
@@ -836,6 +958,13 @@
       const annotations = [annDu, annAu].filter(Boolean);
       if (annotations.length > 0) {
         ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
+      }
+      // Mention conditionnelle : si la periode n'est posee que sous condition
+      // (cf. spec_extension_grammaire_condition), on l'explicite a l'utilisateur
+      // pour qu'il comprenne POURQUOI cette fenetre s'applique a son cas.
+      const condTxt = conditionToText(p.condition, inputById);
+      if (condTxt) {
+        ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
       }
       lignes.push(`<li>${ligne}</li>`);
     }
@@ -864,13 +993,23 @@
 
   // ─── Render principal ──────────────────────────────────────────────────
 
+  // Periodes a considerer pour le rendu courant : celles dont la condition
+  // est vraie pour les valeurs courantes du form. Recalculee a chaque render
+  // (cf. spec_extension_grammaire_condition §Recalcul a chaque change).
+  function periodesActives() {
+    return (data.periodes || []).filter((p) =>
+      evalCondition(p.condition, valeurs)
+    );
+  }
+
   function render() {
-    const regimeParJour = computeRegimePerDay(data.periodes, valeurs);
+    const actives = periodesActives();
+    const regimeParJour = computeRegimePerDay(actives, valeurs);
     mount.innerHTML = `
       ${renderMiniForm()}
-      ${renderCalendrier(regimeParJour)}
+      ${renderCalendrier(regimeParJour, actives)}
       ${renderLegende(regimeParJour)}
-      ${renderRecap(data.periodes)}
+      ${renderRecap(actives)}
     `;
     bindInputs();
     bindTooltips();

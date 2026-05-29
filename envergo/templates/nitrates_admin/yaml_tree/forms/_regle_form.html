@@ -10,15 +10,21 @@
     {% csrf_token %}
 
     {% if errors %}
+      {# Toutes les erreurs affichees en global ici, sans filtrage sur le #}
+      {# champ. Sinon des erreurs comme `periodes[0].du` (issues du #}
+      {# validator backend, format different du nommage form) etaient #}
+      {# silencieusement perdues, et l'utilisateur ne voyait que le 422 #}
+      {# dans la console. Les erreurs avec un mapping per-field connu #}
+      {# (id, type, periodes-N-du/au) restent aussi affichees a cote du #}
+      {# champ concerne plus bas - redondance acceptable pour ne RIEN #}
+      {# perdre. #}
       <div class="yaml-tree__form-errors">
         {% for err in errors %}
-          {% comment %}Django ajoute les erreurs sans champ dans __all__,
-          on les affiche en global ici. Les erreurs localisees sur un champ
-          (id, type, ...) sont rendues a cote de l'input concerne plus bas.
-          {% endcomment %}
-          {% if not err.field or err.field == "__all__" %}
-            <p class="yaml-tree__form-error-global">⚠ {{ err.message }}</p>
-          {% endif %}
+          <p class="yaml-tree__form-error-global">
+            ⚠
+            {% if err.field and err.field != "__all__" %}<code>{{ err.field }}</code> :{% endif %}
+            {{ err.message }}
+          </p>
         {% endfor %}
       </div>
     {% endif %}
@@ -77,7 +83,7 @@
       {% endif %}
       {% with regle.periodes|default_if_none:"" as periodes %}
         {% for p in periodes %}
-          <div class="yaml-tree__form-row">
+          <div class="yaml-tree__form-row" data-periode-row>
             <label class="yaml-tree__form-label">
               <span>période #{{ forloop.counter }}</span>
               <input type="text"
@@ -109,101 +115,188 @@
                        {% if p.masque %}checked{% endif %}>
                 masque
               </span>
-            </label>
-            {% for err in errors %}
-              {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
-                <small class="yaml-tree__form-field-error">{{ err.message }}</small>
-              {% endif %}
-            {% endfor %}
-          </div>
-        {% endfor %}
-        {% comment %}Une ligne vide pour ajouter une nouvelle periode.
+              <input type="text"
+                     name="periodes-{{ forloop.counter0 }}-condition"
+                     value="{{ p.condition|default_if_none:'' }}"
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     data-condition-cell
+                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
+                     style="max-width:34ch">
+                <button type="button"
+                        class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
+                        title="Supprimer cette période"
+                        data-remove-periode>🗑</button>
+              </label>
+              {% for err in errors %}
+                {% if err.field == "periodes-"|add:forloop.counter0|add:"-du" or err.field == "periodes-"|add:forloop.counter0|add:"-au" %}
+                  <small class="yaml-tree__form-field-error">{{ err.message }}</small>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endfor %}
+          {% comment %}Une ligne vide pour ajouter une nouvelle periode.
         Le bouton "+ Ajouter une periode" en-dessous clone cette ligne en JS
         pour permettre d'en ajouter plusieurs sans aller-retour serveur.
-        {% endcomment %}
-        <div class="yaml-tree__form-row" data-periode-row>
-          <label class="yaml-tree__form-label">
-            <span>+ ajouter</span>
-            <input type="text"
-                   name="periodes-{{ regle.periodes|length|default:0 }}-du"
-                   value=""
-                   placeholder="JJ/MM ou événement"
-                   list="evenements-phenologiques-list"
-                   style="max-width:24ch">
-            <input type="text"
-                   name="periodes-{{ regle.periodes|length|default:0 }}-au"
-                   value=""
-                   placeholder="JJ/MM ou événement"
-                   list="evenements-phenologiques-list"
-                   style="max-width:24ch">
-            <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
-                    data-regime-select
-                    style="max-width:22ch">
-              <option value="">— régime hérité —</option>
-              {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
-                <option value="{{ r }}">{{ r }}</option>
-              {% endfor %}
-            </select>
-            <span class="yaml-tree__periode-masque"
-                  data-masque-cell
-                  title="Cette periode ne s'applique que sur l'intersection avec les periodes principales (non-masque) deja posees. Cf. spec_grammaire_calculatrice §masque.">
-              <input type="checkbox"
-                     name="periodes-{{ regle.periodes|length|default:0 }}-masque"
-                     value="true">
-              masque
-            </span>
-          </label>
-        </div>
-        <div class="yaml-tree__form-row">
-          <button type="button"
-                  class="yaml-admin__btn yaml-admin__btn--small"
-                  data-add-periode
-                  data-next-index="{{ regle.periodes|length|default:0|add:1 }}">+ Ajouter une période</button>
-        </div>
-      {% endwith %}
-    </fieldset>
+          {% endcomment %}
+          <div class="yaml-tree__form-row" data-periode-row>
+            <label class="yaml-tree__form-label">
+              <span>+ ajouter</span>
+              <input type="text"
+                     name="periodes-{{ regle.periodes|length|default:0 }}-du"
+                     value=""
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
+              <input type="text"
+                     name="periodes-{{ regle.periodes|length|default:0 }}-au"
+                     value=""
+                     placeholder="JJ/MM ou événement"
+                     list="evenements-phenologiques-list"
+                     style="max-width:24ch">
+              <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
+                      data-regime-select
+                      style="max-width:22ch">
+                <option value="">— régime hérité —</option>
+                {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
+                  <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+              </select>
+              <span class="yaml-tree__periode-masque"
+                    data-masque-cell
+                    title="Cette periode ne s'applique que sur l'intersection avec les periodes principales (non-masque) deja posees. Cf. spec_grammaire_calculatrice §masque.">
+                <input type="checkbox"
+                       name="periodes-{{ regle.periodes|length|default:0 }}-masque"
+                       value="true">
+                masque
+              </span>
+              <input type="text"
+                     name="periodes-{{ regle.periodes|length|default:0 }}-condition"
+                     value=""
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     data-condition-cell
+                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
+                     style="max-width:34ch">
+                <button type="button"
+                        class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
+                        title="Supprimer cette période"
+                        data-remove-periode>🗑</button>
+              </label>
+            </div>
+            <div class="yaml-tree__form-row">
+              <button type="button"
+                      class="yaml-admin__btn yaml-admin__btn--small"
+                      data-add-periode
+                      data-next-index="{{ regle.periodes|length|default:0|add:1 }}">+ Ajouter une période</button>
+            </div>
+          {% endwith %}
+        </fieldset>
 
-    {% comment %}
+        {% comment %}
     Bloc "Composants de la calculatrice" (cf. spec form admin calculatrice
     2026-05-26). N'apparait que si type=calculatrice. Voir aussi
     spec_grammaire_calculatrice.md pour la grammaire YAML cible.
-    {% endcomment %}
-    <fieldset class="yaml-tree__form-fieldset yaml-tree__calculatrice"
-              data-type-fieldset="calculatrice">
-      <legend>Composants de la calculatrice</legend>
+        {% endcomment %}
+        <fieldset class="yaml-tree__form-fieldset yaml-tree__calculatrice"
+                  data-type-fieldset="calculatrice">
+          <legend>Composants de la calculatrice</legend>
 
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>composant</span>
-          <select name="composant">
-            <option value="">— choisir —</option>
-            {% comment %}
+          <div class="yaml-tree__form-row">
+            <label class="yaml-tree__form-label">
+              <span>composant</span>
+              <select name="composant">
+                <option value="">— choisir —</option>
+                {% comment %}
             Liste fermee : calendrier_dynamique_couvert pour les nouvelles
             regles (cf. spec MVP-2). Composants legacy laisses dispo
             tant qu'ils ne sont pas migres dans l'arbre PAN.
-            {% endcomment %}
-            {% for c in "calendrier_dynamique_couvert,luzerne_post_coupe,fenetre_epandage"|split:"," %}
-              <option value="{{ c }}" {% if regle.composant == c %}selected{% endif %}>{{ c }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
+                {% endcomment %}
+                {% for c in "calendrier_dynamique_couvert,luzerne_post_coupe,fenetre_epandage"|split:"," %}
+                  <option value="{{ c }}" {% if regle.composant == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
 
-      {# ─── Inputs requis ─────────────────────────────────────────── #}
-      <div class="yaml-tree__calculatrice-inputs">
-        <h4 class="yaml-tree__form-sublegend">Inputs requis</h4>
-        {% with regle.inputs_requis|default_if_none:"" as inputs %}
-          {% for inp in inputs %}
-            {% comment %}
+          {# ─── Inputs requis ─────────────────────────────────────────── #}
+          <div class="yaml-tree__calculatrice-inputs">
+            <h4 class="yaml-tree__form-sublegend">Inputs requis</h4>
+            {% with regle.inputs_requis|default_if_none:"" as inputs %}
+              {% for inp in inputs %}
+                {% comment %}
             On ne rend que les inputs nouvelle shape (objets {id, label,
             type, placeholder}). Les anciens inputs string brut ne sont
             plus supportes au save -- ils etaient transitoires pendant la
             migration vers la nouvelle grammaire calculatrice.
+                {% endcomment %}
+                {% if inp.id %}
+                  <div class="yaml-tree__calculatrice-input" data-input-requis-row>
+                    <header class="yaml-tree__calculatrice-input-header">
+                      <strong>Input #{{ forloop.counter }}</strong>
+                      <button type="button"
+                              class="yaml-admin__btn yaml-admin__btn--small yaml-tree__calculatrice-input-remove"
+                              title="Supprimer cet input"
+                              data-remove-input-requis>🗑</button>
+                    </header>
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>id</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-id"
+                               value="{{ inp.id|default_if_none:'' }}"
+                               placeholder="date_semis_couvert"
+                               pattern="^[a-z][a-z0-9_]*$"
+                               required>
+                      </label>
+                    </div>
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>label</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-label"
+                               value="{{ inp.label|default_if_none:'' }}"
+                               placeholder="Date de semis du couvert"
+                               required>
+                      </label>
+                    </div>
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>label court (étiquettes calendrier, optionnel)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-label_court"
+                               value="{{ inp.label_court|default_if_none:'' }}"
+                               placeholder="semis"
+                               style="max-width:20ch">
+                      </label>
+                    </div>
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>placeholder (JJ/MM)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-placeholder"
+                               value="{{ inp.placeholder|default_if_none:'' }}"
+                               placeholder="25/07"
+                               pattern="^\d{2}/\d{2}$"
+                               style="max-width:10ch">
+                      </label>
+                    </div>
+                    {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
+                    <input type="hidden"
+                           name="inputs_requis-{{ forloop.counter0 }}-type"
+                           value="{{ inp.type|default:'date' }}">
+                  </div>
+                {% endif %}
+              {% endfor %}
+            {% endwith %}
+
+            {% comment %}
+        Template d'input requis (cache, sert au clone JS pour bouton
+        '+ Ajouter un input requis'). L'index __IDX__ est remplace au
+        clic par le prochain index libre.
             {% endcomment %}
-            {% if inp.id %}
+            <template data-input-requis-template>
               <div class="yaml-tree__calculatrice-input" data-input-requis-row>
                 <header class="yaml-tree__calculatrice-input-header">
-                  <strong>Input #{{ forloop.counter }}</strong>
+                  <strong>Input #__N__</strong>
                   <button type="button"
                           class="yaml-admin__btn yaml-admin__btn--small yaml-tree__calculatrice-input-remove"
                           title="Supprimer cet input"
@@ -213,8 +306,8 @@
                   <label class="yaml-tree__form-label">
                     <span>id</span>
                     <input type="text"
-                           name="inputs_requis-{{ forloop.counter0 }}-id"
-                           value="{{ inp.id|default_if_none:'' }}"
+                           name="inputs_requis-__IDX__-id"
+                           value=""
                            placeholder="date_semis_couvert"
                            pattern="^[a-z][a-z0-9_]*$"
                            required>
@@ -224,8 +317,8 @@
                   <label class="yaml-tree__form-label">
                     <span>label</span>
                     <input type="text"
-                           name="inputs_requis-{{ forloop.counter0 }}-label"
-                           value="{{ inp.label|default_if_none:'' }}"
+                           name="inputs_requis-__IDX__-label"
+                           value=""
                            placeholder="Date de semis du couvert"
                            required>
                   </label>
@@ -234,8 +327,8 @@
                   <label class="yaml-tree__form-label">
                     <span>label court (étiquettes calendrier, optionnel)</span>
                     <input type="text"
-                           name="inputs_requis-{{ forloop.counter0 }}-label_court"
-                           value="{{ inp.label_court|default_if_none:'' }}"
+                           name="inputs_requis-__IDX__-label_court"
+                           value=""
                            placeholder="semis"
                            style="max-width:20ch">
                   </label>
@@ -244,223 +337,177 @@
                   <label class="yaml-tree__form-label">
                     <span>placeholder (JJ/MM)</span>
                     <input type="text"
-                           name="inputs_requis-{{ forloop.counter0 }}-placeholder"
-                           value="{{ inp.placeholder|default_if_none:'' }}"
+                           name="inputs_requis-__IDX__-placeholder"
+                           value=""
                            placeholder="25/07"
                            pattern="^\d{2}/\d{2}$"
                            style="max-width:10ch">
                   </label>
                 </div>
-                {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
-                <input type="hidden"
-                       name="inputs_requis-{{ forloop.counter0 }}-type"
-                       value="{{ inp.type|default:'date' }}">
+                <input type="hidden" name="inputs_requis-__IDX__-type" value="date">
               </div>
-            {% endif %}
-          {% endfor %}
-        {% endwith %}
+            </template>
 
-        {% comment %}
-        Template d'input requis (cache, sert au clone JS pour bouton
-        '+ Ajouter un input requis'). L'index __IDX__ est remplace au
-        clic par le prochain index libre.
-        {% endcomment %}
-        <template data-input-requis-template>
-          <div class="yaml-tree__calculatrice-input" data-input-requis-row>
-            <header class="yaml-tree__calculatrice-input-header">
-              <strong>Input #__N__</strong>
+            <div class="yaml-tree__form-row">
               <button type="button"
-                      class="yaml-admin__btn yaml-admin__btn--small yaml-tree__calculatrice-input-remove"
-                      title="Supprimer cet input"
-                      data-remove-input-requis>🗑</button>
-            </header>
-            <div class="yaml-tree__form-row">
-              <label class="yaml-tree__form-label">
-                <span>id</span>
-                <input type="text"
-                       name="inputs_requis-__IDX__-id"
-                       value=""
-                       placeholder="date_semis_couvert"
-                       pattern="^[a-z][a-z0-9_]*$"
-                       required>
-              </label>
+                      class="yaml-admin__btn yaml-admin__btn--small"
+                      data-add-input-requis>+ Ajouter un input requis</button>
             </div>
-            <div class="yaml-tree__form-row">
-              <label class="yaml-tree__form-label">
-                <span>label</span>
-                <input type="text"
-                       name="inputs_requis-__IDX__-label"
-                       value=""
-                       placeholder="Date de semis du couvert"
-                       required>
-              </label>
-            </div>
-            <div class="yaml-tree__form-row">
-              <label class="yaml-tree__form-label">
-                <span>label court (étiquettes calendrier, optionnel)</span>
-                <input type="text"
-                       name="inputs_requis-__IDX__-label_court"
-                       value=""
-                       placeholder="semis"
-                       style="max-width:20ch">
-              </label>
-            </div>
-            <div class="yaml-tree__form-row">
-              <label class="yaml-tree__form-label">
-                <span>placeholder (JJ/MM)</span>
-                <input type="text"
-                       name="inputs_requis-__IDX__-placeholder"
-                       value=""
-                       placeholder="25/07"
-                       pattern="^\d{2}/\d{2}$"
-                       style="max-width:10ch">
-              </label>
-            </div>
-            <input type="hidden" name="inputs_requis-__IDX__-type" value="date">
           </div>
-        </template>
+
+          {# ─── Aide saisie des bornes ────────────────────────────────── #}
+          <div class="yaml-tree__form-hint yaml-tree__calculatrice-aide">
+            <strong>Aide saisie des bornes (du / au)</strong>
+            <ul>
+              <li>
+                Date fixe : <code>15/12</code>
+              </li>
+              <li>
+                Événement : <code>date_semis_couvert</code>
+              </li>
+              <li>
+                Événement décalé : <code>date_semis_couvert+4semaines</code>, <code>date_destruction_prevue-20jours</code>
+              </li>
+            </ul>
+            Unités : <code>jours</code> | <code>semaines</code> | <code>mois</code>. Signe : <code>+</code> ou <code>-</code> suivi d'un entier ≥ 1.
+          </div>
+
+          {# ─── Aide saisie des conditions (optionnelles) ─────────────── #}
+          <div class="yaml-tree__form-hint yaml-tree__calculatrice-aide">
+            <strong>Aide saisie des conditions (optionnelles)</strong>
+            <p>
+              Format : <code>&lt;input_id&gt; &lt;opérateur&gt; &lt;JJ/MM&gt;</code>
+            </p>
+            <ul>
+              <li>input_id : un input requis ci-dessus (type date)</li>
+              <li>
+                opérateurs : <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code> <code>==</code> <code>!=</code>
+              </li>
+              <li>date : JJ/MM strict</li>
+            </ul>
+            Exemples : <code>date_destruction_couvert &lt; 05/12</code>, <code>date_semis_couvert &gt;= 01/09</code>.
+            <br>
+            Note : la comparaison suit l'ordre de l'année agricole
+            (juillet → juin). <code>01/08 &lt; 05/12</code> est <em>vrai</em>.
+          </div>
+        </fieldset>
 
         <div class="yaml-tree__form-row">
-          <button type="button"
-                  class="yaml-admin__btn yaml-admin__btn--small"
-                  data-add-input-requis>+ Ajouter un input requis</button>
+          <label class="yaml-tree__form-label">
+            <span>code_prescription</span>
+            {% if regle_choices.code_prescription %}
+              <select name="code_prescription">
+                <option value="">— (aucun)</option>
+                {% for c in regle_choices.code_prescription %}
+                  <option value="{{ c.value }}"
+                          {% if c.value == regle.code_prescription %}selected{% endif %}
+                          {% if c.description %}title="{{ c.description }}"{% endif %}>
+                    {{ c.value }}
+                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="text"
+                     name="code_prescription"
+                     value="{{ regle.code_prescription|default_if_none:'' }}"
+                     placeholder="ex: pc4">
+            {% endif %}
+          </label>
         </div>
-      </div>
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label">
+            <span>note</span>
+            {% if regle_choices.note %}
+              <select name="note">
+                <option value="">— (aucune)</option>
+                {% for c in regle_choices.note %}
+                  <option value="{{ c.value }}"
+                          {% if c.value == regle.note %}selected{% endif %}
+                          {% if c.description %}title="{{ c.description }}"{% endif %}>
+                    {{ c.value }}
+                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="text"
+                     name="note"
+                     value="{{ regle.note|default_if_none:'' }}"
+                     placeholder="ex: note_5">
+            {% endif %}
+          </label>
+        </div>
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label"
+                 title="Verdict court rendu à l'utilisateur de la moulinette (ex: « Apport interdit toute l'année »).">
+            <span>verdict</span>
+            <input type="text"
+                   name="message"
+                   value="{{ regle.message|default_if_none:'' }}"
+                   placeholder="Phrase courte affichée à l'utilisateur (ex: Apport interdit toute l'année)">
+          </label>
+        </div>
+        <div class="yaml-tree__form-row" data-regle-condition-row>
+          <label class="yaml-tree__form-label"
+                 title="Détails de la condition à respecter pour autoriser l'épandage. Sert quand type=autorisation_sous_condition.">
+            <span>condition</span>
+            <input type="text"
+                   name="texte_condition"
+                   value="{{ regle.texte_condition|default_if_none:'' }}"
+                   placeholder="Détail de la condition (ex: « Autorisation dans les conditions de la note 1 »)">
+          </label>
+        </div>
+        <details class="yaml-tree__form-advanced">
+          <summary>Texte libre (notes, exceptions)</summary>
+          <div class="yaml-tree__form-row">
+            <label class="yaml-tree__form-label">
+              <span>texte</span>
+              <input type="text"
+                     name="texte"
+                     value="{{ regle.texte|default_if_none:'' }}"
+                     placeholder="Champ libre, rarement utilisé">
+            </label>
+          </div>
+        </details>
+        <div class="yaml-tree__form-row" data-type-row="plafonnement">
+          <label class="yaml-tree__form-label"
+                 title="Plafond d'azote autorisé en kg N/ha pour cette règle.">
+            <span>plafond N kg/ha</span>
+            <input type="text"
+                   name="plafond_azote_kg_n_ha"
+                   value="{{ regle.plafond_azote_kg_n_ha|default_if_none:'' }}">
+          </label>
+        </div>
+        <div class="yaml-tree__form-row" data-type-row="libre">
+          <label class="yaml-tree__form-label"
+                 title="Si la règle est de type libre, on peut référencer une règle de plafonnement (id r_*) qui s'applique en parallèle.">
+            <span>plafonnement_associe</span>
+            <input type="text"
+                   name="plafonnement_associe"
+                   value="{{ regle.plafonnement_associe|default_if_none:'' }}"
+                   placeholder="ex: r_plafond_x">
+          </label>
+        </div>
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label">
+            <span>source juridique</span>
+            <input type="text"
+                   name="source_juridique"
+                   value="{{ regle.source_juridique|default_if_none:'' }}">
+          </label>
+        </div>
 
-      {# ─── Aide saisie des bornes ────────────────────────────────── #}
-      <div class="yaml-tree__form-hint yaml-tree__calculatrice-aide">
-        <strong>Aide saisie des bornes (du / au)</strong>
-        <ul>
-          <li>
-            Date fixe : <code>15/12</code>
-          </li>
-          <li>
-            Événement : <code>date_semis_couvert</code>
-          </li>
-          <li>
-            Événement décalé : <code>date_semis_couvert+4semaines</code>, <code>date_destruction_prevue-20jours</code>
-          </li>
-        </ul>
-        Unités : <code>jours</code> | <code>semaines</code> | <code>mois</code>. Signe : <code>+</code> ou <code>-</code> suivi d'un entier ≥ 1.
-      </div>
-    </fieldset>
+        <div class="yaml-tree__form-actions">
+          <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer</button>
+          <button type="button"
+                  class="yaml-admin__btn"
+                  hx-get="{% url 'nitrates_admin_yaml_edit_regle_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+                  hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
+                  hx-swap="outerHTML">Annuler</button>
+        </div>
 
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>code_prescription</span>
-        {% if regle_choices.code_prescription %}
-          <select name="code_prescription">
-            <option value="">— (aucun)</option>
-            {% for c in regle_choices.code_prescription %}
-              <option value="{{ c.value }}"
-                      {% if c.value == regle.code_prescription %}selected{% endif %}
-                      {% if c.description %}title="{{ c.description }}"{% endif %}>
-                {{ c.value }}
-                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-              </option>
-            {% endfor %}
-          </select>
-        {% else %}
-          <input type="text"
-                 name="code_prescription"
-                 value="{{ regle.code_prescription|default_if_none:'' }}"
-                 placeholder="ex: pc4">
-        {% endif %}
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>note</span>
-        {% if regle_choices.note %}
-          <select name="note">
-            <option value="">— (aucune)</option>
-            {% for c in regle_choices.note %}
-              <option value="{{ c.value }}"
-                      {% if c.value == regle.note %}selected{% endif %}
-                      {% if c.description %}title="{{ c.description }}"{% endif %}>
-                {{ c.value }}
-                {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-              </option>
-            {% endfor %}
-          </select>
-        {% else %}
-          <input type="text"
-                 name="note"
-                 value="{{ regle.note|default_if_none:'' }}"
-                 placeholder="ex: note_5">
-        {% endif %}
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label"
-             title="Verdict court rendu à l'utilisateur de la moulinette (ex: « Apport interdit toute l'année »).">
-        <span>verdict</span>
-        <input type="text"
-               name="message"
-               value="{{ regle.message|default_if_none:'' }}"
-               placeholder="Phrase courte affichée à l'utilisateur (ex: Apport interdit toute l'année)">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row" data-regle-condition-row>
-      <label class="yaml-tree__form-label"
-             title="Détails de la condition à respecter pour autoriser l'épandage. Sert quand type=autorisation_sous_condition.">
-        <span>condition</span>
-        <input type="text"
-               name="texte_condition"
-               value="{{ regle.texte_condition|default_if_none:'' }}"
-               placeholder="Détail de la condition (ex: « Autorisation dans les conditions de la note 1 »)">
-      </label>
-    </div>
-    <details class="yaml-tree__form-advanced">
-      <summary>Texte libre (notes, exceptions)</summary>
-      <div class="yaml-tree__form-row">
-        <label class="yaml-tree__form-label">
-          <span>texte</span>
-          <input type="text"
-                 name="texte"
-                 value="{{ regle.texte|default_if_none:'' }}"
-                 placeholder="Champ libre, rarement utilisé">
-        </label>
-      </div>
-    </details>
-    <div class="yaml-tree__form-row" data-type-row="plafonnement">
-      <label class="yaml-tree__form-label"
-             title="Plafond d'azote autorisé en kg N/ha pour cette règle.">
-        <span>plafond N kg/ha</span>
-        <input type="text"
-               name="plafond_azote_kg_n_ha"
-               value="{{ regle.plafond_azote_kg_n_ha|default_if_none:'' }}">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row" data-type-row="libre">
-      <label class="yaml-tree__form-label"
-             title="Si la règle est de type libre, on peut référencer une règle de plafonnement (id r_*) qui s'applique en parallèle.">
-        <span>plafonnement_associe</span>
-        <input type="text"
-               name="plafonnement_associe"
-               value="{{ regle.plafonnement_associe|default_if_none:'' }}"
-               placeholder="ex: r_plafond_x">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>source juridique</span>
-        <input type="text"
-               name="source_juridique"
-               value="{{ regle.source_juridique|default_if_none:'' }}">
-      </label>
-    </div>
-
-    <div class="yaml-tree__form-actions">
-      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer</button>
-      <button type="button"
-              class="yaml-admin__btn"
-              hx-get="{% url 'nitrates_admin_yaml_edit_regle_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
-              hx-target="#regle-block-{{ parent_path_str|slugify }}-{{ valeur|slugify }}"
-              hx-swap="outerHTML">Annuler</button>
-    </div>
-
-    <script>
+        <script>
       // Adapte les champs visibles selon le type choisi.
       // - `regime` (par periode) + `condition` : autorisation_sous_condition uniquement
       // - `Calculatrice` (composant + inputs_requis) : calculatrice uniquement
@@ -498,6 +545,13 @@
           masqueCells.forEach(cell => {
             cell.style.display = calculatrice ? '' : 'none';
           });
+          // Champ texte `condition` sur chaque ligne de periode : meme regle
+          // que masque, pertinent uniquement pour calculatrice
+          // (cf. spec_extension_grammaire_condition).
+          const conditionCells = Array.from(root.querySelectorAll('[data-condition-cell]'));
+          conditionCells.forEach(cell => {
+            cell.style.display = calculatrice ? '' : 'none';
+          });
           // Spec form admin calculatrice : Inputs requis (bloc Calculatrice)
           // AVANT bloc Periodes. CSS order: calculatrice = -1 (avant tout),
           // sinon ordre par defaut. Le parent form doit etre flex-column.
@@ -517,15 +571,63 @@
         apply();
         typeSelect.addEventListener('change', apply);
       })();
-    </script>
+        </script>
 
-    <script>
+        <script>
       // Bouton "+ Ajouter une periode" : clone la derniere ligne de periode
       // et incremente l'index dans les `name="periodes-N-..."` pour que
       // Django parse correctement N entrees au POST.
+      //
+      // Bouton 🗑 par periode : supprime la ligne et renumerote toutes les
+      // periodes restantes (indices contigus periodes-0-..., periodes-1-..., etc).
+      // Indispensable car _parse_periodes cote backend iterates i=0 avec
+      // sentinel break, donc un trou dans la numerotation casse la suite.
       (function () {
         const form = document.currentScript.closest('form');
         const btn = form.querySelector('[data-add-periode]');
+
+        // Renumerote toutes les lignes data-periode-row de 0..N-1.
+        function renumberPeriodes() {
+          const rows = form.querySelectorAll('[data-periode-row]');
+          rows.forEach((row, idx) => {
+            row.querySelectorAll('[name^="periodes-"]').forEach((el) => {
+              el.name = el.name.replace(/^periodes-\d+-/, `periodes-${idx}-`);
+            });
+            // Met a jour le span "période #N" sauf pour la derniere ligne
+            // (template d'ajout) qui garde "+ ajouter".
+            const span = row.querySelector('span');
+            const isTemplate = row === rows[rows.length - 1];
+            if (span && !isTemplate) {
+              span.textContent = `période #${idx + 1}`;
+            }
+          });
+          // Le bouton "+ Ajouter" memorise le prochain index dans dataset.
+          if (btn) btn.dataset.nextIndex = String(rows.length);
+        }
+
+        // Bouton 🗑 : supprime la ligne. Delegation pour couvrir les lignes
+        // clonees (ajoutees apres init).
+        form.addEventListener('click', (e) => {
+          const removeBtn = e.target.closest('[data-remove-periode]');
+          if (!removeBtn) return;
+          const row = removeBtn.closest('[data-periode-row]');
+          if (!row) return;
+          // Ne supprime PAS la derniere ligne (= template d'ajout, doit
+          // toujours rester pour permettre l'ajout).
+          const allRows = form.querySelectorAll('[data-periode-row]');
+          if (row === allRows[allRows.length - 1]) {
+            // Sur la ligne template, on vide les champs au lieu de la supprimer.
+            row.querySelectorAll('input, select').forEach((el) => {
+              if (el.tagName === 'INPUT' && el.type === 'checkbox') el.checked = false;
+              else if (el.tagName === 'INPUT') el.value = '';
+              else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            });
+          } else {
+            row.remove();
+          }
+          renumberPeriodes();
+        });
+
         if (!btn) return;
         btn.addEventListener('click', () => {
           const rows = form.querySelectorAll('[data-periode-row]');
@@ -558,9 +660,9 @@
           if (typeSelect) typeSelect.dispatchEvent(new Event('change'));
         });
       })();
-    </script>
+        </script>
 
-    <script>
+        <script>
       // Calculatrice : bouton "+ Ajouter un input requis" + bouton 🗑 par carte.
       // Pas d'aller-retour serveur : le DOM est modifie cote client, persiste
       // au submit comme les periodes.
@@ -637,6 +739,6 @@
           if (row) row.remove();
         });
       })();
-    </script>
-  </form>
-</div>
+        </script>
+      </form>
+    </div>

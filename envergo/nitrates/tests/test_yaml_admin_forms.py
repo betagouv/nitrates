@@ -264,3 +264,63 @@ def test_regle_form_periodes_multiples():
         {"du": "15/12", "au": "15/01"},
         {"du": "01/06", "au": "30/06", "regime": "libre"},
     ]
+
+
+def test_regle_form_periode_condition_normalisee():
+    """Le champ condition est parse, valide structurellement et normalise."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-0-regime": "autorisation_sous_condition",
+            "periodes-0-condition": "date_destruction_couvert>=05/12",
+        }
+    )
+    assert f.is_valid(), f.errors
+    nd = f.to_new_data()
+    assert nd["periodes"][0]["condition"] == "date_destruction_couvert >= 05/12"
+
+
+def test_regle_form_periode_condition_invalide_remonte_erreur():
+    """Condition mal formee -> erreur globale + valeur preservee dans periodes."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-0-condition": "totalement faux",
+        }
+    )
+    assert not f.is_valid()
+    # Le POST preserve la valeur pour rerender (utile pour le 422).
+    assert f.periodes[0]["condition"] == "totalement faux"
+
+
+def test_regle_form_periode_condition_absente_pas_de_cle():
+    """Pas de condition POST -> pas de cle `condition` dans le dict periode."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+        }
+    )
+    assert f.is_valid()
+    assert "condition" not in f.to_new_data()["periodes"][0]
+
+
+def test_regle_form_periode_remplie_uniquement_avec_condition():
+    """Une ligne avec uniquement une condition (du/au/regime/masque vides)
+    n'est PAS coupee par le sentinel 'ligne vide'."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-1-condition": "date_x >= 01/12",
+        }
+    )
+    # Test : la 2e ligne est conservee (avec sa condition seule).
+    assert len(f.periodes) == 2
+    assert f.periodes[1].get("condition") == "date_x >= 01/12"

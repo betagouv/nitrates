@@ -46,6 +46,16 @@
               {% endwith %}
             {% endif %}
             <code>{{ p.du }}</code> → <code>{{ p.au }}</code>
+            {% if p.masque %}
+              <span class="yaml-tree__periode-flag"
+                    title="Periode masque : ne s'applique que sur l'intersection avec les periodes principales. Cf. spec_grammaire_calculatrice.">🎭 masque</span>
+            {% endif %}
+            {% if p.condition %}
+              <span class="yaml-tree__periode-flag yaml-tree__periode-flag--condition"
+                    title="Periode appliquee seulement si la condition est vraie. Cf. spec_extension_grammaire_condition.">
+                si <code>{{ p.condition }}</code>
+              </span>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

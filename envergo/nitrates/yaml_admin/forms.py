@@ -178,8 +178,8 @@ class RegleForm(_BaseYamlForm):
 
     def _parse_periodes(self) -> list[dict]:
         """Lit periodes-0-du, periodes-0-au, periodes-0-regime,
-        periodes-0-masque, etc. S'arrête à la première ligne complètement
-        vide."""
+        periodes-0-masque, periodes-0-condition, etc. S'arrête à la
+        première ligne complètement vide."""
         if not self.is_bound:
             return []
         data = self.data
@@ -192,7 +192,8 @@ class RegleForm(_BaseYamlForm):
             masque_raw = data.get(f"periodes-{i}-masque")
             # checkbox HTML : presente -> coche (truthy), absente -> non coche.
             masque = masque_raw not in (None, "", "false", "0")
-            if not du and not au and not regime and not masque:
+            condition = (data.get(f"periodes-{i}-condition") or "").strip()
+            if not du and not au and not regime and not masque and not condition:
                 break
             p: dict = {}
             if du:
@@ -222,6 +223,25 @@ class RegleForm(_BaseYamlForm):
             # avec `masque: false` partout (defaut implicite).
             if masque:
                 p["masque"] = True
+            # Condition : on valide juste le format ici (le check input_id
+            # existe / type=date est fait par le validator global au save).
+            # Normalisation : un seul espace autour de l'op.
+            if condition:
+                from envergo.nitrates.yaml_tree.condition import (
+                    ConditionParseError,
+                    parse_condition,
+                )
+
+                try:
+                    parsed = parse_condition(condition)
+                except ConditionParseError as exc:
+                    self.add_error(
+                        None,
+                        f"Période #{i + 1} : condition invalide ({exc}).",
+                    )
+                    p["condition"] = condition
+                else:
+                    p["condition"] = parsed.normalise()
             periodes.append(p)
             i += 1
         return periodes
