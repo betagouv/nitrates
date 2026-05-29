@@ -18,6 +18,7 @@ from typing import Iterable
 
 from jsonschema import Draft202012Validator
 
+from envergo.nitrates.yaml_tree.condition import validate_condition
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -589,8 +590,11 @@ def _check_calculatrice(arbre: dict) -> list[str]:
             )
 
         # Regles 5 + 6 + 7 : bornes valides, au moins une event, regime ok
+        # + condition (extension grammaire spec_extension_grammaire_condition).
         events_utilises: set[str] = set()
         au_moins_une_event = False
+        # inputs_requis sous forme dict pour la validation de condition.
+        inputs_for_condition = [i for i in inputs if isinstance(i, dict)]
         for i, p in enumerate(periodes, start=1):
             for borne_name in ("du", "au"):
                 val = p.get(borne_name)
@@ -612,6 +616,22 @@ def _check_calculatrice(arbre: dict) -> list[str]:
                     f"[calculatrice] regle '{rid}' periode #{i} : regime "
                     f"{preg!r} inconnu (attendu : {sorted(_CALCULATRICE_REGIMES)})."
                 )
+            raw_cond = p.get("condition")
+            if raw_cond is not None:
+                if not isinstance(raw_cond, str) or not raw_cond.strip():
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' periode #{i} : "
+                        f"`condition` doit etre une chaine non vide si presente."
+                    )
+                else:
+                    _, cond_err = validate_condition(raw_cond, inputs_for_condition)
+                    if cond_err:
+                        errors.append(
+                            f"[calculatrice] regle '{rid}' periode #{i} : {cond_err}"
+                        )
+        # Warning "duplicate condition" : laisse hors validator (spec
+        # spec_extension_grammaire_condition : non-bloquant, suggestion
+        # stylistique). A reintegrer si on cree un canal warnings dedie.
         if periodes and not au_moins_une_event:
             errors.append(
                 f"[calculatrice] regle '{rid}' : aucune borne ne reference un "

@@ -937,3 +937,93 @@ def test_calculatrice_back_compat_inputs_requis_legacy_strings():
         "inputs_requis": ["fertirrigation"],
     }
     validate_arbre(a)
+
+
+# ─── Champ `condition` sur periodes calculatrice (spec extension) ──────────
+
+
+def test_calculatrice_condition_valide_passe():
+    """Une condition bien formee + input_id existant + type date passe."""
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue >= 05/12"
+    validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_condition_format_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue est tot"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_input_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_imaginaire < 05/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any(
+        "date_imaginaire" in e and "inputs_requis" in e for e in exc.value.errors
+    )
+
+
+def test_calculatrice_condition_date_invalide_echoue():
+    """Comme pour les placeholders / bornes fixes, on accepte tout JJ/MM
+    avec j in [1..31] et m in [1..12]. Un jour > 31 ou mois > 12 est rejete.
+    """
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue < 45/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("45/12" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_operateur_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue ~ 05/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_vide_echoue():
+    """Condition presente mais chaine vide -> erreur."""
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_tous_operateurs_passent():
+    """Verifie que les 6 operateurs sont acceptes."""
+    for op in ("<", "<=", ">", ">=", "==", "!="):
+        r = _calculatrice_regle_valide()
+        r["periodes"][0]["condition"] = f"date_destruction_prevue {op} 05/12"
+        validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_deux_periodes_conditions_complementaires_passent():
+    """Cas typique spec : 2 periodes alternatives selon condition opposees."""
+    r = _calculatrice_regle_valide()
+    r["periodes"] = [
+        {
+            "du": "15/11",
+            "au": "15/01",
+            "regime": "autorisation_sous_condition",
+            "condition": "date_destruction_prevue >= 05/12",
+        },
+        {
+            "du": "date_destruction_prevue-20jours",
+            "au": "15/01",
+            "regime": "autorisation_sous_condition",
+            "condition": "date_destruction_prevue < 05/12",
+        },
+        {
+            "du": "date_semis_couvert",
+            "au": "date_semis_couvert+4semaines",
+            "masque": True,
+            "regime": "interdiction",
+        },
+    ]
+    validate_arbre(_arbre_avec_calculatrice(r))

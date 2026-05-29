@@ -62,6 +62,15 @@ REGLE_SCHEMA = {
                     # d'intersection cote backend : c'est dynamique
                     # (depend des inputs utilisateur a runtime).
                     "masque": {"type": "boolean"},
+                    # Condition : pertinent uniquement pour type=calculatrice.
+                    # Mini-DSL "<input_id> <op> <JJ/MM>" (cf.
+                    # spec_extension_grammaire_condition). Si vraie, la
+                    # periode s'applique normalement; si fausse, la periode
+                    # est ignoree avant la passe de resolution. Absent =
+                    # periode toujours appliquee (comportement par defaut).
+                    # La validation grammaticale (op valide, input existant,
+                    # date valide) est faite par _check_calculatrice.
+                    "condition": {"type": "string"},
                 },
             },
         },
