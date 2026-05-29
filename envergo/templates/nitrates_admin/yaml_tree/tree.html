@@ -6,7 +6,10 @@
 
 {% block extra_css %}
   <link href="{% static 'nitrates_admin/yaml_tree.css' %}" rel="stylesheet">
-  {% if vue == "split" or vue == "brut" %}{# djlint:off #}<style>{{ raw_css|safe }}</style>{# djlint:on #}{% endif %}
+  {% if vue == "split" or vue == "brut" %}
+    {# djlint:off #}<style>{{ raw_css|safe }}</style>{# djlint:on #}
+    {% include "nitrates_admin/yaml_tree/_codemirror_assets.html" %}
+  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -121,6 +124,7 @@
                 </p>
                 <textarea name="contenu_yaml_brut"
                           class="yaml-admin__raw-textarea"
+                          data-yaml-editor
                           spellcheck="false">{{ tree.contenu_yaml_brut }}</textarea>
                 <div class="yaml-admin__raw-actions">
                   <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer le YAML</button>
@@ -129,9 +133,26 @@
             </section>
           {% else %}
             <section class="yaml-admin__raw" aria-label="Source YAML">
-              {{ raw_html|safe }}
+              <textarea class="yaml-admin__raw-textarea"
+                        data-yaml-editor
+                        data-yaml-editor-readonly
+                        spellcheck="false">{{ tree.contenu_yaml_brut }}</textarea>
             </section>
           {% endif %}
+
+          {# Monte CodeMirror sur les <textarea data-yaml-editor>. data-yaml-editor-readonly -> lecture seule. Sync via editor.save() on change (cf. _codemirror_assets.html). #}
+          <script>
+            (function () {
+              document.querySelectorAll("[data-yaml-editor]").forEach((ta) => {
+                if (ta.dataset.cmMounted === "1") return;
+                ta.dataset.cmMounted = "1";
+                window.mountYamlCodeMirror(ta, {
+                  readOnly: ta.hasAttribute("data-yaml-editor-readonly"),
+                  themeKey: "nitrates_yaml_codemirror_theme",
+                });
+              });
+            })();
+          </script>
         {% endif %}
       </div>
     </div>
