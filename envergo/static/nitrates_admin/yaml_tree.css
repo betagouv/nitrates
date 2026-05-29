@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 /* Viewer admin de l'arbre de decision YAML (phase 2bis, read-only).
    Couleurs doublees d'icones pour respecter RGAA AA (pas de signal couleur seul). */
 
@@ -967,6 +969,39 @@ button.yaml-admin__btn {
   padding: var(--tree-row-pad) 0;
 }
 
+/* Highlight transitoire applique apres un swap htmx (ouverture form
+   d'edition ou fermeture save/cancel). Permet a l'utilisateur de
+   retrouver visuellement le row sur lequel il etait en train de
+   travailler -- sans ca le DOM se reconstruit et on perd ses reperes.
+
+   Implemente comme outline + box-shadow ambres (pas background) :
+   - reste visible meme sur les blocs --editing qui ont deja un bg
+     jaune clair (sinon le highlight est masque) ;
+   - n'altere pas le layout (outline est hors flow) ;
+   - fade-out en 5s via @keyframes. */
+@keyframes yaml-tree-highlight-fade {
+  0% {
+    outline-color: #f5a623;
+    box-shadow:
+      0 0 0 4px #fff3a8,
+      0 0 12px 4px rgb(245 166 35 / 60%);
+  }
+
+  100% {
+    outline-color: transparent;
+    box-shadow:
+      0 0 0 4px transparent,
+      0 0 12px 4px rgb(245 166 35 / 0%);
+  }
+}
+
+.yaml-tree__row--highlighted {
+  outline: 3px solid #f5a623;
+  outline-offset: 2px;
+  border-radius: 3px;
+  animation: yaml-tree-highlight-fade 5s ease-out forwards;
+}
+
 details > summary.yaml-tree__row {
   cursor: pointer;
   list-style: none;
@@ -1201,6 +1236,35 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__periodes code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Flag inline derriere une periode (masque, condition) dans le header
+   read-only d'une regle (_regle_block.html). Petite badge texte
+   discrete qui signale qu'il y a un attribut non-trivial sur la
+   periode (sinon l'utilisateur perd la condition / le masque a la
+   lecture). */
+.yaml-tree__periode-flag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin-left: 0.3rem;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  color: #5d4037;
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.yaml-tree__periode-flag--condition {
+  background: #e8f5e9;
+  border-color: #81c784;
+  color: #2e7d32;
+}
+
+.yaml-tree__periode-flag code {
+  font-size: 0.85em;
 }
 
 .yaml-tree__plafond,

@@ -351,6 +351,61 @@
       })();
     </script>
 
+    {# Highlight + scroll apres chaque swap d'edition / fermeture de form. #}
+    {# Cible : tout element dont l'id commence par regle-block- / branche-block- / node-row-. #}
+    {# Permet de garder le repere visuel apres save / cancel (le DOM se reconstruit, le focus est perdu). #}
+    <script>
+      (function () {
+        const PREFIXES = ['regle-block-', 'branche-block-', 'node-row-'];
+        function matches(el) {
+          if (!el || !el.id) return false;
+          return PREFIXES.some((p) => el.id.startsWith(p));
+        }
+        function highlight(el) {
+          if (!el) return;
+          // Scroll : on positionne l'element au centre du viewport. Ca marche
+          // pour les 3 cas (regle-block / branche-block / node-row) ET pour
+          // l'ouverture (form qui prend la place) ET pour la fermeture (block
+          // re-rendu).
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Restart propre de l'animation : on retire la classe, force un
+          // reflow, puis re-ajoute. Sinon re-highlight le meme node (rare)
+          // ne relancerait pas l'animation CSS.
+          el.classList.remove('yaml-tree__row--highlighted');
+          void el.offsetWidth; // reflow
+          // Le highlight est applique sur el lui-meme (block / summary), pas
+          // sur un .yaml-tree__row interne : ca couvre l'integralite du bloc
+          // visible meme en mode edition (ou le form remplit l'espace).
+          el.classList.add('yaml-tree__row--highlighted');
+          // Retire la classe apres 5s (= duree de l'animation). Le fade est
+          // porte par l'animation CSS, le retrait nettoie juste l'etat.
+          clearTimeout(el._highlightT);
+          el._highlightT = setTimeout(() => {
+            el.classList.remove('yaml-tree__row--highlighted');
+          }, 5000);
+        }
+        // IMPORTANT : on ecoute `htmx:afterSettle`, PAS `htmx:afterSwap`.
+        // Avec hx-swap="outerHTML", afterSwap se declenche AVANT la phase de
+        // settle : le node qu'on highlight a ce moment-la est re-remplace
+        // pendant le settle et perd sa classe (=> highlight invisible, bug
+        // 2026-05-29). afterSettle se declenche une fois le DOM stabilise.
+        // On re-resout l'element par son id (e.detail.target pointe sur
+        // l'ancien node detache apres un outerHTML swap).
+        document.addEventListener('htmx:afterSettle', (e) => {
+          const t = e.detail && e.detail.target;
+          if (!t) return;
+          let el = matches(t) ? document.getElementById(t.id) : null;
+          // Fallback : si la cible ne matche pas un de nos prefixes, cherche
+          // un descendant qui matche (cas innerHTML / container parent).
+          if (!el) {
+            const descId = Array.from(t.querySelectorAll('[id]')).find(matches);
+            el = descId ? document.getElementById(descId.id) : null;
+          }
+          if (el) highlight(el);
+        });
+      })();
+    </script>
+
     <style>
       .yaml-tree__copy-link {
         background: transparent;
