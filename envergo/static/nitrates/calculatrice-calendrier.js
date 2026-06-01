@@ -225,6 +225,16 @@
     // si une période masque peut écrire à cet index ou non.
     const principalCovers = new Array(TOTAL_JOURS).fill(false);
 
+    // Compte le nombre de principales qui couvrent chaque jour. Sert a
+    // distinguer un jour de CHEVAUCHEMENT reel (>=1 principale qui contient
+    // le jour en son sein) d'un simple jour-frontiere ou deux principales
+    // adjacentes se touchent (l'une finit, l'autre commence). cf. bug
+    // masque : la principale "autorise 15j avant semis" finit AU semis et
+    // le masque "interdit apres semis" commence AU semis -> le jour du
+    // semis n'est PAS un vrai chevauchement, le masque ne doit pas peindre.
+    const principalStarts = new Array(TOTAL_JOURS).fill(0);
+    const principalEnds = new Array(TOTAL_JOURS).fill(0);
+
     const poserPrincipale = (p) => {
       const du = parseBorne(p.du, valeurs).jour;
       const au = parseBorne(p.au, valeurs).jour;
@@ -244,6 +254,8 @@
         }
         principalCovers[i] = true;
       };
+      principalStarts[du] += 1;
+      principalEnds[au] += 1;
       if (du <= au) {
         for (let i = du; i <= au; i++) apply(i);
       } else {
@@ -258,7 +270,19 @@
       const regime = p.regime || data.type || "interdiction";
       if (du === null || au === null) return;
       const apply = (i) => {
-        if (principalCovers[i]) result[i] = regime;
+        if (!principalCovers[i]) return;
+        // Anti-artefact frontiere : si le PREMIER jour du masque (du) ne
+        // fait que toucher la FIN d'une principale (principalEnds[i] > 0)
+        // sans qu'aucune principale n'y (re)commence (principalStarts[i] ==
+        // 0), ce n'est pas un vrai chevauchement -> le masque ne peint pas.
+        // Ca evite le sliver d'interdiction d'1 jour au semis quand la
+        // principale "autorise avant semis" finit pile au semis et le
+        // masque "interdit apres semis" demarre au semis. Le vrai
+        // chevauchement (avec la principale 15/10->31/01) commence plus loin.
+        if (i === du && principalEnds[i] > 0 && principalStarts[i] === 0) {
+          return;
+        }
+        result[i] = regime;
       };
       if (du <= au) {
         for (let i = du; i <= au; i++) apply(i);
@@ -399,12 +423,10 @@
         ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>`
         : "";
 
-    // Bornes textuelles sous la barre :
-    //   - row0 = label_court des inputs (semis / destruction), trait NOIR
-    //     pleine hauteur (= marker user-input).
-    //   - row1 = date concrete des bornes event+offset (ex "12 sept."),
-    //     en couleur du regime de la periode (rouge/orange/vert).
-    const bornesHtml = renderBornes(regimeParJour, actives);
+    // Bornes textuelles sous la barre. Source unique = les segments
+    // effectifs de la barre (regimeParJour) -> on ne marque que les vraies
+    // frontieres de zone + les dates saisies (cf. renderBornes).
+    const bornesHtml = renderBornes(regimeParJour, segmentsRaw);
 
     return `
       <div class="calendrier-epandage calendrier-epandage--vert">
@@ -480,56 +502,139 @@
     return false;
   }
 
-  // Bornes sous la barre, structurees sur N rows (auto-bump anti-overlap) :
-  //
-  //   row0 (au plus pres de la barre) : dates FIXES (`JJ/MM`) en couleur
-  //                                     du regime (rouge prime sur orange).
-  //   row1                            : ticks INPUTS (semis, destruction) -
-  //                                     trait noir pleine hauteur.
-  //   row2                            : bornes CALCULEES (event+offset),
-  //                                     ex « 12 sept. », en couleur du regime.
-  //
-  // Si 2 labels d'une meme row se chevauchent horizontalement (gap < 28px),
-  // le 2eme est decale au-dessus en row+1. Pour eviter une cascade trop
-  // profonde, profondeur max = 4 rows.
-  //
-  // Une date fixe est silencieusement skipee si elle tombe sur la meme
-  // position qu'un tick input ou qu'une borne calculee (= +/- 1 jour
-  // de tolerance) : cela evite l'effet "double tick" sur la meme borne
-  // (cf. retour user : "destruction = 15/01 -> pas besoin de re-afficher
-  // 15 jan.").
-  function renderBornes(regimeParJour) {
-    const fixedItems = fixedBornesAsItems(regimeParJour);
-    const inputItems = inputsAsBorneItems();
-    const computedItems = computedBornesAsItems();
-    const refDays = collectRefDays(inputItems, computedItems);
-    const filteredFixed = fixedItems.filter(
-      (it) => !refDays.some((d) => Math.abs(d - it.jour) <= 1),
-    );
-    const all = [...filteredFixed, ...inputItems, ...computedItems];
-    if (all.length === 0) return "";
+  // Ordre de priorite des couleurs de tick (cf. regle epuration user) :
+  // un seul tick par jour, on garde la couleur de plus haut ordre.
+  //   noir (semis/destruction) > rouge (interdit) > orange (s/c) > vert.
+  const TICK_PRIORITE = { noir: 3, rouge: 2, orange: 1, vert: 0 };
 
-    // Auto-bump anti-overlap : on parcourt chaque row dans son ordre
-    // canonique (0=fixe, 1=input, 2=calc) et on assigne pct croissant.
-    // Si le pct precedent de cette row est trop proche, on push l'item
-    // a la row suivante (et on rebrasse). Profondeur max = 4 rows.
-    assignRowsWithBump(all);
+  // Bornes sous la barre — REGLE D'EPURATION (cf. retours user) :
+  //
+  //   1. UN SEUL tick par jour. Si plusieurs bornes tombent le meme jour,
+  //      on ne garde que la couleur de plus haut ordre (noir > rouge >
+  //      orange > vert).
+  //   2. On ne marque QUE les vraies frontieres de zone (jour ou la couleur
+  //      EFFECTIVE de la barre change) + les dates SAISIES (semis,
+  //      destruction). Plus de bornes YAML "theoriques" noyees au milieu
+  //      d'une zone de meme couleur (ex : 15/10 cache dans le rouge alors
+  //      que la zone rouge va de 13/10 a 31/10 -> on montre 13 et 31, pas 15).
+  //   3. Collision input/frontiere le meme jour : le NOIR (date saisie)
+  //      gagne, la frontiere coloree est absorbee.
+  //
+  // Source unique de verite = `segments` (issus de regimeParJour, le calcul
+  // jour-par-jour effectif). On NE relit PAS les bornes YAML brutes.
+  function renderBornes(regimeParJour, segments) {
+    // ── 1. Frontieres de zone effectives ────────────────────────────────
+    // Une frontiere = jour `j` ou regimeParJour[j] != regimeParJour[j-1].
+    // Couleur du tick = regime le plus restrictif des 2 cotes (le tick
+    // materialise le bord ; on prend la teinte la plus "forte" qui le
+    // borde, pour que p.ex. le debut d'un rouge soit rouge).
+    // On ignore les frontieres dont les 2 cotes sont sans couleur (vert/
+    // vert ne produit pas de tick).
+    const byDay = new Map(); // jour -> {jour, couleur, kind:'frontiere'}
+    const couleurDe = (regime) => REGIME_COULEUR_ZONE[regime] || "vert";
+    const plusFort = (a, b) =>
+      (TICK_PRIORITE[a] ?? -1) >= (TICK_PRIORITE[b] ?? -1) ? a : b;
 
-    const inner = all
+    const poserFrontiere = (jour, couleur) => {
+      if (couleur === "vert") return; // pas de tick pour une frontiere verte
+      const prev = byDay.get(jour);
+      if (!prev) {
+        byDay.set(jour, { jour, couleur, kind: "frontiere" });
+      } else if (prev.kind === "frontiere") {
+        prev.couleur = plusFort(prev.couleur, couleur);
+      }
+    };
+
+    for (const s of segments || []) {
+      const cAvant =
+        s.du > 0 ? couleurDe(regimeParJour[s.du - 1]) : "vert";
+      const cIci = couleurDe(s.regime);
+      // Debut de segment : tick si transition visible (couleur differente
+      // d'avant). Couleur = la plus forte des 2 (le bord appartient au plus
+      // restrictif). On ne pose pas de tick au tout 1er jour (s.du===0).
+      if (s.du > 0 && cIci !== cAvant) {
+        poserFrontiere(s.du, plusFort(cIci, cAvant));
+      }
+      // Fin de segment colore : la fin du rouge/orange est une frontiere
+      // (le lendemain repasse a autre chose). On pose le tick au jour
+      // suivant la derniere case du segment (bord droit = (au+1)).
+      const cApres =
+        s.au + 1 < TOTAL_JOURS ? couleurDe(regimeParJour[s.au + 1]) : "vert";
+      if (cIci !== "vert" && cApres !== cIci) {
+        const jourBordDroit = s.au + 1;
+        if (jourBordDroit < TOTAL_JOURS) {
+          poserFrontiere(jourBordDroit, plusFort(cIci, cApres));
+        }
+      }
+    }
+
+    // ── 2. Dates saisies (semis/destruction) : noir, prioritaires ───────
+    // Elles ECRASENT toute frontiere coincidente (regle 3 : noir gagne).
+    const inputByDay = new Map();
+    for (const inp of inputs) {
+      const j = jjmmToJourAgricole(valeurs[inp.id]);
+      if (j === null) continue;
+      inputByDay.set(j, {
+        jour: j,
+        couleur: "noir",
+        kind: "input",
+        label: deduireLabelCourt(inp),
+        title: `${inp.label || inp.id} : ${valeurs[inp.id]}`,
+      });
+    }
+
+    // Fusion : un input absorbe la frontiere du MEME jour uniquement (regle
+    // 3 : noir gagne). Pas de tolerance +/-1 : une frontiere a J-1 / J+1 est
+    // une vraie date distincte (ex fin du rouge au 1 nov vs destruction au
+    // 2 nov) et doit rester affichee.
+    for (const [j] of inputByDay) {
+      byDay.delete(j);
+    }
+
+    // ── 3. Assemblage des items ─────────────────────────────────────────
+    const items = [];
+    for (const f of byDay.values()) {
+      items.push({
+        jour: f.jour,
+        pct: (f.jour / TOTAL_JOURS) * 100,
+        label: jourAgricoleToLisible(f.jour),
+        couleur: f.couleur,
+        kind: "frontiere",
+        title: null,
+        row: 0,
+      });
+    }
+    for (const it of inputByDay.values()) {
+      items.push({
+        jour: it.jour,
+        pct: (it.jour / TOTAL_JOURS) * 100,
+        label: it.label,
+        couleur: "noir",
+        kind: "input",
+        title: it.title,
+        row: 0,
+      });
+    }
+    if (items.length === 0) return "";
+
+    // Tous emis en row0. L'anti-collision vertical se fait APRES rendu, par
+    // mesure reelle du DOM (layoutBornesRows), seule methode fiable : les
+    // largeurs de label ne sont pas connues avant le rendu. Tri par pct pour
+    // que le layout post-rendu traite les ticks de gauche a droite.
+    items.sort((a, b) => a.pct - b.pct);
+
+    const inner = items
       .map((it) => {
         const cls = [
           "calendrier-epandage__period-date",
           "calendrier-epandage__period-date--phenologique",
         ];
-        // row 0 = pas de classe (default). row 1+ = classe row{N} qui
-        // decale verticalement de N*18px (cf. CSS).
-        if (it.row >= 1) cls.push(`calendrier-epandage__period-date--row${it.row + 1}`);
-        if (it.couleur) {
+        // Couleur du tick. 'noir' = pas de classe couleur (defaut noir via
+        // --big-tick). rouge/orange via classes dediees. vert n'arrive pas
+        // ici (filtre poserFrontiere).
+        if (it.couleur && it.couleur !== "noir") {
           cls.push(`calendrier-epandage__period-date--${it.couleur}`);
         }
-        // Trait pleine hauteur (jusqu'au haut de la barre) pour les ticks
-        // INPUTS uniquement (semis, destruction). Les bornes fixes /
-        // calculees s'arretent au bord superieur de leur row.
         if (it.kind === "input") {
           cls.push("calendrier-epandage__period-date--big-tick");
         }
@@ -540,232 +645,6 @@
       })
       .join("");
     return `<div class="calendrier-epandage__period">${inner}</div>`;
-  }
-
-  // Dates fixes des periodes principales : on liste chaque borne `du`/`au`
-  // au format JJ/MM (pas event). La couleur reflete le regime EFFECTIF
-  // au point de transition (en regardant `regimeParJour` aux 2 cotes du
-  // tick). Permet de gerer le cas masque : si une borne principale 15/12
-  // (cote orange) coincide avec le debut d'une zone rouge masquee, la
-  // date 15/12 doit etre rouge (la borne sortante de l'orange est aussi
-  // la borne entrante du rouge -> le rouge prime).
-  const REGIME_SEVERITE = {
-    interdiction: 0,
-    plafonnement: 1,
-    autorisation_sous_condition: 2,
-    libre: 3,
-    non_applicable: 4,
-  };
-  function fixedBornesAsItems(regimeParJour) {
-    const byJour = new Map(); // jour -> {jour, borneName}
-    const activeSet = activePeriodesSet();
-    for (const p of data.periodes || []) {
-      if (!activeSet.has(p)) continue;
-      if (p.masque) continue; // les masques ont leurs bornes traitees via row2
-      for (const borneName of ["du", "au"]) {
-        const val = p[borneName];
-        if (!val || !/^\d{2}\/\d{2}$/.test(val)) continue;
-        const j = jjmmToJourAgricole(val);
-        if (j === null) continue;
-        // On retient la borne (pas le regime de la periode source).
-        if (!byJour.has(j)) {
-          byJour.set(j, { jour: j, borneName });
-        }
-      }
-    }
-    const items = [];
-    for (const { jour, borneName } of byJour.values()) {
-      // Couleur = regime le plus restrictif des 2 cotes du tick.
-      // - borne `du` : regime entrant = regimeParJour[jour]
-      // - borne `au` : regime sortant = regimeParJour[jour]
-      // On regarde aussi le voisin pour gerer la frontiere.
-      const regimeIci = regimeParJour[jour] || "libre";
-      const regimeAvant =
-        regimeParJour[(jour - 1 + TOTAL_JOURS) % TOTAL_JOURS] || "libre";
-      const regimeApres = regimeParJour[(jour + 1) % TOTAL_JOURS] || "libre";
-      // Pour une borne `du`, le tick est a gauche de la zone : on compare
-      // regime entrant (jour) et celui d'avant (jour-1). Idem `au` : compare
-      // regime sortant (jour) et celui d'apres (jour+1) -- le tick est
-      // au bord droit (j+1).
-      const candidats =
-        borneName === "du" ? [regimeIci, regimeAvant] : [regimeIci, regimeApres];
-      const regime = candidats.reduce(
-        (best, r) =>
-          (REGIME_SEVERITE[r] ?? 99) < (REGIME_SEVERITE[best] ?? 99) ? r : best,
-        "libre",
-      );
-      const jourPourPct = borneName === "au" ? jour + 1 : jour;
-      items.push({
-        label: jourAgricoleToLisible(jour),
-        pct: (jourPourPct / TOTAL_JOURS) * 100,
-        jour,
-        row: 0,
-        couleur: REGIME_COULEUR_ZONE[regime] || null,
-        title: null,
-        kind: "fixed",
-      });
-    }
-    return items;
-  }
-
-  // Collecte les jours deja occupes par les ticks inputs ou les bornes
-  // computees, pour deduplication des dates fixes redondantes (+/- 1
-  // jour de tolerance pour absorber l'alignement bord-gauche/bord-droit).
-  //
-  // IMPORTANT : on lit le `jour` final de chaque item computed deja
-  // calcule (apres tronquage masque), pas la borne brute. Sinon une
-  // borne masque tronquee a 15/12 ne deduplique pas la date fixe 15/12
-  // (cf. bug user 2026-05-28).
-  function collectRefDays(inputItems, computedItems) {
-    const out = [];
-    for (const inp of inputs) {
-      const j = jjmmToJourAgricole(valeurs[inp.id]);
-      if (j !== null) out.push(j);
-    }
-    for (const it of computedItems) {
-      if (typeof it.jour === "number") out.push(it.jour);
-    }
-    return out;
-  }
-
-  // Bumping anti-overlap : on regroupe les items par row initiale, puis
-  // pour chaque row, on parcourt en pct croissant et on detecte les
-  // collisions (gap < seuil). Item collisionnant -> push a la row+1
-  // (recursivement, max 3 niveaux supplementaires).
-  //
-  // Gap min = 28px / barWidth. La barre fait usuellement 640px max-width,
-  // donc 28/640 = 4.4%. On approxime a 4.4% sans calcul du DOM (on a pas
-  // le DOM live au moment du compute).
-  const ROW_BUMP_GAP_PCT = (28 / 640) * 100; // ~4.4%
-  const MAX_ROW = 3;
-  function assignRowsWithBump(items) {
-    // Tri par (row initiale, pct croissant) pour traiter chaque row dans
-    // l'ordre. Mais comme on bump entre rows, on fait plusieurs passes.
-    items.sort((a, b) => a.row - b.row || a.pct - b.pct);
-    let changed = true;
-    let safety = 20;
-    while (changed && safety-- > 0) {
-      changed = false;
-      const byRow = new Map();
-      for (const it of items) {
-        if (!byRow.has(it.row)) byRow.set(it.row, []);
-        byRow.get(it.row).push(it);
-      }
-      for (const [, rowItems] of byRow) {
-        rowItems.sort((a, b) => a.pct - b.pct);
-        for (let i = 1; i < rowItems.length; i++) {
-          if (rowItems[i].pct - rowItems[i - 1].pct < ROW_BUMP_GAP_PCT) {
-            if (rowItems[i].row < MAX_ROW) {
-              rowItems[i].row += 1;
-              changed = true;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  function inputsAsBorneItems() {
-    const items = [];
-    const aligns = inputsBorneAlignments();
-    for (const inp of inputs) {
-      const j = jjmmToJourAgricole(valeurs[inp.id]);
-      if (j === null) continue;
-      // Alignement precis (cf. computedBornesAsItems) : si cet input ne
-      // sert qu'a une borne `au`, on cale le tick au bord droit de la
-      // zone (j+1)/365. Sinon (du, ou indetermine), bord gauche j/365.
-      const jourPourPct = aligns.get(inp.id) === "au" ? j + 1 : j;
-      items.push({
-        label: deduireLabelCourt(inp),
-        pct: (jourPourPct / TOTAL_JOURS) * 100,
-        // Convention 3-rows (cf. renderBornes) : 0=fixe, 1=input, 2=calc.
-        row: 1,
-        couleur: null,
-        title: `${inp.label || inp.id} : ${valeurs[inp.id]}`,
-        kind: "input",
-      });
-    }
-    return items;
-  }
-
-  // Scanne les periodes : pour chaque input qui apparait COMME EVENT NU
-  // (sans offset) en borne `du` ou `au`, on note de quel cote il sert.
-  // Retourne Map<input_id, "du" | "au">. Si l'input sert aux 2 cotes,
-  // on prefere "du" (alignement bord gauche, plus naturel pour un evenement
-  // qui marque un debut). Si l'input ne sert qu'a une borne avec offset
-  // (jamais event nu), on ne tag rien -> tick alignement defaut.
-  function inputsBorneAlignments() {
-    const map = new Map();
-    for (const p of data.periodes || []) {
-      for (const borneName of ["du", "au"]) {
-        const val = p[borneName];
-        if (!val) continue;
-        const m = BORNE_RE.exec(val);
-        if (!m) continue;
-        // Seulement event NU (sans offset) : sinon c'est une borne calculee,
-        // pas la position de l'input lui-meme.
-        if (m[2]) continue;
-        const eventId = m[1];
-        if (!map.has(eventId)) {
-          map.set(eventId, borneName);
-        } else if (map.get(eventId) === "au" && borneName === "du") {
-          // Preference "du" si l'input sert aux 2 cotes.
-          map.set(eventId, "du");
-        }
-      }
-    }
-    return map;
-  }
-
-  // Pour chaque borne calculee (event+offset), produit une etiquette row1
-  // avec sa date concrete. La couleur reflete le regime de la periode.
-  //
-  // Cas particulier MASQUE : on n'affiche pas la borne brute mais la borne
-  // EFFECTIVE = intersection avec l'union des principales. Si la borne
-  // brute tombe hors d'une principale, l'arete de la principale prend le
-  // relais et on affiche cette derniere a la place (couleur = regime
-  // masque, ex rouge si interdiction). Si l'arete coincide avec une
-  // borne d'une principale (ex 15/12 cote orange), la borne effective
-  // de la principale "perd" sa couleur orange au profit du rouge masque.
-  //
-  // Alignement precis : une zone overlay `[du..au]` (avec `au` inclus dans
-  // la boucle de remplissage) s'etend visuellement de `du/365` a `(au+1)/365`.
-  // Donc :
-  //   - borne `du` -> tick a `du/365` (bord gauche de la zone)
-  //   - borne `au` -> tick a `(au+1)/365` (bord droit de la zone)
-  function computedBornesAsItems() {
-    const items = [];
-    const activeSet = activePeriodesSet();
-    for (const p of data.periodes || []) {
-      if (!activeSet.has(p)) continue;
-      // Bornes effectives : pour les principales c'est la borne YAML
-      // resolue ; pour les masques c'est l'intersection avec les principales.
-      const effective = effectivePeriodWindow(p);
-      if (!effective) continue;
-      const couleur = REGIME_COULEUR_ZONE[p.regime || "interdiction"] || null;
-      for (const borneName of ["du", "au"]) {
-        const part = parseBorne(p[borneName], valeurs);
-        // On ne produit un tick row2 (= "borne calculee") que si la borne
-        // YAML est un event+offset. Les dates fixes brutes vont en row0
-        // via fixedBornesAsItems().
-        if (!part.isEvent || !part.offsetN || part.jour === null) continue;
-        // Borne effective : si le masque a tronque la borne, on prend
-        // la valeur de l'intersection (effective.du / effective.au).
-        const jour =
-          borneName === "du" ? effective.du : effective.au;
-        const jourPourPct = borneName === "au" ? jour + 1 : jour;
-        items.push({
-          label: jourAgricoleToLisible(jour),
-          pct: (jourPourPct / TOTAL_JOURS) * 100,
-          row: 2,
-          couleur,
-          title: null,
-          kind: "computed",
-          jour,
-        });
-      }
-    }
-    return items;
   }
 
   // Calcule la fenetre effective d'une periode :
@@ -782,6 +661,24 @@
     if (!p.masque) return { du, au };
     // Masque : intersecter [du..au] avec principalCovers.
     const covers = computePrincipalCovers();
+    // Bornes des principales (debut/fin) pour ignorer les jours-frontiere :
+    // un jour ou une principale FINIT sans qu'aucune ne (re)commence n'est
+    // pas un vrai chevauchement -- meme regle que poserMasque (cf. bug
+    // sliver d'interdiction au semis). Sans ca, la fenetre effective du
+    // recap commencerait au semis alors que la barre demarre au 15/10.
+    const liste = (data.periodes || []).filter((pp) =>
+      evalCondition(pp.condition, valeurs)
+    );
+    const starts = new Array(TOTAL_JOURS).fill(0);
+    const ends = new Array(TOTAL_JOURS).fill(0);
+    for (const pp of liste) {
+      if (pp.masque) continue;
+      const d = parseBorne(pp.du, valeurs).jour;
+      const a = parseBorne(pp.au, valeurs).jour;
+      if (d === null || a === null) continue;
+      starts[d] += 1;
+      ends[a] += 1;
+    }
     const inMaskRange = (i) => {
       if (du <= au) return i >= du && i <= au;
       return i >= du || i <= au;
@@ -789,9 +686,19 @@
     // Premier jour de l'intersection
     let first = null;
     let last = null;
+    const estChevauchementReel = (i) => {
+      if (!covers[i]) return false;
+      // Jour-frontiere pur (fin d'une principale, aucune qui commence) : on
+      // ne le compte pas comme chevauchement tant qu'on n'a pas encore
+      // demarre le segment (first === null).
+      if (first === null && i === du && ends[i] > 0 && starts[i] === 0) {
+        return false;
+      }
+      return true;
+    };
     const range = (start, end) => {
       for (let i = start; i <= end; i++) {
-        if (inMaskRange(i) && covers[i]) {
+        if (inMaskRange(i) && estChevauchementReel(i)) {
           if (first === null) first = i;
           last = i;
         } else if (first !== null) {
@@ -950,8 +857,16 @@
       const verbe = REGIME_VERBE[regime] || regime;
       const partDu = parseBorne(p.du, valeurs);
       const partAu = parseBorne(p.au, valeurs);
-      const duStr = partDu.jour != null ? jourAgricoleToLisible(partDu.jour) : "?";
-      const auStr = partAu.jour != null ? jourAgricoleToLisible(partAu.jour) : "?";
+      // Dates affichees = fenetre EFFECTIVE (alignee sur la barre). Pour un
+      // masque, c'est l'intersection avec les principales (donc l'interdit
+      // "demarre au 15/10" et pas au semis) ; pour une principale, c'est sa
+      // fenetre brute. Les annotations event+offset restent calculees sur la
+      // borne brute (elles expriment la regle, pas la fenetre rendue).
+      const effective = effectivePeriodWindow(p);
+      const jourDu = effective ? effective.du : partDu.jour;
+      const jourAu = effective ? effective.au : partAu.jour;
+      const duStr = jourDu != null ? jourAgricoleToLisible(jourDu) : "?";
+      const auStr = jourAu != null ? jourAgricoleToLisible(jourAu) : "?";
       const annDu = annoterBorne(partDu, "du", inputById);
       const annAu = annoterBorne(partAu, "au", inputById);
       let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
@@ -1011,8 +926,68 @@
       ${renderLegende(regimeParJour)}
       ${renderRecap(actives)}
     `;
+    layoutBornesRows();
     bindInputs();
     bindTooltips();
+  }
+
+  // Anti-collision vertical des labels de bornes, par MESURE REELLE du DOM
+  // (largeurs de texte connues seulement apres rendu). Greedy gauche->droite :
+  // chaque label est place sur la 1ere row ou il ne chevauche aucun label
+  // deja place sur cette row (avec un petit jeu horizontal). Le trait ::before
+  // s'allonge automatiquement selon la classe --rowN. La hauteur du conteneur
+  // .period s'ajuste a la row max utilisee.
+  const ROW_STEP_PX = 18; // doit matcher le pas vertical des classes --rowN (CSS)
+  const ROW_GAP_PX = 6; // jeu horizontal mini entre 2 labels d'une meme row
+  function layoutBornesRows() {
+    const container = mount.querySelector(".calendrier-epandage__period");
+    if (!container) return;
+    const labels = [...container.querySelectorAll(".calendrier-epandage__period-date")];
+    if (labels.length === 0) return;
+
+    // Reset : tout en row0, on retire les classes --rowN existantes.
+    labels.forEach((el) => {
+      el.classList.remove(
+        "calendrier-epandage__period-date--row2",
+        "calendrier-epandage__period-date--row3",
+        "calendrier-epandage__period-date--row4",
+      );
+    });
+
+    // Mesure les boites apres reset (toutes en row0). On trie par centre x.
+    const measured = labels
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return { el, left: r.left, right: r.right };
+      })
+      .sort((a, b) => a.left - b.left);
+
+    // Greedy : pour chaque label, on cherche la row la plus basse (0 = au
+    // plus pres de la barre) ou son intervalle [left,right] ne touche pas le
+    // dernier intervalle deja pose sur cette row.
+    const rowsLastRight = []; // rowsLastRight[row] = right du dernier label pose
+    let maxRow = 0;
+    for (const m of measured) {
+      let row = 0;
+      while (
+        rowsLastRight[row] !== undefined &&
+        m.left < rowsLastRight[row] + ROW_GAP_PX
+      ) {
+        row += 1;
+      }
+      rowsLastRight[row] = m.right;
+      if (row > maxRow) maxRow = row;
+      // row0 = pas de classe ; row>=1 -> classe --row{row+1} (le CSS nomme
+      // les rows decalees row2/row3/row4 = +18/+36/+54px).
+      if (row >= 1) {
+        m.el.classList.add(`calendrier-epandage__period-date--row${row + 1}`);
+      }
+    }
+
+    // Ajuste la hauteur du conteneur a la row la plus profonde utilisee
+    // (label ~16px + maxRow*18px + petite marge) pour ne pas deborder sur
+    // la legende, sans reserver d'espace vide quand peu de rows sont prises.
+    container.style.height = `${20 + maxRow * ROW_STEP_PX + 8}px`;
   }
 
   // ─── Tooltip JS instantane ─────────────────────────────────────────────
