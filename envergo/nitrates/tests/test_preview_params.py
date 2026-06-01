@@ -355,30 +355,25 @@ def test_cascade_form_type_fertilisant_via_inversion_yaml():
     assert p["categorie_fertilisant"] == "composts"
 
 
-def test_cascade_form_disambig_sous_culture_couvert():
-    """Plusieurs sous_culture_form partagent (couvert_intercultures,
-    interculture_longue) ; ils se distinguent par `flags.sous_culture_couvert`.
-    Sans ce flag, l'ancien comportement renvoyait le PREMIER (i.e.
-    `couvert_recolte_plus_en_place_apres_3112`). Avec le flag
-    `cine_apres_0101`, on doit retomber sur la bonne variante
-    `couvert_recolte_toujours_en_place_apres_0101`.
+def test_cascade_form_couvert_mapping_1to1():
+    """Apres aplatissement (spec_refactor_couverts), chaque couvert a une
+    valeur `sous_culture` unique (variante cie/cine). Le couple
+    (couvert_intercultures, <variante>) identifie 1:1 le sous_culture_form,
+    sans disambiguation par flag.
     """
     from envergo.nitrates.yaml_admin.preview import _cascade_form_params
 
-    # Sans flag : fallback premier candidat.
-    p = _cascade_form_params(
-        "couvert_intercultures", "interculture_longue", None, flags={}
-    )
-    assert p["sous_culture_form"] == "couvert_recolte_plus_en_place_apres_3112"
-
-    # Avec flag explicite : match la bonne variante.
-    p = _cascade_form_params(
-        "couvert_intercultures",
-        "interculture_longue",
-        None,
-        flags={"sous_culture_couvert": "cine_apres_0101"},
-    )
-    assert p["sous_culture_form"] == "couvert_recolte_toujours_en_place_apres_0101"
+    cas = {
+        "cie_avant_3112": "couvert_recolte_plus_en_place_apres_3112",
+        "cie_apres_0101": "couvert_recolte_toujours_en_place_apres_0101",
+        "cine_avant_3112": "couvert_non_recolte_plus_en_place_apres_3112",
+        "cine_apres_0101": "couvert_non_recolte_toujours_en_place_apres_0101",
+        "cie_courte": "couvert_courte_recolte",
+        "cine_courte": "couvert_courte_non_recolte",
+    }
+    for variante, attendu in cas.items():
+        p = _cascade_form_params("couvert_intercultures", variante, None, flags={})
+        assert p["sous_culture_form"] == attendu, (variante, p["sous_culture_form"])
 
 
 # ─── Regression tests : bugs remontes par Max en preview manuelle ───────────

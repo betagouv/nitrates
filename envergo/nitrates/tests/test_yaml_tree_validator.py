@@ -304,10 +304,11 @@ def test_niveau_formulaire_doublon_strict_meme_champ_echoue():
     assert any("doublon" in e for e in exc.value.errors)
 
 
-def test_niveau_doublon_avec_champ_different_tolere():
-    """Doublon de niveau tolere si les champs different (cas legitime
-    interculture : sous_culture sur la duree puis sur le type de
-    couvert)."""
+def test_niveau_doublon_meme_niveau_rejete_meme_champ_different():
+    """Depuis l'aplatissement des couverts (spec_refactor_couverts), un
+    doublon de niveau `sous_culture` est TOUJOURS rejete, meme si les
+    `champ` different. L'ancienne tolerance (qui servait au niveau parasite
+    sous_culture/sous_culture_couvert) a ete retiree."""
     a = _arbre_minimal_valide()
     a["arbre"]["noeud"]["branches"].append(
         {
@@ -336,8 +337,9 @@ def test_niveau_doublon_avec_champ_different_tolere():
             },
         }
     )
-    # Pas d'exception : ce n'est pas un doublon strict.
-    validate_arbre(a)
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("doublon" in e for e in exc.value.errors)
 
 
 def test_niveau_complement_chainable():

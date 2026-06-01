@@ -275,7 +275,6 @@ class MoulinetteView(View):
             "type_fertilisant",
             "culture_irriguee_type",
             "prairie_permanente",
-            "sous_culture_couvert",
         ]
 
         ctx = {

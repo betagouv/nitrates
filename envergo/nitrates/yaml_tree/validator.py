@@ -670,11 +670,11 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     Sauts autorises (on peut passer directement de culture a complement),
     retour interdit (on ne peut pas voir un sous_culture apres un complement).
 
-    Doublon de niveau : tolere si les noeuds portent des `champ` differents
-    (cas legitime : interculture pose 2 questions de niveau "sous_culture",
-    une sur la duree (`sous_culture`) et une sur le type de couvert
-    (`sous_culture_couvert`)). Doublon strict (meme niveau ET meme champ)
-    interdit.
+    Doublon de niveau interdit (sauf `complement` qui peut chainer) : un
+    meme niveau ne peut apparaitre deux fois sur un chemin. La tolerance
+    historique "doublon tolere si champ different" (qui servait au niveau
+    parasite sous_culture/sous_culture_couvert des couverts) a ete retiree
+    apres l'aplatissement des couverts -- cf. spec_refactor_couverts.
     """
     errors = []
     racine = arbre.get("arbre", {}).get("noeud")
@@ -724,11 +724,10 @@ def _check_niveau_ajout(
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
                 f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"
             )
-        if idx_nouveau == idx_prec and niveau != "complement" and champ == prec_champ:
+        if idx_nouveau == idx_prec and niveau != "complement":
             return (
-                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} et champ "
-                f"{champ!r} en doublon sur le chemin (deja vus avec champ "
-                f"{prec_champ!r})"
+                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} en doublon "
+                f"sur le chemin (deja vu)"
             )
     return None
 

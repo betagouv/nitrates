@@ -51,9 +51,12 @@ def _reset():
 def test_seed_produit_volumes_attendus():
     _reset()
     _seed()
-    # Volumes attendus selon le YAML packagé actuel
+    # Volumes attendus selon le YAML packagé actuel.
+    # BrancheCulturale = 12 depuis l'aplatissement des couverts
+    # (spec_refactor_couverts) : les 6 variantes cie/cine remplacent les
+    # 2 ex-branches interculture_longue/interculture_courte.
     assert GroupeCultureUI.objects.count() == 7
-    assert BrancheCulturale.objects.count() == 13
+    assert BrancheCulturale.objects.count() == 12
     assert Culture.objects.count() == 19
     assert Fertilisant.objects.count() == 29
     assert NoteReglementaire.objects.count() == 13

@@ -135,9 +135,12 @@ class Command(BaseCommand):
     def _seed_branches_culturales(self, data: dict) -> tuple[int, int]:
         """Les BrancheCulturale ne sont pas listées explicitement dans le YAML
         actuel. On les déduit de `mapping_sous_culture_vers_branche` :
-        chaque valeur unique de `sous_culture` (niveau 2 arbre) +
-        chaque valeur unique de `flags.sous_culture_couvert` (couverts)
-        devient une BrancheCulturale.
+        chaque valeur unique de `sous_culture` (niveau 2 arbre) devient une
+        BrancheCulturale.
+
+        Depuis l'aplatissement des couverts (spec_refactor_couverts_remontee_branches),
+        les variantes cie/cine sont directement la valeur `sous_culture` du
+        mapping — plus de dérivation via `flags.sous_culture_couvert`.
         """
         mapping = data.get("mapping_sous_culture_vers_branche") or {}
         identifiants = set()
@@ -145,10 +148,6 @@ class Command(BaseCommand):
             sc = entry.get("sous_culture")
             if sc:
                 identifiants.add(sc)
-            flags = entry.get("flags") or {}
-            scc = flags.get("sous_culture_couvert")
-            if scc:
-                identifiants.add(scc)
 
         created = updated = 0
         for idx, ident in enumerate(sorted(identifiants)):

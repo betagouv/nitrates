@@ -10,7 +10,7 @@
 //   - occupation_sol      : via mapping_sous_culture_vers_branche
 //   - sous_culture        : via mapping_sous_culture_vers_branche
 //   - type_fertilisant    : via mapping_sous_fertilisant_vers_type
-//   - culture_irriguee_type, prairie_permanente, sous_culture_couvert :
+//   - culture_irriguee_type, prairie_permanente :
 //     flags optionnels remplis depuis mapping_sous_culture_vers_branche
 //     pour court-circuiter des questions complementaires.
 //
@@ -41,9 +41,6 @@
   );
   const prairiePermanenteHidden = document.getElementById(
     "id_prairie_permanente"
-  );
-  const sousCultureCouvertHidden = document.getElementById(
-    "id_sous_culture_couvert"
   );
   const typeFertilisantHidden = document.getElementById("id_type_fertilisant");
 
@@ -215,7 +212,6 @@
     // sont preserves seulement quand on est en init replay (pas userDriven).
     if (cultureIrrigueeTypeHidden) cultureIrrigueeTypeHidden.value = "";
     if (prairiePermanenteHidden) prairiePermanenteHidden.value = "";
-    if (sousCultureCouvertHidden) sousCultureCouvertHidden.value = "";
 
     const cat = currentValue("categorie_culture");
     if (cat === "sol_non_cultive") {
@@ -242,15 +238,6 @@
     }
     if (prairiePermanenteHidden && flags.prairie_permanente !== undefined) {
       prairiePermanenteHidden.value = String(flags.prairie_permanente);
-    }
-    // sous_culture_couvert : par defaut c'est l'identifiant de la Culture
-    // choisie (cas nominal pour les variantes de couverts d'interculture).
-    // Un `flags.sous_culture_couvert` explicite reste prioritaire pour les
-    // cas exotiques (ex: mapping force vers un alias arbre legacy), mais
-    // ce n'est plus le cas par defaut.
-    if (sousCultureCouvertHidden) {
-      sousCultureCouvertHidden.value =
-        flags.sous_culture_couvert || sc;
     }
   }
 

@@ -313,13 +313,18 @@ def _find_sous_culture_form(
     """Mapping inverse : (occupation_sol, sous_culture, flags...)
     -> sous_culture_form.
 
-    Parcourt mapping_sous_culture_vers_branche (referentiels.yaml). On
-    selectionne le sous_culture_form dont :
-      1. `occupation_sol` et `sous_culture` matchent.
-      2. Le maximum de `flags.<champ> == flags[<champ>]` matche aussi
-         (cas typique : `flags.sous_culture_couvert`).
-    Plusieurs candidats peuvent matcher (1) mais un seul matche (2) avec
-    le bon flag. En l'absence de flag de disambig, fallback au PREMIER.
+    Parcourt mapping_sous_culture_vers_branche. On selectionne le
+    sous_culture_form dont `occupation_sol` et `sous_culture` matchent.
+
+    Depuis l'aplatissement des couverts (spec_refactor_couverts_remontee_branches),
+    chaque couvert a une valeur `sous_culture` unique (variante cie/cine), donc
+    le couple (occupation_sol, sous_culture) identifie 1:1 le sous_culture_form
+    -- plus besoin de disambiguer par `flags.sous_culture_couvert`.
+
+    Reste un cas a 2+ candidats : les cultures qui partagent (occupation_sol,
+    sous_culture) mais portent un `flags` distinct (ex mais / culture_irriguee_type).
+    On prefere alors celui dont les `flags` cible matchent les flags fournis ;
+    fallback au premier sinon.
     """
     ref = _load_ref()
     mapping = (ref or {}).get("mapping_sous_culture_vers_branche") or {}
@@ -341,20 +346,8 @@ def _find_sous_culture_form(
     if len(candidats) == 1:
         return candidats[0][0]
 
-    # 2+ candidats : priorite a celui dont l'IDENTIFIANT MATCHE la valeur
-    # `sous_culture_couvert` des flags fournis. C'est la convention nominale
-    # post-migration ORM : 1 Culture = 1 identifiant unique, qui est aussi
-    # la valeur cible cote arbre.
-    scc = flags.get("sous_culture_couvert")
-    if scc:
-        for sc_form, _target in candidats:
-            if sc_form == scc:
-                return sc_form
-
-    # Sinon : on prefere celui dont les `flags` legacy de la cible matchent
-    # les flags fournis (mapping_sous_culture_vers_branche.<X>.flags ==
-    # flags fournis). Utile pour les Cultures qui gardent encore un prefill
-    # explicite (cas exotiques type mais / culture_irriguee_type).
+    # 2+ candidats : on prefere celui dont les `flags` de la cible matchent
+    # les flags fournis (cas mais / culture_irriguee_type).
     for sc_form, target in candidats:
         cible_flags = target.get("flags") or {}
         if cible_flags and all(flags.get(k) == v for k, v in cible_flags.items()):
