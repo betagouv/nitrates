@@ -124,7 +124,7 @@
           <p style="color:#999">Pas de capture admin viewer.</p>
         {% endif %}
         <p style="font-size:0.8rem;">
-          <a href="{% url 'nitrates_admin_yaml_tree' %}#{{ branche.regle_id }}"
+          <a href="{% url 'nitrates_admin_yaml_tree' %}#regle={{ branche.regle_id }}"
              target="_blank">Ouvrir le viewer ↗</a>
         </p>
         <form method="post"

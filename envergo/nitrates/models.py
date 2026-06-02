@@ -603,7 +603,10 @@ def _branche_screenshot_path(instance, filename):
     On utilise regle_id si dispo (court et lisible), sinon pk. Pas le
     chemin_yaml complet : trop long pour le max_length du ImageField
     apres slugification."""
-    folder = instance.regle_id or f"id-{instance.pk or 'new'}"
+    # Borne le folder : certains regle_id couvert depassent 60 char et le
+    # chemin complet depasse le max_length du storage. Les regle_id CP sont
+    # courts, donc inchanges en pratique.
+    folder = (instance.regle_id or f"id-{instance.pk or 'new'}")[:60]
     return f"nitrates_validation/{folder}/{filename}"
 
 
