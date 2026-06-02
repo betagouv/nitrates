@@ -616,12 +616,16 @@
       });
     }
 
-    // Fusion : un input absorbe la frontiere du MEME jour uniquement (regle
-    // 3 : noir gagne). Pas de tolerance +/-1 : une frontiere a J-1 / J+1 est
-    // une vraie date distincte (ex fin du rouge au 1 nov vs destruction au
-    // 2 nov) et doit rester affichee.
-    for (const [j] of inputByDay) {
-      byDay.delete(j);
+    // Fusion : un input absorbe toute frontiere qui AFFICHE le meme jour
+    // metier (jourLabel), pas la meme position. C'est crucial pour une
+    // frontiere de FIN dont la position est au+1 (bord geometrique) mais qui
+    // affiche `au` : ex destruction=15/12, la fin du rouge se positionne au
+    // 16/12 mais affiche "15 dec" -> doublon avec le tick noir destruction.
+    // On compare donc sur jourLabel pour eliminer ces doublons (regle user :
+    // pas de tick colore + son label quand une date saisie est au meme jour).
+    const inputDays = new Set([...inputByDay.keys()]);
+    for (const [pos, f] of [...byDay]) {
+      if (inputDays.has(f.jourLabel)) byDay.delete(pos);
     }
 
     // ── 3. Assemblage des items ─────────────────────────────────────────
