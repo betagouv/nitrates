@@ -407,16 +407,20 @@
     // Jours des dates saisies (semis/destruction) : a ces frontieres, c'est
     // le tick NOIR qui materialise la transition. On supprime alors la
     // bordure de zone du cote concerne pour ne pas avoir un double trait
-    // (tick noir + bord de zone colle a 1px). Une zone qui FINIT a un input
-    // (s.au == input) -> pas de bord droit ; une zone qui COMMENCE le
-    // lendemain d'un input (s.du == input+1) -> pas de bord gauche.
+    // (tick noir + bord de zone colle a 1px). REGLE GENERALE, symetrique :
+    // un bord de zone (gauche ou droit) ADJACENT a une date saisie (a +/-1
+    // jour, car une zone finit AU jour saisi et la suivante commence le
+    // LENDEMAIN -- meme transition) perd sa bordure de ce cote. Vaut pour
+    // tous les regimes (interdiction/autorisation) et les 2 sens.
     const inputDaysZone = [];
     for (const inp of inputs) {
       const j = jjmmToJourAgricole(valeurs[inp.id]);
       if (j !== null) inputDaysZone.push(j);
     }
-    const finSurInput = (jour) => inputDaysZone.some((d) => d === jour);
-    const debutApresInput = (jour) => inputDaysZone.some((d) => d === jour - 1);
+    // s.du = bord GAUCHE (1er jour de la zone) ; s.au = bord DROIT (dernier
+    // jour inclus). Chacun est "absorbe" s'il est adjacent a une date saisie.
+    const bordAdjacentInput = (jour) =>
+      inputDaysZone.some((d) => Math.abs(d - jour) <= 1);
 
     const zonesHtml = segmentsRaw
       .map((s) => {
@@ -431,9 +435,9 @@
         ];
         if (flottant) classes.push("calendrier-epandage__zone--flottant");
         // Bordures supprimees aux frontieres marquees par un tick noir.
-        if (finSurInput(s.au))
+        if (bordAdjacentInput(s.au))
           classes.push("calendrier-epandage__zone--no-border-right");
-        if (debutApresInput(s.du))
+        if (bordAdjacentInput(s.du))
           classes.push("calendrier-epandage__zone--no-border-left");
         // Tooltip : phrase humaine qui decrit la fenetre. On cherche la
         // periode YAML d'origine qui couvre ce segment (premier match)
@@ -650,16 +654,23 @@
       });
     }
 
-    // Fusion : un input absorbe toute frontiere qui AFFICHE le meme jour
-    // metier (jourLabel), pas la meme position. C'est crucial pour une
-    // frontiere de FIN dont la position est au+1 (bord geometrique) mais qui
-    // affiche `au` : ex destruction=15/12, la fin du rouge se positionne au
-    // 16/12 mais affiche "15 dec" -> doublon avec le tick noir destruction.
-    // On compare donc sur jourLabel pour eliminer ces doublons (regle user :
-    // pas de tick colore + son label quand une date saisie est au meme jour).
-    const inputDays = new Set([...inputByDay.keys()]);
+    // Fusion (REGLE GENERALE) : une date saisie (semis/destruction) absorbe
+    // toute frontiere de zone ADJACENTE -- c'est le tick noir qui materialise
+    // cette transition, peu importe :
+    //   - le sens   (debut ou fin de zone),
+    //   - le regime (interdiction rouge ou autorisation orange),
+    //   - le cote   (la zone finit AU jour saisi, ou la suivante commence
+    //                le LENDEMAIN : deux faces de la meme transition).
+    // "Adjacente" = jourLabel a +/-1 jour de la date saisie. On compare sur
+    // jourLabel (jour metier affiche), pas sur la position du tick (qui peut
+    // etre au bord geometrique au+1). Resultat : 1 seul tick (noir) par date
+    // saisie, jamais de borne de zone redondante a cote.
+    const inputDays = [...inputByDay.keys()];
+    const adjacentInput = (jour) =>
+      typeof jour === "number" &&
+      inputDays.some((d) => Math.abs(d - jour) <= 1);
     for (const [pos, f] of [...byDay]) {
-      if (inputDays.has(f.jourLabel)) byDay.delete(pos);
+      if (adjacentInput(f.jourLabel)) byDay.delete(pos);
     }
 
     // ── 3. Assemblage des items ─────────────────────────────────────────
