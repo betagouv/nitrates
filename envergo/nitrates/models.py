@@ -722,6 +722,23 @@ class BrancheValidation(models.Model):
         help_text="Statut courant : derniere action enregistree",
     )
 
+    # ─── Flag « cas special a verifier » (rempli au seed) ────────────────
+    # Independant du statut de validation humaine : c'est une note POSEE
+    # PAR LE SEED pour attirer l'oeil du valideur sur un point precis
+    # (divergence YAML vs board, formulation a trancher, feuille
+    # calculatrice sans texte fige a comparer visuellement, ...). Permet
+    # de ne pas perdre la trace des cas a regarder lors de la
+    # re-validation humaine. Re-rempli a chaque seed (idempotent).
+    flag_verif = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Cas special signale au seed, a verifier manuellement",
+    )
+    note_verif = models.TextField(
+        blank=True,
+        help_text="Detail du cas a verifier (pose par le seed, pas une action user)",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

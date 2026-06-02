@@ -198,6 +198,76 @@ def test_update_regle_date_invalide(draft, alice):
     assert not res.ok
 
 
+def test_update_regle_periode_condition_persistee(draft, alice):
+    """La cle `condition` sur une periode doit etre preservee a travers
+    update_regle + round-trip YAML (cf. spec_extension_grammaire_condition)."""
+    res = editor.update_regle(
+        draft,
+        ("n_root", "q_culture"),
+        "colza",
+        {
+            "id": "r_colza",
+            "type": "interdiction",
+            "periodes": [
+                {
+                    "du": "15/11",
+                    "au": "15/01",
+                    "regime": "autorisation_sous_condition",
+                    "condition": "date_destruction_couvert >= 05/12",
+                }
+            ],
+        },
+        alice,
+    )
+    assert res.ok, res.errors
+    draft.refresh_from_db()
+    branche = editor.get_branche_at(draft.contenu, ("n_root", "q_culture"), "colza")
+    p = branche["regle"]["periodes"][0]
+    assert p.get("condition") == "date_destruction_couvert >= 05/12"
+    # Verifie aussi que le YAML brut contient le mot 'condition'
+    assert "condition:" in draft.contenu_yaml_brut
+
+
+def test_update_regle_periode_condition_via_form_post(draft, alice):
+    """Simule le path complet : POST -> RegleForm -> to_new_data -> editor.
+    Reproduit exactement ce qui se passe quand l'utilisateur soumet le form."""
+    from envergo.nitrates.yaml_admin.forms import RegleForm
+
+    form = RegleForm(
+        {
+            "id": "r_colza",
+            "type": "interdiction",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-0-regime": "autorisation_sous_condition",
+            "periodes-0-condition": "date_destruction_couvert >= 05/12",
+        }
+    )
+    assert form.is_valid(), form.errors
+    new_data = form.to_new_data()
+    res = editor.update_regle(draft, ("n_root", "q_culture"), "colza", new_data, alice)
+    assert res.ok, res.errors
+    draft.refresh_from_db()
+    branche = editor.get_branche_at(draft.contenu, ("n_root", "q_culture"), "colza")
+    p = branche["regle"]["periodes"][0]
+    assert (
+        p.get("condition") == "date_destruction_couvert >= 05/12"
+    ), f"condition perdue. Periode complete : {dict(p)}"
+    # Round-trip YAML : recharge depuis le YAML brut et verifie que la
+    # condition est preservee (cas du reload page apres save).
+    from ruamel.yaml import YAML
+
+    yaml = YAML(typ="rt")
+    contenu_recharge = yaml.load(draft.contenu_yaml_brut)
+    branche_rechargee = editor.get_branche_at(
+        contenu_recharge, ("n_root", "q_culture"), "colza"
+    )
+    assert (
+        branche_rechargee["regle"]["periodes"][0].get("condition")
+        == "date_destruction_couvert >= 05/12"
+    )
+
+
 # ─── add_branch ────────────────────────────────────────────────────────────
 
 
@@ -375,3 +445,45 @@ def test_undo_via_restore(draft, alice):
         node["texte"]
         == avant_contenu["arbre"]["noeud"]["branches"][0]["noeud"]["texte"]
     )
+
+
+# ─── reorder_branches ──────────────────────────────────────────────────────
+
+
+def test_reorder_branches_permute(draft, alice):
+    """Ajoute 2 branches puis permute leur ordre. Les contenus suivent."""
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "luzerne"}, alice)
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "ble"}, alice)
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_root", "q_culture"))
+    valeurs_avant = [b["valeur"] for b in node["branches"]]
+    assert valeurs_avant == ["colza", "luzerne", "ble"]
+
+    # Permute : ble en premier, puis colza, puis luzerne.
+    res = editor.reorder_branches(
+        draft, ("n_root", "q_culture"), ["ble", "colza", "luzerne"], alice
+    )
+    assert res.ok, res.errors
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_root", "q_culture"))
+    valeurs_apres = [b["valeur"] for b in node["branches"]]
+    assert valeurs_apres == ["ble", "colza", "luzerne"]
+    # Le contenu de la branche colza (avec sa regle r_colza) est preserve.
+    colza = next(b for b in node["branches"] if b["valeur"] == "colza")
+    assert colza["regle"]["id"] == "r_colza"
+
+
+def test_reorder_branches_refuse_si_valeurs_mismatch(draft, alice):
+    """Si la liste d'ordre ne matche pas exactement les branches existantes,
+    on refuse (pas d'ajout ni suppression possible via reorder)."""
+    res = editor.reorder_branches(
+        draft, ("n_root", "q_culture"), ["valeur_inconnue"], alice
+    )
+    assert not res.ok
+
+
+def test_reorder_branches_revision_creee(draft, alice):
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "luzerne"}, alice)
+    avant = draft.revisions.count()
+    editor.reorder_branches(draft, ("n_root", "q_culture"), ["luzerne", "colza"], alice)
+    assert draft.revisions.count() == avant + 1

@@ -194,25 +194,21 @@ class CancelEditView(View):
     """Sort du mode edition. Libere le lock si l'utilisateur le detenait.
 
     Le draft sous-jacent reste en DB (pas de suppression) -- l'utilisateur
-    pourra le reprendre via "Editer l'arbre actif" plus tard.
+    pourra le reprendre plus tard.
 
-    Redirige vers le viewer de l'arbre actif (UX : retour au point de
-    depart, sans exposer le draft).
+    Redirige vers le viewer du DRAFT que l'utilisateur vient de modifier
+    (en mode lecture, sans `mode=edition`). Permet de continuer a explorer
+    le brouillon, et de relancer une edition via le bouton si besoin.
+    Avant 2026-05-28 on redirigeait vers l'actif, ce qui perturbait
+    l'utilisateur qui pensait avoir perdu son travail.
     """
 
     def post(self, request, pk, *args, **kwargs):
         tree = get_object_or_404(DecisionTree, pk=pk)
         tree.release_lock(request.user)
-        active = (
-            DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
-            .only("pk")
-            .first()
+        return HttpResponseRedirect(
+            reverse("nitrates_admin_yaml_tree") + f"?tree_id={tree.pk}"
         )
-        if active is not None:
-            return HttpResponseRedirect(
-                reverse("nitrates_admin_yaml_tree") + f"?tree_id={active.pk}"
-            )
-        return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
 
 
 @method_decorator(staff_member_required, name="dispatch")

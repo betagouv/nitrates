@@ -75,8 +75,15 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
           {% endif %}
 
-          {# Calendrier visuel #}
-          {% calendrier_epandage ev.regle %}
+          {% comment %}
+          Calendrier visuel : dynamique si calculatrice
+          (calendrier_dynamique_couvert), sinon le templatetag standard 12 mois.
+          {% endcomment %}
+          {% if ev.regle.type == "calculatrice" and ev.regle.composant == "calendrier_dynamique_couvert" %}
+            {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
+          {% else %}
+            {% calendrier_epandage ev.regle %}
+          {% endif %}
 
           {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
           {% if ev.regle.texte_condition %}
@@ -91,7 +98,12 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           d'interdiction". Pour mixte : on liste chaque periode avec son
           regime (interdiction / autorisation_sous_condition).
           {% endcomment %}
-          {% if ev.regle.periodes %}
+          {% comment %}
+          Pour les regles calculatrice, le recap textuel est rendu cote JS
+          dans le composant (calendrier-dynamique-couvert), avec annotations
+          dynamiques (« jusqu'a 4 semaines apres semis »). Pas de doublon ici.
+          {% endcomment %}
+          {% if ev.regle.periodes and ev.regle.type != "calculatrice" %}
             {% if ev.regle.type == "mixte" %}
               {% comment %}
               Affichage en 2 temps :

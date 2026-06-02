@@ -194,7 +194,11 @@ def test_cancel_libere_le_lock(client, alice):
     assert draft.locked_by_id is None
 
 
-def test_cancel_redirige_vers_actif(client, alice):
+def test_cancel_redirige_vers_draft(client, alice):
+    """Apres sauvegarde, on revient en lecture sur le DRAFT (pas l'actif).
+    Permet de continuer a explorer le brouillon, et de relancer une
+    edition via le bouton si besoin. Avant 2026-05-28 on redirigeait
+    vers l'actif, ce qui faisait perdre la trace du brouillon edite."""
     active = _make_tree()
     draft = DecisionTree.clone_to_draft(active, user=alice)
     client.force_login(alice)
@@ -202,7 +206,7 @@ def test_cancel_redirige_vers_actif(client, alice):
         reverse("nitrates_admin_yaml_cancel_edit", kwargs={"pk": draft.pk})
     )
     assert resp.status_code == 302
-    assert f"tree_id={active.pk}" in resp["Location"]
+    assert f"tree_id={draft.pk}" in resp["Location"]
 
 
 def test_cancel_ne_supprime_pas_le_draft(client, alice):

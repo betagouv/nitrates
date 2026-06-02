@@ -317,6 +317,58 @@ def delete_branch(
     )
 
 
+def reorder_branches(
+    tree: DecisionTree,
+    parent_path: tuple[str, ...],
+    ordered_valeurs: list,
+    user,
+) -> EditResult:
+    """Permute les `branches` d'un noeud parent selon l'ordre fourni.
+
+    `ordered_valeurs` : liste des valeurs de branches (str/bool/int) dans
+    le nouvel ordre desire. Doit etre un re-arrangement exact des valeurs
+    existantes -- ni ajout, ni suppression. Permet de garder la mutation
+    chirurgicale : on touche QUE l'ordre de la liste, pas le contenu des
+    branches (donc pas de risque d'effacer un sous-arbre).
+
+    Le contenu (noeud / regle / renvoi_vers) suit chaque branche puisqu'on
+    re-ordonne les objets entiers.
+    """
+    parent = get_node_at(tree.contenu, parent_path)
+    if parent is None:
+        return EditResult.fail([FieldError("", "Nœud parent introuvable.")])
+
+    branches = list(parent.get("branches") or [])
+    if not branches:
+        return EditResult.fail([FieldError("", "Aucune branche à réordonner.")])
+
+    # Verification : les valeurs fournies doivent etre exactement les
+    # memes que celles des branches existantes (set comparison).
+    existing_valeurs = [b.get("valeur") for b in branches if isinstance(b, dict)]
+    if sorted(map(str, existing_valeurs)) != sorted(map(str, ordered_valeurs)):
+        return EditResult.fail(
+            [
+                FieldError(
+                    "",
+                    "Liste d'ordre invalide : doit etre un re-arrangement "
+                    "exact des branches existantes (sans ajout ni suppression).",
+                )
+            ]
+        )
+
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_EDIT,
+        target_path="/".join(parent_path),
+        description=f"Réordonnancement des branches de {parent.get('id', '')}",
+        mutate=lambda contenu: _apply_reorder_branches(
+            contenu, parent_path, ordered_valeurs
+        ),
+        summary=f"Branches de {parent.get('id', '')} réordonnées",
+    )
+
+
 def delete_node(
     tree: DecisionTree,
     path: tuple[str, ...],
@@ -454,6 +506,33 @@ def _apply_delete_branch(
         for b in (parent.get("branches") or [])
         if not (isinstance(b, dict) and b.get("valeur") == branche_valeur)
     ]
+
+
+def _apply_reorder_branches(
+    contenu: dict, parent_path: tuple[str, ...], ordered_valeurs: list
+) -> None:
+    parent = get_node_at(contenu, parent_path)
+    if parent is None:
+        return
+    branches = list(parent.get("branches") or [])
+    # Index les branches par valeur (str pour matcher les query params).
+    by_valeur = {}
+    for b in branches:
+        if isinstance(b, dict):
+            by_valeur[str(b.get("valeur"))] = b
+    new_branches = []
+    for v in ordered_valeurs:
+        b = by_valeur.get(str(v))
+        if b is not None:
+            new_branches.append(b)
+    # Garde-fou : si on a perdu des branches (cas impossible vu la
+    # verification dans reorder_branches), on remet tout en queue.
+    if len(new_branches) != len(branches):
+        seen_ids = {id(b) for b in new_branches}
+        for b in branches:
+            if id(b) not in seen_ids:
+                new_branches.append(b)
+    parent["branches"] = new_branches
 
 
 def _apply_delete_node(contenu: dict, path: tuple[str, ...]) -> None:

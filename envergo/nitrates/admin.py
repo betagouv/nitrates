@@ -5,6 +5,7 @@ Note : `MoulinetteNitrates` n'est pas un model Django (il herite de
 pas ici.
 """
 
+from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -284,8 +285,36 @@ class BrancheCulturaleAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     ordering = ("ordre_affichage", "identifiant")
 
 
+class _JsonEmptyAsDictField(forms.JSONField):
+    """Variante du JSONField admin qui traite `""` (textarea vide) comme
+    `{}`. Sans ca, l'utilisateur qui vide le champ se prend une
+    ValidationError "Enter a valid JSON" -> 500 visuel.
+    """
+
+    def to_python(self, value):
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return {}
+        return super().to_python(value)
+
+
+class CultureAdminForm(forms.ModelForm):
+    champs_prefill = _JsonEmptyAsDictField(
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 4}),
+        help_text=(
+            "Champs à injecter dans le contexte quand cette culture est "
+            'choisie. Ex pour Maïs : {"culture_irriguee_type": "mais"}. '
+            "Laisser vide pour le cas nominal."
+        ),
+    )
+
+    class Meta:
+        fields = "__all__"
+
+
 @admin.register(Culture)
 class CultureAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+    form = CultureAdminForm
     list_display = (
         "identifiant",
         "libelle_public",

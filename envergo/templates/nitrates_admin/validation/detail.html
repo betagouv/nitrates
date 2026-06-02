@@ -10,6 +10,30 @@
 
     <h1>{{ branche.regle_id|default:"feuille" }}</h1>
 
+    {% if branche.flag_verif or branche.note_verif %}
+      <div class="vd-flag">
+        <p class="vd-flag__title">⚑ Cas spécial à vérifier (signalé au seed)</p>
+        {% if branche.note_verif %}<p class="vd-flag__note">{{ branche.note_verif }}</p>{% endif %}
+        <form method="post"
+              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+              class="vd-form vd-form--edit">
+          {% csrf_token %}
+          <label class="vd-edit-label">
+            Note de vérification (éditable — vidée = flag levé)
+            <textarea name="note_verif" rows="2" class="vd-edit-input">{{ branche.note_verif }}</textarea>
+          </label>
+          <label class="vd-flag__check">
+            <input type="checkbox"
+                   name="flag_verif"
+                   value="1"
+                   {% if branche.flag_verif %}checked{% endif %}>
+            Garder le flag « à vérifier »
+          </label>
+          <button type="submit" class="vc-btn">Enregistrer</button>
+        </form>
+      </div>
+    {% endif %}
+
     <div class="vd-meta">
       <p>
         <strong>chemin_yaml :</strong>
@@ -254,6 +278,31 @@
   {% include "nitrates_admin/validation/_lightbox.html" %}
 
   <style>
+    .vd-flag {
+      background: #fef0f0;
+      border-left: 4px solid #ce0500;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    .vd-flag__title {
+      margin: 0 0 0.25rem;
+      font-weight: 700;
+      color: #ce0500;
+    }
+
+    .vd-flag__note {
+      margin: 0 0 0.5rem;
+      color: #5b2b2b;
+    }
+
+    .vd-flag__check {
+      display: block;
+      margin: 0.4rem 0;
+      font-size: 0.85rem;
+    }
+
     .vd-meta {
       background: #f4f6f9;
       border-left: 3px solid #1f4789;

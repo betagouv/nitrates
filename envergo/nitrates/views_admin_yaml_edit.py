@@ -447,6 +447,47 @@ class EditNodeView(View):
         return HttpResponse(body + _render_banner_oob(request, tree))
 
 
+def _regle_from_post(regle_orig: dict, post, form: RegleForm) -> dict:
+    """Reconstruit un dict `regle` pour le re-render 422 du formulaire en
+    cas d'echec de validation, en preservant les saisies utilisateur.
+
+    Sans ca, le formulaire re-rendu efface tout : l'utilisateur perd ses
+    modifications et doit tout ressaisir (bug critique reporte 2026-05-27).
+
+    Strategie :
+      - on part de `regle_orig` comme fallback,
+      - on overlay les champs textuels directement depuis le POST (raw),
+      - on overlay periodes + inputs_requis parses par le form
+        (le form les parse meme en cas d'erreurs de validation, cf.
+        _parse_periodes / _parse_inputs_requis qui ne raise pas).
+    """
+    out = {**regle_orig}
+    # Champs scalaires : on prend tels quels depuis le POST (raw),
+    # sans cleaning, sinon une checkbox decochee passerait inapercue.
+    SCALAR_FIELDS = (
+        "id",
+        "type",
+        "composant",
+        "message",
+        "texte",
+        "texte_condition",
+        "code_prescription",
+        "source_juridique",
+        "note",
+        "plafonnement_associe",
+        "plafond_azote_kg_n_ha",
+    )
+    for f in SCALAR_FIELDS:
+        if f in post:
+            val = (post.get(f) or "").strip()
+            out[f] = val if val else None
+    out["a_completer"] = bool(post.get("a_completer"))
+    # periodes + inputs_requis : reparse via le form (deja fait dans clean()).
+    out["periodes"] = form.periodes
+    out["inputs_requis"] = form.inputs_requis
+    return out
+
+
 @method_decorator(staff_member_required, name="dispatch")
 class EditRegleView(View):
     """GET : formulaire pour editer une regle.
@@ -506,12 +547,16 @@ class EditRegleView(View):
                 FieldError(field, " / ".join(msgs))
                 for field, msgs in form.errors.items()
             ]
+            # Bug fix : sur 422, on doit RE-AFFICHER les saisies de l'utilisateur,
+            # pas la regle d'origine, sinon il perd tout. On overlay les valeurs
+            # POST sur la regle originale.
+            regle_display = _regle_from_post(branche["regle"], request.POST, form)
             return render(
                 request,
                 "nitrates_admin/yaml_tree/forms/_regle_form.html",
                 {
                     "tree": tree,
-                    "regle": {**branche["regle"]},
+                    "regle": regle_display,
                     "parent_path_str": "/".join(parent_path),
                     "valeur": valeur,
                     "errors": form_errors,
@@ -554,6 +599,7 @@ class EditRegleView(View):
             "nitrates_admin/yaml_tree/forms/_regle_block.html",
             {
                 "tree": tree,
+                "arbre": tree.contenu,
                 "regle": branche["regle"],
                 "is_editing": True,
                 "parent_path": "/".join(parent_path),
@@ -579,6 +625,7 @@ class CancelEditRegleView(View):
             "nitrates_admin/yaml_tree/forms/_regle_block.html",
             {
                 "tree": tree,
+                "arbre": tree.contenu,
                 "regle": branche["regle"],
                 "is_editing": True,
                 "parent_path": "/".join(parent_path),
@@ -1169,6 +1216,19 @@ def _render_add_error(
 def _render_add_errors(
     request, tree, parent_path, allowed, kind, errors, form_data=None
 ):
+    # Log au stdout pour faciliter le debug : Django renvoie 422 mais ne
+    # logue pas les messages d'erreur, l'utilisateur ne voit que le
+    # 422 dans le terminal/network.
+    import sys
+
+    print(
+        f"[add-child 422] tree={tree.pk} path={'/'.join(parent_path)} "
+        f"kind={kind!r} errors=[",
+        ", ".join(f"{e.field!r}: {e.message!r}" for e in errors),
+        "]",
+        file=sys.stderr,
+        flush=True,
+    )
     parent = editor.get_node_at(tree.contenu, parent_path)
     return render(
         request,
@@ -1228,6 +1288,43 @@ class DeleteBrancheView(View):
         return _render_partial_node_response(
             request, tree, parent_path, f"Branche {valeur!r} supprimée."
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ReorderBranchesView(View):
+    """POST : reordonne les branches d'un noeud parent.
+
+    ?path=<parent_path>
+    body : `order=val1,val2,val3,...` (valeurs des branches dans le
+        nouvel ordre desire). Les valeurs `True`/`False` doivent etre
+        envoyees telles quelles (strings) ; on les decode comme bool
+        pour matcher la cle de stockage.
+    """
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        order_raw = request.POST.get("order", "")
+        if not order_raw:
+            return HttpResponseForbidden("Aucun ordre fourni.")
+        # Liste des valeurs : on garde les strings et on decode les bools
+        # avec `_parse_valeur` (cf. _parse_valeur : "True" -> True, ...).
+        ordered_valeurs = [_parse_valeur(v) for v in order_raw.split(",")]
+        result = editor.reorder_branches(
+            tree, parent_path, ordered_valeurs, request.user
+        )
+        if not result.ok:
+            return HttpResponseForbidden(
+                "; ".join(e.message for e in result.errors)
+                or "Réordonnancement refusé.",
+            )
+        # Pas de re-render : le DOM est deja a jour cote front (SortableJS
+        # a deja deplace les elements). On renvoie juste un 204 + le
+        # banner OOB pour rafraichir l'historique de revisions.
+        return HttpResponse(_render_banner_oob(request, tree))
 
 
 @method_decorator(staff_member_required, name="dispatch")

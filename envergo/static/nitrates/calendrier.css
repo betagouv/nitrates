@@ -1,5 +1,24 @@
+@charset "UTF-8";
+
 /* Calendrier d'epandage 12 mois (annee agricole juil -> juin).
    Reproduit le look de la maquette site-nitrates-maquette/index.html. */
+
+/* ─── Palette unique (DSFR) ──────────────────────────────────────────────
+   UN seul couple `fill` (fond pale de zone) + `ink` (bordure, tick, label,
+   puce de legende, badge) par famille. Tout le reste du fichier doit
+   reutiliser CES variables — interdiction d'introduire un 4e rouge / orange
+   / vert ailleurs. Tokens alignes sur le DSFR (rouge marianne, warning,
+   success), contraste AA garanti pour le texte 'ink' sur fond clair. */
+.calendrier-epandage,
+.calc-cal,
+.epandage-header {
+  --cal-rouge-fill: #ffe9e9;
+  --cal-rouge-ink: #ce0500;
+  --cal-orange-fill: #fef0e3;
+  --cal-orange-ink: #b34000;
+  --cal-vert-fill: #dffee6;
+  --cal-vert-ink: #18753c;
+}
 
 .calendrier-epandage {
   width: 100%;
@@ -38,8 +57,8 @@
    le liseret de fond visible quand un overlay touche le bord (le bord
    du bar ne mange pas 1px a l'interieur). */
 .calendrier-epandage--vert .calendrier-epandage__bar {
-  background: #c3fad5;
-  box-shadow: inset 0 0 0 1px #4b9f6c;
+  background: var(--cal-vert-fill);
+  box-shadow: inset 0 0 0 1px var(--cal-vert-ink);
 }
 
 .calendrier-epandage--gris .calendrier-epandage__bar {
@@ -48,21 +67,20 @@
 }
 
 .calendrier-epandage--orange .calendrier-epandage__bar {
-  background: #ffe0b2;
-  box-shadow: inset 0 0 0 1px #f93;
+  background: var(--cal-orange-fill);
+  box-shadow: inset 0 0 0 1px var(--cal-orange-ink);
 }
 
 .calendrier-epandage__zone {
   position: absolute;
   top: 0;
   bottom: 0;
-  cursor: help;
 }
 
 .calendrier-epandage__zone--rouge {
-  background: #ffeaeb;
-  border-left: 1px solid #f95a5c;
-  border-right: 1px solid #f95a5c;
+  background: var(--cal-rouge-fill);
+  border-left: 1px solid var(--cal-rouge-ink);
+  border-right: 1px solid var(--cal-rouge-ink);
 
   /* Interdiction = fond du regime de base, doit rester derriere les zones
      d'autorisation sous condition (cf. #88). */
@@ -70,9 +88,9 @@
 }
 
 .calendrier-epandage__zone--orange {
-  background: #fff3e0;
-  border-left: 1px solid #f93;
-  border-right: 1px solid #f93;
+  background: var(--cal-orange-fill);
+  border-left: 1px solid var(--cal-orange-ink);
+  border-right: 1px solid var(--cal-orange-ink);
 
   /* Autorisation sous condition = derogation locale qui doit etre visible
      par-dessus l'interdiction de base, peu importe l'ordre DOM (#88). */
@@ -105,7 +123,11 @@
 
 .calendrier-epandage__period {
   position: relative;
-  height: 38px; /* 2 lignes : row 0 en haut, row 1 en bas */
+
+  /* Hauteur par defaut = 1 row (row0). Le JS (layoutBornesRows) la reajuste
+     a la row max reellement utilisee apres mesure du DOM. Le templatetag
+     statique (sans JS) garde cette hauteur de base. */
+  height: 38px;
   margin-top: 8px;
 }
 
@@ -114,45 +136,137 @@
   top: 0;
   font-size: 12px;
   font-weight: 700;
-  color: #e1000f;
+  color: var(--cal-rouge-ink);
+
+  /* La boite-label est centree sur la date (pct%). Le tick ::before est
+     ancre a 50% de cette boite -> il tombe EXACTEMENT sur la date, quelle
+     que soit la largeur du texte. */
   transform: translateX(-50%);
 }
 
-/* Borne phenologique : couleur noire italique (date conventionnelle, pas
-   une vraie date metier — l'utilisateur doit comprendre qu'elle est flottante).
-   Un petit trait diagonal en pseudo-element ::before relie le texte a son
-   ancre sur la barre du calendrier. */
+/* Tick connecteur present sur TOUTES les dates (fixes, calculees, inputs) :
+   un trait vertical fin qui relie le label a la barre du calendrier. Avant,
+   seules les bornes --phenologique en avaient un, d'ou l'impression de
+   labels "flottants" non rattaches. Couleur = couleur du texte (currentColor)
+   pour rester dans la meme famille (1 seule teinte par borne). */
+.calendrier-epandage__period-date::before {
+  content: "";
+  position: absolute;
+
+  /* Ancre horizontale = centre exact de la boite-label = la date.
+     translateX(-50%) recale le trait (largeur impaire) pile sur ce centre,
+     quelle que soit la largeur du libelle -> plus de decalage gauche/droite.
+     `bottom: 100%` => le trait part du haut du texte et monte rejoindre le
+     BAS de la barre (et s'arrete la : il ne traverse pas la barre, ne la
+     depasse pas par le haut). Hauteur row0 = jeu(0) + margin-top(8) = 8px ;
+     chaque row supplementaire ajoute 18px (cf. --rowN ci-dessous). */
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 8px;
+  transform: translateX(-50%);
+  background: currentcolor;
+  pointer-events: none;
+}
+
+/* Borne phenologique : libelle conventionnel (semis / destruction), pose en
+   italique noir pour signaler que c'est un evenement saisi par l'utilisateur
+   et non une date reglementaire. */
 .calendrier-epandage__period-date--phenologique {
   color: #161616;
   font-style: italic;
 }
 
-.calendrier-epandage__period-date--phenologique::before {
-  content: "";
-  position: absolute;
-
-  /* Trait vertical du haut du texte jusqu'a la barre du calendrier
-     (situee 12px au-dessus dans .calendrier-epandage__period margin-top:8px
-     + 4px de jeu). Ancre = centre horizontal du texte = pos reelle borne. */
-  left: 50%;
-  bottom: 100%;
-  width: 1px;
-  height: 12px;
-  margin-left: -0.5px;
-  background: #161616;
-  pointer-events: none;
-}
-
-/* Empilage 2e ligne : decale verticalement pour eviter l'overlap textuel
-   quand 2 bornes sont a moins de 10% de distance horizontale. */
+/* Empilage : chaque row supplementaire decale de 18px vers le bas.
+   row0 = top:0 (default) | row2 = 18px | row3 = 36px | row4 = 54px.
+   Le calculatrice dynamique en utilise jusqu'a 4 simultanees ; le
+   templatetag standard se limite a row0 / row2. */
 .calendrier-epandage__period-date--row2 {
   top: 18px;
 }
 
-/* Trait phenologique sur row2 : plus long pour atteindre la barre, qui est
-   ~26px au-dessus (vs 12px pour row1 / row0). */
-.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--row2::before {
-  height: 26px;
+.calendrier-epandage__period-date--row3 {
+  top: 36px;
+}
+
+.calendrier-epandage__period-date--row4 {
+  top: 54px;
+}
+
+/* Trait connecteur : par defaut court (12px = jusqu'a la barre depuis row0).
+   Sur les rows decalees, on le rallonge pour qu'il atteigne toujours la
+   barre (chaque row ajoute 18px de descente). */
+.calendrier-epandage__period-date--row2::before {
+  height: 26px; /* 8 + 18 */
+}
+
+.calendrier-epandage__period-date--row3::before {
+  height: 44px; /* 8 + 36 */
+}
+
+.calendrier-epandage__period-date--row4::before {
+  height: 62px; /* 8 + 54 */
+}
+
+/* Tick des dates SAISIES (semis / destruction) : trait noir qui TRAVERSE
+   toute la barre et passe DEVANT les zones (z-index), pour materialiser
+   nettement la date utilisateur. Meme largeur (1px) que les autres bornes
+   -- seule la couleur noire le distingue. Hauteur = atteindre le HAUT de la
+   barre depuis la row du label (hauteur barre = 46px) :
+     row0 = 8 + 46 = 54 | +18px par row supplementaire.
+   z-index : la barre et ses zones overlay vivent dans .__bar (sibling
+   precedent) ; le ::before est dans .__period (sibling suivant) donc deja
+   peint apres, mais on force z-index pour rester devant meme si un overlay
+   cree un nouveau contexte d'empilement. */
+
+/* z-index sur l'ELEMENT lui-meme (pas seulement ::before) : `transform`
+   sur .period-date cree un contexte d'empilement qui PIEGE le z-index du
+   ::before. Sans ca, les zones overlay (z-index:1, resolues dans le
+   contexte racine) passaient DEVANT le tick aux endroits ou une zone
+   couvre la date saisie (bug destruction derriere le calendrier). En
+   posant z-index sur l'element, c'est lui qui remonte au-dessus des zones. */
+.calendrier-epandage__period-date--big-tick {
+  z-index: 5;
+}
+
+.calendrier-epandage__period-date--big-tick::before {
+  background: #161616;
+  height: 54px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row2::before {
+  height: 72px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row3::before {
+  height: 90px;
+}
+
+.calendrier-epandage__period-date--big-tick.calendrier-epandage__period-date--row4::before {
+  height: 108px;
+}
+
+/* Bornes calculees (row2) en couleur du regime. Les triples classes
+   ci-dessous override la couleur noire/rouge par defaut de
+   .calendrier-epandage__period-date / --phenologique. */
+.calendrier-epandage__period-date--rouge {
+  color: var(--cal-rouge-ink);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.calendrier-epandage__period-date--rouge::before {
+  background: var(--cal-rouge-ink);
+}
+
+.calendrier-epandage__period-date--orange {
+  color: var(--cal-orange-ink);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.calendrier-epandage__period-date--orange::before {
+  background: var(--cal-orange-ink);
 }
 
 /* Zone hachuree : segment dont une borne est phenologique (date flottante).
@@ -199,16 +313,22 @@
   border: 1px solid rgb(0 0 0 / 15%);
 }
 
+/* Puce de legende = fond pale de la famille + liseret 'ink' (au lieu d'un
+   gris generique) pour que la puce porte la meme couleur que la zone ET son
+   bord — coherence stricte avec la barre. */
 .calendrier-epandage__legende-puce--rouge {
-  background: #ffc4c4;
+  background: var(--cal-rouge-fill);
+  border-color: var(--cal-rouge-ink);
 }
 
 .calendrier-epandage__legende-puce--orange {
-  background: #ffd6a1;
+  background: var(--cal-orange-fill);
+  border-color: var(--cal-orange-ink);
 }
 
 .calendrier-epandage__legende-puce--vert {
-  background: #c2e8c2;
+  background: var(--cal-vert-fill);
+  border-color: var(--cal-vert-ink);
 }
 
 /* Puce hachuree : meme couleur de fond que la version simple, plus un overlay
@@ -268,18 +388,18 @@
 }
 
 .epandage-header__badge--rouge {
-  background: #ffeaeb;
-  color: #e1000f;
+  background: var(--cal-rouge-fill);
+  color: var(--cal-rouge-ink);
 }
 
 .epandage-header__badge--orange {
-  background: #ffe0b2;
-  color: #b35900;
+  background: var(--cal-orange-fill);
+  color: var(--cal-orange-ink);
 }
 
 .epandage-header__badge--vert {
-  background: #b8fec9;
-  color: #18753c;
+  background: var(--cal-vert-fill);
+  color: var(--cal-vert-ink);
 }
 
 .epandage-header__badge--gris {
@@ -291,6 +411,230 @@
   margin: 12px 0 0;
   color: var(--text-default-grey);
   line-height: 1.5;
+}
+
+/* ─── Calendrier dynamique (calculatrice) ───────────────────────────────
+   Composant calendrier_dynamique_couvert : reuse intégralement les classes
+   .calendrier-epandage__* ci-dessus pour la barre/zones/today/period.
+   Les classes .calc-cal__* ci-dessous ne servent qu'au mini-form en haut
+   et au récap textuel en bas, pas a la barre elle-meme. */
+
+.calc-cal {
+  margin: 1.5rem 0;
+}
+
+.calc-cal__title {
+  margin: 0 0 0.5rem;
+}
+
+.calc-cal__intro {
+  margin: 0 0 1.25rem;
+  color: var(--text-mention-grey);
+  line-height: 1.45;
+}
+
+.calc-cal__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  align-items: flex-end; /* labels de hauteurs differentes -> input aligne en bas */
+}
+
+/* Input "date" type JJ/MM : large pour matcher le figma, avec un picto
+   calendrier en suffix pour signaler que c'est un champ date. La valeur
+   initiale (placeholder du YAML) est grisee tant que l'utilisateur n'a
+   pas saisi -- on tag via [data-default] cote JS. */
+.calc-cal__field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.calc-cal__field-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-title-grey);
+
+  /* Hauteur fixe = 2 lignes -> labels longs ne decalent pas l'input. */
+  min-height: calc(2 * 1.35rem);
+  line-height: 1.35;
+}
+
+.calc-cal__field input.fr-input {
+  width: 100%;
+  max-width: none;
+
+  /* Place pour le picto a droite. */
+  padding-right: 2.25rem;
+  font-size: 1rem;
+}
+
+.calc-cal__field input.fr-input[data-default="true"] {
+  color: var(--text-mention-grey, #6b7280);
+}
+
+.calc-cal__field-icon {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.65rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  pointer-events: none;
+  opacity: 0.55;
+  color: var(--text-mention-grey, #6b7280);
+}
+
+/* Popup picker JJ/MM : grille calendrier d'un mois (navigation par mois,
+   pas d'annee). */
+.calc-cal__picker {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--background-default-grey, #fff);
+  color: var(--text-default-grey, #1f2937);
+  border: 1px solid var(--border-default-grey, #d1d5db);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 268px;
+}
+
+.calc-cal__picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.calc-cal__picker-mois-label {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: 1rem;
+}
+
+.calc-cal__picker-nav {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-title-blue-france, #000091);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calc-cal__picker-nav:hover {
+  background: var(--background-alt-grey, #f3f4f6);
+}
+
+.calc-cal__picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey, #6b7280);
+  text-align: center;
+}
+
+.calc-cal__picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calc-cal__picker-day {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-default-grey, #1f2937);
+  font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.calc-cal__picker-day:hover {
+  background: var(--background-action-low-blue-france, #e3e3fd);
+  border-color: var(--border-action-low-blue-france, #cacafb);
+}
+
+.calc-cal__picker-day--selected {
+  background: var(--background-action-high-blue-france, #000091);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calc-cal__picker-day--empty {
+  cursor: default;
+  background: transparent;
+}
+
+.calc-cal__picker-day--empty:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Tooltip JS instantane (cf. bindTooltips dans calculatrice-calendrier.js).
+   Pinned en `position: fixed` (place via JS via window.scrollX/Y), apparait
+   au mouseenter avec opacite 1 instantanee. */
+.calc-cal__tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(33 33 33 / 95%);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 1000;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 80ms;
+  max-width: 320px;
+}
+
+.calc-cal__recap {
+  margin-top: 1.5rem;
+}
+
+.calc-cal__recap h4 {
+  margin: 0 0 0.5rem;
+}
+
+.calc-cal__recap ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+
+.calc-cal__recap-annot {
+  color: var(--text-mention-grey);
+  font-size: 0.92em;
+}
+
+/* Mention conditionnelle dans le recap : explique pourquoi une periode
+   s'applique (ex "car destruction avant le 5 déc."). En italique + teinte
+   discrete pour ne pas voler la vedette au verbe principal. */
+.calc-cal__recap-cond {
+  color: var(--text-mention-grey);
+  font-size: 0.92em;
+  font-style: italic;
 }
 
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */

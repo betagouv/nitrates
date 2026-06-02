@@ -1,12 +1,22 @@
 {% load i18n admin_urls %}
 
+{% comment %}
+Bouton "Enregistrer" envoie `name="_save"` (= Django redirige vers la
+changelist apres save). On ne propose plus le `_continue` qui restait
+sur la page d'edition apres save -- comportement source d'agacement
+quand on edite en batch (cf. retour direct utilisateur 2026-05-28).
+Pour revenir au comportement "rester sur la page", l'utilisateur peut
+toujours utiliser `_continue` manuellement via la barre de boutons
+multiples si on la reintroduit.
+{% endcomment %}
+
 <div class="submit-row">
   {% block submit-row %}
     {% if show_save %}
       <input type="submit"
              value="{% translate 'Save' %}"
              class="default"
-             name="_continue">
+             name="_save">
     {% endif %}
     {% if show_close %}
       {% url opts|admin_urlname:'changelist' as changelist_url %}

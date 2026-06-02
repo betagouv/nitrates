@@ -98,6 +98,21 @@ def test_regle_form_periode_evenement_phenologique_ok():
     assert f.is_valid()
 
 
+def test_regle_form_periode_borne_event_offset_ok():
+    """Borne calculatrice : event±N(jours|semaines|mois) accepte par
+    le form, cf. spec_grammaire_calculatrice."""
+    f = RegleForm(
+        {
+            "id": "r_calc",
+            "type": "calculatrice",
+            "periodes-0-du": "date_semis_couvert+4semaines",
+            "periodes-0-au": "date_destruction_couvert-20jours",
+            "periodes-0-regime": "interdiction",
+        }
+    )
+    assert f.is_valid(), f.errors
+
+
 def test_regle_form_periode_format_invalide_rejete():
     f = RegleForm(
         {
@@ -133,18 +148,85 @@ def test_regle_form_regime_inconnu_rejete():
     assert not f.is_valid()
 
 
-def test_regle_form_calculatrice_inputs_csv():
+def test_regle_form_calculatrice_inputs_nouvelle_grammaire():
+    """Nouvelle grammaire calculatrice (spec form admin 2026-05-26) :
+    inputs_requis parses depuis inputs_requis-{i}-id/-label/-type/-placeholder."""
     f = RegleForm(
         {
             "type": "calculatrice",
-            "composant": "fenetre_x",
-            "inputs_requis": "culture, parcelle, date",
+            "composant": "calendrier_dynamique_couvert",
+            "inputs_requis-0-id": "date_semis_couvert",
+            "inputs_requis-0-label": "Date de semis du couvert",
+            "inputs_requis-0-type": "date",
+            "inputs_requis-0-placeholder": "25/07",
+            "inputs_requis-1-id": "date_destruction_prevue",
+            "inputs_requis-1-label": "Date de destruction prévue",
+            "inputs_requis-1-type": "date",
+            "inputs_requis-1-placeholder": "23/03",
         }
     )
     assert f.is_valid()
     nd = f.to_new_data()
-    assert nd["composant"] == "fenetre_x"
-    assert nd["inputs_requis"] == ["culture", "parcelle", "date"]
+    assert nd["composant"] == "calendrier_dynamique_couvert"
+    assert nd["inputs_requis"] == [
+        {
+            "id": "date_semis_couvert",
+            "label": "Date de semis du couvert",
+            "type": "date",
+            "placeholder": "25/07",
+        },
+        {
+            "id": "date_destruction_prevue",
+            "label": "Date de destruction prévue",
+            "type": "date",
+            "placeholder": "23/03",
+        },
+    ]
+
+
+def test_regle_form_calculatrice_inputs_legacy_ignores():
+    """Les inputs_requis legacy (string brut, via -N-legacy) ne sont plus
+    supportes au save. Ils etaient transitoires pendant la migration vers
+    la nouvelle grammaire calculatrice. Confirme que le form ignore les
+    `inputs_requis-N-legacy=...` au POST -- les inputs en string brut
+    doivent etre migres directement en DB."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "composant": "luzerne_post_coupe",
+            "inputs_requis-0-legacy": "culture",
+            "inputs_requis-1-legacy": "parcelle",
+        }
+    )
+    f.is_valid()
+    # Aucun input retenu : pas de cle legacy, pas de cle nouvelle grammaire.
+    assert f.inputs_requis == []
+
+
+def test_regle_form_calculatrice_suppression_input_non_final():
+    """Si l'utilisateur supprime l'input #0 et garde l'input #1 (cas
+    classique apres click sur 🗑 d'une carte non-finale), le parser
+    doit toujours lire l'input #1 -- pas s'arreter au #0 manquant.
+    """
+    f = RegleForm(
+        {
+            "id": "r_calc",
+            "type": "calculatrice",
+            "composant": "calendrier_dynamique_couvert",
+            # Pas de inputs_requis-0-* (supprime cote front)
+            "inputs_requis-1-id": "date_destruction_couvert",
+            "inputs_requis-1-label": "Date destruction",
+            "inputs_requis-1-type": "date",
+            "inputs_requis-1-placeholder": "01/11",
+            "periodes-0-du": "15/12",
+            "periodes-0-au": "15/01",
+            "periodes-0-regime": "autorisation_sous_condition",
+        }
+    )
+    assert f.is_valid(), f.errors
+    nd = f.to_new_data()
+    assert len(nd["inputs_requis"]) == 1
+    assert nd["inputs_requis"][0]["id"] == "date_destruction_couvert"
 
 
 def test_regle_form_plafond_float_ok():
@@ -182,3 +264,63 @@ def test_regle_form_periodes_multiples():
         {"du": "15/12", "au": "15/01"},
         {"du": "01/06", "au": "30/06", "regime": "libre"},
     ]
+
+
+def test_regle_form_periode_condition_normalisee():
+    """Le champ condition est parse, valide structurellement et normalise."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-0-regime": "autorisation_sous_condition",
+            "periodes-0-condition": "date_destruction_couvert>=05/12",
+        }
+    )
+    assert f.is_valid(), f.errors
+    nd = f.to_new_data()
+    assert nd["periodes"][0]["condition"] == "date_destruction_couvert >= 05/12"
+
+
+def test_regle_form_periode_condition_invalide_remonte_erreur():
+    """Condition mal formee -> erreur globale + valeur preservee dans periodes."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-0-condition": "totalement faux",
+        }
+    )
+    assert not f.is_valid()
+    # Le POST preserve la valeur pour rerender (utile pour le 422).
+    assert f.periodes[0]["condition"] == "totalement faux"
+
+
+def test_regle_form_periode_condition_absente_pas_de_cle():
+    """Pas de condition POST -> pas de cle `condition` dans le dict periode."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+        }
+    )
+    assert f.is_valid()
+    assert "condition" not in f.to_new_data()["periodes"][0]
+
+
+def test_regle_form_periode_remplie_uniquement_avec_condition():
+    """Une ligne avec uniquement une condition (du/au/regime/masque vides)
+    n'est PAS coupee par le sentinel 'ligne vide'."""
+    f = RegleForm(
+        {
+            "type": "calculatrice",
+            "periodes-0-du": "15/11",
+            "periodes-0-au": "15/01",
+            "periodes-1-condition": "date_x >= 01/12",
+        }
+    )
+    # Test : la 2e ligne est conservee (avec sa condition seule).
+    assert len(f.periodes) == 2
+    assert f.periodes[1].get("condition") == "date_x >= 01/12"

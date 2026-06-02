@@ -222,3 +222,22 @@ def test_get_form_retourne_none_quand_resultat_atteint(setup):
     ev = _evaluator(mou)
     form = ev.get_form()
     assert form is None
+
+
+def test_parcours_error_swallowed_to_non_disponible(setup):
+    """Une valeur d'URL hors arbre (ex: choix supprime du draft pendant
+    l'edition) ne doit PAS lever de 500 -- elle bascule en non_disponible.
+    Cas reel : l'utilisateur clique un lien partage avec plan_epandage=icpe_ed
+    alors qu'on a renomme la branche en `autre` cote draft.
+
+    On utilise la branche luzerne qui pose effectivement la question
+    plan_epandage (cf. test_branche_luzerne).
+    """
+    mou = _moulinette(
+        occupation_sol="culture_principale",
+        sous_culture="luzerne",
+        type_fertilisant="type_I",
+        plan_epandage="valeur_inconnue_pas_dans_l_arbre",
+    )
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.non_disponible

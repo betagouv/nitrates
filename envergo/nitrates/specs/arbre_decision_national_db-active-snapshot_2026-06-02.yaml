@@ -644,11 +644,10 @@ arbre:
           valeur: culture_principale
           libelle: Culture principale
         - noeud:
-            type_noeud: formulaire
             id: q_couvert_sous_culture
             champ: sous_culture
-            niveau: sous_culture
             texte: Quel type de couvert d'interculture ?
+            niveau: sous_culture
             branches:
             - noeud:
                 id: q_cie_avant_3112_fertilisant
@@ -878,10 +877,14 @@ arbre:
                         inputs_requis:
                         - id: date_semis_couvert
                           type: date
-                          label: S
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
                         - id: date_destruction_couvert
                           type: date
-                          label: D
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -1340,28 +1343,27 @@ arbre:
                             type: calculatrice
                             texte: Pas d'apport avant 15 jours avant l'implantation du couvert. Autorisé sous condition à partir du 15/10 jusqu'au 31/01. Pendant cette période, interdit à partir de 20 jours avant la récolte ou la destruction du couvert.
                             periodes:
-                            - au: 31/01
-                              du: 15/10
+                            - du: 15/10
+                              au: 31/01
                               regime: autorisation_sous_condition
-                            - au: date_destruction_couvert
-                              du: date_destruction_couvert-20jours
-                              masque: true
+                            - du: date_destruction_couvert-20jours
+                              au: date_destruction_couvert
                               regime: interdiction
-                            - au: date_semis_couvert
-                              du: date_semis_couvert-15jours
+                              masque: true
+                            - du: date_semis_couvert-15jours
+                              au: date_semis_couvert
                               regime: interdiction
                             composant: calendrier_dynamique_couvert
-                            a_completer: true
                             inputs_requis:
                             - id: date_semis_couvert
-                              type: date
                               label: Date de semis du couvert
                               label_court: semis
+                              type: date
                               placeholder: 15/08
                             - id: date_destruction_couvert
-                              type: date
                               label: Date de destruction du couvert
                               label_court: destruction
+                              type: date
                               placeholder: 01/11
                             code_prescription: pc9
                           valeur: true
@@ -2441,6 +2443,7 @@ arbre:
                 type_noeud: formulaire
               valeur: cine_courte
               libelle: Couvert d'interculture Non Exporté
+            type_noeud: formulaire
           valeur: couvert_intercultures
           libelle: Couvert végétal d'interculture
         type_noeud: formulaire

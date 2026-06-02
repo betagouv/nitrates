@@ -44,7 +44,11 @@ class Resultat:
     plafond_azote_kg_n_ha: float | None = None
     plafonnement_associe: str | None = None
     composant: str | None = None
-    inputs_requis: list[str] | None = None
+    # inputs_requis : liste polymorphe (cf. spec_grammaire_calculatrice.md) :
+    #   - list[str] pour les composants legacy (luzerne_post_coupe, fenetre_epandage)
+    #   - list[dict{id,label,type,placeholder,label_court?}] pour la
+    #     nouvelle grammaire calculatrice (calendrier_dynamique_couvert).
+    inputs_requis: list | None = None
     parametres: dict | None = None
     a_completer: bool = False
 
@@ -91,11 +95,12 @@ class Resultat:
     def to_json_dict(self) -> dict:
         """Serialise pour exposition JSON cote front (json_script Django).
 
-        Utilise par le module epandage_aujourdhui.js pour calculer le
-        statut effectif a la date du jour : besoin uniquement des champs
-        regle_id / type / periodes (avec regime) / texte_condition.
-        On expose aussi message / code_prescription pour info debug, mais
-        le calcul de statut ne s'en sert pas.
+        Utilise par :
+          - epandage_aujourdhui.js : calcul du statut effectif a la date
+            du jour. Besoin de regle_id / type / periodes / texte_condition.
+          - calculatrice-calendrier.js : rendu du calendrier dynamique
+            pour les feuilles type=calculatrice. Besoin en plus de
+            composant / inputs_requis / verdict (= message).
         """
         return {
             "regle_id": self.regle_id,
@@ -104,6 +109,9 @@ class Resultat:
             "texte_condition": self.texte_condition,
             "message": self.message,
             "code_prescription": self.code_prescription,
+            # Champs calculatrice (None si type != calculatrice).
+            "composant": self.composant,
+            "inputs_requis": self.inputs_requis or [],
         }
 
 
@@ -512,10 +520,15 @@ def _build_id_index(arbre: dict) -> dict[str, dict]:
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
         _walk_for_index(racine, index)
-    for entry in arbre.get("plafonnements", []) or []:
-        regle = entry.get("regle")
-        if regle and "id" in regle:
-            index[regle["id"]] = regle
+    # Regles hors-arbre referencables par renvoi_vers : plafonnements et
+    # regles partagees (ex: r_cie_courte_types_0_I_II, atteint depuis les
+    # branches type_0/I/II du couvert courte). Sans ca, le parcours leve
+    # ParcoursError sur ces feuilles.
+    for cle in ("plafonnements", "regles_partagees"):
+        for entry in arbre.get(cle, []) or []:
+            regle = entry.get("regle")
+            if regle and "id" in regle:
+                index[regle["id"]] = regle
     return index
 
 

@@ -123,8 +123,8 @@ remplis au clic carte (cf. simulator.js).
   Hidden inputs : occupation_sol + sous_culture sont resolus cote front
   via mapping_sous_culture_vers_branche, et envoyes au backend pour
   piloter le parcours d'arbre. Les `flags` (ex culture_irriguee_type
-  pour mais, prairie_permanente pour PC16, sous_culture_couvert pour
-  intercultures) sont aussi injectes en hidden au moment du submit.
+  pour mais, prairie_permanente pour PC16) sont aussi injectes en hidden
+  au moment du submit.
     {% endcomment %}
     <input type="hidden"
            name="occupation_sol"
@@ -142,10 +142,6 @@ remplis au clic carte (cf. simulator.js).
            name="prairie_permanente"
            id="id_prairie_permanente"
            value="{{ data.prairie_permanente|default:'' }}">
-    <input type="hidden"
-           name="sous_culture_couvert"
-           id="id_sous_culture_couvert"
-           value="{{ data.sous_culture_couvert|default:'' }}">
 
     {# ─── Fertilisant ────────────────────────────────────────────────── #}
     <div class="form-section"

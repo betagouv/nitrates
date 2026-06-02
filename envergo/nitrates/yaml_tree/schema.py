@@ -53,6 +53,24 @@ REGLE_SCHEMA = {
                             "non_applicable",
                         ]
                     },
+                    # Masque : pertinent uniquement pour type=calculatrice.
+                    # Une période avec masque=true ne s'applique que sur
+                    # l'intersection avec les périodes non-masque déjà
+                    # posées (cf. spec_grammaire_calculatrice §masque).
+                    # Si l'intersection est vide, le simulateur ignore
+                    # silencieusement la période. Pas de validation
+                    # d'intersection cote backend : c'est dynamique
+                    # (depend des inputs utilisateur a runtime).
+                    "masque": {"type": "boolean"},
+                    # Condition : pertinent uniquement pour type=calculatrice.
+                    # Mini-DSL "<input_id> <op> <JJ/MM>" (cf.
+                    # spec_extension_grammaire_condition). Si vraie, la
+                    # periode s'applique normalement; si fausse, la periode
+                    # est ignoree avant la passe de resolution. Absent =
+                    # periode toujours appliquee (comportement par defaut).
+                    # La validation grammaticale (op valide, input existant,
+                    # date valide) est faite par _check_calculatrice.
+                    "condition": {"type": "string"},
                 },
             },
         },
@@ -66,11 +84,49 @@ REGLE_SCHEMA = {
         "plafond_azote_kg_n_ha": {"type": "number"},
         # Libre
         "plafonnement_associe": {"type": "string"},
-        # Calculatrice
-        "composant": {"type": "string"},
+        # Calculatrice : composant front fermé (cf. spec grammaire calculatrice
+        # 2026-05-26). On garde les 2 composants legacy de l'arbre PAN actuel
+        # (`luzerne_post_coupe`, `fenetre_epandage`) en attendant leur
+        # migration vers la nouvelle grammaire / le nouveau composant.
+        "composant": {
+            "type": "string",
+            "enum": [
+                "calendrier_dynamique_couvert",
+                "luzerne_post_coupe",
+                "fenetre_epandage",
+            ],
+        },
+        # `inputs_requis` accepte 2 shapes (back-compat) :
+        #   - array de strings : forme legacy utilisée par types non-calculatrice
+        #     (ex pc6 `fertirrigation`), simple liste de slugs.
+        #   - array d'objets {id, label, type, placeholder} : forme calculatrice
+        #     pour le mini-formulaire de saisie utilisateur (cf. spec
+        #     grammaire calculatrice 2026-05-26).
+        # Le validator durcit la shape selon `type` de la règle.
         "inputs_requis": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+                "oneOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "required": ["id", "label", "type"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "id": {"type": "string"},
+                            "label": {"type": "string"},
+                            # Libelle court pour les etiquettes du calendrier
+                            # dynamique (cf. spec_rendu_simulateur_calculatrice.md).
+                            # Optionnel : fallback heuristique cote rendu si
+                            # absent (prendre les 1-2 premiers mots du `label`
+                            # apres "de").
+                            "label_court": {"type": "string"},
+                            "type": {"enum": ["date"]},
+                            "placeholder": {"type": "string"},
+                        },
+                    },
+                ]
+            },
         },
         "parametres": {"type": "object"},
         # Marqueur brouillon : regle non finalisee, a completer plus tard.

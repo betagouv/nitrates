@@ -40,8 +40,10 @@ def add_classes(field, classes):
 def envergo_submit_row(context):
     """Custom submit line for admin edition templates.
 
-    We only display a single "save" button that do not leave the edit page
-    afterwards.
+    Single "Save" button that redirects to the changelist after save
+    (Django default `_save` behavior). Edits are typically batch ops on
+    referentiel objects -- staying on the same edited object after save
+    was a source of irritation (cf. 2026-05-28 feedback).
     """
     show_save = context.get("show_save", True)
 

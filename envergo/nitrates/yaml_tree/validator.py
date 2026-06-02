@@ -18,6 +18,7 @@ from typing import Iterable
 
 from jsonschema import Draft202012Validator
 
+from envergo.nitrates.yaml_tree.condition import validate_condition
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -73,6 +74,7 @@ def validate_arbre(
     errors.extend(_check_niveaux_formulaire(arbre))
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
+    errors.extend(_check_calculatrice(arbre))
     errors.extend(_check_branches_booleennes_exhaustives(arbre))
 
     if referentiels:
@@ -238,13 +240,22 @@ def _walk_node_branches(noeud: dict) -> Iterable[dict]:
 
 def _check_dates(arbre: dict, referentiels: dict | None) -> list[str]:
     """Une date est soit "JJ/MM" valide, soit un evenement phenologique
-    declare dans referentiels.yaml (si referentiels fourni)."""
+    declare dans referentiels.yaml (si referentiels fourni).
+
+    Cas particulier : les feuilles `type=calculatrice` ont leur propre
+    grammaire de bornes (event nu, event+offset, cf. spec_grammaire_calculatrice),
+    validee par `_check_calculatrice`. On les skip ici pour eviter les faux
+    positifs (`date_semis_couvert+4semaines` n'est pas un evenement
+    phenologique mais c'est une borne calculatrice legitime).
+    """
     errors = []
     evenements = set()
     if referentiels:
         evenements = set(referentiels.get("evenements_phenologiques", {}).keys())
 
     for obj in _walk_objects(arbre):
+        if obj.get("type") == "calculatrice":
+            continue  # delegue a _check_calculatrice
         for periode in obj.get("periodes", []) or []:
             for borne in ("du", "au"):
                 val = periode.get(borne)
@@ -398,6 +409,257 @@ def _check_regime_mixte(arbre: dict) -> list[str]:
     return errors
 
 
+# ─── Type "calculatrice" : inputs_requis + bornes event +/- offset ─────────
+
+
+# Borne calculatrice :
+#   date_fixe       : "JJ/MM"
+#   event nu        : "<event_id>"
+#   event + offset  : "<event_id>(+|-)<n>(jours|semaines|mois)"
+_CALCULATRICE_REGIMES = {
+    "interdiction",
+    "autorisation_sous_condition",
+    "plafonnement",
+    "libre",
+    "non_applicable",
+}
+_CALCULATRICE_COMPOSANTS = {
+    "calendrier_dynamique_couvert",
+    # Composants legacy de l'arbre PAN actuel (a migrer plus tard vers
+    # le nouveau composant calendrier_dynamique_couvert).
+    "luzerne_post_coupe",
+    "fenetre_epandage",
+}
+
+# Composants legacy : on saute la nouvelle validation grammaire calculatrice
+# pour eux (ils suivent l'ancienne shape : inputs_requis = [str], pas de
+# periodes). A migrer vers calendrier_dynamique_couvert plus tard.
+_CALCULATRICE_COMPOSANTS_LEGACY = {"luzerne_post_coupe", "fenetre_epandage"}
+_CALCULATRICE_OFFSET_UNITES = {"jours", "semaines", "mois"}
+_CALCULATRICE_INPUT_TYPES = {"date"}
+_SLUG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_BORNE_EVENT_OFFSET_RE = re.compile(
+    r"^(?P<event>[a-z][a-z0-9_]*)"
+    r"(?:(?P<sign>[+-])(?P<n>\d+)(?P<unit>jours|semaines|mois))?$"
+)
+
+
+def _parse_borne_calculatrice(val: str, input_ids: set[str]) -> tuple[bool, str | None]:
+    """Parse une borne calculatrice. Retourne (is_event_based, error).
+
+    - "JJ/MM" valide -> (False, None) -> borne date fixe
+    - "<event>" ou "<event>±N<unit>" avec event dans input_ids -> (True, None)
+    - sinon -> (False, "message d'erreur")
+    """
+    if not isinstance(val, str) or not val:
+        return False, "valeur vide"
+    if DATE_FIXE_RE.match(val):
+        return (False, None) if _is_valid_date(val) else (False, "date invalide")
+    m = _BORNE_EVENT_OFFSET_RE.match(val)
+    if not m:
+        return (
+            False,
+            f"borne {val!r} : ni date JJ/MM, ni event nu, ni event±N(jours|semaines|mois)",
+        )
+    event_id = m.group("event")
+    if event_id not in input_ids:
+        return (
+            True,
+            f"borne {val!r} : event {event_id!r} absent de inputs_requis",
+        )
+    if m.group("sign"):
+        try:
+            n = int(m.group("n"))
+        except ValueError:
+            return True, f"borne {val!r} : offset numerique invalide"
+        if n < 1:
+            return True, f"borne {val!r} : offset doit etre >= 1"
+    return True, None
+
+
+def _check_calculatrice(arbre: dict) -> list[str]:
+    """Validation specifique au type=calculatrice (cf. spec grammaire
+    calculatrice 2026-05-26). Vit en parallele des autres types : aucun
+    impact sur interdiction / autorisation_sous_condition / plafonnement /
+    libre / non_applicable / mixte.
+
+    Regles (1-9 de la spec) :
+      1. `inputs_requis` obligatoire et non vide.
+      2. Chaque input : id (slug), label (str), type ('date'), placeholder (JJ/MM).
+      3. Unicite des `id` dans inputs_requis.
+      4. `periodes` obligatoire et non vide.
+      5. Chaque borne (du, au) : date fixe OU event nu OU event+/-N(unit),
+         avec event dans inputs_requis et N >= 1.
+      6. Au moins une borne reference un event.
+      7. `regime` dans l'enum standard.
+      8. `composant` obligatoire, valeur dans la liste fermee.
+      9. Tout id de inputs_requis doit etre reference par au moins une borne
+         (warning sinon -- input mort).
+    """
+    errors: list[str] = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict) or obj.get("type") != "calculatrice":
+            continue
+        # La nouvelle grammaire calculatrice ne s'applique qu'au composant
+        # `calendrier_dynamique_couvert`. Les composants legacy
+        # (luzerne_post_coupe, fenetre_epandage) suivent l'ancienne shape
+        # (inputs_requis = [str], pas de periodes) et sont laisses passer
+        # en attendant leur migration. Une calculatrice SANS composant
+        # explicit reste validee par la nouvelle grammaire (regle 8 : composant
+        # obligatoire).
+        if obj.get("composant") in _CALCULATRICE_COMPOSANTS_LEGACY:
+            continue
+        rid = obj.get("id", "?")
+
+        # Regle 1 : inputs_requis obligatoire et non vide
+        inputs = obj.get("inputs_requis") or []
+        if not inputs:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `inputs_requis` obligatoire et non vide."
+            )
+
+        # Regle 2-3 : chaque input bien forme + unicite des ids
+        input_ids: list[str] = []
+        for i, inp in enumerate(inputs, start=1):
+            if not isinstance(inp, dict):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : doit etre un "
+                    f"objet {{id, label, type, placeholder}}, pas {type(inp).__name__}."
+                )
+                continue
+            iid = inp.get("id")
+            if not isinstance(iid, str) or not iid or not _SLUG_RE.match(iid):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `id` "
+                    f"obligatoire au format slug snake_case (recu {iid!r})."
+                )
+            else:
+                input_ids.append(iid)
+            label = inp.get("label")
+            if not isinstance(label, str) or not label.strip():
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `label` "
+                    f"obligatoire (chaine non vide)."
+                )
+            itype = inp.get("type")
+            if itype not in _CALCULATRICE_INPUT_TYPES:
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `type` doit "
+                    f"etre dans {sorted(_CALCULATRICE_INPUT_TYPES)} "
+                    f"(recu {itype!r})."
+                )
+            ph = inp.get("placeholder")
+            if ph is not None:
+                if (
+                    not isinstance(ph, str)
+                    or not DATE_FIXE_RE.match(ph)
+                    or not _is_valid_date(ph)
+                ):
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' input #{i} : "
+                        f"`placeholder` doit etre une date JJ/MM valide "
+                        f"(recu {ph!r})."
+                    )
+            # label_court optionnel (cf. spec_rendu_simulateur_calculatrice.md).
+            # Si present, doit etre une chaine non vide.
+            label_court = inp.get("label_court")
+            if label_court is not None and (
+                not isinstance(label_court, str) or not label_court.strip()
+            ):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : "
+                    f"`label_court` doit etre une chaine non vide "
+                    f"si present (recu {label_court!r})."
+                )
+        # Regle 3 : unicite des ids
+        if len(input_ids) != len(set(input_ids)):
+            from collections import Counter
+
+            dup = [k for k, n in Counter(input_ids).items() if n > 1]
+            errors.append(
+                f"[calculatrice] regle '{rid}' : ids d'inputs dupliques : {dup}."
+            )
+
+        input_ids_set = set(input_ids)
+
+        # Regle 4 : periodes obligatoire et non vide
+        periodes = obj.get("periodes") or []
+        if not periodes:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `periodes` obligatoire et non vide."
+            )
+
+        # Regles 5 + 6 + 7 : bornes valides, au moins une event, regime ok
+        # + condition (extension grammaire spec_extension_grammaire_condition).
+        events_utilises: set[str] = set()
+        au_moins_une_event = False
+        # inputs_requis sous forme dict pour la validation de condition.
+        inputs_for_condition = [i for i in inputs if isinstance(i, dict)]
+        for i, p in enumerate(periodes, start=1):
+            for borne_name in ("du", "au"):
+                val = p.get(borne_name)
+                if val is None:
+                    continue
+                is_event, err = _parse_borne_calculatrice(val, input_ids_set)
+                if err:
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' periode #{i} {borne_name} : {err}"
+                    )
+                if is_event:
+                    au_moins_une_event = True
+                    m = _BORNE_EVENT_OFFSET_RE.match(val)
+                    if m and m.group("event") in input_ids_set:
+                        events_utilises.add(m.group("event"))
+            preg = p.get("regime")
+            if preg is not None and preg not in _CALCULATRICE_REGIMES:
+                errors.append(
+                    f"[calculatrice] regle '{rid}' periode #{i} : regime "
+                    f"{preg!r} inconnu (attendu : {sorted(_CALCULATRICE_REGIMES)})."
+                )
+            raw_cond = p.get("condition")
+            if raw_cond is not None:
+                if not isinstance(raw_cond, str) or not raw_cond.strip():
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' periode #{i} : "
+                        f"`condition` doit etre une chaine non vide si presente."
+                    )
+                else:
+                    _, cond_err = validate_condition(raw_cond, inputs_for_condition)
+                    if cond_err:
+                        errors.append(
+                            f"[calculatrice] regle '{rid}' periode #{i} : {cond_err}"
+                        )
+        # Warning "duplicate condition" : laisse hors validator (spec
+        # spec_extension_grammaire_condition : non-bloquant, suggestion
+        # stylistique). A reintegrer si on cree un canal warnings dedie.
+        if periodes and not au_moins_une_event:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : aucune borne ne reference un "
+                f"event (auquel cas un `type: mixte` suffit, calculatrice "
+                f"n'a pas de sens)."
+            )
+
+        # Regle 8 : composant obligatoire et dans la liste fermee
+        composant = obj.get("composant")
+        if not composant:
+            errors.append(f"[calculatrice] regle '{rid}' : `composant` obligatoire.")
+        elif composant not in _CALCULATRICE_COMPOSANTS:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : `composant` {composant!r} "
+                f"inconnu (attendu : {sorted(_CALCULATRICE_COMPOSANTS)})."
+            )
+
+        # Regle 9 : tout input declare doit etre utilise par au moins une borne
+        orphans = sorted(input_ids_set - events_utilises)
+        if orphans:
+            errors.append(
+                f"[calculatrice] regle '{rid}' : inputs declares mais non "
+                f"reference par aucune borne (inputs morts) : {orphans}."
+            )
+
+    return errors
+
+
 # ─── Ordre des niveaux formulaire ───────────────────────────────────────────
 
 
@@ -408,11 +670,11 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     Sauts autorises (on peut passer directement de culture a complement),
     retour interdit (on ne peut pas voir un sous_culture apres un complement).
 
-    Doublon de niveau : tolere si les noeuds portent des `champ` differents
-    (cas legitime : interculture pose 2 questions de niveau "sous_culture",
-    une sur la duree (`sous_culture`) et une sur le type de couvert
-    (`sous_culture_couvert`)). Doublon strict (meme niveau ET meme champ)
-    interdit.
+    Doublon de niveau interdit (sauf `complement` qui peut chainer) : un
+    meme niveau ne peut apparaitre deux fois sur un chemin. La tolerance
+    historique "doublon tolere si champ different" (qui servait au niveau
+    parasite sous_culture/sous_culture_couvert des couverts) a ete retiree
+    apres l'aplatissement des couverts -- cf. spec_refactor_couverts.
     """
     errors = []
     racine = arbre.get("arbre", {}).get("noeud")
@@ -462,11 +724,10 @@ def _check_niveau_ajout(
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
                 f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"
             )
-        if idx_nouveau == idx_prec and niveau != "complement" and champ == prec_champ:
+        if idx_nouveau == idx_prec and niveau != "complement":
             return (
-                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} et champ "
-                f"{champ!r} en doublon sur le chemin (deja vus avec champ "
-                f"{prec_champ!r})"
+                f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} en doublon "
+                f"sur le chemin (deja vu)"
             )
     return None
 
