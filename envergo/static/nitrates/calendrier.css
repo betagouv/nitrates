@@ -97,6 +97,19 @@
   z-index: 1;
 }
 
+/* Frontiere deja materialisee par un tick noir (date saisie semis/
+   destruction) : on retire la bordure de zone de ce cote pour eviter le
+   double trait (tick noir + bord de zone colle a 1px). cf. retour user :
+   la borne de la zone doit etre REMPLACEE par la barre de destruction,
+   pas affichee a cote. */
+.calendrier-epandage__zone--no-border-left {
+  border-left: none;
+}
+
+.calendrier-epandage__zone--no-border-right {
+  border-right: none;
+}
+
 .calendrier-epandage__today {
   position: absolute;
   top: 8px;

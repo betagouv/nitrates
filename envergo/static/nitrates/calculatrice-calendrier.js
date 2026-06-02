@@ -321,9 +321,22 @@
     return;
   }
 
+  // Valeurs initiales : placeholder par defaut, MAIS si un query param porte
+  // le meme id que l'input et contient un JJ/MM valide, il prend le dessus.
+  // Permet des URLs integralement descriptives (ex ?date_semis_couvert=15/08
+  // &date_destruction_couvert=15/12) — pratique pour partager un cas precis.
+  // Les valeurs venues de l'URL sont marquees comme "saisies" (pas grisees).
+  const params = new URLSearchParams(window.location.search);
   const valeurs = {};
+  const valeursDepuisUrl = new Set();
   for (const inp of inputs) {
-    valeurs[inp.id] = inp.placeholder || "";
+    const fromUrl = (params.get(inp.id) || "").trim();
+    if (/^\d{2}\/\d{2}$/.test(fromUrl)) {
+      valeurs[inp.id] = fromUrl;
+      valeursDepuisUrl.add(inp.id);
+    } else {
+      valeurs[inp.id] = inp.placeholder || "";
+    }
   }
 
   // ─── Rendu ─────────────────────────────────────────────────────────────
@@ -353,7 +366,9 @@
         ${inputs
           .map((inp) => {
             const isDefault =
-              valeurs[inp.id] && valeurs[inp.id] === (inp.placeholder || "");
+              !valeursDepuisUrl.has(inp.id) &&
+              valeurs[inp.id] &&
+              valeurs[inp.id] === (inp.placeholder || "");
             return `
           <label class="calc-cal__field">
             <span class="calc-cal__field-label">${escapeHtml(inp.label || inp.id)}</span>
@@ -389,6 +404,20 @@
     }
     segmentsRaw.push(cur);
 
+    // Jours des dates saisies (semis/destruction) : a ces frontieres, c'est
+    // le tick NOIR qui materialise la transition. On supprime alors la
+    // bordure de zone du cote concerne pour ne pas avoir un double trait
+    // (tick noir + bord de zone colle a 1px). Une zone qui FINIT a un input
+    // (s.au == input) -> pas de bord droit ; une zone qui COMMENCE le
+    // lendemain d'un input (s.du == input+1) -> pas de bord gauche.
+    const inputDaysZone = [];
+    for (const inp of inputs) {
+      const j = jjmmToJourAgricole(valeurs[inp.id]);
+      if (j !== null) inputDaysZone.push(j);
+    }
+    const finSurInput = (jour) => inputDaysZone.some((d) => d === jour);
+    const debutApresInput = (jour) => inputDaysZone.some((d) => d === jour - 1);
+
     const zonesHtml = segmentsRaw
       .map((s) => {
         const couleur = REGIME_COULEUR_ZONE[s.regime];
@@ -401,6 +430,11 @@
           `calendrier-epandage__zone--${couleur}`,
         ];
         if (flottant) classes.push("calendrier-epandage__zone--flottant");
+        // Bordures supprimees aux frontieres marquees par un tick noir.
+        if (finSurInput(s.au))
+          classes.push("calendrier-epandage__zone--no-border-right");
+        if (debutApresInput(s.du))
+          classes.push("calendrier-epandage__zone--no-border-left");
         // Tooltip : phrase humaine qui decrit la fenetre. On cherche la
         // periode YAML d'origine qui couvre ce segment (premier match)
         // pour reutiliser sa structure (du, au, regime) et generer une
@@ -954,6 +988,29 @@
     );
   }
 
+  // Synchronise les valeurs saisies dans l'URL (query params) sans recharger
+  // ni scroller la page (history.replaceState). Objectif : URL integralement
+  // descriptive et partageable -- on colle l'URL, l'autre voit le meme cas.
+  // On n'ecrit un param que pour une valeur JJ/MM reelle (pas le placeholder
+  // par defaut non saisi), pour ne pas polluer l'URL avant toute saisie.
+  function syncUrl() {
+    try {
+      const url = new URL(window.location.href);
+      for (const inp of inputs) {
+        const v = valeurs[inp.id];
+        const estSaisi =
+          valeursDepuisUrl.has(inp.id) || v !== (inp.placeholder || "");
+        if (v && /^\d{2}\/\d{2}$/.test(v) && estSaisi) {
+          url.searchParams.set(inp.id, v);
+          valeursDepuisUrl.add(inp.id); // une fois saisi, reste dans l'URL
+        }
+      }
+      window.history.replaceState(null, "", url);
+    } catch (e) {
+      // URL API indispo / contexte sandbox : on n'echoue pas le rendu pour ca.
+    }
+  }
+
   function render() {
     const actives = periodesActives();
     const regimeParJour = computeRegimePerDay(actives, valeurs);
@@ -1113,6 +1170,7 @@
           return;
         }
         if (val) valeurs[id] = val;
+        syncUrl();
         render();
       });
       // Date picker JJ/MM custom (HTML natif ne supporte pas le picker
