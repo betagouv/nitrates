@@ -530,18 +530,52 @@
     // borde, pour que p.ex. le debut d'un rouge soit rouge).
     // On ignore les frontieres dont les 2 cotes sont sans couleur (vert/
     // vert ne produit pas de tick).
-    const byDay = new Map(); // jour -> {jour, couleur, kind:'frontiere'}
+    // byDay clef = jour de POSITION du tick (pct). On distingue ce jour de
+    // position du jour AFFICHE (label) : pour une frontiere de FIN de zone,
+    // le tick se pose au bord droit geometrique (au+1) MAIS doit afficher le
+    // DERNIER jour inclus dans la zone (au), sinon on lit "16 dec" alors que
+    // l'interdit s'arrete le 15 (= destruction). cf. bug user.
+    const byDay = new Map(); // jourPos -> {jourPos, jourLabel, couleur}
     const couleurDe = (regime) => REGIME_COULEUR_ZONE[regime] || "vert";
     const plusFort = (a, b) =>
       (TICK_PRIORITE[a] ?? -1) >= (TICK_PRIORITE[b] ?? -1) ? a : b;
 
-    const poserFrontiere = (jour, couleur) => {
+    // Chaque frontiere porte la couleur de SA zone et le jour a afficher
+    // (jourLabel) = le bord metier de cette zone : son 1er jour (debut) ou
+    // son dernier jour inclus (fin). Quand 2 frontieres tombent le meme jour
+    // de position (zone A finit -> zone B commence), on garde le label de la
+    // zone la PLUS RESTRICTIVE (rouge > orange) : c'est sa borne qui fait
+    // sens (ex : debut interdit = 25/11, fin interdit = 15/12), pas le bord
+    // de la zone d'autorisation adjacente.
+    // Une frontiere appartient a UNE zone (sa `zoneCouleur`) et affiche le
+    // bord metier de CETTE zone : son 1er jour (debut) ou son dernier jour
+    // inclus (fin). `couleur` = teinte d'affichage du tick (le plus
+    // restrictif des 2 cotes). Quand 2 frontieres tombent le meme jour
+    // (zone A finit -> zone B commence), le LABEL retenu est celui de la
+    // zone la plus restrictive (rouge > orange) : sa borne est la date
+    // metier pertinente (debut interdit 25/11, fin interdit 15/12), pas le
+    // bord de la zone d'autorisation adjacente.
+    const couleurRang = (c) => TICK_PRIORITE[c] ?? -1;
+    const poserFrontiere = (jourPos, couleur, jourLabel, zoneCouleur) => {
       if (couleur === "vert") return; // pas de tick pour une frontiere verte
-      const prev = byDay.get(jour);
+      const lbl = jourLabel === undefined ? jourPos : jourLabel;
+      const prev = byDay.get(jourPos);
       if (!prev) {
-        byDay.set(jour, { jour, couleur, kind: "frontiere" });
+        byDay.set(jourPos, {
+          jourPos,
+          jourLabel: lbl,
+          couleur,
+          zoneCouleur,
+          kind: "frontiere",
+        });
       } else if (prev.kind === "frontiere") {
         prev.couleur = plusFort(prev.couleur, couleur);
+        // Le label suit la zone la plus restrictive parmi les frontieres
+        // empilees sur ce jour.
+        if (couleurRang(zoneCouleur) > couleurRang(prev.zoneCouleur)) {
+          prev.jourLabel = lbl;
+          prev.zoneCouleur = zoneCouleur;
+        }
       }
     };
 
@@ -549,21 +583,20 @@
       const cAvant =
         s.du > 0 ? couleurDe(regimeParJour[s.du - 1]) : "vert";
       const cIci = couleurDe(s.regime);
-      // Debut de segment : tick si transition visible (couleur differente
-      // d'avant). Couleur = la plus forte des 2 (le bord appartient au plus
-      // restrictif). On ne pose pas de tick au tout 1er jour (s.du===0).
-      if (s.du > 0 && cIci !== cAvant) {
-        poserFrontiere(s.du, plusFort(cIci, cAvant));
+      // Debut de segment colore : tick si transition visible. La frontiere
+      // appartient a CE segment (zoneCouleur = cIci), label = son 1er jour.
+      if (cIci !== "vert" && s.du > 0 && cIci !== cAvant) {
+        poserFrontiere(s.du, plusFort(cIci, cAvant), s.du, cIci);
       }
-      // Fin de segment colore : la fin du rouge/orange est une frontiere
-      // (le lendemain repasse a autre chose). On pose le tick au jour
-      // suivant la derniere case du segment (bord droit = (au+1)).
+      // Fin de segment colore : position = bord droit geometrique (au+1)
+      // pour coller a la fin de la couleur ; label = `au` = dernier jour
+      // inclus (sinon "interdit jusqu'au 15/12" s'etiquette "16 dec").
       const cApres =
         s.au + 1 < TOTAL_JOURS ? couleurDe(regimeParJour[s.au + 1]) : "vert";
       if (cIci !== "vert" && cApres !== cIci) {
         const jourBordDroit = s.au + 1;
         if (jourBordDroit < TOTAL_JOURS) {
-          poserFrontiere(jourBordDroit, plusFort(cIci, cApres));
+          poserFrontiere(jourBordDroit, plusFort(cIci, cApres), s.au, cIci);
         }
       }
     }
@@ -595,9 +628,9 @@
     const items = [];
     for (const f of byDay.values()) {
       items.push({
-        jour: f.jour,
-        pct: (f.jour / TOTAL_JOURS) * 100,
-        label: jourAgricoleToLisible(f.jour),
+        jour: f.jourPos,
+        pct: (f.jourPos / TOTAL_JOURS) * 100, // position = bord geometrique
+        label: jourAgricoleToLisible(f.jourLabel), // affichage = dernier jour inclus
         couleur: f.couleur,
         kind: "frontiere",
         title: null,
