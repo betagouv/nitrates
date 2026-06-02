@@ -66,7 +66,7 @@ def load_referentiels() -> dict:
         "regions": {R11: "Île-de-France", ...},
         "evenements_phenologiques": {ev_id: {libelle_public, date_calendrier}},
         "categories_fertilisants": {cat_id: {libelle_public, sous_fertilisants: [...]}},
-        "sous_fertilisants": {sf_id: {libelle_public, description?}},
+        "sous_fertilisants": {sf_id: {libelle_public, description?, flags?}},
         "mapping_sous_fertilisant_vers_type": {sf_id: type_reglementaire},
       }
 
@@ -205,6 +205,11 @@ def load_referentiels() -> dict:
             sf_entry = {"libelle_public": fert.libelle_public}
             if fert.description:
                 sf_entry["description"] = fert.description
+            # Flags de pre-remplissage (ex effluent_peu_charge) : poussés en
+            # hidden inputs par la cascade JS pour auto-résoudre des questions
+            # complémentaires de l'arbre. Cf. cascade.js resoudreTypeFertilisant.
+            if fert.champs_prefill:
+                sf_entry["flags"] = dict(fert.champs_prefill)
             sous_fertilisants[fert.identifiant] = sf_entry
             mapping_sous_fertilisant_vers_type[fert.identifiant] = (
                 fert.type_reglementaire

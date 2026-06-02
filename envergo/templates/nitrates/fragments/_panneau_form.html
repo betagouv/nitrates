@@ -165,6 +165,17 @@ remplis au clic carte (cf. simulator.js).
              name="type_fertilisant"
              id="id_type_fertilisant"
              value="{{ data.type_fertilisant|default:'' }}">
+      {# Flags de pre-remplissage (carte #98) : effluents peu charges issus / #}
+      {# non issus d'elevage pre-repondent ces questions complementaires de #}
+      {# l'arbre, qui sont alors inferees au lieu d'etre posees. #}
+      <input type="hidden"
+             name="effluent_peu_charge"
+             id="id_effluent_peu_charge"
+             value="{{ data.effluent_peu_charge|default:'' }}">
+      <input type="hidden"
+             name="effluent_peu_charge_elevage"
+             id="id_effluent_peu_charge_elevage"
+             value="{{ data.effluent_peu_charge_elevage|default:'' }}">
     </div>
 
     {% comment %}

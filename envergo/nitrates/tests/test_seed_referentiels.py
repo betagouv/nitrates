@@ -58,7 +58,9 @@ def test_seed_produit_volumes_attendus():
     assert GroupeCultureUI.objects.count() == 7
     assert BrancheCulturale.objects.count() == 12
     assert Culture.objects.count() == 19
-    assert Fertilisant.objects.count() == 29
+    # 30 depuis la carte #98 : l'ancien effluents_peu_charges_autre (1) est
+    # remplacé par effluents_peu_charges_elevage + _non_elevage (2).
+    assert Fertilisant.objects.count() == 30
     assert NoteReglementaire.objects.count() == 13
     assert CodePrescription.objects.count() == 16
     # 7 dans le YAML mais on retire brunissement_soies (doublon).
@@ -154,6 +156,50 @@ def test_fertilisant_fumier_compact_type_Ia():
     f = Fertilisant.objects.get(identifiant="fumier_compact_non_susceptible_ecoulement")
     assert f.type_reglementaire == "type_Ia"
     assert f.categorie == "fumiers"
+
+
+# ─── Carte #98 : scission effluents peu chargés ──────────────────────────────
+
+
+def test_effluents_peu_charges_scindes_en_deux():
+    """L'ancien effluents_peu_charges_autre a disparu du YAML, remplacé par
+    deux sous-fertilisants type II dans la catégorie autre."""
+    _reset()
+    _seed()
+    assert not Fertilisant.objects.filter(
+        identifiant="effluents_peu_charges_autre"
+    ).exists()
+    for slug in (
+        "effluents_peu_charges_elevage",
+        "effluents_peu_charges_non_elevage",
+    ):
+        f = Fertilisant.objects.get(identifiant=slug)
+        assert f.type_reglementaire == "type_II"
+        assert f.categorie == "autre"
+
+
+def test_effluents_peu_charges_elevage_prefill():
+    """« Issus d'élevage » pré-remplit effluent_peu_charge ET
+    effluent_peu_charge_elevage=true → l'arbre infère les deux réponses."""
+    _reset()
+    _seed()
+    f = Fertilisant.objects.get(identifiant="effluents_peu_charges_elevage")
+    assert f.champs_prefill == {
+        "effluent_peu_charge": "true",
+        "effluent_peu_charge_elevage": "true",
+    }
+
+
+def test_effluents_peu_charges_non_elevage_prefill():
+    """« Non issus d'élevage » : effluent_peu_charge=true mais
+    effluent_peu_charge_elevage=false."""
+    _reset()
+    _seed()
+    f = Fertilisant.objects.get(identifiant="effluents_peu_charges_non_elevage")
+    assert f.champs_prefill == {
+        "effluent_peu_charge": "true",
+        "effluent_peu_charge_elevage": "false",
+    }
 
 
 # ─── Sol non cultivé ─────────────────────────────────────────────────────────

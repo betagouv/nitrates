@@ -161,6 +161,40 @@ def test_prairie_plus_6_type_II_non_peu_charge(setup):
     assert ev.regle.periodes == [{"du": "15/11", "au": "15/01"}]
 
 
+# ─── 3c/3d. Carte #98 : inference via flags du fertilisant ─────────────────
+
+
+def test_prairie_plus_6_effluent_eleve_infere_la_question(setup):
+    """Carte #98 : choisir « effluents peu chargés issus d'élevage » pousse
+    effluent_peu_charge=true (via cascade.js → query params). Le parcours
+    infère la réponse au lieu de la poser → même feuille que le 3a."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            effluent_peu_charge="true",
+            effluent_peu_charge_elevage="true",
+        )
+    )
+    assert ev.result == RESULTS.action_requise
+    assert ev.regle.regle_id == "r_prairie_plus_6_type_II_peu_charge"
+    assert ev.regle.code_prescription == "pc7"
+
+
+def test_prairie_plus_6_effluent_non_eleve_infere_la_question(setup):
+    """« Effluents peu chargés non issus d'élevage » : effluent_peu_charge
+    reste true → toujours la feuille peu chargé (la branche prairie+6 ne
+    distingue pas l'origine élevage, mais le flag est tout de même posé)."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            effluent_peu_charge="true",
+            effluent_peu_charge_elevage="false",
+        )
+    )
+    assert ev.result == RESULTS.action_requise
+    assert ev.regle.regle_id == "r_prairie_plus_6_type_II_peu_charge"
+
+
 # ─── 4a. type_III + montagne note 7 (Pyrenees-Atlantiques 64) ─────────────
 
 

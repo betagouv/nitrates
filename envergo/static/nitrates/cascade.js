@@ -43,6 +43,17 @@
     "id_prairie_permanente"
   );
   const typeFertilisantHidden = document.getElementById("id_type_fertilisant");
+  // Flags de pre-remplissage portes par certains sous-fertilisants (carte
+  // #98 : effluents peu charges issus / non issus d'elevage). Pousses en
+  // hidden inputs pour auto-resoudre les questions complementaires de
+  // l'arbre (effluent_peu_charge, effluent_peu_charge_elevage), qui ne sont
+  // alors pas posees mais inferees -- meme mecanisme que le mais irrigue.
+  const effluentPeuChargeHidden = document.getElementById(
+    "id_effluent_peu_charge"
+  );
+  const effluentPeuChargeElevageHidden = document.getElementById(
+    "id_effluent_peu_charge_elevage"
+  );
 
   const initial = window.NITRATES_INITIAL_DATA || {};
 
@@ -243,6 +254,12 @@
 
   function resoudreTypeFertilisant() {
     if (!typeFertilisantHidden) return;
+    // Reset des flags fertilisant (un autre sous-fertilisant peut ne pas en
+    // porter -> on ne laisse pas trainer une valeur d'un choix precedent).
+    if (effluentPeuChargeHidden) effluentPeuChargeHidden.value = "";
+    if (effluentPeuChargeElevageHidden)
+      effluentPeuChargeElevageHidden.value = "";
+
     const sf = currentValue("sous_fertilisant");
     if (!sf) {
       typeFertilisantHidden.value = "";
@@ -251,6 +268,21 @@
     const mapping =
       (referentiels || {}).mapping_sous_fertilisant_vers_type || {};
     typeFertilisantHidden.value = mapping[sf] || "";
+
+    // Application des flags de pre-remplissage du sous-fertilisant choisi.
+    const sousFerts = (referentiels || {}).sous_fertilisants || {};
+    const flags = (sousFerts[sf] || {}).flags || {};
+    if (effluentPeuChargeHidden && flags.effluent_peu_charge !== undefined) {
+      effluentPeuChargeHidden.value = String(flags.effluent_peu_charge);
+    }
+    if (
+      effluentPeuChargeElevageHidden &&
+      flags.effluent_peu_charge_elevage !== undefined
+    ) {
+      effluentPeuChargeElevageHidden.value = String(
+        flags.effluent_peu_charge_elevage
+      );
+    }
   }
 
   // ─── Initialisation et propagation ────────────────────────────────────
@@ -280,6 +312,9 @@
       }
       if (idxSource <= FIELDS.indexOf("sous_fertilisant")) {
         if (typeFertilisantHidden) typeFertilisantHidden.value = "";
+        if (effluentPeuChargeHidden) effluentPeuChargeHidden.value = "";
+        if (effluentPeuChargeElevageHidden)
+          effluentPeuChargeElevageHidden.value = "";
       }
     }
 
