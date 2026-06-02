@@ -1,0 +1,172 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block title %}Ajouter une validation{% endblock %}
+
+{% block content %}
+  <div class="fr-container-fluid fr-py-3w">
+    <p>
+      <a href="{% url 'nitrates_admin_validation_index' %}">← Retour à la liste</a>
+    </p>
+
+    <h1>Ajouter une ligne de validation</h1>
+
+    <p style="color:#666; max-width:80ch;">
+      Ajout manuel d'une feuille à valider. Seul le <strong>chemin YAML</strong>
+      est obligatoire (clé naturelle unique) ; tous les autres champs sont
+      éditables ensuite depuis la page de détail.
+    </p>
+
+    <form method="post"
+          action="{% url 'nitrates_admin_validation_create' %}"
+          class="vc-form">
+      {% csrf_token %}
+
+      <label class="vc-field">
+        <span class="vc-field__label">Chemin YAML <span class="vc-req">*</span></span>
+        <input type="text"
+               name="chemin_yaml"
+               required
+               value="{{ data.chemin_yaml|default:'' }}"
+               placeholder="n_zvn/q_occupation_sol/.../r_colza_type_0">
+        <span class="vc-field__hint">Path d'ids YAML depuis la racine vers la feuille, séparés par « / ».</span>
+      </label>
+
+      <label class="vc-field">
+        <span class="vc-field__label">Règle (regle_id)</span>
+        <input type="text"
+               name="regle_id"
+               value="{{ data.regle_id|default:'' }}"
+               placeholder="r_colza_type_0">
+      </label>
+
+      <label class="vc-field">
+        <span class="vc-field__label">Libellé branche</span>
+        <input type="text"
+               name="branche_label"
+               value="{{ data.branche_label|default:'' }}"
+               placeholder="sous_culture=colza / type_fertilisant=type_III">
+        <span class="vc-field__hint">Si vide, le dernier segment du chemin YAML est utilisé.</span>
+      </label>
+
+      <div class="vc-form__row">
+        <label class="vc-field">
+          <span class="vc-field__label">Branche Miro</span>
+          <input type="text"
+                 name="branche_miro"
+                 value="{{ data.branche_miro|default:'' }}"
+                 placeholder="colza">
+        </label>
+
+        <label class="vc-field">
+          <span class="vc-field__label">Type fertilisant Miro</span>
+          <input type="text"
+                 name="type_fertilisant_miro"
+                 value="{{ data.type_fertilisant_miro|default:'' }}"
+                 placeholder="type_III">
+        </label>
+
+        <label class="vc-field">
+          <span class="vc-field__label">Code PC</span>
+          <input type="text"
+                 name="code_pc_miro"
+                 value="{{ data.code_pc_miro|default:'' }}"
+                 placeholder="pc11">
+        </label>
+      </div>
+
+      <label class="vc-field">
+        <span class="vc-field__label">Résultat Miro attendu</span>
+        <input type="text"
+               name="resultat_miro"
+               value="{{ data.resultat_miro|default:'' }}"
+               placeholder="Interdit du 15/12 au 15/01">
+      </label>
+
+      <label class="vc-field">
+        <span class="vc-field__label">URL simulateur</span>
+        <input type="text"
+               name="url_simulateur"
+               value="{{ data.url_simulateur|default:'' }}"
+               placeholder="/simulateur/?lat=...&lng=...">
+      </label>
+
+      <div class="vc-form__actions">
+        <button type="submit" class="vc-btn">Créer</button>
+        <a href="{% url 'nitrates_admin_validation_index' %}"
+           class="vc-btn vc-btn--ghost">Annuler</a>
+      </div>
+    </form>
+  </div>
+
+  <style>
+    .vc-form {
+      max-width: 70ch;
+      margin-top: 1rem;
+    }
+
+    .vc-field {
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    .vc-field__label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+
+    .vc-req {
+      color: #ce0500;
+    }
+
+    .vc-field input {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+
+    .vc-field__hint {
+      display: block;
+      color: #777;
+      font-size: 0.78rem;
+      margin-top: 3px;
+    }
+
+    .vc-form__row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .vc-form__row .vc-field {
+      flex: 1;
+    }
+
+    .vc-form__actions {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .vc-btn {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 4px;
+      background: #1f4789;
+      color: #fff !important;
+      text-decoration: none;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+    }
+
+    .vc-btn--ghost {
+      background: #fff;
+      color: #1f4789 !important;
+      border: 1px solid #1f4789;
+    }
+  </style>
+{% endblock %}

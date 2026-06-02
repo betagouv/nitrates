@@ -407,6 +407,43 @@ def test_pan_colza_type_II_zone_note_5_true(arbre_pan):
     assert res.note == "note_5"
 
 
+# ─── Renvoi vers regles_partagees (couvert courte) ─────────────────────────
+
+
+@pytest.mark.parametrize(
+    "sous_culture,type_fert,regle_attendue",
+    [
+        ("cie_courte", "type_0", "r_cie_courte_types_0_I_II"),
+        ("cie_courte", "type_I", "r_cie_courte_types_0_I_II"),
+        ("cie_courte", "type_II", "r_cie_courte_types_0_I_II"),
+        ("cine_courte", "type_0", "r_cine_courte_types_0_I_II"),
+        ("cine_courte", "type_I", "r_cine_courte_types_0_I_II"),
+        ("cine_courte", "type_II", "r_cine_courte_types_0_I_II"),
+    ],
+)
+def test_couvert_courte_renvoi_vers_regle_partagee(
+    arbre_pan, sous_culture, type_fert, regle_attendue
+):
+    """Les branches type 0/I/II du couvert courte renvoient vers une regle
+    `regles_partagees` (r_cie_courte_types_0_I_II / r_cine_courte_...).
+
+    Regression : ces regles vivent hors de l'arbre (section
+    `regles_partagees`) ; si `_build_id_index` ne les indexe pas, le
+    parcours leve ParcoursError sur ces 6 feuilles en prod. Cf. fix index
+    parcours + regles_partagees."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "couvert_intercultures",
+            "sous_culture": sous_culture,
+            "type_fertilisant": type_fert,
+        },
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == regle_attendue
+
+
 # ─── Cascade questions conditionnelles (#58.1) ─────────────────────────────
 
 

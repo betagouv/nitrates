@@ -520,10 +520,15 @@ def _build_id_index(arbre: dict) -> dict[str, dict]:
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
         _walk_for_index(racine, index)
-    for entry in arbre.get("plafonnements", []) or []:
-        regle = entry.get("regle")
-        if regle and "id" in regle:
-            index[regle["id"]] = regle
+    # Regles hors-arbre referencables par renvoi_vers : plafonnements et
+    # regles partagees (ex: r_cie_courte_types_0_I_II, atteint depuis les
+    # branches type_0/I/II du couvert courte). Sans ca, le parcours leve
+    # ParcoursError sur ces feuilles.
+    for cle in ("plafonnements", "regles_partagees"):
+        for entry in arbre.get(cle, []) or []:
+            regle = entry.get("regle")
+            if regle and "id" in regle:
+                index[regle["id"]] = regle
     return index
 
 

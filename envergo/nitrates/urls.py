@@ -11,6 +11,8 @@ from envergo.nitrates.views import (
     ZoneVulnerableGeoJSONView,
 )
 from envergo.nitrates.views_admin_validation import (
+    validation_create,
+    validation_delete,
     validation_detail,
     validation_edit_meta,
     validation_index,
@@ -213,9 +215,19 @@ urlpatterns = [
         name="nitrates_admin_validation_index",
     ),
     path(
+        "admin/nitrates/validation/ajouter/",
+        validation_create,
+        name="nitrates_admin_validation_create",
+    ),
+    path(
         "admin/nitrates/validation/<int:pk>/",
         validation_detail,
         name="nitrates_admin_validation_detail",
+    ),
+    path(
+        "admin/nitrates/validation/<int:pk>/supprimer/",
+        validation_delete,
+        name="nitrates_admin_validation_delete",
     ),
     path(
         "admin/nitrates/validation/<int:pk>/statut/",
