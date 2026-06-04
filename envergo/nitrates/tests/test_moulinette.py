@@ -152,3 +152,45 @@ def test_is_evaluation_available_avec_point_valide(department_marne, zv_map):
         form_kwargs={"data": {"lng": LNG_REIMS, "lat": LAT_REIMS}}
     )
     assert moulinette.is_evaluation_available()
+
+
+# ─── Perf get_criteria : filtrage via zv_zone_id ───────────────────────────
+#
+# get_criteria reutilise l'id de la zone ZV deja resolu par get_catalog_data
+# (filtre par PK) au lieu de refaire un ST_Intersects exact sur la geometrie
+# ZV (~2 M points en prod). On ne calcule plus la distance exacte non plus
+# (activation_distance=0 pour nitrates => intersects suffit). Ces tests
+# garantissent que le critere s'active toujours au bon endroit.
+
+
+def test_catalog_memorise_zv_zone_id_en_zone(department_marne, zv_map):
+    moulinette = MoulinetteNitrates(
+        form_kwargs={"data": {"lng": LNG_REIMS, "lat": LAT_REIMS}}
+    )
+    zone = zv_map.zones.first()
+    assert moulinette.catalog["zv_zone_id"] == zone.id
+
+
+def test_catalog_zv_zone_id_none_hors_zone(zv_map):
+    moulinette = MoulinetteNitrates(
+        form_kwargs={"data": {"lng": LNG_OFFSHORE, "lat": LAT_OFFSHORE}}
+    )
+    assert moulinette.catalog["zv_zone_id"] is None
+
+
+def test_critere_actif_en_zv(department_marne, zv_map):
+    """En ZV : le critere arbre_decision est retourne (filtre par zv_zone_id)."""
+    moulinette = MoulinetteNitrates(
+        form_kwargs={"data": {"lng": LNG_REIMS, "lat": LAT_REIMS}}
+    )
+    criteres = list(moulinette.get_criteria())
+    assert len(criteres) == 1
+    assert criteres[0].slug == "arbre_decision"
+
+
+def test_critere_inactif_hors_zv(zv_map):
+    """Hors ZV : zv_zone_id=None => aucun critere nitrates ne s'active."""
+    moulinette = MoulinetteNitrates(
+        form_kwargs={"data": {"lng": LNG_OFFSHORE, "lat": LAT_OFFSHORE}}
+    )
+    assert list(moulinette.get_criteria()) == []

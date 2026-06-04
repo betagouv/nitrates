@@ -13,11 +13,9 @@ import copy
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from django.db import models, transaction
-from django.db.models import F, IntegerField, Q
-from django.db.models.functions import Cast
+from django.db.models import Q
 from django.utils import timezone
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
@@ -493,6 +491,10 @@ class MoulinetteNitrates(Moulinette):
                 .first()
             )
             catalog["en_zone_vulnerable"] = zv_zone is not None
+            # On memorise l'id de la zone ZV intersectee pour que
+            # get_criteria n'ait pas a refaire un ST_Intersects exact sur la
+            # geometrie ZV (~2 M points, ~0.5 s). cf. get_criteria.
+            catalog["zv_zone_id"] = zv_zone.id if zv_zone else None
             if zv_zone:
                 attrs = zv_zone.attributes or {}
                 catalog["bassin"] = bassin_code_from_attributes(attrs)
@@ -524,22 +526,39 @@ class MoulinetteNitrates(Moulinette):
 
         Le critere `arbre_decision` a la map ZV comme activation_map :
         si le point n'intersecte aucune ZV, le critere n'est pas retourne
-        et l'arbre ne tourne pas."""
+        et l'arbre ne tourne pas.
+
+        Perf : on filtre UNIQUEMENT par `intersects`, sans calculer la
+        distance exacte. Les criteres nitrates ont `activation_distance=0`
+        (activation binaire dans/hors ZV) : un point qui intersecte la zone
+        est forcement a distance 0, donc `distance <= activation_distance`
+        est toujours vrai et redondant. Or `ST_Distance` exact sur la
+        geometrie ZV (~2 M points) coute ~1.3 s par appel -- on l'evite.
+        Si un jour un critere nitrates utilise une activation_distance > 0
+        (buffer), il faudra reintroduire le filtre distance ici."""
         coords = self.catalog.get("lng_lat")
         criteria = super().get_criteria()
         if coords is None:
             return criteria.none()
-        return (
-            criteria.filter(activation_map__zones__geometry__intersects=coords)
-            .annotate(
-                distance=Cast(
-                    Distance("activation_map__zones__geometry", coords),
-                    IntegerField(),
-                )
+
+        # get_catalog_data a deja resolu la zone ZV intersectee (statut ZV).
+        # On reutilise son id pour filtrer par PK plutot que de refaire un
+        # ST_Intersects exact sur la geometrie ZV (~2 M points, ~0.5 s).
+        # "zv_zone_id" absent du catalog => None par defaut (cle posee a
+        # chaque passage de get_catalog_data des qu'on a lng/lat).
+        if "zv_zone_id" in self.catalog:
+            zone_id = self.catalog["zv_zone_id"]
+            if zone_id is None:
+                # Hors ZV : aucun critere nitrates ne s'active.
+                return criteria.none()
+            return criteria.filter(activation_map__zones__id=zone_id).select_related(
+                "activation_map"
             )
-            .filter(distance__lte=F("activation_distance"))
-            .select_related("activation_map")
-        )
+
+        # Fallback (catalog incomplet) : intersection geographique directe.
+        return criteria.filter(
+            activation_map__zones__geometry__intersects=coords
+        ).select_related("activation_map")
 
     # ─── Implementations des abstracts ─────────────────────────────────────
 
