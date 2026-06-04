@@ -51,6 +51,26 @@ def test_referentiels_types_fertilisants_structure(client, nitrates_site):
     assert isinstance(type_0["libelle_public"], str)
 
 
+def test_sous_fertilisant_expose_flags_prefill(client, nitrates_site):
+    """Carte #98 : les flags de pré-remplissage d'un sous-fertilisant
+    (effluent_peu_charge…) sont exposés au front pour que la cascade JS les
+    pousse en hidden inputs et auto-résolve les questions complémentaires."""
+    from django.core.cache import cache
+    from django.core.management import call_command
+
+    call_command("seed_referentiels")
+    # L'endpoint est cache_page en non-DEBUG : un test antérieur a pu mettre
+    # en cache une réponse pré-seed. On vide pour lire l'état à jour.
+    cache.clear()
+    response = client.get("/api/referentiels/")
+    data = response.json()
+    elevage = data["sous_fertilisants"]["effluents_peu_charges_elevage"]
+    assert elevage["flags"] == {
+        "effluent_peu_charge": "true",
+        "effluent_peu_charge_elevage": "true",
+    }
+
+
 def test_arbre_endpoint_renvoie_json(client, nitrates_site):
     response = client.get("/api/arbre/")
     assert response.status_code == 200

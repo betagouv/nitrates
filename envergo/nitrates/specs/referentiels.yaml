@@ -961,7 +961,8 @@ categories_fertilisants:
       "type inconnu" qui résout en type_II par défaut conservateur.
     sous_fertilisants:
       - "marcs_raisins_frais"
-      - "effluents_peu_charges_autre"
+      - "effluents_peu_charges_elevage"
+      - "effluents_peu_charges_non_elevage"
       - "farines_animales"
       - "vinasses_betterave"
       - "type_0_declare"
@@ -1036,12 +1037,32 @@ sous_fertilisants:
   # ── Autre ──────────────────────────────────────────────────────────────────
   marcs_raisins_frais:
     libelle_public: "Marcs de raisins frais"
-  effluents_peu_charges_autre:
-    libelle_public: "Effluents peu chargés"
+  effluents_peu_charges_elevage:
+    libelle_public: "Effluents peu chargés issus d'élevage"
     description: |
-      Marqué "Effluents peu chargés" dans la catégorie Autre du Miro. Le flag
-      transverse `effluent_peu_charge` (cf. types_fertilisants) reste utilisé
-      par l'arbre pour les assouplissements notes 8-11.
+      Carte #98 : scission de l'ancien "Effluents peu chargés" en deux
+      sous-catégories (issu / non issu d'élevage). Type II. Le flag transverse
+      `effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre
+      pour les assouplissements notes 8-11 ; l'origine élevage est pertinente
+      pour les notes 10/11 (effluents peu chargés issus d'élevages, non ICPE A).
+    # Pre-remplissage : ce choix repond d'avance aux questions complementaires
+    # de l'arbre, qui ne sont donc pas posees mais inferees. Memes champs que
+    # ceux portes par les noeuds `complement` de l'arbre actif :
+    #   - effluent_peu_charge        (S'agit-il d'un effluent peu chargé ?)
+    #   - effluent_peu_charge_elevage (... issu d'élevage ?)
+    flags:
+      effluent_peu_charge: "true"
+      effluent_peu_charge_elevage: "true"
+  effluents_peu_charges_non_elevage:
+    libelle_public: "Effluents peu chargés non issus d'élevage"
+    description: |
+      Carte #98 : scission de l'ancien "Effluents peu chargés" en deux
+      sous-catégories (issu / non issu d'élevage). Type II. Le flag transverse
+      `effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre
+      pour les assouplissements notes 8-11.
+    flags:
+      effluent_peu_charge: "true"
+      effluent_peu_charge_elevage: "false"
   farines_animales:
     libelle_public: "Farines de plumes, de poisson, de sang, d'os, soies de porcs, tourteaux de ricin, guanos d'oiseaux marins"
   vinasses_betterave:
@@ -1114,7 +1135,8 @@ mapping_sous_fertilisant_vers_type:
 
   # ── Autre ──────────────────────────────────────────────────────────────────
   marcs_raisins_frais: "type_0"
-  effluents_peu_charges_autre: "type_II"
+  effluents_peu_charges_elevage: "type_II"
+  effluents_peu_charges_non_elevage: "type_II"
   farines_animales: "type_II"
   vinasses_betterave: "type_II"
   type_0_declare: "type_0"

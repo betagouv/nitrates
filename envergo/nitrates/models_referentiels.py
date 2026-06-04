@@ -173,6 +173,18 @@ class Fertilisant(models.Model):
         max_length=32,
         choices=CategorieFertilisant.choices,
     )
+    champs_prefill = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Champs à injecter dans le contexte de parcours quand ce "
+            "fertilisant est choisi, pour auto-résoudre des questions "
+            "complémentaires de l'arbre (ex effluent_peu_charge / "
+            "effluent_peu_charge_elevage). Mêmes clés que les `champ` des "
+            "nœuds `complement`. La question n'est alors pas posée mais "
+            "inférée. Vide = aucune inférence."
+        ),
+    )
     type_reglementaire = models.CharField(
         max_length=16,
         choices=TypeFertilisant.choices,

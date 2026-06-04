@@ -274,6 +274,7 @@ class Command(BaseCommand):
                     "libelle_public": meta.get("libelle_public", ident),
                     "description": meta.get("description", "").strip(),
                     "categorie": cat_id,
+                    "champs_prefill": meta.get("flags") or {},
                     "type_reglementaire": type_reg,
                     "ordre_affichage": sf_ordre.get(ident, 0),
                 },
