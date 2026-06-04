@@ -155,34 +155,41 @@
     };
   }
 
-  // Evalue `condition` (mini-DSL "<input_id> <op> <JJ/MM>") sur les
-  // valeurs courantes du form. La comparaison utilise l'ordre de
+  // Evalue `condition` (mini-DSL "<terme> <op> <terme>") sur les valeurs
+  // courantes du form. Un terme = JJ/MM | event | event±Nunit, EXACTEMENT
+  // la grammaire des bornes du/au -> on le resout via parseBorne (synchro
+  // avec le backend condition.py). La comparaison utilise l'ordre de
   // l'annee agricole (juillet=0 ... juin~365). Cf.
   // spec_extension_grammaire_condition.
   //
   // Retourne true si la condition est vraie ou absente, false sinon.
-  // Si la valeur user pour input_id est manquante / non-parseable, on
-  // retourne true (mode "permissif") -- la periode reste affichee, sans
-  // distorsion, jusqu'a ce que l'utilisateur saisisse une valeur valide.
-  const CONDITION_RE = /^\s*([a-z][a-z0-9_]*)\s*(<=|>=|==|!=|<|>)\s*(\d{2}\/\d{2})\s*$/;
+  // Mode "permissif" : si un terme reference un event non encore saisi
+  // (ou non parseable), on retourne true -- la periode reste affichee sans
+  // distorsion jusqu'a ce que l'utilisateur saisisse une valeur valide.
+  //
+  // Le terme = un sous-groupe (date | event | event±offset). On reutilise
+  // le coeur de BORNE_RE pour les 2 cotes.
+  const _TERME = "\\d{2}/\\d{2}|[a-z][a-z0-9_]*(?:[+-]\\d+(?:jours|semaines|mois))?";
+  const CONDITION_RE = new RegExp(
+    "^\\s*(" + _TERME + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + _TERME + ")\\s*$"
+  );
   function evalCondition(rawCond, valeurs) {
     if (!rawCond) return true;
     const m = CONDITION_RE.exec(rawCond);
     if (!m) return true; // condition mal formee : permissif (validator backend l'aura rejete)
-    const inputId = m[1];
     const op = m[2];
-    const dateLit = m[3];
-    const valUser = valeurs[inputId];
-    const jourUser = valUser ? jjmmToJourAgricole(valUser) : null;
-    const jourCible = jjmmToJourAgricole(dateLit);
-    if (jourUser === null || jourCible === null) return true;
+    // Chaque terme resolu en jour agricole via parseBorne (gere date,
+    // event, event±offset). jour === null => event non saisi => permissif.
+    const gauche = parseBorne(m[1], valeurs).jour;
+    const droite = parseBorne(m[3], valeurs).jour;
+    if (gauche === null || droite === null) return true;
     switch (op) {
-      case "<": return jourUser < jourCible;
-      case "<=": return jourUser <= jourCible;
-      case ">": return jourUser > jourCible;
-      case ">=": return jourUser >= jourCible;
-      case "==": return jourUser === jourCible;
-      case "!=": return jourUser !== jourCible;
+      case "<": return gauche < droite;
+      case "<=": return gauche <= droite;
+      case ">": return gauche > droite;
+      case ">=": return gauche >= droite;
+      case "==": return gauche === droite;
+      case "!=": return gauche !== droite;
     }
     return true;
   }
@@ -897,34 +904,56 @@
     return `<ul class="calendrier-epandage__legende">${items}</ul>`;
   }
 
-  // Traduit une condition "<input_id> <op> <JJ/MM>" en phrase humaine
-  // pour le recap, ex "date_destruction_couvert < 05/12" ->
-  // "car destruction avant le 5 déc.". Utilise le label_court de l'input
-  // pour nommer la date utilisateur. Retourne null si non parseable.
+  // Phrase humaine d'un terme de condition (date | event | event±offset).
+  //   15/12                         -> "le 15 déc."
+  //   date_destruction_couvert      -> "la destruction"
+  //   date_semis_couvert+4semaines  -> "4 semaines après le semis"
+  function termeToText(raw, inputById) {
+    const m = BORNE_RE.exec(raw);
+    if (!m) {
+      // date fixe ?
+      if (/^\d{2}\/\d{2}$/.test(raw)) {
+        const j = jjmmToJourAgricole(raw);
+        return j != null ? `le ${jourAgricoleToLisible(j)}` : raw;
+      }
+      return raw;
+    }
+    const eventId = m[1];
+    const inp = inputById[eventId];
+    const nom = inp ? deduireLabelCourt(inp) : eventId;
+    if (!m[2]) {
+      // event nu
+      return `la ${nom}`;
+    }
+    // event ± offset
+    const n = m[3];
+    const unit = m[4];
+    const prep = m[2] === "+" ? "après" : "avant";
+    return `${n} ${unit} ${prep} le ${nom}`;
+  }
+
+  // Traduit une condition "<terme> <op> <terme>" en phrase humaine pour le
+  // recap, ex "date_destruction_couvert < 05/12" -> "car la destruction est
+  // avant le 5 déc." ou "date_semis_couvert+4semaines > 15/12" -> "car
+  // 4 semaines après le semis est après le 15 déc.". Retourne null si non
+  // parseable.
   function conditionToText(rawCond, inputById) {
     if (!rawCond) return null;
     const m = CONDITION_RE.exec(rawCond);
     if (!m) return null;
-    const inputId = m[1];
+    const gauche = termeToText(m[1], inputById);
     const op = m[2];
-    const dateLit = m[3];
-    const inp = inputById[inputId];
-    const nom = inp ? deduireLabelCourt(inp) : inputId;
-    // Date litterale en forme lisible (5 déc.) via l'index agricole.
-    const jour = jjmmToJourAgricole(dateLit);
-    const dateStr = jour != null ? jourAgricoleToLisible(jour) : dateLit;
-    // Operateur -> tournure FR. On parle de la date `nom` par rapport au
-    // seuil `dateStr`.
+    const droite = termeToText(m[3], inputById);
     const tournure = {
-      "<": `avant le ${dateStr}`,
-      "<=": `au plus tard le ${dateStr}`,
-      ">": `après le ${dateStr}`,
-      ">=": `à partir du ${dateStr}`,
-      "==": `le ${dateStr}`,
-      "!=": `différent du ${dateStr}`,
+      "<": "avant",
+      "<=": "au plus tard à",
+      ">": "après",
+      ">=": "au plus tôt à",
+      "==": "égal à",
+      "!=": "différent de",
     }[op];
     if (!tournure) return null;
-    return `car ${nom} ${tournure}`;
+    return `car ${gauche} est ${tournure} ${droite}`;
   }
 
   function renderRecap(periodes) {

@@ -4,31 +4,60 @@ calculatrice (cf. spec_extension_grammaire_condition)."""
 import pytest
 
 from envergo.nitrates.yaml_tree.condition import (
-    Condition,
     ConditionParseError,
     parse_condition,
     validate_condition,
 )
 
-# ─── parse_condition ───────────────────────────────────────────────────────
+# ─── parse_condition : forme historique (event < date) ──────────────────────
 
 
 @pytest.mark.parametrize(
-    "raw,expected",
+    "raw,g_event,op,d_date",
     [
-        ("date_x < 05/12", Condition("date_x", "<", "05/12")),
-        ("date_x<=05/12", Condition("date_x", "<=", "05/12")),
-        ("  date_x  >=  31/12  ", Condition("date_x", ">=", "31/12")),
-        ("a == 01/01", Condition("a", "==", "01/01")),
-        ("a_b_c != 15/08", Condition("a_b_c", "!=", "15/08")),
-        (
-            "date_destruction_couvert > 30/06",
-            Condition("date_destruction_couvert", ">", "30/06"),
-        ),
+        ("date_x < 05/12", "date_x", "<", "05/12"),
+        ("date_x<=05/12", "date_x", "<=", "05/12"),
+        ("  date_x  >=  31/12  ", "date_x", ">=", "31/12"),
+        ("a == 01/01", "a", "==", "01/01"),
+        ("a_b_c != 15/08", "a_b_c", "!=", "15/08"),
+        ("date_destruction_couvert > 30/06", "date_destruction_couvert", ">", "30/06"),
     ],
 )
-def test_parse_condition_valides(raw, expected):
-    assert parse_condition(raw) == expected
+def test_parse_condition_event_vs_date(raw, g_event, op, d_date):
+    c = parse_condition(raw)
+    assert c.gauche.is_event and c.gauche.event == g_event
+    assert c.op == op
+    assert c.droite.is_date and c.droite.date == d_date
+
+
+# ─── parse_condition : nouvelle grammaire (terme±offset des 2 cotes) ─────────
+
+
+def test_parse_condition_event_offset_gauche():
+    """date_semis_couvert+4semaines > 15/12 : event+offset a gauche, date a droite."""
+    c = parse_condition("date_semis_couvert+4semaines > 15/12")
+    assert c.gauche.is_event
+    assert c.gauche.event == "date_semis_couvert"
+    assert c.gauche.sign == "+" and c.gauche.n == 4 and c.gauche.unit == "semaines"
+    assert c.op == ">"
+    assert c.droite.is_date and c.droite.date == "15/12"
+
+
+def test_parse_condition_event_offset_negatif():
+    """date_destruction_couvert-20jours < 15/01."""
+    c = parse_condition("date_destruction_couvert-20jours < 15/01")
+    assert c.gauche.event == "date_destruction_couvert"
+    assert c.gauche.sign == "-" and c.gauche.n == 20 and c.gauche.unit == "jours"
+    assert c.op == "<"
+    assert c.droite.is_date and c.droite.date == "15/01"
+
+
+def test_parse_condition_date_a_gauche():
+    """15/12 <= date_destruction_couvert : date a gauche, event a droite."""
+    c = parse_condition("15/12 <= date_destruction_couvert")
+    assert c.gauche.is_date and c.gauche.date == "15/12"
+    assert c.op == "<="
+    assert c.droite.is_event and c.droite.event == "date_destruction_couvert"
 
 
 @pytest.mark.parametrize(
@@ -118,3 +147,47 @@ def test_validate_condition_inputs_vide():
     cond, err = validate_condition("date_x < 05/12", [])
     assert cond is None
     assert "date_x" in err
+
+
+# ─── validate_condition : nouvelle grammaire ────────────────────────────────
+
+
+def test_validate_condition_event_offset_valide():
+    cond, err = validate_condition("date_semis+4semaines > 15/12", _inputs_date())
+    assert err is None
+    assert cond.gauche.event == "date_semis"
+    assert cond.gauche.n == 4 and cond.gauche.unit == "semaines"
+    assert cond.droite.date == "15/12"
+
+
+def test_validate_condition_event_offset_negatif_valide():
+    cond, err = validate_condition("date_destruction-20jours < 15/01", _inputs_date())
+    assert err is None
+    assert cond.gauche.event == "date_destruction"
+    assert cond.gauche.sign == "-" and cond.gauche.n == 20
+
+
+def test_validate_condition_date_a_gauche_valide():
+    cond, err = validate_condition("15/12 <= date_destruction", _inputs_date())
+    assert err is None
+    assert cond.gauche.date == "15/12"
+    assert cond.droite.event == "date_destruction"
+
+
+def test_validate_condition_deux_dates_fixes_rejete():
+    """Comparer deux dates fixes = condition constante -> rejete."""
+    cond, err = validate_condition("15/12 < 15/01", _inputs_date())
+    assert cond is None
+    assert "event" in err
+
+
+def test_validate_condition_offset_event_inconnu():
+    cond, err = validate_condition("date_inconnu+4semaines > 15/12", _inputs_date())
+    assert cond is None
+    assert "date_inconnu" in err
+
+
+def test_validate_condition_normalise_offset():
+    """normalise() preserve l'offset des 2 cotes."""
+    c = parse_condition("date_semis+4semaines>15/12")
+    assert c.normalise() == "date_semis+4semaines > 15/12"
