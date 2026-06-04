@@ -46,7 +46,7 @@ def load_arbre(name: str = "arbre_decision_national") -> dict:
     return _load_yaml(f"{name}.yaml")
 
 
-def load_referentiels() -> dict:
+def _build_referentiels() -> dict:
     """Construit le dict referentiel a la shape historique YAML, depuis
     la DB (cf. carte #61 phase 4).
 
@@ -230,3 +230,35 @@ def load_referentiels() -> dict:
         "sous_fertilisants": sous_fertilisants,
         "mapping_sous_fertilisant_vers_type": mapping_sous_fertilisant_vers_type,
     }
+
+
+# ─── Cache process-local du referentiel ──────────────────────────────────────
+#
+# `_build_referentiels()` fait ~27 requetes SQL (toute la DB referentiel).
+# Sans cache, les vues qui l'appellent en boucle (editeur d'arbre : un appel
+# par date d'evenement phenologique a rendre dans le calendrier) explosent :
+# ~600 appels => ~16 000 requetes => ~18 s de rendu. cf. perf carte non-critical.
+#
+# Le referentiel ne change qu'au seed ou a l'edition admin d'un modele
+# referentiel. On cache donc le dict materialise et on invalide explicitement
+# sur ecriture (signaux post_save/post_delete, cf. apps.NitratesConfig.ready).
+# `maxsize=1` : un seul snapshot, pas de clef.
+
+
+@lru_cache(maxsize=1)
+def _load_referentiels_cached() -> dict:
+    return _build_referentiels()
+
+
+def load_referentiels() -> dict:
+    """Retourne le dict referentiel (shape YAML historique), depuis un cache
+    process-local. Invalide automatiquement quand un modele referentiel est
+    cree / modifie / supprime (cf. invalider_cache_referentiels)."""
+    return _load_referentiels_cached()
+
+
+def invalider_cache_referentiels(*args, **kwargs) -> None:
+    """Vide le cache du referentiel. Branche sur les signaux post_save /
+    post_delete des modeles referentiel (signature *args/**kwargs pour etre
+    utilisable directement comme receiver de signal)."""
+    _load_referentiels_cached.cache_clear()
