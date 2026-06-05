@@ -603,6 +603,26 @@
   border-color: transparent;
 }
 
+/* Jour hors bornes min/max de l'input (#126) : grise, non cliquable. */
+.calc-cal__picker-day--disabled {
+  color: var(--text-disabled-grey, #b8b8b8);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.calc-cal__picker-day--disabled:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Message d'erreur de bornage sous le champ date (#126). */
+.calc-cal__field-error {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--cal-rouge-ink, #ce0500);
+  line-height: 1.35;
+}
+
 /* Tooltip JS instantane (cf. bindTooltips dans calculatrice-calendrier.js).
    Pinned en `position: fixed` (place via JS via window.scrollX/Y), apparait
    au mouseenter avec opacite 1 instantanee. */

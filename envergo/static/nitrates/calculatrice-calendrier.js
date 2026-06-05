@@ -76,6 +76,48 @@
     return total + (jour - 1);
   }
 
+  // ─── Bornage des inputs (#126) ─────────────────────────────────────────
+  // Un input date peut porter `min` et/ou `max` (JJ/MM) : la saisie doit
+  // rester dans [min, max] en ordre annee agricole (juil->juin). Sert a
+  // empecher des dates incoherentes avec la variante deja choisie en cascade
+  // (ex couvert recolte avant 31/12 -> destruction max=31/12).
+
+  // True si `jjmm` (string) respecte les bornes de l'input. Tolerant : si
+  // bornes absentes ou jjmm non parseable, considere dans les bornes.
+  function dansBornes(inp, jjmm) {
+    const j = jjmmToJourAgricole(jjmm);
+    if (j === null) return true;
+    if (inp.min) {
+      const jmin = jjmmToJourAgricole(inp.min);
+      if (jmin !== null && j < jmin) return false;
+    }
+    if (inp.max) {
+      const jmax = jjmmToJourAgricole(inp.max);
+      if (jmax !== null && j > jmax) return false;
+    }
+    return true;
+  }
+
+  // Phrase explicative quand une saisie sort des bornes, contextualisee sur
+  // le sens metier (avant/apres). Retourne "" si dans les bornes.
+  function messageHorsBornes(inp, jjmm) {
+    if (dansBornes(inp, jjmm)) return "";
+    const lc = deduireLabelCourt(inp);
+    if (inp.max && !inp.min) {
+      return `La date de ${lc} doit être au plus tard le ${jjmmLisible(inp.max)} pour ce type de couvert.`;
+    }
+    if (inp.min && !inp.max) {
+      return `La date de ${lc} doit être au plus tôt le ${jjmmLisible(inp.min)} pour ce type de couvert.`;
+    }
+    return `La date de ${lc} doit être comprise entre le ${jjmmLisible(inp.min)} et le ${jjmmLisible(inp.max)} pour ce type de couvert.`;
+  }
+
+  // "31/12" -> "31 déc." (via l'index agricole).
+  function jjmmLisible(jjmm) {
+    const j = jjmmToJourAgricole(jjmm);
+    return j !== null ? jourAgricoleToLisible(j) : jjmm;
+  }
+
   // Convertit un index de jour agricole en "JJ mois" lisible.
   function jourAgricoleToLisible(j) {
     if (j < 0 || j >= TOTAL_JOURS) return "";
@@ -1249,6 +1291,26 @@
     tooltipEl.style.top = `${Math.max(4, top)}px`;
   }
 
+  // Affiche (ou retire si msg vide) un petit message d'erreur sous le champ
+  // date, pour le bornage hors limites (#126). Cree le <p> a la demande.
+  function afficherErreurInput(inputEl, msg) {
+    const field = inputEl.closest(".calc-cal__field");
+    if (!field) return;
+    let err = field.querySelector(".calc-cal__field-error");
+    if (!msg) {
+      if (err) err.remove();
+      inputEl.removeAttribute("aria-invalid");
+      return;
+    }
+    if (!err) {
+      err = document.createElement("p");
+      err.className = "calc-cal__field-error";
+      field.appendChild(err);
+    }
+    err.textContent = msg;
+    inputEl.setAttribute("aria-invalid", "true");
+  }
+
   function bindInputs() {
     mount.querySelectorAll("input[data-input-id]").forEach((el) => {
       // Des qu'on focus, la valeur n'est plus celle "par defaut" -- on
@@ -1258,12 +1320,21 @@
       });
       el.addEventListener("change", () => {
         const id = el.dataset.inputId;
+        const inp = inputs.find((x) => x.id === id);
         const val = el.value.trim();
         // Validation minimale : si pas JJ/MM, on garde l'ancienne valeur.
         if (val && !/^\d{2}\/\d{2}$/.test(val)) {
           el.value = valeurs[id];
+          afficherErreurInput(el, "");
           return;
         }
+        // Bornage (#126) : saisie hors [min,max] refusee + phrase explicative.
+        if (val && inp && !dansBornes(inp, val)) {
+          afficherErreurInput(el, messageHorsBornes(inp, val));
+          el.value = valeurs[id]; // revert a la derniere valeur valide
+          return;
+        }
+        afficherErreurInput(el, "");
         if (val) valeurs[id] = val;
         syncUrl();
         render();
@@ -1340,6 +1411,9 @@
   function createPickerPopup(inputEl) {
     const current = parseJjmm(inputEl.value) || { jour: 15, mois: 1 };
     const state = { mois: current.mois, jour: current.jour };
+    // Input courant pour le bornage (#126) : les jours hors [min,max] sont
+    // desactives dans la grille.
+    const inpBorne = inputs.find((x) => x.id === inputEl.dataset.inputId);
 
     const popup = document.createElement("div");
     popup.className = "calc-cal__picker";
@@ -1375,8 +1449,15 @@
       }
       for (let j = 1; j <= maxJour; j++) {
         const isSel = j === state.jour && state.mois === current.mois;
+        const jjmm =
+          String(j).padStart(2, "0") + "/" + String(state.mois).padStart(2, "0");
+        const horsBorne = inpBorne ? !dansBornes(inpBorne, jjmm) : false;
+        const cls =
+          "calc-cal__picker-day" +
+          (isSel ? " calc-cal__picker-day--selected" : "") +
+          (horsBorne ? " calc-cal__picker-day--disabled" : "");
         cells.push(
-          `<button type="button" class="calc-cal__picker-day${isSel ? " calc-cal__picker-day--selected" : ""}" data-jour="${j}">${j}</button>`,
+          `<button type="button" class="${cls}" data-jour="${j}"${horsBorne ? " disabled" : ""}>${j}</button>`,
         );
       }
       grid.innerHTML = cells.join("");

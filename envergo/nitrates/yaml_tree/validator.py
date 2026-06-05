@@ -285,6 +285,20 @@ def _is_valid_date(s: str) -> bool:
         return False
 
 
+# Jours par mois agricole (juil=index 0 ... juin=index 11). Doit rester
+# synchro avec JOURS_PAR_MOIS_AGRICOLE cote JS (calculatrice-calendrier.js).
+_JPM_AGRICOLE = [31, 31, 30, 31, 30, 31, 31, 28, 31, 30, 31, 30]
+
+
+def _jjmm_to_jour_agricole(s: str) -> int:
+    """Convertit 'JJ/MM' en index de jour de l'annee agricole (0 = 1er juillet).
+    Sert a comparer des dates dans l'ordre juil->juin (ex bornage min/max)."""
+    jour, mois = s.split("/")
+    j, m = int(jour), int(mois)
+    mois_agr = (m - 7 + 12) % 12
+    return sum(_JPM_AGRICOLE[:mois_agr]) + (j - 1)
+
+
 # ─── Coherence type / regime par periode ────────────────────────────────────
 
 
@@ -570,6 +584,34 @@ def _check_calculatrice(arbre: dict) -> list[str]:
                     f"[calculatrice] regle '{rid}' input #{i} : "
                     f"`label_court` doit etre une chaine non vide "
                     f"si present (recu {label_court!r})."
+                )
+            # Bornage optionnel min/max (cf. #126). Dates JJ/MM valides ; si les
+            # deux sont presents, min doit preceder max dans l'ordre annee
+            # agricole (juil->juin), sinon la fenetre de saisie serait vide.
+            for borne_nom in ("min", "max"):
+                bval = inp.get(borne_nom)
+                if bval is not None and (
+                    not isinstance(bval, str)
+                    or not DATE_FIXE_RE.match(bval)
+                    or not _is_valid_date(bval)
+                ):
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' input #{i} : "
+                        f"`{borne_nom}` doit etre une date JJ/MM valide "
+                        f"(recu {bval!r})."
+                    )
+            bmin, bmax = inp.get("min"), inp.get("max")
+            if (
+                isinstance(bmin, str)
+                and isinstance(bmax, str)
+                and _is_valid_date(bmin)
+                and _is_valid_date(bmax)
+                and _jjmm_to_jour_agricole(bmin) > _jjmm_to_jour_agricole(bmax)
+            ):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `min` ({bmin}) "
+                    f"doit preceder `max` ({bmax}) dans l'annee agricole "
+                    f"(juil->juin) -- sinon la fenetre de saisie est vide."
                 )
         # Regle 3 : unicite des ids
         if len(input_ids) != len(set(input_ids)):

@@ -1029,3 +1029,47 @@ def test_calculatrice_deux_periodes_conditions_complementaires_passent():
         },
     ]
     validate_arbre(_arbre_avec_calculatrice(r))
+
+
+# ─── Bornage min/max des inputs date (#126) ─────────────────────────────────
+
+
+def test_calculatrice_input_max_valide_passe():
+    """Un input date avec max=31/12 (couvert recolte avant 31/12) passe."""
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["max"] = "31/12"
+    validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_input_min_valide_passe():
+    """Un input date avec min=01/01 (couvert recolte apres 01/01) passe."""
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["min"] = "01/01"
+    validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_input_max_date_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["max"] = "99/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("max" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_min_apres_max_echoue():
+    """min doit preceder max dans l'annee agricole (juil->juin)."""
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["min"] = "01/02"
+    r["inputs_requis"][1]["max"] = "31/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("min" in e and "max" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_min_max_meme_annee_agricole_ok():
+    """15/12 (min) -> 15/01 (max) : valide car dec precede jan en annee
+    agricole (la fenetre n'est pas vide)."""
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["min"] = "15/12"
+    r["inputs_requis"][1]["max"] = "15/01"
+    validate_arbre(_arbre_avec_calculatrice(r))

@@ -274,7 +274,12 @@ class RegleForm(_BaseYamlForm):
             label_court = (data.get(f"inputs_requis-{i}-label_court") or "").strip()
             itype = (data.get(f"inputs_requis-{i}-type") or "").strip()
             placeholder = (data.get(f"inputs_requis-{i}-placeholder") or "").strip()
-            if not (iid or label or label_court or itype or placeholder):
+            # Bornage optionnel (#126) : limites de saisie JJ/MM.
+            bmin = (data.get(f"inputs_requis-{i}-min") or "").strip()
+            bmax = (data.get(f"inputs_requis-{i}-max") or "").strip()
+            if not (
+                iid or label or label_court or itype or placeholder or bmin or bmax
+            ):
                 continue
             entry: dict = {}
             if iid:
@@ -287,6 +292,10 @@ class RegleForm(_BaseYamlForm):
                 entry["type"] = itype
             if placeholder:
                 entry["placeholder"] = placeholder
+            if bmin:
+                entry["min"] = bmin
+            if bmax:
+                entry["max"] = bmax
             out.append(entry)
         return out
 

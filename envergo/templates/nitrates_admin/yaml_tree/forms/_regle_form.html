@@ -279,6 +279,28 @@
                                style="max-width:10ch">
                       </label>
                     </div>
+                    {# Bornage saisie (#126) : min/max JJ/MM. Ex couvert recolte
+                       avant 31/12 -> max 31/12 ; apres 01/01 -> min 01/01. #}
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>min (JJ/MM)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-min"
+                               value="{{ inp.min|default_if_none:'' }}"
+                               placeholder="01/01"
+                               pattern="^\d{2}/\d{2}$"
+                               style="max-width:10ch">
+                      </label>
+                      <label class="yaml-tree__form-label">
+                        <span>max (JJ/MM)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-max"
+                               value="{{ inp.max|default_if_none:'' }}"
+                               placeholder="31/12"
+                               pattern="^\d{2}/\d{2}$"
+                               style="max-width:10ch">
+                      </label>
+                    </div>
                     {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
                     <input type="hidden"
                            name="inputs_requis-{{ forloop.counter0 }}-type"
@@ -340,6 +362,26 @@
                            name="inputs_requis-__IDX__-placeholder"
                            value=""
                            placeholder="25/07"
+                           pattern="^\d{2}/\d{2}$"
+                           style="max-width:10ch">
+                  </label>
+                </div>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
+                    <span>min (JJ/MM)</span>
+                    <input type="text"
+                           name="inputs_requis-__IDX__-min"
+                           value=""
+                           placeholder="01/01"
+                           pattern="^\d{2}/\d{2}$"
+                           style="max-width:10ch">
+                  </label>
+                  <label class="yaml-tree__form-label">
+                    <span>max (JJ/MM)</span>
+                    <input type="text"
+                           name="inputs_requis-__IDX__-max"
+                           value=""
+                           placeholder="31/12"
                            pattern="^\d{2}/\d{2}$"
                            style="max-width:10ch">
                   </label>

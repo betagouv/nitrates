@@ -123,6 +123,14 @@ REGLE_SCHEMA = {
                             "label_court": {"type": "string"},
                             "type": {"enum": ["date"]},
                             "placeholder": {"type": "string"},
+                            # Bornage optionnel de la saisie (cf. #126). Dates
+                            # limites au format JJ/MM. `min` = date la plus tot
+                            # autorisee, `max` = la plus tard. Ex pour un couvert
+                            # recolte avant le 31/12 : max=31/12 ; recolte apres
+                            # le 01/01 : min=01/01. Comparaison en annee agricole
+                            # (juil->juin). Le front grise les dates hors borne.
+                            "min": {"type": "string", "pattern": r"^\d{2}/\d{2}$"},
+                            "max": {"type": "string", "pattern": r"^\d{2}/\d{2}$"},
                         },
                     },
                 ]

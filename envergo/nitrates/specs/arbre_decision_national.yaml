@@ -783,6 +783,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          max: 31/12
                         texte_condition: Autorisation dans les conditions de la note 1. Sinon interdiction du 15/12 au 15/01.
                         code_prescription: pc1
                       valeur: icpe_a
@@ -820,6 +821,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc3
                           valeur: true
                           libelle: Oui
@@ -882,6 +884,7 @@ arbre:
                         - id: date_destruction_couvert
                           type: date
                           label: D
+                          max: 31/12
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -923,6 +926,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc3
                           valeur: true
                           libelle: Oui
@@ -950,6 +954,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc4
                           valeur: false
                           libelle: Non
@@ -988,6 +993,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          max: 31/12
                         code_prescription: pc4
                       valeur: Non
                       libelle: Non concerné
@@ -1042,6 +1048,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc2
                           valeur: true
                           libelle: Oui
@@ -1071,6 +1078,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1118,6 +1126,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc3
                           valeur: true
                           libelle: Oui
@@ -1152,6 +1161,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc4
                           valeur: false
                           libelle: Non
@@ -1190,6 +1200,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          max: 31/12
                         code_prescription: pc4
                       valeur: non_concerne
                       libelle: Non concerné
@@ -1245,6 +1256,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc1
                           valeur: true
                           libelle: Oui
@@ -1290,6 +1302,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  max: 31/12
                                 code_prescription: pc2
                               valeur: true
                               libelle: Oui
@@ -1320,6 +1333,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  max: 31/12
                                 code_prescription: pc4
                               valeur: false
                               libelle: Non
@@ -1363,6 +1377,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc9
                           valeur: true
                           libelle: Oui
@@ -1408,6 +1423,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  max: 31/12
                                 code_prescription: pc3
                               valeur: true
                               libelle: Oui
@@ -1443,6 +1459,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  max: 31/12
                                 code_prescription: pc4
                               valeur: false
                               libelle: Non
@@ -1485,6 +1502,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc9
                           valeur: true
                           libelle: Oui
@@ -1520,6 +1538,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              max: 31/12
                             code_prescription: pc4
                           valeur: false
                           libelle: Non
@@ -1579,6 +1598,7 @@ arbre:
                           label: Date de destruction prévue du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          min: 01/01
                         texte_condition: Autorisé sous condition entre le 15/12 et le 15/01.
                         code_prescription: pc1
                       valeur: icpe_a
@@ -1616,6 +1636,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             code_prescription: pc3
                           valeur: true
                           libelle: Oui
@@ -1673,6 +1694,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          min: 01/01
                         texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
                         code_prescription: pc1
                       valeur: icpe_a
@@ -1710,6 +1732,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             code_prescription: pc3
                           valeur: true
                           libelle: Oui
@@ -1731,6 +1754,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             code_prescription: pc4
                           valeur: false
                           libelle: Non
@@ -1763,6 +1787,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          min: 01/01
                         code_prescription: pc4
                       valeur: Non
                       libelle: Non concerné
@@ -1807,6 +1832,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
                             code_prescription: pc2
                           valeur: true
@@ -1855,6 +1881,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
                             code_prescription: pc3
                           valeur: true
@@ -1877,6 +1904,7 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                              min: 01/01
                             texte_condition: Interdit du 15/11 au 15/01.
                             code_prescription: pc4
                           valeur: false
@@ -1902,6 +1930,7 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
+                          min: 01/01
                         texte_condition: Interdit du 15/11 au 15/01.
                         code_prescription: pc4
                       valeur: non_concerne
@@ -1954,6 +1983,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  min: 01/01
                                 texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
                                 code_prescription: pc1
                               valeur: true
@@ -1992,6 +2022,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
                                     code_prescription: pc2
                                   valeur: true
@@ -2045,6 +2076,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  min: 01/01
                                 texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
                                 code_prescription: pc1
                               valeur: true
@@ -2082,6 +2114,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
                                     code_prescription: pc2
                                   valeur: true
@@ -2163,6 +2196,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
                                     code_prescription: pc3
                                   valeur: true
@@ -2186,6 +2220,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Interdit du 15/10 au 15/01.
                                     code_prescription: pc4
                                   valeur: false
@@ -2248,6 +2283,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
                                     code_prescription: pc3
                                   valeur: true
@@ -2270,6 +2306,7 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 01/11
+                                      min: 01/01
                                     texte_condition: Interdit du 15/10 au 31/01.
                                     code_prescription: pc4
                                   valeur: false
@@ -2328,6 +2365,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  min: 01/01
                                 texte_condition: Interdit du 15/10 au 15/01.
                                 code_prescription: pc4
                               valeur: false
@@ -2372,6 +2410,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
+                                  min: 01/01
                                 texte_condition: Interdit du 15/10 au 31/01.
                                 code_prescription: pc4
                               valeur: false
