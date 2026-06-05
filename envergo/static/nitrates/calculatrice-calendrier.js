@@ -396,20 +396,28 @@
     `;
   }
 
-  function renderCalendrier(regimeParJour, actives) {
-    // Segments contigus de même régime. On ne génère une zone overlay
-    // QUE pour rouge/orange : le vert est le fond global de la barre.
-    const segmentsRaw = [];
+  // Segments contigus de meme regime, derives de regimeParJour. Source
+  // unique de verite pour la barre, les bornes ET le recap (ce qui s'applique
+  // REELLEMENT, masques resolus -- pas les periodes brutes).
+  function computeSegments(regimeParJour) {
+    const segments = [];
     let cur = { regime: regimeParJour[0], du: 0, au: 0 };
     for (let i = 1; i < TOTAL_JOURS; i++) {
       if (regimeParJour[i] === cur.regime) {
         cur.au = i;
       } else {
-        segmentsRaw.push(cur);
+        segments.push(cur);
         cur = { regime: regimeParJour[i], du: i, au: i };
       }
     }
-    segmentsRaw.push(cur);
+    segments.push(cur);
+    return segments;
+  }
+
+  function renderCalendrier(regimeParJour, actives) {
+    // On ne génère une zone overlay QUE pour rouge/orange : le vert est le
+    // fond global de la barre.
+    const segmentsRaw = computeSegments(regimeParJour);
 
     // Jours des dates saisies (semis/destruction) : a ces frontieres, c'est
     // le tick NOIR qui materialise la transition. On supprime alors la
@@ -956,41 +964,66 @@
     return `car ${gauche} est ${tournure} ${droite}`;
   }
 
-  function renderRecap(periodes) {
-    // Pour chaque période : phrase courte expliquant la fenêtre concrète.
-    // Periodes masque sans intersection : silencieux (cf. spec masque).
-    const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
-    const activeSet = activePeriodesSet();
-    const lignes = [];
-    for (const p of periodes || []) {
-      if (!activeSet.has(p)) continue;
+  // Trouve la periode active dont la fenetre EFFECTIVE recouvre ce segment,
+  // pour recuperer ses annotations (event+offset) et sa condition. On prefere
+  // la periode du meme regime que le segment, et celle dont la fenetre
+  // effective coincide le mieux avec le segment. Retourne null si aucune.
+  function periodeSourcePourSegment(segment, actives) {
+    let best = null;
+    for (const p of actives || []) {
       const regime = p.regime || "interdiction";
-      const verbe = REGIME_VERBE[regime] || regime;
-      const partDu = parseBorne(p.du, valeurs);
-      const partAu = parseBorne(p.au, valeurs);
-      // Dates affichees = fenetre EFFECTIVE (alignee sur la barre). Pour un
-      // masque, c'est l'intersection avec les principales (donc l'interdit
-      // "demarre au 15/10" et pas au semis) ; pour une principale, c'est sa
-      // fenetre brute. Les annotations event+offset restent calculees sur la
-      // borne brute (elles expriment la regle, pas la fenetre rendue).
-      const effective = effectivePeriodWindow(p);
-      const jourDu = effective ? effective.du : partDu.jour;
-      const jourAu = effective ? effective.au : partAu.jour;
-      const duStr = jourDu != null ? jourAgricoleToLisible(jourDu) : "?";
-      const auStr = jourAu != null ? jourAgricoleToLisible(jourAu) : "?";
-      const annDu = annoterBorne(partDu, "du", inputById);
-      const annAu = annoterBorne(partAu, "au", inputById);
-      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
-      const annotations = [annDu, annAu].filter(Boolean);
-      if (annotations.length > 0) {
-        ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
+      if (regime !== segment.regime) continue;
+      const eff = effectivePeriodWindow(p);
+      if (!eff) continue;
+      // Le segment doit etre inclus dans la fenetre effective de la periode.
+      const couvre = eff.du <= segment.du && eff.au >= segment.au;
+      if (!couvre) continue;
+      // Prefere la fenetre la plus serree autour du segment (source la plus
+      // specifique : un masque colle au segment plutot qu'une large principale).
+      const largeur = eff.au - eff.du;
+      if (best === null || largeur < best.largeur) {
+        best = { p, largeur };
       }
-      // Mention conditionnelle : si la periode n'est posee que sous condition
-      // (cf. spec_extension_grammaire_condition), on l'explicite a l'utilisateur
-      // pour qu'il comprenne POURQUOI cette fenetre s'applique a son cas.
-      const condTxt = conditionToText(p.condition, inputById);
-      if (condTxt) {
-        ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
+    }
+    return best ? best.p : null;
+  }
+
+  function renderRecap(regimeParJour, actives) {
+    // Le recap liste les SEGMENTS EFFECTIFS de la barre (ce qui s'applique
+    // REELLEMENT, masques resolus), pas les periodes brutes. Ainsi :
+    //   - une periode masque qui recouvre integralement une principale fait
+    //     disparaitre la ligne de cette principale (elle n'existe nulle part) ;
+    //   - les fenetres affichees == celles dessinees sur la barre.
+    // Pour chaque segment colore, on retrouve la periode source (meme regime,
+    // fenetre effective englobante) afin de garder l'annotation event+offset
+    // et la mention conditionnelle.
+    const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
+    const segments = computeSegments(regimeParJour);
+    const lignes = [];
+    for (const seg of segments) {
+      const regime = seg.regime;
+      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
+      const verbe = REGIME_VERBE[regime] || regime;
+      const duStr = jourAgricoleToLisible(seg.du);
+      // Borne droite affichee = dernier jour inclus du segment.
+      const auStr = jourAgricoleToLisible(seg.au);
+      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
+
+      const src = periodeSourcePourSegment(seg, actives);
+      if (src) {
+        const partDu = parseBorne(src.du, valeurs);
+        const partAu = parseBorne(src.au, valeurs);
+        const annotations = [
+          annoterBorne(partDu, "du", inputById),
+          annoterBorne(partAu, "au", inputById),
+        ].filter(Boolean);
+        if (annotations.length > 0) {
+          ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
+        }
+        const condTxt = conditionToText(src.condition, inputById);
+        if (condTxt) {
+          ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
+        }
       }
       lignes.push(`<li>${ligne}</li>`);
     }
@@ -1058,7 +1091,7 @@
       ${renderMiniForm()}
       ${renderCalendrier(regimeParJour, actives)}
       ${renderLegende(regimeParJour)}
-      ${renderRecap(actives)}
+      ${renderRecap(regimeParJour, actives)}
     `;
     layoutBornesRows();
     bindInputs();
@@ -1122,6 +1155,28 @@
     // (label ~16px + maxRow*18px + petite marge) pour ne pas deborder sur
     // la legende, sans reserver d'espace vide quand peu de rows sont prises.
     container.style.height = `${20 + maxRow * ROW_STEP_PX + 8}px`;
+
+    // ── Pixel-snap des traits verticaux (::before) ──────────────────────
+    // Le trait fait 1px CSS mais sa position (left:% + translateX(-50%)) tombe
+    // a une fraction de pixel physique variable selon le jour -> l'anti-alias
+    // du navigateur le rend tantot net (1px), tantot etale (~2px), d'ou
+    // l'impression d'epaisseur differente entre semis et destruction.
+    // On corrige en nudgeant chaque label d'un sous-pixel pour que le CENTRE
+    // de son trait retombe pile sur la grille de pixels physiques (DPR).
+    const dpr = window.devicePixelRatio || 1;
+    for (const el of labels) {
+      el.style.marginLeft = "0px"; // reset avant mesure
+    }
+    for (const el of labels) {
+      const r = el.getBoundingClientRect();
+      const center = (r.left + r.right) / 2; // x physique du trait (px CSS)
+      // cible : centre du trait aligne sur une demi-grille physique pour que
+      // un trait de 1px CSS = exactement N px physiques nets.
+      const phys = center * dpr;
+      const snappedPhys = Math.round(phys - 0.5) + 0.5; // bord net pour largeur impaire
+      const deltaCss = (snappedPhys - phys) / dpr;
+      el.style.marginLeft = `${deltaCss.toFixed(3)}px`;
+    }
   }
 
   // ─── Tooltip JS instantane ─────────────────────────────────────────────
