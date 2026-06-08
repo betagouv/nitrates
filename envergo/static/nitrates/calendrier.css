@@ -623,6 +623,18 @@
   line-height: 1.35;
 }
 
+/* Note explicative permanente dans le date-picker quand l'input est borne
+   (#126) : explique pourquoi des jours sont grises, reliee a la variante
+   de couvert choisie en amont. */
+.calc-cal__picker-note {
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-default-grey, #ddd);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-mention-grey, #6b7280);
+}
+
 /* Tooltip JS instantane (cf. bindTooltips dans calculatrice-calendrier.js).
    Pinned en `position: fixed` (place via JS via window.scrollX/Y), apparait
    au mouseenter avec opacite 1 instantanee. */

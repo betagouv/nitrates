@@ -103,13 +103,34 @@
   function messageHorsBornes(inp, jjmm) {
     if (dansBornes(inp, jjmm)) return "";
     const lc = deduireLabelCourt(inp);
+    const d = (v) => jjmmLisible(v).replace(/\.$/, "");
     if (inp.max && !inp.min) {
-      return `La date de ${lc} doit être au plus tard le ${jjmmLisible(inp.max)} pour ce type de couvert.`;
+      return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
     }
     if (inp.min && !inp.max) {
-      return `La date de ${lc} doit être au plus tôt le ${jjmmLisible(inp.min)} pour ce type de couvert.`;
+      return `La date de ${lc} doit être au plus tôt le ${d(inp.min)} pour ce type de couvert.`;
     }
-    return `La date de ${lc} doit être comprise entre le ${jjmmLisible(inp.min)} et le ${jjmmLisible(inp.max)} pour ce type de couvert.`;
+    return `La date de ${lc} doit être comprise entre le ${d(inp.min)} et le ${d(inp.max)} pour ce type de couvert.`;
+  }
+
+  // Note explicative permanente affichee dans le date-picker quand l'input
+  // est borne. Explique POURQUOI certaines dates sont grisees, en reliant a
+  // la variante de couvert choisie en amont (#126). Retourne "" si pas de
+  // borne.
+  function messageBornePicker(inp) {
+    if (!inp || (!inp.min && !inp.max)) return "";
+    const lc = deduireLabelCourt(inp);
+    const intro = `D'après le type de couvert sélectionné, la ${lc}`;
+    // jjmmLisible retourne deja "31 déc." (point inclus) -> on strip pour ne
+    // pas doubler la ponctuation finale de la phrase.
+    const d = (jjmm) => jjmmLisible(jjmm).replace(/\.$/, "");
+    if (inp.max && !inp.min) {
+      return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
+    }
+    if (inp.min && !inp.max) {
+      return `${intro} intervient nécessairement à partir du ${d(inp.min)}.`;
+    }
+    return `${intro} doit être comprise entre le ${d(inp.min)} et le ${d(inp.max)}.`;
   }
 
   // "31/12" -> "31 déc." (via l'index agricole).
@@ -1415,6 +1436,7 @@
     // desactives dans la grille.
     const inpBorne = inputs.find((x) => x.id === inputEl.dataset.inputId);
 
+    const noteBorne = messageBornePicker(inpBorne);
     const popup = document.createElement("div");
     popup.className = "calc-cal__picker";
     popup.innerHTML = `
@@ -1427,6 +1449,7 @@
         <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
       </div>
       <div class="calc-cal__picker-grid" data-grid></div>
+      ${noteBorne ? `<p class="calc-cal__picker-note">${escapeHtml(noteBorne)}</p>` : ""}
     `;
 
     const moisLabel = popup.querySelector("[data-mois-label]");
