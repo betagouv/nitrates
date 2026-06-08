@@ -1230,15 +1230,76 @@
     for (const el of labels) {
       el.style.marginLeft = "0px"; // reset avant mesure
     }
+    // Cible de snap commune (tics ET bordures de zone) : on aligne un BORD de
+    // trait sur la grille de pixels physiques ENTIERS. Un trait de 1px CSS =
+    // DPR px physiques ; pour qu'il soit net (pas d'anti-alias), ses bords
+    // doivent tomber sur des entiers physiques. snapCss(x) renvoie le delta
+    // (px CSS) pour ramener le point x sur l'entier physique le plus proche.
+    // La MEME grille sert aux tics (centre du trait -> entier => bords sur
+    // entiers) et aux bordures de zone (bord de l'element -> entier), pour
+    // qu'un tic externe et la bordure interne du meme jour coincident pile.
+    const snapCss = (xCss) => {
+      const phys = xCss * dpr;
+      return (Math.round(phys) - phys) / dpr; // delta a appliquer
+    };
     for (const el of labels) {
       const r = el.getBoundingClientRect();
       const center = (r.left + r.right) / 2; // x physique du trait (px CSS)
-      // cible : centre du trait aligne sur une demi-grille physique pour que
-      // un trait de 1px CSS = exactement N px physiques nets.
-      const phys = center * dpr;
-      const snappedPhys = Math.round(phys - 0.5) + 0.5; // bord net pour largeur impaire
-      const deltaCss = (snappedPhys - phys) / dpr;
-      el.style.marginLeft = `${deltaCss.toFixed(3)}px`;
+      el.style.marginLeft = `${snapCss(center).toFixed(3)}px`;
+    }
+
+    // ── Pixel-snap des BORDURES de zone ─────────────────────────────────
+    // Les bordures gauche/droite des zones (border 1px) tombaient a position
+    // fractionnaire variable -> 1px CSS etale sur 2px physiques (plus epais
+    // que les tics) ET desaligne du tic externe du meme jour. On snappe le
+    // bord de chaque zone sur la MEME grille que les tics : la bordure
+    // devient nette et pile alignee avec le tic qui descend vers la date.
+    const bar = mount.querySelector(".calendrier-epandage__bar");
+    if (bar) {
+      const barRect = bar.getBoundingClientRect();
+      const zonesEl = [...bar.querySelectorAll(".calendrier-epandage__zone")];
+      // 1) Snap des bords de chaque zone sur la grille + reset des bordures.
+      const meta = []; // {z, leftPhys, rightPhys, rang}
+      const rangZone = (z) =>
+        TICK_PRIORITE[
+          (z.className.match(/--(rouge|orange|vert)/) || ["", "vert"])[1]
+        ] ?? -1;
+      for (const z of zonesEl) {
+        const r = z.getBoundingClientRect();
+        const dLeft = snapCss(r.left);
+        const dRight = snapCss(r.right);
+        z.style.left = `${(r.left - barRect.left + dLeft).toFixed(3)}px`;
+        z.style.width = `${(r.width - dLeft + dRight).toFixed(3)}px`;
+        z.style.borderLeftWidth = "";
+        z.style.borderRightWidth = "";
+        meta.push({
+          z,
+          leftPhys: (r.left + dLeft) * dpr,
+          rightPhys: (r.right + dRight) * dpr,
+          rang: rangZone(z),
+        });
+      }
+      // 2) Anti double-bord a une frontiere inter-zones (bord droit de A ==
+      //    bord gauche de B) : on ne garde QU'UNE bordure, celle de la zone
+      //    la PLUS RESTRICTIVE (rouge > orange). C'est le sens metier : une
+      //    frontiere ASC->interdit est une frontiere d'INTERDICTION (rouge),
+      //    pas d'autorisation. On supprime donc la bordure du cote le moins
+      //    restrictif.
+      for (let i = 0; i < meta.length; i++) {
+        for (let j = 0; j < meta.length; j++) {
+          if (i === j) continue;
+          if (Math.abs(meta[i].rightPhys - meta[j].leftPhys) < 1) {
+            // frontiere : zone i finit ou zone j commence.
+            if (meta[i].rang >= meta[j].rang) {
+              // i (>=) impose sa bordure droite -> on retire le bord gauche de j
+              meta[j].z.style.borderLeftWidth = "0px";
+            } else {
+              // j (plus restrictif) impose son bord gauche -> retire bord droit de i
+              meta[i].z.style.borderRightWidth = "0px";
+            }
+          }
+        }
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static nitrates_tags %}
 
 {% comment %}
 Container pour le composant calendrier dynamique (cf.
@@ -30,4 +30,4 @@ le JS resolve les bornes event+offset.
 
 {{ ev.regle.to_json_dict|json_script:"nitrates-calculatrice-data" }}
 
-<script defer src="{% static 'nitrates/calculatrice-calendrier.js' %}"></script>
+<script defer src="{% static_v 'nitrates/calculatrice-calendrier.js' %}"></script>

@@ -15,7 +15,11 @@
   --cal-rouge-fill: #ffe9e9;
   --cal-rouge-ink: #ce0500;
   --cal-orange-fill: #fef0e3;
-  --cal-orange-ink: #b34000;
+
+  /* Orange franc, distinct du rouge marianne (#ce0500). L'ancien #b34000
+     etait un orange brule trop proche du rouge -> frontieres ASC/interdit
+     indistinguables (cf. retour user). */
+  --cal-orange-ink: #ed6a1c;
   --cal-vert-fill: #dffee6;
   --cal-vert-ink: #18753c;
 }

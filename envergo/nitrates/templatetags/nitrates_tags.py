@@ -5,14 +5,41 @@ le type de la regle atteinte (interdiction rouge, libre vert, etc.) avec
 overlay des periodes specifiques tirees du YAML.
 """
 
+import os
 import re
 from datetime import date
 
 from django import template
+from django.conf import settings
+from django.contrib.staticfiles import finders
+from django.templatetags.static import static
 
 DATE_JJMM_RE = re.compile(r"^\d{2}/\d{2}$")
 
 register = template.Library()
+
+
+@register.simple_tag
+def static_v(path: str) -> str:
+    """Comme {% static %}, mais ajoute ?v=<mtime> en DEBUG pour casser le
+    cache navigateur du `<script>`/`<link>` en dev. Indispensable pour les
+    assets calendrier qu'on itere souvent : sans ca, le dev server + cache
+    du navigateur servent une version perimee malgre un hard-refresh
+    (cf. feedback_static_js_cache_dev). En prod, le ManifestStaticFilesStorage
+    hashe deja les URLs -> ce tag retombe sur l'URL hashee, le ?v est inutile
+    mais inoffensif (on ne l'ajoute qu'en DEBUG)."""
+    url = static(path)
+    if not settings.DEBUG:
+        return url
+    try:
+        abs_path = finders.find(path)
+        if abs_path and os.path.exists(abs_path):
+            mtime = int(os.path.getmtime(abs_path))
+            sep = "&" if "?" in url else "?"
+            return f"{url}{sep}v={mtime}"
+    except Exception:
+        pass
+    return url
 
 
 @register.filter
