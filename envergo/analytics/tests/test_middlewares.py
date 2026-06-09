@@ -3,6 +3,15 @@ from django.urls import reverse
 
 pytestmark = pytest.mark.django_db
 
+# Tests upstream Envergo : la home '/' et les vues analytics ne sont pas
+# routées comme chez Envergo dans le contexte nitrates (redirection vers
+# login / NoReverseMatch oidc_authentication_init si ProConnect desactive).
+# Hors scope du fork -- a rejouer au merge upstream.
+_UPSTREAM_SKIP = pytest.mark.skip(
+    reason="REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO: vues home/analytics non "
+    "routées par le contexte nitrates (redirection / NoReverseMatch oidc)."
+)
+
 
 @pytest.fixture(autouse=True)
 def autouse_site(site):
@@ -40,6 +49,7 @@ def test_visitor_cookie_deactivation(client):
     assert request.COOKIES["visitorid"] == ""
 
 
+@_UPSTREAM_SKIP
 def test_no_analytics_values(client):
     res = client.get("/", follow=True)
     assert res.status_code == 200
@@ -52,6 +62,7 @@ def test_no_analytics_values(client):
     assert "mtm_kwd" not in session
 
 
+@_UPSTREAM_SKIP
 def test_analytics_values_storage(client):
     res = client.get("/?mtm_campaign=campaign&mtm_source=source", follow=True)
     assert res.status_code == 200
@@ -77,6 +88,7 @@ def test_analytics_values_storage(client):
     assert "toto" not in session
 
 
+@_UPSTREAM_SKIP
 def test_analytics_values_url_parameters_cleanup(client):
     res = client.get(
         "/?mtm_campaign=campaign&mtm_source=source",
@@ -108,6 +120,7 @@ def test_analytics_values_url_parameters_cleanup(client):
     assert res.redirect_chain[0][0] == "/?mtm_toto=toto&test1=test1"
 
 
+@_UPSTREAM_SKIP
 def test_analytics_from_outside_are_not_cleaned(client):
 
     # Visit from outside link, no url cleanup
@@ -122,6 +135,7 @@ def test_analytics_from_outside_are_not_cleaned(client):
     assert res.status_code == 200
 
 
+@_UPSTREAM_SKIP
 def test_analytics_empty_values(client):
     res = client.get("/?mtm_campaign=", follow=True, HTTP_REFERER="http://testserver/")
     assert res.status_code == 200
