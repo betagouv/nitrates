@@ -1073,3 +1073,91 @@ def test_calculatrice_input_min_max_meme_annee_agricole_ok():
     r["inputs_requis"][1]["min"] = "15/12"
     r["inputs_requis"][1]["max"] = "15/01"
     validate_arbre(_arbre_avec_calculatrice(r))
+
+
+# ─── Noeuds catalogue_parametre (#128) ──────────────────────────────────────
+
+
+def _arbre_avec_catalogue_parametre(noeud_cp: dict) -> dict:
+    """Enveloppe un noeud catalogue_parametre comme racine d'arbre valide."""
+    return {"metadata": {"version": "test"}, "arbre": {"noeud": noeud_cp}}
+
+
+def _catalogue_parametre_valide() -> dict:
+    return {
+        "type_noeud": "catalogue_parametre",
+        "id": "q_origine",
+        "champ": "effluent_peu_charge_elevage",
+        "branches": [
+            {
+                "expression": "sous_fertilisant == 'effluents_peu_charges_elevage'",
+                "valeur": True,
+                "regle": {"id": "r_oui", "type": "interdiction"},
+            },
+            {
+                "expression": "True",
+                "valeur": False,
+                "regle": {"id": "r_non", "type": "libre"},
+            },
+        ],
+    }
+
+
+def test_catalogue_parametre_valide_passe():
+    validate_arbre(_arbre_avec_catalogue_parametre(_catalogue_parametre_valide()))
+
+
+def test_catalogue_parametre_sans_expression_echoue():
+    noeud = _catalogue_parametre_valide()
+    # 1re branche : on retire l'expression, on met une valeur seule.
+    del noeud["branches"][0]["expression"]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_catalogue_parametre(noeud))
+    assert any("expression" in e for e in exc.value.errors)
+
+
+def test_catalogue_parametre_expression_vide_echoue():
+    noeud = _catalogue_parametre_valide()
+    noeud["branches"][0]["expression"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_catalogue_parametre(noeud))
+    assert any("catalogue_parametre" in e for e in exc.value.errors)
+
+
+def test_catalogue_parametre_syntaxe_invalide_echoue():
+    noeud = _catalogue_parametre_valide()
+    noeud["branches"][0]["expression"] = "sous_fertilisant =="
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_catalogue_parametre(noeud))
+    assert any("syntaxe" in e.lower() for e in exc.value.errors)
+
+
+def test_catalogue_parametre_dunder_rejete_a_la_validation():
+    """Securite : une expression avec attribut dunder est refusee a la
+    validation de l'arbre (pas seulement au runtime)."""
+    noeud = _catalogue_parametre_valide()
+    noeud["branches"][0]["expression"] = "().__class__.__bases__"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_catalogue_parametre(noeud))
+    assert any("interdit" in e.lower() or "__" in e for e in exc.value.errors)
+
+
+def test_catalogue_parametre_valeur_bool_n_exige_pas_exhaustivite():
+    """Un noeud catalogue_parametre avec valeurs true/false ne doit PAS
+    declencher le check d'exhaustivite booleenne (il route par expression,
+    le couple true/false n'est que tracabilite). Ici une seule branche true
+    suffit a passer."""
+    noeud = {
+        "type_noeud": "catalogue_parametre",
+        "id": "q_x",
+        "champ": "origine",
+        "branches": [
+            {
+                "expression": "True",
+                "valeur": True,
+                "regle": {"id": "r_seul", "type": "libre"},
+            },
+        ],
+    }
+    # Ne leve pas (pas d'erreur d'exhaustivite reclamant la branche false).
+    validate_arbre(_arbre_avec_catalogue_parametre(noeud))

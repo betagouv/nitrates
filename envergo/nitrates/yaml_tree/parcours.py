@@ -25,6 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from envergo.nitrates.yaml_tree.expression import evaluer_expression
+
 
 @dataclass
 class Resultat:
@@ -194,6 +196,15 @@ def _descendre(
     chemin = chemin + [noeud["id"]]
     type_noeud = noeud.get("type_noeud")
     champ = noeud["champ"]
+
+    # Noeud catalogue parametre (cf. issue #128) : le branchement ne se fait
+    # PAS par lecture de contexte.get(champ) mais par evaluation d'une
+    # expression Python par branche (premiere vraie l'emporte). On le traite
+    # avant la lecture de `valeur` car `champ` n'est ici qu'un nom logique de
+    # sortie (trace), pas une cle de routage.
+    if type_noeud == "catalogue_parametre":
+        return _resoudre_catalogue_parametre(noeud, contexte, chemin, index_ids)
+
     valeur = contexte.get(champ)
 
     if valeur is None:
@@ -239,10 +250,51 @@ def _descendre_branche(
         # Si la cible est un noeud (sous-arbre reutilisable), on re-descend
         # dedans avec le meme contexte. Sinon (cible = regle), on retourne
         # directement le resultat.
-        if cible.get("type_noeud") in ("formulaire", "catalogue"):
+        if cible.get("type_noeud") in (
+            "formulaire",
+            "catalogue",
+            "catalogue_parametre",
+        ):
             return _descendre(cible, contexte, new_chemin, index_ids)
         return _faire_resultat(cible, new_chemin)
     raise ParcoursError(f"branche sans noeud/regle/renvoi_vers : {branche!r}")
+
+
+def _resoudre_catalogue_parametre(
+    noeud: dict,
+    contexte: dict[str, Any],
+    chemin: list[str],
+    index_ids: dict[str, dict],
+) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
+    """Resout un noeud `catalogue_parametre` (issue #128).
+
+    On evalue l'`expression` de chaque branche dans l'ordre, en sandbox
+    (cf. expression.evaluer_expression). La PREMIERE expression vraie
+    l'emporte : on ecrit la `valeur` de la branche dans le contexte sous la
+    cle `champ` du noeud (tracabilite + coherence avec les catalogues
+    classiques, cf. spec #128 §4) puis on descend dedans.
+
+    Aucune notion de branche `defaut` : si aucune expression n'est vraie, le
+    parcours leve ParcoursError (l'arbre doit couvrir tous les cas via ses
+    expressions ; un juriste qui veut un fallback ecrit `expression: "True"`
+    en derniere branche). L'evaluateur retombe alors sur `non_disponible`.
+    """
+    champ = noeud["champ"]
+    for branche in noeud.get("branches", []):
+        expression = branche.get("expression")
+        if evaluer_expression(expression, contexte):
+            # Trace : la valeur resolue devient lisible dans le contexte
+            # (debug, mini-app de validation). N'influe pas sur le routage.
+            if "valeur" in branche:
+                contexte[champ] = branche["valeur"]
+            return _descendre_branche(branche, contexte, chemin, index_ids)
+
+    expressions = [b.get("expression") for b in noeud.get("branches", [])]
+    raise ParcoursError(
+        f"noeud catalogue_parametre '{noeud['id']}' (champ={champ!r}) : "
+        f"aucune expression vraie pour le contexte courant. "
+        f"Expressions evaluees : {expressions}"
+    )
 
 
 def _choisir_branche(noeud: dict, valeur: Any) -> dict:
@@ -588,6 +640,27 @@ def _suivre_chemin_pour_qc(
 
     type_noeud = noeud.get("type_noeud")
     champ = noeud.get("champ")
+
+    # Noeud catalogue parametre : pas une QC (aucune question posee). On suit
+    # la branche dont l'expression est vraie pour continuer a collecter les QC
+    # en aval, sans rien ajouter ici.
+    if type_noeud == "catalogue_parametre":
+        for branche in noeud.get("branches", []):
+            if evaluer_expression(branche.get("expression"), contexte):
+                if "noeud" in branche:
+                    _suivre_chemin_pour_qc(
+                        branche["noeud"], contexte, index_ids, qc, visites
+                    )
+                elif "renvoi_vers" in branche:
+                    cible = index_ids.get(branche["renvoi_vers"])
+                    if cible and cible.get("type_noeud") in (
+                        "formulaire",
+                        "catalogue",
+                        "catalogue_parametre",
+                    ):
+                        _suivre_chemin_pour_qc(cible, contexte, index_ids, qc, visites)
+                return
+        return
 
     # QC = formulaire de niveau complement. On les collecte (repondues ou pas).
     if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
