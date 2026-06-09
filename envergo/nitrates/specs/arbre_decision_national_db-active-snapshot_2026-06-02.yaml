@@ -1,0 +1,2489 @@
+arbre:
+  noeud:
+    id: n_zvn
+    champ: en_zone_vulnerable
+    source: sig
+    branches:
+    - regle:
+        id: r_hors_zvn
+        type: non_applicable
+        message: La parcelle n'est pas en zone vulnérable aux nitrates. La réglementation nitrates ne s'applique pas.
+      valeur: false
+      libelle: Non
+    - noeud:
+        id: q_occupation_sol
+        champ: occupation_sol
+        texte: Est-ce que la culture en place est une culture principale ou un couvert végétal d'interculture ?
+        niveau: culture
+        branches:
+        - regle:
+            id: r_sol_non_cultive
+            type: interdiction
+            message: Épandage interdit toute l'année sur sol non cultivé.
+            periodes:
+            - au: 30/06
+              du: 01/07
+          valeur: sol_non_cultive
+          libelle: Sol non cultivé
+        - noeud:
+            id: q_culture_principale_type
+            champ: sous_culture
+            texte: Quelle culture principale ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_colza_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_colza_type_0
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/12
+                  valeur: type_0
+                - regle:
+                    id: r_colza_type_I
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/11
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - noeud:
+                    id: n_colza_type_II_zone_note_5
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_colza_type_II_note5
+                        note: note_5
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/10
+                      valeur: true
+                      libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                    - regle:
+                        id: r_colza_type_II_autres
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 15/10
+                      valeur: false
+                      libelle: Pas concerné par la note 5
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_II
+                - noeud:
+                    id: n_colza_type_III_zone_note_5
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_colza_type_III_note5
+                        note: note_5
+                        type: mixte
+                        periodes:
+                        - au: 15/10
+                          du: 01/09
+                          regime: autorisation_sous_condition
+                        - au: 15/01
+                          du: 15/10
+                          regime: interdiction
+                        code_prescription: pc11
+                      valeur: true
+                      libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                    - regle:
+                        id: r_colza_type_III_autres
+                        type: mixte
+                        periodes:
+                        - au: 15/10
+                          du: 01/09
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 01/09
+                          regime: interdiction
+                        code_prescription: pc11
+                      valeur: false
+                      libelle: Pas concerné par la note 5
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: colza
+              libelle: Colza
+            - noeud:
+                id: q_hiver_hors_colza_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_hiver_hors_colza_type_0
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/12
+                  valeur: type_0
+                - regle:
+                    id: r_hiver_hors_colza_type_I
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/11
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - noeud:
+                    id: n_hiver_hors_colza_type_II_zone_note_5
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_hiver_hors_colza_type_II_note5
+                        note: note_5
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/10
+                      valeur: true
+                      libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                    - regle:
+                        id: r_hiver_hors_colza_type_II_autres
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/10
+                      valeur: false
+                      libelle: Pas concerné par la note 5
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_II
+                - noeud:
+                    id: n_hiver_hors_colza_type_III_zone_note_5
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_hiver_hors_colza_type_III_note5
+                        note: note_5
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/09
+                      valeur: true
+                      libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                    - regle:
+                        id: r_hiver_hors_colza_type_III_autres
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/09
+                      valeur: false
+                      libelle: Pas concerné par la note 5
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: culture_hiver_hors_colza
+              libelle: Culture d'hiver autre que colza
+            - noeud:
+                id: q_printemps_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_printemps_type_0
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/12
+                  valeur: type_0
+                - regle:
+                    id: r_printemps_type_Ia
+                    type: interdiction
+                    periodes:
+                    - au: 31/08
+                      du: 01/07
+                    - au: 15/01
+                      du: 15/11
+                  valeur: type_Ia
+                - regle:
+                    id: r_printemps_type_Ib
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 01/07
+                  valeur: type_Ib
+                - noeud:
+                    id: q_printemps_II_fertirrigation
+                    aide: ''
+                    champ: fertirrigation
+                    texte: Épandez-vous des effluents peu chargés en fertirrigation ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_printemps_II_fertirrig
+                        type: mixte
+                        periodes:
+                        - au: 31/08
+                          du: 01/07
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 31/08
+                          regime: interdiction
+                        code_prescription: pc6
+                      valeur: true
+                      libelle: Oui
+                    - regle:
+                        id: r_printemps_II_sans_fertirrig
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/07
+                      valeur: false
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_II
+                - noeud:
+                    id: q_printemps_III_irriguee
+                    champ: culture_irriguee
+                    texte: Culture irriguée ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_printemps_III_irriguee_culture
+                        champ: culture_irriguee_type
+                        texte: Quelle culture irriguée ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_printemps_III_mais_irrigue
+                            type: mixte
+                            message: Sur maïs irrigué, le début de lapériode d'interdiction (15 juillet) peut être décalé jusqu'au stade dubrunissement des soies si celui-cisurvient après cette date.
+                            periodes:
+                            - au: 15/02
+                              du: 15/07
+                              regime: interdiction
+                            - au: brunissement_des_soies
+                              du: 15/07
+                              regime: autorisation_sous_condition
+                            code_prescription: pc5
+                          valeur: mais
+                          libelle: Maïs
+                        - regle:
+                            id: r_printemps_III_autre_irrigue
+                            type: interdiction
+                            periodes:
+                            - au: 15/02
+                              du: 15/07
+                            code_prescription: pc5
+                          valeur: autre
+                          libelle: Autre culture irriguée
+                        type_noeud: formulaire
+                      valeur: true
+                      libelle: Oui
+                    - regle:
+                        id: r_printemps_III_non_irrigue
+                        type: interdiction
+                        periodes:
+                        - au: 15/02
+                          du: 01/07
+                      valeur: false
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: culture_printemps
+              libelle: Culture de printemps
+            - noeud:
+                id: q_prairie_plus6_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_prairie_plus6_type_0_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: Votre plan d'épandage est-il soumis à autorisation?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_prairie_plus_6_type_0_icpe_a
+                        type: autorisation_sous_condition
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                        texte_condition: Autorisé sous condition entre le 15/12 et le 15/01 (ICPE A).
+                        code_prescription: pc1
+                      valeur: icpe_a
+                      libelle: Oui
+                    - regle:
+                        id: r_prairie_plus_6_type_0
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                      valeur: autre
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_0
+                - regle:
+                    id: r_prairie_plus_6_type_I
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/12
+                    code_prescription: pc4
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - noeud:
+                    id: q_prairie_plus6_II_effluent
+                    aide: ''
+                    champ: effluent_peu_charge
+                    texte: S'agit-il d'un effluent peu chargé?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_prairie_plus_6_type_II_peu_charge
+                        type: autorisation_sous_condition
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                        code_prescription: pc7
+                      valeur: true
+                      libelle: Oui
+                    - regle:
+                        id: r_prairie_plus_6_type_II
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                        code_prescription: pc4
+                      valeur: false
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_II
+                - noeud:
+                    id: n_prairie_plus6_III_zonage
+                    champ: zonage_prairie_III
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_prairie_plus_6_type_III_montagne_note7
+                        note: note_7
+                        type: interdiction
+                        periodes:
+                        - au: 15/02
+                          du: 01/10
+                      valeur: montagne_note_7
+                      libelle: Zone montagne (D113-14) — PACA, Occitanie, Pyrénées-Atlantiques (64) (Note 7)
+                    - regle:
+                        id: r_prairie_plus_6_type_III_montagne_note6
+                        note: note_6
+                        type: interdiction
+                        periodes:
+                        - au: 28/02
+                          du: 01/10
+                      valeur: montagne_note_6
+                      libelle: Zone montagne (D113-14) — autre région/département (Note 6)
+                    - regle:
+                        id: r_prairie_plus_6_type_III
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/10
+                      valeur: non_montagne
+                      libelle: Hors zone montagne
+                    reference: zonage_prairie_III
+                    type_noeud: catalogue
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: prairie_plus_6_mois
+              libelle: Prairies implantées depuis plus de six mois (dont prairie permanente)
+            - noeud:
+                id: q_luzerne_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - valeur: type_0
+                  renvoi_vers: q_prairie_plus6_type_0_icpe
+                - noeud:
+                    id: q_luzerne_I_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: Votre plan d'épandage est-il soumis à autorisation?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_luzerne_I_icpe_a_iaa
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_luzerne_I_icpe_a_iaa
+                            type: mixte
+                            periodes:
+                            - au: 15/01
+                              du: 15/12
+                              regime: interdiction
+                            - au: 15/01
+                              du: derniere_coupe_luzerne
+                              regime: autorisation_sous_condition
+                            composant: luzerne_post_coupe
+                            parametres:
+                              note: note_12
+                              code_prescription: pc10
+                              texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/12 au 15/01.
+                              periode_reglementaire:
+                                au: 15/01
+                                du: 15/12
+                            inputs_requis:
+                            - date_derniere_coupe_luzerne
+                            code_prescription: pc10
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_luzerne_I_icpe_a_sans_iaa
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/12
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui
+                    - regle:
+                        id: r_luzerne_I_autre
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                      valeur: autre
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_I
+                - noeud:
+                    id: q_luzerne_II_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: Votre plan d'épandage est-il soumis à autorisation?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_luzerne_II_icpe_a_iaa
+                        aide: ''
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_luzerne_II_icpe_a_iaa
+                            type: mixte
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: 15/01
+                              du: derniere_coupe_luzerne
+                              regime: autorisation_sous_condition
+                            composant: luzerne_post_coupe
+                            parametres:
+                              note: note_12
+                              code_prescription: pc10
+                              texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/11 au 15/01.
+                              periode_reglementaire:
+                                au: 15/01
+                                du: 15/11
+                            inputs_requis:
+                            - date_derniere_coupe_luzerne
+                            code_prescription: pc10
+                          valeur: true
+                          libelle: Oui
+                        - valeur: false
+                          libelle: Non
+                          renvoi_vers: q_prairie_plus6_II_effluent
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui
+                    - valeur: autre
+                      libelle: Non
+                      renvoi_vers: q_prairie_plus6_II_effluent
+                    type_noeud: formulaire
+                  valeur: type_II
+                - noeud:
+                    id: q_luzerne_III_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: Votre plan d'épandage est-il soumis à autorisation?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_luzerne_III_icpe_a_iaa
+                        aide: ''
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux?
+                        niveau: complement
+                        branches:
+                        - noeud:
+                            id: n_luzerne_III_iaa_montagne_d113_14
+                            champ: zone_montagne_d113_14
+                            source: sig
+                            branches:
+                            - noeud:
+                                id: n_luzerne_III_iaa_montagne_zonage
+                                champ: zonage_montagne_regional
+                                source: sig
+                                branches:
+                                - regle:
+                                    id: r_luzerne_III_iaa_montagne_note7
+                                    type: mixte
+                                    periodes:
+                                    - au: 15/02
+                                      du: 01/10
+                                      regime: interdiction
+                                    - au: 31/12
+                                      du: derniere_coupe_luzerne
+                                      regime: autorisation_sous_condition
+                                    composant: luzerne_post_coupe
+                                    parametres:
+                                      note: note_7
+                                      code_prescription: pc10
+                                      texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 15/02.
+                                      periode_reglementaire:
+                                        au: 15/02
+                                        du: 01/10
+                                    inputs_requis:
+                                    - date_derniere_coupe_luzerne
+                                    code_prescription: pc10
+                                  valeur: note_7
+                                  libelle: Note 7 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                                - regle:
+                                    id: r_luzerne_III_iaa_montagne_note6
+                                    type: mixte
+                                    periodes:
+                                    - au: 28/02
+                                      du: 01/10
+                                      regime: interdiction
+                                    - au: 31/12
+                                      du: derniere_coupe_luzerne
+                                      regime: autorisation_sous_condition
+                                    composant: luzerne_post_coupe
+                                    parametres:
+                                      note: note_6
+                                      code_prescription: pc10
+                                      texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 28/02.
+                                      periode_reglementaire:
+                                        au: 28/02
+                                        du: 01/10
+                                    inputs_requis:
+                                    - date_derniere_coupe_luzerne
+                                    code_prescription: pc10
+                                  valeur: note_6
+                                  libelle: Note 6 — Autre région et/ou département en zone montagne
+                                reference: zone_note_7_vs_note_6
+                                type_noeud: catalogue
+                              valeur: true
+                              libelle: Îlot en zone montagne (article D113-14)
+                            - regle:
+                                id: r_luzerne_III_iaa_non_montagne
+                                type: mixte
+                                periodes:
+                                - au: 31/01
+                                  du: 01/10
+                                  regime: interdiction
+                                - au: 31/12
+                                  du: derniere_coupe_luzerne
+                                  regime: autorisation_sous_condition
+                                composant: luzerne_post_coupe
+                                parametres:
+                                  code_prescription: pc10
+                                  texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 31/01.
+                                  periode_reglementaire:
+                                    au: 31/01
+                                    du: 01/10
+                                inputs_requis:
+                                - date_derniere_coupe_luzerne
+                                code_prescription: pc10
+                              valeur: false
+                              libelle: Non — pas en zone montagne
+                            reference: zone_montagne_d113_14
+                            type_noeud: catalogue
+                          valeur: true
+                          libelle: Oui
+                        - valeur: false
+                          libelle: Non
+                          renvoi_vers: n_prairie_plus6_III_zonage
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui
+                    - valeur: autre
+                      libelle: Non
+                      renvoi_vers: n_prairie_plus6_III_zonage
+                    type_noeud: formulaire
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: luzerne
+              libelle: Luzerne
+            - regle:
+                id: r_autres_cultures_tous_types
+                type: interdiction
+                periodes:
+                - au: 15/01
+                  du: 15/12
+              valeur: autres_cultures
+              libelle: Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)
+            type_noeud: formulaire
+          valeur: culture_principale
+          libelle: Culture principale
+        - noeud:
+            id: q_couvert_sous_culture
+            champ: sous_culture
+            texte: Quel type de couvert d'interculture ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_cie_avant_3112_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - valeur: type_0
+                  renvoi_vers: q_cine_avant_3112_type_0_icpe
+                - valeur: type_Ia
+                  renvoi_vers: q_cine_avant_3112_type_Ia_icpe
+                - valeur: type_Ib
+                  renvoi_vers: q_cine_avant_3112_type_Ib_icpe
+                - valeur: type_II
+                  renvoi_vers: q_cine_avant_3112_type_II_icpe
+                - regle:
+                    id: r_cie_avant_3112_type_III
+                    type: calculatrice
+                    texte: Interdit avant le semis et à partir de 15 jours après le semis jusqu'au 31 janvier.
+                    periodes:
+                    - au: date_semis_couvert
+                      du: 01/07
+                      regime: interdiction
+                    - au: 31/01
+                      du: date_semis_couvert+15jours
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: cie_avant_3112
+              libelle: CIE récolté avant le 31/12
+            - noeud:
+                id: q_cie_apres_0101
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - valeur: type_0
+                  renvoi_vers: q_cine_apres_0101_type_0_icpe
+                - valeur: type_Ia
+                  renvoi_vers: q_cine_apres_0101_type_Ia_icpe
+                - valeur: type_Ib
+                  renvoi_vers: q_cine_apres_0101_type_Ib_icpe
+                - valeur: type_II
+                  renvoi_vers: q_cine_apres_0101_type_II_icpe
+                - noeud:
+                    id: n_interculture_longue_type_cie_apres_0101_type_iii
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_true
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: date_semis_couvert+15jours
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                      valeur: true
+                      libelle: 'True'
+                    - regle:
+                        id: r_cie_apres_0101_interculture_longue_type_cie_apres_0101_type_iii_false
+                        type: calculatrice
+                        periodes:
+                        - au: 31/01
+                          du: date_semis_couvert+15jours
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                      valeur: false
+                      libelle: 'False'
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_III
+                  libelle: Type_III
+                type_noeud: formulaire
+              valeur: cie_apres_0101
+              libelle: Cie_apres_0101
+            - noeud:
+                id: q_cine_avant_3112_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cine_avant_3112_type_0_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_cine_avant_3112_type_0_icpe_a
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                          regime: autorisation_sous_condition
+                        - au: date_semis_couvert+4semaines
+                          du: date_semis_couvert
+                          masque: true
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        texte_condition: Autorisation dans les conditions de la note 1. Sinon interdiction du 15/12 au 15/01.
+                        code_prescription: pc1
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_0_icpe_icpe_ed_true
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/12
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_avant_3112_type_0_icpe_icpe_ed_false
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/12
+                            inputs_requis: []
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_avant_3112_fertilisant_cine_avant_3112_type_0_icpe_false
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                        inputs_requis: []
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_0
+                - noeud:
+                    id: q_cine_avant_3112_type_Ia_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_cine_avant_3112_type_Ia_icpe_a
+                        type: calculatrice
+                        texte: "Autorisé sous condition entre le 15/11 et le 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 15/01Dans cette période : Interdit avant 4 semaine après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert."
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: autorisation_sous_condition
+                        - au: date_semis_couvert+4semaines
+                          du: date_semis_couvert
+                          masque: true
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                          condition: date_destruction_couvert >= 05/12
+                        - au: 15/01
+                          du: date_destruction_couvert-20jours
+                          regime: autorisation_sous_condition
+                          condition: date_destruction_couvert < 05/12
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_cine_avant_3112_type_Ia_icpe_ed_q6
+                        champ: icpe_ed
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_ia_icpe_cine_avant_3112_type_ia_icpe_ed_q6_true
+                            type: calculatrice
+                            texte: "Autorisé sous condition entre le 15/11 et le 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 15/01Dans cette période : Interdit avant 4 semaine après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert."
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert >= 05/12
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_avant_3112_type_ia_icpe_cine_avant_3112_type_ia_icpe_ed_q6_false
+                            type: calculatrice
+                            texte: "Interdit du 15/11 jusqu'au 15/01. Si la date de destruction du couvert est plus tôt que le 5/12, Interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans la période d'interdiction : autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert."
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: date_destruction_couvert-20jours
+                              du: 15/11
+                              masque: true
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert >= 05/12
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc4
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_avant_3112_type_Ia_autre
+                        type: calculatrice
+                        texte: "Interdit du 15/11 jusqu'au 15/01.  Si la date de destruction du couvert est plus tôt que le 5/12, Interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans la période d'interdiction : autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert."
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        - au: date_destruction_couvert-20jours
+                          du: 15/11
+                          masque: true
+                          regime: autorisation_sous_condition
+                          condition: date_destruction_couvert >= 05/12
+                        - au: 15/01
+                          du: date_destruction_couvert
+                          regime: interdiction
+                          condition: date_destruction_couvert < 05/12
+                        composant: calendrier_dynamique_couvert
+                        parametres:
+                          note: note_3
+                          code_prescription: pc4
+                          texte_alternative: Interdiction dès 20 jours avant la destruction du CINE dans les conditions de la note 3 et sinon au plus tard le 15/11 jusqu'au 15/01.
+                          periode_reglementaire:
+                            au: 15/01
+                            du: 15/11
+                          delai_avant_destruction_jours: 20
+                        inputs_requis:
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription: pc4
+                      valeur: Non
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ia
+                - noeud:
+                    id: q_cine_avant_3112_type_Ib_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_cine_avant_3112_type_Ib_icpe_a_q6
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_Ib_icpe_a_q6_true
+                            type: calculatrice
+                            texte: Autorisé sous condition avant 15 jours avant l'implantation du couvert et entre le 15/11 et le 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans cette période, interdit avant 4 semaines après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert.
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert >= 05/12
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: autorisation_sous_condition
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc2
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_avant_3112_type_Ib_icpe_a_q6_false
+                            type: calculatrice
+                            texte: Pas d'apport avant 15 jours avant l'implantation du CINE. Puis interdit du 15/11 jusqu'au 15/01. Si la date de destruction du couvert est plus tôt que le 5/12, Interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01.
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_cine_avant_3112_type_Ib_icpe_ed_q6
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_Ib_icpe_ed_q6_true
+                            type: calculatrice
+                            texte: Autorisé sous condition avant 15 jours avant l'implantation du couvert et entre le 15/11 et le 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans cette période, interdit avant 4 semaines après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert.
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert >= 05/12
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: autorisation_sous_condition
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_avant_3112_type_Ib_icpe_ed_q6_false
+                            type: calculatrice
+                            texte: Pas d'apport avant 15 jours avant l'implantation du CINE. Puis interdit du 15/11 jusqu'au 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans la période d'interdiction, autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert.
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert >= 05/12
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              condition: date_destruction_couvert < 05/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc4
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_avant_3112_type_Ib_non_concerne
+                        type: calculatrice
+                        texte: Pas d'apport avant 15 jours avant l'implantation du CINE. Puis interdit du 15/11 jusqu'au 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans la période d'interdiction, autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert.
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: autorisation_sous_condition
+                          condition: date_destruction_couvert >= 05/12
+                        - au: date_semis_couvert
+                          du: date_semis_couvert-15jours
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                          condition: date_destruction_couvert < 05/12
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription: pc4
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                - noeud:
+                    id: q_cine_avant_3112_type_II_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_cine_avant_3112_type_II_icpe_a_effluent
+                        aide: ''
+                        champ: effluent_peu_charge
+                        texte: S'agit-il d'un effluent peu chargé ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_II_icpe_a_effluent_true
+                            type: calculatrice
+                            texte: Autorisé sous condition avant 15 jours avant l'implantation du couvert et entre le 15/10 et le 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 31/01. Dans cette période, interdit avant 4 semaines après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert.
+                            periodes:
+                            - au: 31/01
+                              du: 15/10
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert >= 04/11
+                            - au: 31/01
+                              du: date_destruction_couvert-20jours
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert < 04/11
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: autorisation_sous_condition
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc1
+                          valeur: true
+                          libelle: Oui
+                        - noeud:
+                            id: q_cine_avant_3112_type_II_icpe_a_q6
+                            champ: fertilisant_iaa
+                            texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_a_q6_true
+                                type: calculatrice
+                                texte: Autorisé sous condition avant 15 jours avant l'implantation du couvert et entre le 15/10 et le 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 31/01. Dans cette période, interdit avant 4 semaines après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert.
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: date_semis_couvert+4semaines
+                                  du: date_semis_couvert
+                                  masque: true
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: interdiction
+                                  condition: date_destruction_couvert >= 04/11
+                                - au: 31/01
+                                  du: date_destruction_couvert-20jours
+                                  regime: autorisation_sous_condition
+                                  condition: date_destruction_couvert < 04/11
+                                - au: date_semis_couvert
+                                  du: date_semis_couvert-15jours
+                                  regime: autorisation_sous_condition
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription: pc2
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_a_q6_false
+                                type: calculatrice
+                                texte: Pas d'apport avant 15 jours avant l'implantation du couvert. Puis interdit du 15/10 jusqu'au 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, interdit dès 20 jours avant la destruction du couvert jusqu'au 31/01.
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: interdiction
+                                - au: date_semis_couvert
+                                  du: date_semis_couvert-15jours
+                                  regime: interdiction
+                                - au: 31/01
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                  condition: date_destruction_couvert < 04/11
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription: pc4
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_cine_avant_3112_type_II_icpe_ed_effluent
+                        champ: effluent_peu_charge_elevage
+                        texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_II_icpe_ed_effluent_true
+                            type: calculatrice
+                            texte: Pas d'apport avant 15 jours avant l'implantation du couvert. Autorisé sous condition à partir du 15/10 jusqu'au 31/01. Pendant cette période, interdit à partir de 20 jours avant la récolte ou la destruction du couvert.
+                            periodes:
+                            - du: 15/10
+                              au: 31/01
+                              regime: autorisation_sous_condition
+                            - du: date_destruction_couvert-20jours
+                              au: date_destruction_couvert
+                              regime: interdiction
+                              masque: true
+                            - du: date_semis_couvert-15jours
+                              au: date_semis_couvert
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              label: Date de semis du couvert
+                              label_court: semis
+                              type: date
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              type: date
+                              placeholder: 01/11
+                            code_prescription: pc9
+                          valeur: true
+                          libelle: Oui
+                        - noeud:
+                            id: q_cine_avant_3112_type_II_icpe_ed_q6
+                            champ: fertilisant_iaa
+                            texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_ed_q6_true
+                                type: calculatrice
+                                texte: Autorisé sous condition avant 15 jours avant l'implantation du couvert et entre le 15/10 et le 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, autorisé sous condition dès 20 jours avant la destruction du couvert jusqu'au 31/01. Dans cette période, interdit avant 4 semaines après implantation du couvert et interdit à partir de 20j avant la récolte/destruction du couvert.
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: date_semis_couvert+4semaines
+                                  du: date_semis_couvert
+                                  masque: true
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: interdiction
+                                  condition: date_destruction_couvert >= 04/11
+                                - au: 31/01
+                                  du: date_destruction_couvert-20jours
+                                  regime: autorisation_sous_condition
+                                  condition: date_destruction_couvert < 04/11
+                                - au: date_semis_couvert
+                                  du: date_semis_couvert-15jours
+                                  regime: autorisation_sous_condition
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription: pc3
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_ed_q6_false
+                                type: calculatrice
+                                texte: Pas d'apport avant 15 jours avant l'implantation du CINE. Puis interdit du 15/10 jusqu'au 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, interdit dès 20 jours avant la destruction du couvert jusqu'au 31/01. Dans la période d'interdiction, autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert.
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: interdiction
+                                - au: date_destruction_couvert-20jours
+                                  du: 15/10
+                                  masque: true
+                                  regime: autorisation_sous_condition
+                                  condition: date_destruction_couvert >= 04/11
+                                - au: 31/01
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                  condition: date_destruction_couvert < 04/11
+                                - au: date_semis_couvert
+                                  du: date_semis_couvert-15jours
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription: pc4
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - noeud:
+                        id: q_cine_avant_3112_type_II_non_concerne_effluent
+                        champ: effluent_peu_charge_elevage
+                        texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_II_non_concerne_effluent_true
+                            type: calculatrice
+                            texte: Pas d'apport avant 15 jours avant l'implantation du couvert. Autorisé sous condition à partir du 15/10 jusqu'au 31/01. Pendant cette période, interdit à partir de 20 jours avant la récolte ou la destruction du couvert.
+                            periodes:
+                            - au: 31/01
+                              du: 15/10
+                              regime: autorisation_sous_condition
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc9
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_avant_3112_type_II_non_concerne_effluent_false
+                            type: calculatrice
+                            texte: Pas d'apport avant 15 jours avant l'implantation du couvert. Puis interdit du 15/10 jusqu'au 31/01. Si la date de destruction du couvert est plus tôt que le 04/11, interdit dès 20 jours avant la destruction du couvert jusqu'au 31/01. Dans la période d'interdiction, autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert.
+                            periodes:
+                            - au: 31/01
+                              du: 15/10
+                              regime: interdiction
+                            - au: date_destruction_couvert-20jours
+                              du: 15/10
+                              masque: true
+                              regime: autorisation_sous_condition
+                              condition: date_destruction_couvert >= 04/11
+                            - au: 31/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                              condition: date_destruction_couvert < 04/11
+                            - au: date_semis_couvert
+                              du: date_semis_couvert-15jours
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc4
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_II
+                - regle:
+                    id: r_cine_avant_3112_type_III
+                    type: interdiction
+                    message: Apport interdit toute l'année.
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: cine_avant_3112
+              libelle: CINE détruit avant le 31/12
+            - noeud:
+                id: q_cine_apres_0101_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cine_apres_0101_type_0_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_cine_apres_0101_type_0_icpe_a
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                          regime: autorisation_sous_condition
+                        - au: date_semis_couvert+4semaines
+                          du: date_semis_couvert
+                          masque: true
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction prévue du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        texte_condition: Autorisé sous condition entre le 15/12 et le 15/01.
+                        code_prescription: pc1
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_ICPE_ED_q6
+                        champ: fertilisant_q6
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_apres_0101_type_0_icpe_icpe_ed_q6_true
+                            type: calculatrice
+                            periodes:
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            - au: 15/01
+                              du: 15/12
+                              regime: autorisation_sous_condition
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_apres_0101_type_0_icpe_icpe_ed_q6_false
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/12
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_apres_0101_type_0_autre
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/12
+                      valeur: Non
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_0
+                - noeud:
+                    id: q_cine_apres_0101_type_Ia_icpe
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_cine_apres_0101_type_Ia_icpe_a
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: autorisation_sous_condition
+                        - au: date_semis_couvert+4semaines
+                          du: date_semis_couvert
+                          masque: true
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
+                        code_prescription: pc1
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_q
+                        champ: q_typeIa_ICPE_ED_q6
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_apres_0101_type_ia_icpe_q_true
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_apres_0101_type_ia_icpe_q_false
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: autorisation_sous_condition
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc4
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_apres_0101_type_Ia_autre
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: autorisation_sous_condition
+                        composant: calendrier_dynamique_couvert
+                        parametres:
+                          note: note_3
+                          code_prescription: pc4
+                          texte_alternative: Épandage autorisé jusqu'à 20 jours avant la destruction ou la récolte (note 3). Sinon du 15/11 au 15/01.
+                          periode_reglementaire:
+                            au: 15/01
+                            du: 15/11
+                          delai_avant_destruction_jours: 20
+                        inputs_requis:
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription: pc4
+                      valeur: Non
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ia
+                - noeud:
+                    id: q_cine_apres_0101_type_Ib_icpe
+                    champ: plan_epandage
+                    texte: Plan d'épandage ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_cine_apres_0101_type_Ib_icpe_a_q6
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_apres_0101_type_Ib_icpe_a_q6_true
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
+                            code_prescription: pc2
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_apres_0101_type_Ib_icpe_a_q6_false
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: q_cine_apres_0101_type_Ib_icpe_ed_q6
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_apres_0101_type_Ib_icpe_ed_q6_true
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: date_semis_couvert
+                              masque: true
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
+                            code_prescription: pc3
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cine_apres_0101_type_Ib_icpe_ed_q6_false
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            - au: date_destruction_couvert
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: autorisation_sous_condition
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            texte_condition: Interdit du 15/11 au 15/01.
+                            code_prescription: pc4
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_apres_0101_type_Ib_non_concerne
+                        type: calculatrice
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        - au: date_destruction_couvert
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: autorisation_sous_condition
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        texte_condition: Interdit du 15/11 au 15/01.
+                        code_prescription: pc4
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                - noeud:
+                    id: q_cine_apres_0101_type_II_icpe
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: n_cine_apres_0101_type_II_icpe_a_zone_note_5
+                        champ: zone_note_5
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_icpe_a_note5_effluent
+                            aide: ''
+                            champ: effluent_peu_charge
+                            texte: S'agit-il d'un effluent peu chargé?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_icpe_a_note5_effluent_true
+                                note: note_5
+                                type: calculatrice
+                                periodes:
+                                - au: 15/01
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: date_semis_couvert+4semaines
+                                  du: date_semis_couvert
+                                  masque: true
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
+                                code_prescription: pc1
+                              valeur: true
+                              libelle: Oui
+                            - noeud:
+                                id: q_cine_apres_0101_type_II_icpe_a_note5_q6
+                                champ: fertilisant_iaa
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_a_note5_q6_true
+                                    note: note_5
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 15/01
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: date_semis_couvert+4semaines
+                                      du: date_semis_couvert
+                                      masque: true
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
+                                    code_prescription: pc2
+                                  valeur: true
+                                  libelle: Oui
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_a_note5_q6_false
+                                    note: note_5
+                                    type: interdiction
+                                    periodes:
+                                    - au: 15/01
+                                      du: 15/10
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: true
+                          libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_icpe_a_autres_effluent
+                            aide: ''
+                            champ: effluent_peu_charge
+                            texte: S'agit-il d'un effluent peu chargé ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_icpe_a_autres_effluent_true
+                                type: calculatrice
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: date_semis_couvert+4semaines
+                                  du: date_semis_couvert
+                                  masque: true
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
+                                code_prescription: pc1
+                              valeur: true
+                              libelle: Oui
+                            - noeud:
+                                id: q_cine_apres_0101_type_II_icpe_a_autres_q6
+                                champ: fertilisant_iaa
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_a_autres_q6_true
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: date_semis_couvert+4semaines
+                                      du: date_semis_couvert
+                                      masque: true
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
+                                    code_prescription: pc2
+                                  valeur: true
+                                  libelle: Oui
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_a_autres_q6_false
+                                    type: interdiction
+                                    periodes:
+                                    - au: 31/01
+                                      du: 15/10
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: false
+                          libelle: Pas concerné par la note 5
+                        reference: zone_note_5
+                        type_noeud: catalogue
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: n_cine_apres_0101_type_II_icpe_ed_zone_note_5
+                        champ: zone_note_5
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_icpe_ed_note5_effluent
+                            champ: effluent_peu_charge_elevage
+                            texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_icpe_ed_note5_effluent_true
+                                note: note_5
+                                type: mixte
+                                periodes:
+                                - au: 15/11
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: 15/01
+                                  du: 15/11
+                                  regime: interdiction
+                                code_prescription: pc8
+                              valeur: true
+                              libelle: Oui
+                            - noeud:
+                                id: q_cine_apres_0101_type_II_icpe_ed_note5_q6
+                                champ: fertilisant_iaa
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_ed_note5_q6_true
+                                    note: note_5
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 15/01
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: date_semis_couvert+4semaines
+                                      du: date_semis_couvert
+                                      masque: true
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
+                                    code_prescription: pc3
+                                  valeur: true
+                                  libelle: Oui
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_ed_note5_q6_false
+                                    note: note_5
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 15/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: autorisation_sous_condition
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Interdit du 15/10 au 15/01.
+                                    code_prescription: pc4
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: true
+                          libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_icpe_ed_autres_effluent
+                            champ: effluent_peu_charge_elevage
+                            texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_icpe_ed_autres_effluent_true
+                                type: mixte
+                                periodes:
+                                - au: 15/11
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: 31/01
+                                  du: 15/11
+                                  regime: interdiction
+                                code_prescription: pc8
+                              valeur: true
+                              libelle: Oui
+                            - noeud:
+                                id: q_cine_apres_0101_type_II_icpe_ed_autres_q6
+                                champ: fertilisant_iaa
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_ed_autres_q6_true
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: date_semis_couvert+4semaines
+                                      du: date_semis_couvert
+                                      masque: true
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
+                                    code_prescription: pc3
+                                  valeur: true
+                                  libelle: Oui
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_icpe_ed_autres_q6_false
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    - au: date_destruction_couvert
+                                      du: date_destruction_couvert-20jours
+                                      masque: true
+                                      regime: autorisation_sous_condition
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_destruction_couvert
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    texte_condition: Interdit du 15/10 au 31/01.
+                                    code_prescription: pc4
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: false
+                          libelle: Pas concerné par la note 5
+                        reference: zone_note_5
+                        type_noeud: catalogue
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - noeud:
+                        id: n_cine_apres_0101_type_II_non_concerne_zone_note_5
+                        champ: zone_note_5
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_non_concerne_note5_effluent
+                            champ: effluent_peu_charge_elevage
+                            texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_non_concerne_note5_effluent_true
+                                note: note_5
+                                type: mixte
+                                periodes:
+                                - au: 15/11
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: 15/01
+                                  du: 15/11
+                                  regime: interdiction
+                                code_prescription: pc8
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_cine_apres_0101_type_II_non_concerne_note5_effluent_false
+                                note: note_5
+                                type: calculatrice
+                                periodes:
+                                - au: 15/01
+                                  du: 15/10
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: autorisation_sous_condition
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                texte_condition: Interdit du 15/10 au 15/01.
+                                code_prescription: pc4
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: true
+                          libelle: Note 5 — Régions PACA, Occitanie et départements de Dordogne (24), Gironde (33), Landes (40), Lot-et-Garonne (47) et Pyrénées-Atlantiques (64)
+                        - noeud:
+                            id: q_cine_apres_0101_type_II_non_concerne_autres_effluent
+                            champ: effluent_peu_charge_elevage
+                            texte: S'agit-il d'un effluent peu chargé issu d'élevage ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_non_concerne_autres_effluent_true
+                                type: mixte
+                                periodes:
+                                - au: 15/11
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: 31/01
+                                  du: 15/11
+                                  regime: interdiction
+                                code_prescription: pc8
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_cine_apres_0101_type_II_non_concerne_autres_effluent_false
+                                type: calculatrice
+                                periodes:
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: interdiction
+                                - au: date_destruction_couvert
+                                  du: date_destruction_couvert-20jours
+                                  masque: true
+                                  regime: autorisation_sous_condition
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_destruction_couvert
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                texte_condition: Interdit du 15/10 au 31/01.
+                                code_prescription: pc4
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: false
+                          libelle: Pas concerné par la note 5
+                        reference: zone_note_5
+                        type_noeud: catalogue
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_II
+                - regle:
+                    id: r_type_iii
+                    type: interdiction
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                      regime: interdiction
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: cine_apres_0101
+            - noeud:
+                id: q_cie_courte_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - valeur: type_0
+                  renvoi_vers: r_cie_courte_types_0_I_II
+                - valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                  renvoi_vers: r_cie_courte_types_0_I_II
+                - valeur: type_II
+                  renvoi_vers: r_cie_courte_types_0_I_II
+                - regle:
+                    id: r_cie_courte_type_III
+                    type: autorisation_sous_condition
+                    texte_condition: Apports possibles selon les conditions fixées par le PAR ou entre le semis et les 15 jours suivants.
+                    plafonnement_associe: r_plafond_cie_courte
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: cie_courte
+              libelle: Couvert d'interculture Exporté (dérobée, CIVE)
+            - noeud:
+                id: q_cine_courte_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - valeur: type_0
+                  renvoi_vers: r_cine_courte_types_0_I_II
+                - valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                  renvoi_vers: r_cine_courte_types_0_I_II
+                - valeur: type_II
+                  renvoi_vers: r_cine_courte_types_0_I_II
+                - regle:
+                    id: r_cine_courte_type_III
+                    type: interdiction
+                    message: Apport interdit.
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                  valeur: type_III
+                type_noeud: formulaire
+              valeur: cine_courte
+              libelle: Couvert d'interculture Non Exporté
+            type_noeud: formulaire
+          valeur: couvert_intercultures
+          libelle: Couvert végétal d'interculture
+        type_noeud: formulaire
+      valeur: true
+      libelle: Oui
+    reference: zone_vulnerable_nitrates
+    type_noeud: catalogue
+metadata:
+  source: PAN 7 - arrêté 30/01/2023 modifiant arrêté 19/12/2011 — Miro juristes 28/04/2026
+  statut: brouillon - migré depuis SVG Miro 28/04 (grammaire v2 inchangée)
+  version: 0.4.0-draft
+  derniere_maj: '2026-04-28'
+plafonnements:
+- regle:
+    id: r_plafond_cine_avant_3112
+    type: plafonnement
+    texte: "Apports totaux (toutes formes et origines confondues) de 70 kg N/ha\navant l'implantation du couvert d'interculture, dont 50 kg N/ha\nd'azote efficace.\n"
+    code_prescription: pc13
+    plafond_azote_kg_n_ha: 70
+- regle:
+    id: r_plafond_cie_courte
+    type: plafonnement
+    code_prescription: pc15
+    plafond_azote_kg_n_ha: 70
+- regle:
+    id: r_plafond_prairies
+    type: plafonnement
+    texte: "Pour les prairies permanentes, apports à compter de la reprise de\nvégétation (fin février à début mars) plafonnés à 70 kg N/ha par\nsaison.\n"
+    code_prescription: pc16
+    plafond_azote_kg_n_ha: 70
+regles_partagees:
+- regle:
+    id: r_cine_courte_types_0_I_II
+    type: autorisation_sous_condition
+    message: Couvert d'interculture courte non exporté, types 0, I (Ia ou Ib) ou II.
+    texte_condition: Apport autorisé.
+    plafonnement_associe: r_plafond_cine_avant_3112
+- regle:
+    id: r_cie_courte_types_0_I_II
+    type: autorisation_sous_condition
+    message: Couvert d'interculture courte exporté (dérobée, CIVE), types 0, I (Ia ou Ib) ou II.
+    texte_condition: Apport autorisé selon les conditions du PAR.
+    plafonnement_associe: r_plafond_cie_courte

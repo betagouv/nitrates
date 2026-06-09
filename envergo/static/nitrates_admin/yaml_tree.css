@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 /* Viewer admin de l'arbre de decision YAML (phase 2bis, read-only).
    Couleurs doublees d'icones pour respecter RGAA AA (pas de signal couleur seul). */
 
@@ -184,9 +186,19 @@
 
   /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
      Avec margin-left:auto en flex container, le span occupe l'espace
-     residuel apres les autres elements, ce qui le pousse a droite. */
+     residuel apres les autres elements, ce qui le pousse a droite.
+     En presence du .yaml-tree__deep-btn (lui aussi en margin-left:auto),
+     le deep-btn capte tout l'espace en premier et nous on se cale juste
+     a sa droite -- on ne se gene plus. */
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Sur les rows qui contiennent un .yaml-tree__deep-btn, c'est lui qui
+   absorbe l'espace residuel (margin-left:auto). Les edit-actions
+   viennent juste apres lui en flux normal. */
+.yaml-tree__row > .yaml-tree__deep-btn ~ .yaml-tree__edit-actions {
+  margin-left: 0;
 }
 
 .yaml-tree__edit-btn {
@@ -215,6 +227,26 @@
 .yaml-tree__edit-btn[disabled] {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* Preview -- ambre */
+
+.yaml-tree__edit-btn--preview {
+  color: #b06a00;
+  text-decoration: none;
+}
+
+.yaml-tree__edit-btn--preview:hover {
+  background: #fff3e0;
+}
+
+/* Bouton preview en mode lecture (hors .yaml-tree__edit-actions) : on le
+   pousse a droite manuellement pour qu'il s'aligne comme les autres
+   boutons d'edition. */
+.yaml-tree__preview-standalone {
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 /* Edit -- bleu */
@@ -247,7 +279,94 @@
   background: #ffebee;
 }
 
+/* Overlay full-page affiche pendant les requetes htmx mutatives globales.
+   Active via body.yaml-admin--busy. Bloque les clics, montre un message
+   "en cours" + curseur wait, evite que l'utilisateur clique 10 fois en
+   attendant la reponse serveur (utile sur staging avec latence). */
+
+.yaml-admin__global-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 25%);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+body.yaml-admin--busy {
+  cursor: wait;
+}
+
+body.yaml-admin--busy .yaml-admin__global-overlay {
+  display: flex;
+}
+
+.yaml-admin__global-overlay-msg {
+  padding: 1rem 2rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
+/* Highlight persistant d'une ligne ciblee par un deeplink #regle=X.
+   Applique par JS sur la ligne au scrollIntoView. Reste visible jusqu'a
+   la prochaine navigation : utile quand on partage un lien et qu'on veut
+   garder le contexte visuel pendant la lecture. */
+
+.yaml-tree__deeplink-highlight {
+  background: #fff3a8 !important;
+}
+
 /* Formulaire d'edition inline (htmx) */
+
+/* Spinner d'attente affiche pendant un POST htmx du formulaire inline.
+   htmx ajoute la classe `htmx-request` au form (declencheur) le temps
+   de la requete. On affiche un overlay avec spinner par-dessus le form
+   pour indiquer clairement "en cours de sauvegarde" -- utile sur les
+   environnements avec latence (staging Scalingo, etc.). */
+
+.yaml-tree__inline-form.htmx-request::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 70%);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.yaml-tree__inline-form.htmx-request::before {
+  content: "⏳ Sauvegarde en cours…";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 11;
+  padding: 0.5rem 1rem;
+  background: #1f4789;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: yaml-tree-spinner-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes yaml-tree-spinner-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
 
 .yaml-tree__row--editing,
 .yaml-tree__regle--editing,
@@ -283,6 +402,7 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
+  position: relative;
 }
 
 .yaml-tree__form-row {
@@ -345,6 +465,13 @@
   border-radius: 3px;
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
+}
+
+/* Si le wrapper d'erreurs ne contient AUCUNE erreur globale visible
+   (toutes les erreurs ont un field et sont affichees inline a cote des
+   inputs), on cache la barre rouge vide. */
+.yaml-tree__form-errors:not(:has(.yaml-tree__form-error-global)) {
+  display: none;
 }
 
 .yaml-tree__form-error-global {
@@ -729,13 +856,18 @@ button.yaml-admin__btn {
 
 .yaml-admin__layout--split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+
+  /* minmax(0, 1fr) au lieu de 1fr : contraint chaque colonne a la largeur
+     disponible meme si son contenu (lignes YAML longues) deborde, sinon
+     la colonne YAML s'etire et casse la mise en page. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
 .yaml-admin__layout--brut .yaml-admin__raw {
-  max-width: 1100px;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .yaml-admin__raw {
@@ -743,9 +875,14 @@ button.yaml-admin__btn {
   color: #f8f8f2;
   border-radius: 4px;
   padding: 0.75rem 1rem;
-  overflow: auto;
+  overflow: auto scroll; /* scrollbar visible en permanence -- Mac la masque sinon */
   font-size: 0.8rem;
-  max-height: 80vh;
+  height: 85vh; /* hauteur fixe : la box prend toujours toute la hauteur dispo */
+  min-height: 500px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+  width: 100%;
+  min-width: 0; /* permet a la box de se contraindre dans une grid */
 }
 
 .yaml-admin__raw pre {
@@ -753,6 +890,7 @@ button.yaml-admin__btn {
   background: transparent !important;
   color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
 }
 
 .yaml-admin__raw .yaml-raw .linenos {
@@ -780,8 +918,8 @@ button.yaml-admin__btn {
 }
 
 .yaml-admin__raw-textarea {
-  width: 100%;
-  min-height: 60vh;
+  width: 94%;
+  min-height: 71vh;
   background: #272822;
   color: #f8f8f2;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -831,6 +969,39 @@ button.yaml-admin__btn {
   padding: var(--tree-row-pad) 0;
 }
 
+/* Highlight transitoire applique apres un swap htmx (ouverture form
+   d'edition ou fermeture save/cancel). Permet a l'utilisateur de
+   retrouver visuellement le row sur lequel il etait en train de
+   travailler -- sans ca le DOM se reconstruit et on perd ses reperes.
+
+   Implemente comme outline + box-shadow ambres (pas background) :
+   - reste visible meme sur les blocs --editing qui ont deja un bg
+     jaune clair (sinon le highlight est masque) ;
+   - n'altere pas le layout (outline est hors flow) ;
+   - fade-out en 5s via @keyframes. */
+@keyframes yaml-tree-highlight-fade {
+  0% {
+    outline-color: #f5a623;
+    box-shadow:
+      0 0 0 4px #fff3a8,
+      0 0 12px 4px rgb(245 166 35 / 60%);
+  }
+
+  100% {
+    outline-color: transparent;
+    box-shadow:
+      0 0 0 4px transparent,
+      0 0 12px 4px rgb(245 166 35 / 0%);
+  }
+}
+
+.yaml-tree__row--highlighted {
+  outline: 3px solid #f5a623;
+  outline-offset: 2px;
+  border-radius: 3px;
+  animation: yaml-tree-highlight-fade 5s ease-out forwards;
+}
+
 details > summary.yaml-tree__row {
   cursor: pointer;
   list-style: none;
@@ -856,19 +1027,20 @@ details[open] > summary.yaml-tree__row::before {
   position: relative;
 }
 
+/* Bouton "deplier en profondeur" : place inline dans la row, pousse a
+   droite via margin-left:auto. En mode edition, les .yaml-tree__edit-actions
+   viennent juste apres lui (cf. regle ~ plus haut). */
 .yaml-tree__deep-btn {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.4rem;
+  margin-left: auto;
   font-size: 0.8rem;
   text-decoration: none;
   color: #888;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   letter-spacing: -0.15em;
-  background: rgb(255 255 255 / 85%);
-  z-index: 2;
   border: 1px solid transparent;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .yaml-tree__deep-btn:hover {
@@ -1064,6 +1236,35 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__periodes code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Flag inline derriere une periode (masque, condition) dans le header
+   read-only d'une regle (_regle_block.html). Petite badge texte
+   discrete qui signale qu'il y a un attribut non-trivial sur la
+   periode (sinon l'utilisateur perd la condition / le masque a la
+   lecture). */
+.yaml-tree__periode-flag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin-left: 0.3rem;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  color: #5d4037;
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.yaml-tree__periode-flag--condition {
+  background: #e8f5e9;
+  border-color: #81c784;
+  color: #2e7d32;
+}
+
+.yaml-tree__periode-flag code {
+  font-size: 0.85em;
 }
 
 .yaml-tree__plafond,
@@ -1289,4 +1490,161 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__regle .yaml-tree__source {
   font-style: italic;
+}
+
+/* ─── Calculatrice (cf. spec_form_admin_calculatrice.md) ────────────── */
+
+.yaml-tree__calculatrice-inputs {
+  margin-top: 0.75rem;
+}
+
+.yaml-tree__form-sublegend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.yaml-tree__calculatrice-input {
+  border: 1px solid #d0d4dc;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.4rem 0;
+  background: #fafbfd;
+}
+
+.yaml-tree__calculatrice-input--legacy {
+  background: #fff8e1;
+  border-color: #f0c674;
+}
+
+.yaml-tree__calculatrice-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.yaml-tree__calculatrice-input-remove {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.yaml-tree__calculatrice-input-remove:hover {
+  background: #fdecea;
+}
+
+.yaml-tree__calculatrice-aide {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f0f4fa;
+  border-left: 3px solid #1f4789;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.yaml-tree__calculatrice-aide ul {
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
+}
+
+.yaml-tree__calculatrice-aide code {
+  background: #e7ecf5;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .yaml-tree__calculatrice-input {
+    background: #2a2f38;
+    border-color: #444a55;
+  }
+
+  .yaml-tree__calculatrice-input--legacy {
+    background: #3a3220;
+    border-color: #76601e;
+  }
+
+  .yaml-tree__calculatrice-aide {
+    background: #2a3344;
+    border-left-color: #99c4ff;
+  }
+
+  .yaml-tree__calculatrice-aide code {
+    background: #1e2530;
+    color: #f0d090;
+  }
+}
+
+/* Spec form admin calculatrice : ordre des sections demande par l'editeur :
+     1. id, type, a_completer (form-rows simples)
+     2. fieldset Calculatrice (composant + inputs requis)
+     3. fieldset Periodes (du/au/regime + masque)
+     4. code_prescription, note, ... (form-rows simples)
+     5. boutons d'actions (Enregistrer/Annuler)
+   La source HTML met Periodes en pos 4 et Calculatrice en pos 5, et les
+   form-rows code_prescription en pos 6+. Pour reordonner sans toucher la
+   source (et donc ne rien casser pour les autres types), on tague chaque
+   bloc en mode flex avec un order explicite.
+   Periodes est designe via .yaml-tree__form-fieldset:not(.yaml-tree__calculatrice)
+   (c'est l'unique fieldset non-calculatrice). */
+.yaml-tree__inline-form--calc {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Calculatrice (composant + inputs) juste apres id/type/a_completer (order 0). */
+.yaml-tree__inline-form--calc > .yaml-tree__calculatrice {
+  order: 1;
+}
+
+/* Periodes juste apres Calculatrice. */
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-fieldset:not(.yaml-tree__calculatrice) {
+  order: 2;
+}
+
+/* code_prescription, note, message, source juridique... viennent apres
+   Periodes. On vise les form-rows dont le name d'input est dans
+   {code_prescription, note, message, texte, texte_condition,
+   plafond_azote_kg_n_ha, plafonnement_associe, source_juridique}.
+   En pratique on peut simplement leur donner order 3 via un selecteur
+   :has() sur les form-row qui ne sont pas l'a_completer / id / type. */
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(input[name="code_prescription"]),
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(select[name="code_prescription"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(input[name="note"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(select[name="note"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row:has(input[name="message"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row[data-regle-condition-row],
+.yaml-tree__inline-form--calc
+  > .yaml-tree__form-row:has(input[name="source_juridique"]),
+.yaml-tree__inline-form--calc > .yaml-tree__form-row[data-type-row],
+.yaml-tree__inline-form--calc > .yaml-tree__form-advanced {
+  order: 3;
+}
+
+.yaml-tree__inline-form--calc > .yaml-tree__form-actions {
+  order: 99;
+}
+
+/* Case a cocher masque sur chaque ligne de periode du form calculatrice. */
+.yaml-tree__periode-masque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--text-default-grey);
+  margin-left: 0.5rem;
+  cursor: help;
+}
+
+.yaml-tree__periode-masque input[type="checkbox"] {
+  margin: 0;
 }

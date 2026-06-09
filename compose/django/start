@@ -6,4 +6,29 @@ set -o nounset
 
 
 python manage.py migrate
-python manage.py runserver_plus 0.0.0.0:8000
+# `--threaded` : Werkzeug sert les requetes en parallele (1 thread par
+# requete) au lieu du single-thread par defaut. Crucial pour les pages
+# admin avec 10+ assets statiques en parallele -- sinon chaque asset
+# se queue sequentiellement et le browser attend 2-5s pour avoir tout.
+#
+# Autoreload : reloader `watchdog` event-driven via inotify.
+#
+# /!\ Sous Docker Desktop macOS, le code /app est monte via un FS partage
+# (virtiofs/gRPC-FUSE) qui NE propage PAS les evenements inotify du kernel
+# Linux. watchdog ne recoit donc aucun event et retombe sur un polling qui
+# re-scanne tout l'arbre en boucle. Sans exclusions, il scanne node_modules,
+# .venv, .git, static -> 100% CPU permanent cote VM (com.apple.virtualization).
+#
+# Les --exclude-pattern bornent ce scan aux sources reellement editees. Sur
+# Linux natif (inotify fonctionnel) ils sont quasi sans effet ; sur macOS ils
+# sont ce qui ramene le CPU au repos. On les remet donc (revert du choix du
+# 2026-05-29, qui supposait l'inotify fonctionnel -- vrai en CI/Linux,
+# faux sur les postes de dev macOS).
+python manage.py runserver_plus \
+    --threaded \
+    --exclude-pattern '*/node_modules/*' \
+    --exclude-pattern '*/.venv/*' \
+    --exclude-pattern '*/.git/*' \
+    --exclude-pattern '*/static/*' \
+    --exclude-pattern '*/staticfiles/*' \
+    0.0.0.0:8000

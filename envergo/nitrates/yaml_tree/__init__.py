@@ -18,6 +18,7 @@ from envergo.nitrates.yaml_tree.loader_db import (
     load_active_tree_admin,
     load_active_tree_raw,
     load_tree_admin,
+    load_tree_by_id,
     load_tree_raw,
 )
 from envergo.nitrates.yaml_tree.parcours import (
@@ -38,6 +39,7 @@ __all__ = [
     "load_active_tree_raw",
     "load_active_tree_admin",
     "load_tree_admin",
+    "load_tree_by_id",
     "load_tree_raw",
     "validate_arbre",
     "ValidationError",

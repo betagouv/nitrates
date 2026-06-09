@@ -4,7 +4,10 @@
 
 {% block content %}
   <div class="fr-container-fluid fr-py-3w">
-    <h1>Validation manuelle des feuilles culture_principale</h1>
+    <div class="vc-header">
+      <h1>Validation manuelle des feuilles culture_principale</h1>
+      <a href="{% url 'nitrates_admin_validation_create' %}" class="vc-btn">+ Ajouter une ligne</a>
+    </div>
 
     <p style="color: #666; max-width: 80ch;">
       Tableau de validation croisée pour chaque feuille atteignable sous
@@ -21,6 +24,12 @@
         ⬜ {{ stats.non_valide }} non validé{{ stats.non_valide|pluralize:"s" }}
       </span>
       <span class="vc-pill" style="background:#e1ecff; color:#1f4789">Total : {{ stats.total }}</span>
+      {% if stats.flag_verif %}
+        <span class="vc-pill"
+              style="background:#fef0f0;
+                     color:#ce0500"
+              title="Cas spéciaux signalés au seed, à vérifier manuellement">⚑ {{ stats.flag_verif }} à vérifier</span>
+      {% endif %}
     </div>
 
     <table class="vc-table">
@@ -39,7 +48,7 @@
       </thead>
       <tbody>
         {% for branche in branches %}
-          <tr class="vc-row vc-row--{{ branche.statut }}">
+          <tr class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
             <td>
               {% if branche.statut == 'valide' %}
                 <span class="vc-pill vc-pill--ok">✅</span>
@@ -58,6 +67,7 @@
             </td>
             <td>
               <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
+              {% if branche.flag_verif %}<span class="vc-flag" title="{{ branche.note_verif }}">⚑ à vérifier</span>{% endif %}
             </td>
             <td>{{ branche.branche_miro|default:"—" }}</td>
             <td>{{ branche.type_fertilisant_miro|default:"—" }}</td>
@@ -91,9 +101,16 @@
                 <span style="color:#999">—</span>
               {% endif %}
             </td>
-            <td>
+            <td class="vc-row__actions">
               <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}"
                  class="vc-btn">Voir</a>
+              <form method="post"
+                    action="{% url 'nitrates_admin_validation_delete' pk=branche.pk %}"
+                    onsubmit="return confirm('Supprimer cette ligne de validation ? (un re-seed recrée les lignes issues de l\'arbre)');"
+                    style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="vc-btn vc-btn--danger" title="Supprimer">🗑</button>
+              </form>
             </td>
           </tr>
         {% endfor %}
@@ -104,6 +121,13 @@
   {% include "nitrates_admin/validation/_lightbox.html" %}
 
   <style>
+    .vc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
     .vc-stats {
       display: flex;
       gap: 1rem;
@@ -167,6 +191,23 @@
       color: #555;
     }
 
+    .vc-flag {
+      display: inline-block;
+      margin-top: 3px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: #fef0f0;
+      color: #ce0500;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: help;
+      white-space: nowrap;
+    }
+
+    .vc-row--flag td:first-child {
+      box-shadow: inset 3px 0 0 #ce0500;
+    }
+
     .vc-row__resultat {
       max-width: 40ch;
       color: #444;
@@ -195,6 +236,21 @@
       color: #fff !important;
       text-decoration: none;
       font-size: 0.85rem;
+      border: none;
+      cursor: pointer;
+    }
+
+    .vc-btn--danger {
+      background: #ce0500;
+      padding: 4px 9px;
+    }
+
+    .vc-row__actions {
+      white-space: nowrap;
+    }
+
+    .vc-row__actions form {
+      margin-left: 4px;
     }
 
     .vc-row--valide {

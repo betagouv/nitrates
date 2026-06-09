@@ -31,6 +31,35 @@ def get_item(d, key):
         return None
 
 
+def _est_borne_fixe(s: str) -> bool:
+    """Une borne est fixe si elle a la forme JJ/MM. Sinon (slug type
+    `brunissement_des_soies`, `derniere_coupe_luzerne`), c'est une
+    borne phenologique flottante."""
+    return isinstance(s, str) and len(s) == 5 and s[2] == "/"
+
+
+@register.simple_tag
+def periode_phrase(periode: dict) -> str:
+    """Formate une periode en phrase humaine pour le panneau resultat.
+
+    Bornes fixes JJ/MM : `du 15/07 au 15/02`.
+    Borne phenologique en debut : `de « derniere_coupe_luzerne » au 31/12`.
+    Borne phenologique en fin : `du 15/07 au « brunissement_des_soies »`.
+
+    Les guillemets francais autour des slugs phenologiques signalent
+    visuellement a l'utilisateur que ce n'est pas une vraie date
+    (cf. #88, retour Emma).
+    """
+    du = periode.get("du", "")
+    au = periode.get("au", "")
+    du_fixe = _est_borne_fixe(du)
+    au_fixe = _est_borne_fixe(au)
+    du_str = du if du_fixe else f"« {du} »"
+    au_str = au if au_fixe else f"« {au} »"
+    prefixe = "du" if du_fixe else "de"
+    return f"{prefixe} {du_str} au {au_str}"
+
+
 # Mapping regle.type -> couleur de fond de la barre.
 # Pour les types qui ont une periode specifique (interdiction,
 # plafonnement, autorisation_sous_condition), le fond reste vert (= autorise
@@ -568,7 +597,10 @@ def calendrier_epandage(regle):
     # Legende dynamique : on liste uniquement les categories presentes dans
     # le calendrier (interdit / autorise sous condition / plafonnement) et on
     # signale les segments a date flottante via une variante hachuree
-    # "Autorise sous conditions phenologiques".
+    # "Autorise sous conditions" (cf. retour Louise 2026-05-13 : on retire
+    # "phenologiques", vocabulaire trop technique pour un agriculteur).
+    # Le "sinon interdit" est porte par le texte detaille ("Sinon, regle
+    # de base —"), pas redondant dans la legende.
     legende = []
     couleurs_simples = set()
     couleurs_flottantes = set()
@@ -583,7 +615,7 @@ def calendrier_epandage(regle):
         "violet": "Plafond",
     }
     libelle_legende_flottant = {
-        "orange": "Autorisé sous conditions phénologiques",
+        "orange": "Autorisé sous conditions",
         "rouge": "Interdit (dates flottantes)",
         "violet": "Plafond (dates flottantes)",
     }

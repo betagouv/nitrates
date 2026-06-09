@@ -8,13 +8,6 @@
     id="node-{{ path|slugify }}"
     data-path="{{ path }}"
     role="treeitem">
-  {% if noeud.branches %}
-    <a class="yaml-tree__deep-btn"
-       href="{{ deep_url }}#node-{{ path|slugify }}"
-       title="Déplier ce sous-arbre en profondeur (récursif)"
-       data-path="{{ path }}">▾▾</a>
-  {% endif %}
-
   <details {% if opened %}open{% endif %}>
     <summary class="yaml-tree__row" id="node-row-{{ path|slugify }}">
       <span class="yaml-tree__tags">
@@ -35,6 +28,21 @@
       {% if noeud.aide %}
         <span class="yaml-tree__aide-inline" title="Aide affichée à l'utilisateur">💡 {{ noeud.aide }}</span>
       {% endif %}
+
+      {% if noeud.branches %}
+        <a class="yaml-tree__deep-btn"
+           href="{{ deep_url }}#node-{{ path|slugify }}"
+           title="Déplier ce sous-arbre en profondeur (récursif)"
+           data-path="{{ path }}">▾▾</a>
+      {% endif %}
+
+      {# Bouton preview disponible en mode lecture ET edition #}
+      {% preview_url arbre path tree.pk tree.status as preview_link %}
+      <a class="yaml-tree__edit-btn yaml-tree__edit-btn--preview yaml-tree__preview-standalone"
+         href="{{ preview_link }}"
+         target="_blank"
+         rel="noopener"
+         title="Prévisualiser ce nœud dans le simulateur (nouvel onglet)">↗</a>
 
       {% if is_editing %}
         <span class="yaml-tree__edit-actions" aria-label="Actions d'édition">
@@ -68,7 +76,8 @@
     {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
 
     {% if noeud.branches %}
-      <ul class="yaml-tree__branches">
+      <ul class="yaml-tree__branches"
+          {% if is_editing %}data-sortable-branches data-parent-path="{{ path }}"{% endif %}>
         {% for branche in noeud.branches %}
           {% include "nitrates_admin/yaml_tree/_branche.html" with branche=branche ancestors_path=path depth=depth|add:1 %}
         {% endfor %}

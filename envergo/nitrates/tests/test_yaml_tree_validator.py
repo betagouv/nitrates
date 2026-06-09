@@ -15,7 +15,11 @@ from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
 
 
 def _arbre_minimal_valide() -> dict:
-    """Arbre minimal qui passe : 1 noeud catalogue ZVN avec 1 branche regle."""
+    """Arbre minimal qui passe : 1 noeud catalogue ZVN avec branches true + false.
+
+    Les 2 valeurs booleennes doivent etre couvertes pour ne pas declencher
+    l'erreur d'exhaustivite (cf. _check_branches_booleennes_exhaustives).
+    """
     return {
         "metadata": {"version": "0.1.0"},
         "arbre": {
@@ -32,6 +36,14 @@ def _arbre_minimal_valide() -> dict:
                             "id": "r_hors_zvn",
                             "type": "non_applicable",
                             "message": "Hors ZVN",
+                        },
+                    },
+                    {
+                        "valeur": True,
+                        "regle": {
+                            "id": "r_en_zvn",
+                            "type": "non_applicable",
+                            "message": "En ZVN",
                         },
                     },
                 ],
@@ -292,10 +304,11 @@ def test_niveau_formulaire_doublon_strict_meme_champ_echoue():
     assert any("doublon" in e for e in exc.value.errors)
 
 
-def test_niveau_doublon_avec_champ_different_tolere():
-    """Doublon de niveau tolere si les champs different (cas legitime
-    interculture : sous_culture sur la duree puis sur le type de
-    couvert)."""
+def test_niveau_doublon_meme_niveau_rejete_meme_champ_different():
+    """Depuis l'aplatissement des couverts (spec_refactor_couverts), un
+    doublon de niveau `sous_culture` est TOUJOURS rejete, meme si les
+    `champ` different. L'ancienne tolerance (qui servait au niveau parasite
+    sous_culture/sous_culture_couvert) a ete retiree."""
     a = _arbre_minimal_valide()
     a["arbre"]["noeud"]["branches"].append(
         {
@@ -324,8 +337,9 @@ def test_niveau_doublon_avec_champ_different_tolere():
             },
         }
     )
-    # Pas d'exception : ce n'est pas un doublon strict.
-    validate_arbre(a)
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("doublon" in e for e in exc.value.errors)
 
 
 def test_niveau_complement_chainable():
@@ -437,11 +451,15 @@ def test_note_inconnue_echoue():
 # ─── Sur le vrai arbre PAN brouillon (charge depuis NITRATES_SPECS_DIR) ────
 
 
+@pytest.mark.django_db
 def test_vrai_arbre_pan_brouillon_structurellement_valide():
     """Le brouillon vit dans NITRATES_SPECS_DIR. Il doit etre structurellement
     valide (JSON Schema). Les erreurs semantiques residuelles (renvois vers
     des ids non encore crees, etc.) sont acceptees tant que c'est un brouillon ;
-    on les remonte juste pour info au lieu de faire echouer le test."""
+    on les remonte juste pour info au lieu de faire echouer le test.
+
+    Marquage django_db ajoute en phase 4 #61 : load_referentiels() lit la DB
+    desormais."""
     from envergo.nitrates.yaml_tree.loader import load_arbre, load_referentiels
     from envergo.nitrates.yaml_tree.validator import _validate_structure
 
@@ -594,3 +612,420 @@ def test_periodes_regime_mixte_accepte():
         }
     )
     validate_arbre(a)
+
+
+# ─── Exhaustivite booleenne ─────────────────────────────────────────────────
+
+
+def test_branche_booleenne_manquante_leve_erreur_true():
+    """Si on supprime la branche True d'un noeud booleen, le validator doit
+    lever une erreur (un utilisateur dont le champ = True n'a pas de chemin)."""
+    a = _arbre_minimal_valide()
+    # Garde uniquement la branche False
+    a["arbre"]["noeud"]["branches"] = [
+        b for b in a["arbre"]["noeud"]["branches"] if b["valeur"] is False
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    msgs = " ".join(exc.value.errors)
+    assert "[exhaustivite]" in msgs
+    assert "n_zvn" in msgs
+    assert "True" in msgs
+
+
+def test_branche_booleenne_manquante_leve_erreur_false():
+    """Idem pour la branche False manquante."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"] = [
+        b for b in a["arbre"]["noeud"]["branches"] if b["valeur"] is True
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    msgs = " ".join(exc.value.errors)
+    assert "[exhaustivite]" in msgs
+    assert "False" in msgs
+
+
+def test_branches_non_booleennes_ne_declenchent_pas_exhaustivite():
+    """Pour les noeuds dont les branches sont des slugs (type_0, colza, ...),
+    on ne contraint pas l'exhaustivite : le domaine peut etre ouvert."""
+    a = _arbre_minimal_valide()
+    # Remplace la branche True par un sous-noeud formulaire culture, qui a
+    # une seule branche slug "colza" (pas une enum exhaustive).
+    a["arbre"]["noeud"]["branches"][1] = {
+        "valeur": True,
+        "noeud": {
+            "type_noeud": "formulaire",
+            "id": "q_culture",
+            "texte": "Quelle culture ?",
+            "champ": "occupation_sol",
+            "niveau": "culture",
+            "branches": [
+                {
+                    "valeur": "colza",
+                    "regle": {
+                        "id": "r_colza",
+                        "type": "interdiction",
+                    },
+                },
+            ],
+        },
+    }
+    # Aucune erreur d'exhaustivite : "colza" tout seul est valide.
+    validate_arbre(a)
+
+
+def test_arbre_national_passe_le_check_exhaustivite():
+    """Garde-fou : l'arbre national packagé doit rester valide. Si ce test
+    casse, c'est qu'on a introduit un check trop strict ou qu'un noeud
+    booleen de l'arbre national a perdu une branche."""
+    import yaml
+
+    with open("envergo/nitrates/specs/arbre_decision_national.yaml") as f:
+        arbre = yaml.safe_load(f)
+    validate_arbre(arbre)
+
+
+# ─── ORM-strict : checks de reference depuis la DB sans dict explicite ──────
+
+
+@pytest.mark.django_db
+def test_validate_arbre_lit_orm_quand_referentiels_omis():
+    """Sans `referentiels` explicite, le validator lit directement les
+    sets d'identifiants depuis l'ORM (CodePrescription, NoteReglementaire,
+    EvenementPhenologique). Un code_prescription inconnu doit donc faire
+    echouer la validation meme si l'appelant ne fournit pas de dict.
+
+    Couvre la regression carte #61 : avant le fix, les 3 vues admin
+    appelaient `validate_arbre(arbre)` sans referentiels et sautaient
+    silencieusement les checks de reference."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_test_orm",
+        "type": "interdiction",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "code_prescription": "pc_inexistant_orm",
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("pc_inexistant_orm" in e for e in exc.value.errors)
+
+
+@pytest.mark.django_db
+def test_validate_arbre_orm_reconnait_codes_seedes():
+    """Reciproque : un code_prescription qui existe en DB (seede via
+    migration 0012) ne doit PAS faire echouer la validation."""
+    from envergo.nitrates.models import CodePrescription
+
+    pc_existant = CodePrescription.objects.values_list("identifiant", flat=True).first()
+    assert pc_existant, "Pre-condition : au moins un CodePrescription seede"
+
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_test_orm_ok",
+        "type": "interdiction",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "code_prescription": pc_existant,
+    }
+    validate_arbre(a)
+
+
+# ─── Type "calculatrice" : grammaire (spec 2026-05-26) ─────────────────────
+
+
+def _calculatrice_regle_valide(rid="r_calc_test"):
+    """Regle calculatrice minimale valide : 2 inputs, 3 periodes (dont 2
+    event-based), composant ok."""
+    return {
+        "id": rid,
+        "type": "calculatrice",
+        "composant": "calendrier_dynamique_couvert",
+        "inputs_requis": [
+            {
+                "id": "date_semis_couvert",
+                "label": "Date de semis",
+                "type": "date",
+                "placeholder": "25/07",
+            },
+            {
+                "id": "date_destruction_prevue",
+                "label": "Date de destruction",
+                "type": "date",
+                "placeholder": "23/03",
+            },
+        ],
+        "periodes": [
+            {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+            {
+                "du": "date_semis_couvert",
+                "au": "date_semis_couvert+4semaines",
+                "regime": "interdiction",
+            },
+            {
+                "du": "date_destruction_prevue-20jours",
+                "au": "date_destruction_prevue",
+                "regime": "interdiction",
+            },
+        ],
+    }
+
+
+def _arbre_avec_calculatrice(regle):
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = regle
+    return a
+
+
+def test_calculatrice_minimale_valide_passe():
+    validate_arbre(_arbre_avec_calculatrice(_calculatrice_regle_valide()))
+
+
+def test_calculatrice_sans_inputs_requis_echoue():
+    r = _calculatrice_regle_valide()
+    r.pop("inputs_requis")
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("inputs_requis" in e for e in exc.value.errors)
+
+
+def test_calculatrice_inputs_requis_vide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"] = []
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("inputs_requis" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_id_non_slug_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["id"] = "Date Semis"  # espace + majuscule
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("slug" in e.lower() or "snake_case" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_label_vide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["label"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("label" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_type_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["type"] = "datetime"
+    # Schema JSON refuse avant validator semantique : ValidationError attendue.
+    with pytest.raises(ValidationError):
+        validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_input_placeholder_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["placeholder"] = "99/99"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("placeholder" in e for e in exc.value.errors)
+
+
+def test_calculatrice_ids_dupliques_echoue():
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][1]["id"] = "date_semis_couvert"  # duplique le 1er
+    # En sortant l'event "date_destruction_prevue" des inputs, les bornes
+    # qui le referencent vont aussi echouer -- on garde la duplication
+    # comme erreur principale.
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("duplique" in e for e in exc.value.errors)
+
+
+def test_calculatrice_sans_periodes_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"] = []
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("periodes" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_event_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["du"] = "date_inexistante"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("date_inexistante" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_offset_unite_inconnue_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["au"] = "date_semis_couvert+4annees"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("annees" in e or "4annees" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_offset_negatif_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][1]["au"] = "date_semis_couvert+0jours"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any(">= 1" in e for e in exc.value.errors)
+
+
+def test_calculatrice_aucune_borne_event_echoue():
+    """Si toutes les bornes sont des dates fixes JJ/MM, calculatrice n'a
+    pas de sens -> on demande d'utiliser `type: mixte` a la place."""
+    r = _calculatrice_regle_valide()
+    r["periodes"] = [
+        {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+        {"du": "01/03", "au": "31/05", "regime": "interdiction"},
+    ]
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("event" in e for e in exc.value.errors)
+
+
+def test_calculatrice_regime_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["regime"] = "yolo"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("yolo" in e for e in exc.value.errors)
+
+
+def test_calculatrice_composant_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["composant"] = "composant_imaginaire"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    # JSON schema enum ferme : erreur de structure attendue.
+    assert any(
+        "composant" in e or "composant_imaginaire" in e for e in exc.value.errors
+    )
+
+
+def test_calculatrice_sans_composant_echoue():
+    r = _calculatrice_regle_valide()
+    r.pop("composant")
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("composant" in e for e in exc.value.errors)
+
+
+def test_calculatrice_input_mort_echoue():
+    """Un input declare mais non reference par aucune borne -> erreur."""
+    r = _calculatrice_regle_valide()
+    # Ajoute un input qui n'est utilise nulle part.
+    r["inputs_requis"].append(
+        {
+            "id": "date_orpheline",
+            "label": "Orpheline",
+            "type": "date",
+            "placeholder": "01/01",
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("date_orpheline" in e for e in exc.value.errors)
+
+
+def test_calculatrice_back_compat_inputs_requis_legacy_strings():
+    """Une regle non-calculatrice peut toujours utiliser inputs_requis sous
+    forme de liste de strings (cf. pc6 fertirrigation existant)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_legacy",
+        "type": "autorisation_sous_condition",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "inputs_requis": ["fertirrigation"],
+    }
+    validate_arbre(a)
+
+
+# ─── Champ `condition` sur periodes calculatrice (spec extension) ──────────
+
+
+def test_calculatrice_condition_valide_passe():
+    """Une condition bien formee + input_id existant + type date passe."""
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue >= 05/12"
+    validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_condition_format_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue est tot"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_input_inconnu_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_imaginaire < 05/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any(
+        "date_imaginaire" in e and "inputs_requis" in e for e in exc.value.errors
+    )
+
+
+def test_calculatrice_condition_date_invalide_echoue():
+    """Comme pour les placeholders / bornes fixes, on accepte tout JJ/MM
+    avec j in [1..31] et m in [1..12]. Un jour > 31 ou mois > 12 est rejete.
+    """
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue < 45/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("45/12" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_operateur_invalide_echoue():
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "date_destruction_prevue ~ 05/12"
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_vide_echoue():
+    """Condition presente mais chaine vide -> erreur."""
+    r = _calculatrice_regle_valide()
+    r["periodes"][0]["condition"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("condition" in e for e in exc.value.errors)
+
+
+def test_calculatrice_condition_tous_operateurs_passent():
+    """Verifie que les 6 operateurs sont acceptes."""
+    for op in ("<", "<=", ">", ">=", "==", "!="):
+        r = _calculatrice_regle_valide()
+        r["periodes"][0]["condition"] = f"date_destruction_prevue {op} 05/12"
+        validate_arbre(_arbre_avec_calculatrice(r))
+
+
+def test_calculatrice_deux_periodes_conditions_complementaires_passent():
+    """Cas typique spec : 2 periodes alternatives selon condition opposees."""
+    r = _calculatrice_regle_valide()
+    r["periodes"] = [
+        {
+            "du": "15/11",
+            "au": "15/01",
+            "regime": "autorisation_sous_condition",
+            "condition": "date_destruction_prevue >= 05/12",
+        },
+        {
+            "du": "date_destruction_prevue-20jours",
+            "au": "15/01",
+            "regime": "autorisation_sous_condition",
+            "condition": "date_destruction_prevue < 05/12",
+        },
+        {
+            "du": "date_semis_couvert",
+            "au": "date_semis_couvert+4semaines",
+            "masque": True,
+            "regime": "interdiction",
+        },
+    ]
+    validate_arbre(_arbre_avec_calculatrice(r))

@@ -43,6 +43,28 @@
       code {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
+
+      /* Dark mode : Django admin auto-applique son theme sombre via
+         prefers-color-scheme. Sans override, nos liens bleu DSFR (#1f4789)
+         deviennent illisibles sur fond sombre. On bascule sur un bleu
+         clair contraste suffisant (#99c4ff ~ AA sur fond #222). */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1e1e1e;
+          color: #e8e8e8;
+        }
+
+        a {
+          color: #99c4ff;
+        }
+
+        code {
+          background: #2a2a2a;
+          color: #f0d090;
+          padding: 0.1em 0.3em;
+          border-radius: 3px;
+        }
+      }
     </style>
     {% block extra_css %}{% endblock %}
   </head>
@@ -57,7 +79,8 @@
                    font-size:0.9rem">
       <strong>Admin nitrates</strong>
       <nav style="display:flex;gap:1rem;">
-        <a href="{% url 'admin:index' %}" style="color:#fff;">← Django admin</a>
+        <a href="{% url 'admin:app_list' app_label='nitrates' %}"
+           style="color:#fff">← Django admin</a>
         <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
            style="color:#fff">Arbres (liste)</a>
         <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
@@ -72,6 +95,14 @@
          role="status"
          aria-live="polite">
       {% for msg in messages %}<div class="yaml-admin__toast">{{ msg }}</div>{% endfor %}
+    </div>
+
+    {% comment %}Overlay full-page affiche pendant les requetes globales mutatives
+       (Annuler, Restaurer, Sauvegarder, Activer, etc.). Active par body.yaml-admin--busy
+       depuis les listeners htmx ci-dessous. Les forms d'edition inline ont leur
+    propre spinner local (cf. .yaml-tree__inline-form.htmx-request).{% endcomment %}
+    <div class="yaml-admin__global-overlay" aria-hidden="true">
+      <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
     </div>
 
     <main>
@@ -166,6 +197,47 @@
       }
       document.addEventListener('showToast', _handleShowToast);
       document.body.addEventListener('showToast', _handleShowToast);
+      // Overlay global "en cours" pendant les requetes htmx mutatives
+      // (sauf forms d'edition inline qui ont leur propre spinner).
+      // Visibilite minimale de 400ms. Si la reponse declenche un reload
+      // navigateur (HX-Refresh / HX-Redirect), on NE retire PAS l'overlay --
+      // on le laisse jusqu'a ce que la nouvelle page soit montee, sinon il
+      // y a un gap visible "page blanche" entre la disparition du spinner
+      // et le rechargement.
+      let _busyShownAt = 0;
+      const MIN_BUSY_VISIBLE_MS = 400;
+      const _showBusy = (msg) => {
+        _busyShownAt = Date.now();
+        const msgEl = document.getElementById('yaml-admin-overlay-msg');
+        if (msgEl && msg) msgEl.textContent = msg;
+        document.body.classList.add('yaml-admin--busy');
+      };
+      const _hideBusy = () => {
+        const elapsed = Date.now() - _busyShownAt;
+        const wait = Math.max(0, MIN_BUSY_VISIBLE_MS - elapsed);
+        setTimeout(() => {
+          document.body.classList.remove('yaml-admin--busy');
+        }, wait);
+      };
+      // Detecte le libelle contextuel a afficher selon le bouton qui declenche.
+      const _busyMsgForTrigger = (trigger) => {
+        if (!trigger) return '⏳ Action en cours…';
+        const title = (trigger.getAttribute('title') || '').toLowerCase();
+        const text = (trigger.textContent || '').toLowerCase();
+        if (title.includes('annuler') || text.includes('annuler')) {
+          return '⏳ Annulation en cours…';
+        }
+        if (title.includes('restaurer') || text.includes('restaurer')) {
+          return '⏳ Restauration en cours…';
+        }
+        if (title.includes('publier') || text.includes('publier')) {
+          return '⏳ Publication en cours…';
+        }
+        if (title.includes('vérifier') || text.includes('vérifier')) {
+          return '⏳ Vérification en cours…';
+        }
+        return '⏳ Sauvegarde en cours…';
+      };
       document.addEventListener('htmx:beforeRequest', function(evt) {
         // On sauve le scrollY juste avant les requetes qui vont
         // declencher un HX-Redirect/HX-Refresh.
@@ -173,6 +245,40 @@
         if (verb === 'post' || verb === 'delete' || verb === 'put') {
           sessionStorage.setItem('nitrates_admin__scrollY', window.scrollY);
         }
+        const trigger = evt.detail.elt;
+        const isInlineForm = trigger && trigger.closest('.yaml-tree__inline-form');
+        if (!isInlineForm && (verb === 'post' || verb === 'delete' || verb === 'put')) {
+          _showBusy(_busyMsgForTrigger(trigger));
+        }
+      });
+      document.addEventListener('htmx:afterRequest', function(evt) {
+        // Si la reponse va declencher un reload (HX-Refresh/HX-Redirect),
+        // on garde l'overlay visible -- il disparaitra naturellement avec
+        // le mount de la nouvelle page.
+        const xhr = evt.detail.xhr;
+        if (xhr && (xhr.getResponseHeader('HX-Refresh') === 'true' ||
+                    xhr.getResponseHeader('HX-Redirect'))) {
+          return;
+        }
+        _hideBusy();
+      });
+      document.addEventListener('htmx:responseError', _hideBusy);
+      document.addEventListener('htmx:sendError', _hideBusy);
+
+      // Pour les formulaires NATIFS (POST sans htmx, ex: "💾 Sauvegarder"
+      // qui sort de l'edition), on montre aussi l'overlay au submit. La
+      // navigation vers la page suivante l'enlevera naturellement.
+      document.addEventListener('submit', function(evt) {
+        const form = evt.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        // On exclut les forms htmx (deja gere par htmx:beforeRequest).
+        if (form.hasAttribute('hx-post') || form.hasAttribute('hx-get')) return;
+        // On exclut les forms cherchant a juste rafraichir (GET).
+        const method = (form.method || 'get').toLowerCase();
+        if (method !== 'post' && method !== 'delete' && method !== 'put') return;
+        // Detecte le bouton qui a soumis pour adapter le message.
+        const submitter = evt.submitter;
+        _showBusy(_busyMsgForTrigger(submitter));
       });
 
       // ─── Persistance cross-session du fold ────────────────────────────

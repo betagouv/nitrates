@@ -1,4 +1,24 @@
 # =============================================================================
+# ⚠️ DEPRECATED (2026-05-22) — Source de seed uniquement
+# =============================================================================
+# Ce fichier n'est plus consulté en runtime depuis la phase 4 de la carte #61.
+# Les référentiels sont désormais en base de données (cf. modèles Django dans
+# `envergo/nitrates/models_referentiels.py` : GroupeCultureUI, Culture,
+# BrancheCulturale, Fertilisant, NoteReglementaire, CodePrescription,
+# EvenementPhenologique).
+#
+# Ce fichier sert UNIQUEMENT de source initiale pour :
+#   - la migration 0012_seed_referentiels (RunPython idempotent)
+#   - la commande `python manage.py seed_referentiels`
+#
+# Pour modifier un référentiel : utiliser l'admin Django (/admin/nitrates/).
+# Modifier ce fichier ne change RIEN en runtime tant que le seed n'est pas
+# rejoué (et le seed écrase la DB avec update_or_create, donc à éviter sans
+# coordination avec les modifs admin déjà faites).
+#
+# Conservé pour mémoire : structure historique des référentiels, post-its
+# Karine, rédaction juridique brute des PCs.
+# =============================================================================
 # RÉFÉRENTIELS — listes fermées utilisées dans l'arbre de décision
 # =============================================================================
 # Modifier ce fichier uniquement si la réglementation change (nouveau type de
@@ -308,39 +328,31 @@ mapping_sous_culture_vers_branche:
     sous_culture: "autres_cultures"
 
   # ── Couvert d'interculture longue ──────────────────────────────────────────
-  # 4 cas du PDF -> 4 branches d'arbre existantes (cf. q_interculture_longue_type).
+  # Mapping APLATI (spec_refactor_couverts_remontee_branches) : `sous_culture`
+  # vaut directement la variante (cie/cine x avant/apres), plus de niveau
+  # parasite ni de flag `sous_culture_couvert`. Les 6 variantes sont des
+  # branches directes de q_couvert_sous_culture dans l'arbre.
+  # cie = couvert récolté, cine = couvert non récolté.
   couvert_recolte_plus_en_place_apres_3112:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_longue"
-    flags:
-      sous_culture_couvert: "cie_avant_3112"
+    sous_culture: "cie_avant_3112"
   couvert_recolte_toujours_en_place_apres_0101:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_longue"
-    flags:
-      sous_culture_couvert: "cine_apres_0101"
+    sous_culture: "cie_apres_0101"
   couvert_non_recolte_plus_en_place_apres_3112:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_longue"
-    flags:
-      sous_culture_couvert: "cine_avant_3112"
+    sous_culture: "cine_avant_3112"
   couvert_non_recolte_toujours_en_place_apres_0101:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_longue"
-    flags:
-      sous_culture_couvert: "cine_apres_0101"
+    sous_culture: "cine_apres_0101"
 
   # ── Couvert d'interculture courte ──────────────────────────────────────────
   couvert_courte_recolte:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_courte"
-    flags:
-      sous_culture_couvert: "cie_courte"
+    sous_culture: "cie_courte"
   couvert_courte_non_recolte:
     occupation_sol: "couvert_intercultures"
-    sous_culture: "interculture_courte"
-    flags:
-      sous_culture_couvert: "cine_courte"
+    sous_culture: "cine_courte"
 
   # ── Sol non cultivé (cas direct sans sous-catégorie) ───────────────────────
   # Pas dans la cascade niveau 2, traité au niveau 1 directement.
@@ -855,10 +867,14 @@ evenements_phenologiques:
     date_calendrier: "15/09"
   brunissement_soies:
     libelle_public: "Brunissement des soies (maïs)"
-    date_calendrier: "01/08"
+    # Date conventionnelle de rendu calendrier reportee a mi-aout suite au
+    # retour Louise (2026-05-13) : sur le terrain, le brunissement des
+    # soies peut survenir jusque vers le 15/08, etendre la zone hachuree
+    # jusque la colle mieux a la realite.
+    date_calendrier: "15/08"
   brunissement_des_soies:
     libelle_public: "Brunissement des soies (maïs)"
-    date_calendrier: "01/08"
+    date_calendrier: "15/08"
   derniere_coupe_luzerne:
     libelle_public: "Dernière coupe de la luzerne"
     # Date conventionnelle de rendu calendrier : place au milieu de la fenetre

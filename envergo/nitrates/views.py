@@ -1,11 +1,13 @@
 import json
 
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from django.views.generic import TemplateView, View
+from django.views.generic import View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
 from envergo.nitrates.bassins import (
@@ -15,6 +17,21 @@ from envergo.nitrates.bassins import (
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
+
+
+def _cache_in_prod(seconds):
+    """Decorateur cache_page activé uniquement quand DEBUG=False (prod).
+    En dev (DEBUG=True), no-op : pas de cache, refresh instantané quand
+    on modifie un referentiel cote ORM ou un YAML.
+    """
+    if settings.DEBUG:
+
+        def _noop(view):
+            return view
+
+        return _noop
+    return cache_page(seconds)
+
 
 # Mapping pour le recap des QC repondues (rendu dans le panneau gauche apres
 # que l'utilisateur a repondu via le mini-form du panneau droit). Donne le
@@ -40,11 +57,22 @@ _QC_LIBELLES = {
 }
 
 
-class HomeView(TemplateView):
-    template_name = "nitrates/home.html"
+@method_decorator(login_required, name="dispatch")
+class HomeView(View):
+    """Racine `/` : sert le meme simulateur que `/simulateur/`, mais
+    protege par ProConnect. Permet de differencier les URL d'admin
+    (accessibles aux juristes connectes) du parcours user public.
+
+    On delegue tout a `MoulinetteView.get()` pour eviter la duplication.
+    """
+
+    def get(self, request, *args, **kwargs):
+        # Import retarde pour eviter d'instancier MoulinetteView avant que
+        # ses dependances (referentiels DB, etc.) soient chargees.
+        return MoulinetteView().get(request, *args, **kwargs)
 
 
-@method_decorator(cache_page(60 * 60 * 24), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
 class ZoneVulnerableGeoJSONView(View):
     """Renvoie les polygones ZV nitrates au format GeoJSON.
 
@@ -161,7 +189,7 @@ class DebugView(View):
         )
 
 
-@method_decorator(cache_page(60 * 60), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class ReferentielsView(View):
     """Expose les listes fermees du YAML referentiels (types fertilisants,
     cultures, codes prescription, notes...) en JSON pour le front.
@@ -177,7 +205,7 @@ class ReferentielsView(View):
         return JsonResponse(load_referentiels())
 
 
-@method_decorator(cache_page(60 * 60), name="dispatch")
+@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class DecisionTreeView(View):
     """Expose l'arbre de decision actif en JSON pour que le front puisse
     construire les selects en cascade (occupation_sol, sous_culture,
@@ -223,6 +251,13 @@ class MoulinetteView(View):
         except FileNotFoundError:
             referentiels = {}
 
+        # Mode preview admin : si ?draft_tree_id=<pk> est fourni ET que
+        # l'utilisateur a le droit de voir ce draft, l'evaluateur charge
+        # ce tree au lieu de l'actif. Sinon on strip le param (fallback
+        # silencieux sur l'actif, pas d'erreur) pour eviter qu'un visiteur
+        # non-staff puisse voir un brouillon non publie via une URL devinee.
+        self._guard_draft_tree_id(request)
+
         # Champs deja rendus dans le form principal (cascade + lat/lng +
         # code_insee + hidden type_fertilisant). On les exclut du
         # passthrough. Liste (et pas set) car Django templates rendent
@@ -240,7 +275,6 @@ class MoulinetteView(View):
             "type_fertilisant",
             "culture_irriguee_type",
             "prairie_permanente",
-            "sous_culture_couvert",
         ]
 
         ctx = {
@@ -249,8 +283,9 @@ class MoulinetteView(View):
             "notes_referentiel": referentiels.get("notes", {}),
             "afficher_resultat": False,
             # Active les panels debug (info parcelle, chemin parcouru,
-            # result_code, etc.) uniquement en mode developpeur.
-            "debug": settings.DEBUG,
+            # result_code, etc.). Pilote par NITRATES_FORM_DEBUG_PANELS pour
+            # pouvoir activer en staging sans avoir DEBUG=True.
+            "debug": settings.NITRATES_FORM_DEBUG_PANELS,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
             "qc_repondues_champs": [],
@@ -301,9 +336,21 @@ class MoulinetteView(View):
         # de zero). Les choix sont issus DIRECTEMENT de l'arbre YAML
         # (pas d'une table hardcodee), donc seules les valeurs reellement
         # presentes dans la branche en cours sont proposees.
-        from envergo.nitrates.yaml_tree import collecter_qc_du_chemin, load_active_tree
+        from envergo.nitrates.yaml_tree import (
+            collecter_qc_du_chemin,
+            load_active_tree,
+            load_tree_by_id,
+        )
 
-        arbre_actif = load_active_tree()
+        # Si on est en preview d'un draft, on collecte les QC du draft.
+        draft_id = request.GET.get("draft_tree_id")
+        if draft_id:
+            try:
+                arbre_actif = load_tree_by_id(int(draft_id))
+            except (DecisionTree.DoesNotExist, ValueError, TypeError):
+                arbre_actif = load_active_tree()
+        else:
+            arbre_actif = load_active_tree()
         contexte_courant = dict(request.GET.items())
         # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
         # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
@@ -368,3 +415,29 @@ class MoulinetteView(View):
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)
+
+    def _guard_draft_tree_id(self, request) -> None:
+        """Si `?draft_tree_id=<pk>` est present mais que l'utilisateur n'a
+        pas la permission de previsualiser ce tree, on retire le param
+        en mutant `request.GET` (devient mutable temporairement).
+
+        Strategie fail-safe : pas d'erreur 403 / 404 -- on tombe
+        silencieusement sur l'arbre actif. Empeche un visiteur non-staff
+        de voir un brouillon non publie via une URL devinee, tout en
+        gardant le simulateur fonctionnel.
+        """
+        draft_id = request.GET.get("draft_tree_id")
+        if not draft_id:
+            return
+        from envergo.nitrates.permissions import can_preview_tree
+
+        try:
+            tree = DecisionTree.objects.get(pk=int(draft_id))
+        except (DecisionTree.DoesNotExist, ValueError, TypeError):
+            tree = None
+        allowed = tree is not None and can_preview_tree(request.user, tree)
+        if not allowed:
+            mutable = request.GET._mutable
+            request.GET._mutable = True
+            request.GET.pop("draft_tree_id", None)
+            request.GET._mutable = mutable

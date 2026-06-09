@@ -3,7 +3,6 @@ from decimal import Decimal as D
 from functools import cached_property
 from math import ceil
 
-import shapely
 from django import forms
 from django.contrib.gis.geos import GEOSGeometry, MultiLineString
 from django.core.validators import RegexValidator
@@ -32,6 +31,9 @@ from envergo.moulinette.regulations.regime_unique_haie import (
     compute_ru_compensation_ratio,
 )
 from envergo.utils.fields import get_human_readable_value
+
+# shapely lazy-loaded dans get_hedges_in_zone_sensible : evite chargement boot.
+# Non utilise par le simulateur nitrates.
 
 
 class EPRegulation(HaieRegulationEvaluator):
@@ -762,6 +764,8 @@ class EspecesProtegeesRegimeUnique(
         Filters matching zones with a DB spatial lookup, then tests each hedge
         against each zone in Python (shapely) to build the result set.
         """
+        import shapely
+
         if not hedges:
             return set()
 

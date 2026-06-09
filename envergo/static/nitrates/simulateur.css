@@ -203,15 +203,22 @@ body {
   font-size: 0.95rem;
 }
 
-/* ─── Mini-form question subsidiaire dans le panneau resultat ─────── */
+/* ─── Mini-form questions subsidiaires dans le panneau resultat ─────── */
 
-.resultat-panel--questions {
+/* On combine les 2 classes pour surclasser les regles `.resultat-panel`
+   definies plus bas dans le fichier (memes specificite, donc l'ordre
+   l'emporte sinon). */
+
+.resultat-panel.resultat-panel--questions {
+  /* Fond violet pastel valide par la designeuse (cf. #58.2). Distingue
+     visuellement les questions complementaires (etape 2) du reste de la
+     page. Le mode dark sera traite a part dans une carte transverse. */
   background: #cecefc;
   padding: 30px;
   border-radius: 4px;
 }
 
-.resultat-panel--questions .form-question-group {
+.resultat-panel.resultat-panel--questions .form-question-group {
   margin-top: 18px;
 }
 
@@ -301,6 +308,18 @@ body {
   border-radius: 8px;
   padding: 1.5rem 2rem;
   color: var(--text-default-grey);
+}
+
+/* Sinon, regle de base — : ligne separatrice italic entre les periodes
+   autorisation_sous_condition (en haut) et les periodes interdiction
+   (en dessous), pour expliciter le fallback (cf. #88). */
+.periodes-mixte__fallback-intro {
+  list-style: none;
+  margin-left: -1.25em;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  color: var(--text-mention-grey);
+  font-size: 0.95em;
 }
 
 .resultat-panel h2,
@@ -436,6 +455,20 @@ body {
   margin: 0 0 6px;
 }
 
+.nitrates-debug-panel__admin-link {
+  margin-left: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #b06a00;
+  text-decoration: none;
+}
+
+.nitrates-debug-panel__admin-link:hover {
+  text-decoration: underline;
+}
+
 /* Liste cle/valeur en 2 colonnes : libelle a gauche, valeur a droite,
    les valeurs longues passent a la ligne sans deborder. */
 .nitrates-debug-panel__dl {
@@ -477,4 +510,18 @@ body {
 
 .nitrates-debug-panel__path li {
   list-style: decimal;
+}
+
+/* ─── Form bloque tant que pas de clic carte (issues #89, #96) ────────── */
+.form-locked-message {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: #f0f4fa;
+  border-left: 4px solid #1f4789;
+  border-radius: 4px;
+  color: #1d1d1d;
+}
+
+.form-locked-message p {
+  margin: 0;
 }

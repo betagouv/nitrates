@@ -3,21 +3,7 @@
 {% block title %}YAML — {{ tree.name }}{% endblock %}
 
 {% block extra_css %}
-  {# CodeMirror 5 : leger, supporte yaml + folding + themes darcula/material/monokai #}
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/darcula.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/idea.min.css">
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+  {% include "nitrates_admin/yaml_tree/_codemirror_assets.html" %}
   <style>
     .yaml-detail {
       display: flex;
@@ -68,25 +54,7 @@
     .yaml-detail__editor {
       flex: 1;
       min-height: 0;
-      border: 1px solid #444;
-      border-radius: 4px;
       overflow: hidden;
-    }
-
-    .CodeMirror {
-      height: 100% !important;
-      font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    /* Gutter de fold */
-    .CodeMirror-foldmarker {
-      color: #f4a;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 0 4px;
-      border-radius: 3px;
-      font-family: inherit;
     }
 
     .yaml-status-badge {
@@ -117,17 +85,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+  {# Tous les assets CodeMirror sont charges via _codemirror_assets.html dans extra_css. #}
 {% endblock %}
 
 {% block content %}
@@ -147,30 +105,10 @@
           {% if tree.activated_at %}• Activé {{ tree.activated_at|date:"Y-m-d H:i" }}{% endif %}
         </p>
       </div>
-      <div class="yaml-detail__controls">
-        <label for="theme-select" style="font-size: 0.9rem;">Thème :</label>
-        <select id="theme-select"
-                class="fr-select"
-                style="width: auto;
-                       min-width: 180px">
-          <option value="darcula">Darcula</option>
-          <option value="dracula">Dracula</option>
-          <option value="material-darker">Material Darker</option>
-          <option value="monokai">Monokai</option>
-          <option value="default">Light (default)</option>
-          <option value="idea">IntelliJ IDEA (light)</option>
-        </select>
-        <button id="fold-all"
-                class="fr-btn fr-btn--secondary fr-btn--sm"
-                type="button">Tout replier</button>
-        <button id="unfold-all"
-                class="fr-btn fr-btn--secondary fr-btn--sm"
-                type="button">Tout déplier</button>
-      </div>
     </div>
 
     <div class="yaml-detail__editor">
-      <textarea id="yaml-source" hidden>{{ yaml_brut }}</textarea>
+      <textarea id="yaml-source" data-yaml-editor data-yaml-editor-readonly>{{ yaml_brut }}</textarea>
     </div>
   </div>
 
@@ -178,49 +116,10 @@
     (function () {
       "use strict";
       const sourceEl = document.getElementById("yaml-source");
-      const editor = CodeMirror.fromTextArea(sourceEl, {
-        mode: "yaml",
-        theme: "darcula",
-        lineNumbers: true,
+      window.mountYamlCodeMirror(sourceEl, {
         readOnly: true,
-        lineWrapping: false,
-        foldGutter: true,
-        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-        extraKeys: {
-          "Ctrl-F": "find",
-          "Cmd-F": "find",
-          "Ctrl-G": "findNext",
-          "Cmd-G": "findNext",
-        },
+        themeKey: "nitrates_yaml_codemirror_theme",
       });
-
-      // Persist user theme choice in localStorage.
-      const STORAGE_KEY = "nitrates_yaml_browser_theme";
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const themeSelect = document.getElementById("theme-select");
-      if (saved) {
-        editor.setOption("theme", saved);
-        themeSelect.value = saved;
-      }
-      themeSelect.addEventListener("change", (e) => {
-        const theme = e.target.value;
-        editor.setOption("theme", theme);
-        localStorage.setItem(STORAGE_KEY, theme);
-      });
-
-      document.getElementById("fold-all").addEventListener("click", () => {
-        for (let l = editor.firstLine(); l <= editor.lastLine(); l++) {
-          editor.foldCode(CodeMirror.Pos(l, 0), null, "fold");
-        }
-      });
-      document.getElementById("unfold-all").addEventListener("click", () => {
-        for (let l = editor.firstLine(); l <= editor.lastLine(); l++) {
-          editor.foldCode(CodeMirror.Pos(l, 0), null, "unfold");
-        }
-      });
-
-      // Resize handle for parent container
-      window.addEventListener("resize", () => editor.refresh());
     })();
   </script>
 {% endblock %}

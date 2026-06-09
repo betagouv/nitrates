@@ -44,18 +44,63 @@ class Resultat:
     plafond_azote_kg_n_ha: float | None = None
     plafonnement_associe: str | None = None
     composant: str | None = None
-    inputs_requis: list[str] | None = None
+    # inputs_requis : liste polymorphe (cf. spec_grammaire_calculatrice.md) :
+    #   - list[str] pour les composants legacy (luzerne_post_coupe, fenetre_epandage)
+    #   - list[dict{id,label,type,placeholder,label_court?}] pour la
+    #     nouvelle grammaire calculatrice (calendrier_dynamique_couvert).
+    inputs_requis: list | None = None
     parametres: dict | None = None
     a_completer: bool = False
+
+    @property
+    def has_borne_flottante(self) -> bool:
+        """True si au moins une periode contient une borne phenologique
+        (slug type `brunissement_des_soies`, `derniere_coupe_luzerne`,
+        etc.) plutot qu'une date fixe JJ/MM.
+        """
+        if not self.periodes:
+            return False
+        for p in self.periodes:
+            du = p.get("du", "")
+            au = p.get("au", "")
+            # Une date fixe est de la forme JJ/MM (caractere 2 = '/').
+            # Toute autre forme (slug phenologique) est une borne flottante.
+            if len(du) != 5 or du[2] != "/":
+                return True
+            if len(au) != 5 or au[2] != "/":
+                return True
+        return False
+
+    @property
+    def has_autorisation_sous_condition(self) -> bool:
+        """True si au moins une periode est de regime
+        `autorisation_sous_condition`. Utilise par le template pour
+        gater le prefixe "Sinon, regle de base —" (cf. #88)."""
+        if not self.periodes:
+            return False
+        return any(
+            p.get("regime") == "autorisation_sous_condition" for p in self.periodes
+        )
+
+    @property
+    def has_interdiction(self) -> bool:
+        """True si au moins une periode est de regime `interdiction`
+        (regle de base). Combine avec has_autorisation_sous_condition,
+        sert a decider si on affiche la mention "Sinon, regle de base —"
+        au-dessus de la ligne d'interdiction (#88)."""
+        if not self.periodes:
+            return False
+        return any(p.get("regime") == "interdiction" for p in self.periodes)
 
     def to_json_dict(self) -> dict:
         """Serialise pour exposition JSON cote front (json_script Django).
 
-        Utilise par le module epandage_aujourdhui.js pour calculer le
-        statut effectif a la date du jour : besoin uniquement des champs
-        regle_id / type / periodes (avec regime) / texte_condition.
-        On expose aussi message / code_prescription pour info debug, mais
-        le calcul de statut ne s'en sert pas.
+        Utilise par :
+          - epandage_aujourdhui.js : calcul du statut effectif a la date
+            du jour. Besoin de regle_id / type / periodes / texte_condition.
+          - calculatrice-calendrier.js : rendu du calendrier dynamique
+            pour les feuilles type=calculatrice. Besoin en plus de
+            composant / inputs_requis / verdict (= message).
         """
         return {
             "regle_id": self.regle_id,
@@ -64,12 +109,22 @@ class Resultat:
             "texte_condition": self.texte_condition,
             "message": self.message,
             "code_prescription": self.code_prescription,
+            # Champs calculatrice (None si type != calculatrice).
+            "composant": self.composant,
+            "inputs_requis": self.inputs_requis or [],
         }
 
 
 @dataclass
 class QuestionFormulaire:
-    """Une question a poser a l'utilisateur."""
+    """Une question a poser a l'utilisateur.
+
+    Quand `parent_champ` est non None, cette question n'est pertinente que
+    si l'utilisateur a repondu `parent_valeur` a la question `parent_champ`
+    en amont. Le template peut alors cacher/afficher dynamiquement la
+    question selon la valeur choisie cote front, sans aller-retour serveur
+    (cf. #58.1).
+    """
 
     noeud_id: str
     champ: str
@@ -77,6 +132,8 @@ class QuestionFormulaire:
     texte: str
     aide: str | None = None
     choix: list[dict] = field(default_factory=list)  # [{valeur, libelle?}, ...]
+    parent_champ: str | None = None
+    parent_valeur: Any = None
 
 
 @dataclass
@@ -190,8 +247,17 @@ def _descendre_branche(
 
 def _choisir_branche(noeud: dict, valeur: Any) -> dict:
     for branche in noeud.get("branches", []):
-        if _valeurs_egales(branche.get("valeur"), valeur):
+        # Cas branche `valeur:` (singulier, valeur unique).
+        if "valeur" in branche and _valeurs_egales(branche.get("valeur"), valeur):
             return branche
+        # Cas branche `valeurs:` (pluriel, liste de valeurs équivalentes,
+        # cf. grammaire #61 phase 3). Ex `valeurs: [icpe_e, icpe_d]` pour
+        # regrouper enregistrement + déclaration sur la même branche.
+        valeurs_liste = branche.get("valeurs")
+        if valeurs_liste:
+            for v in valeurs_liste:
+                if _valeurs_egales(v, valeur):
+                    return branche
 
     # Fallback metier : sur un noeud `type_fertilisant`, l'arbre peut avoir
     # une branche generique `type_I` qui couvre l'union {type_Ia, type_Ib}.
@@ -203,10 +269,16 @@ def _choisir_branche(noeud: dict, valeur: Any) -> dict:
             if branche.get("valeur") == "type_I":
                 return branche
 
+    valeurs_disponibles = []
+    for b in noeud.get("branches", []):
+        if "valeur" in b:
+            valeurs_disponibles.append(b["valeur"])
+        elif "valeurs" in b:
+            valeurs_disponibles.extend(b["valeurs"])
     raise ParcoursError(
         f"noeud '{noeud['id']}' (champ={noeud['champ']!r}) : aucune branche "
         f"ne correspond a la valeur {valeur!r}. "
-        f"Valeurs possibles : {[b.get('valeur') for b in noeud.get('branches', [])]}"
+        f"Valeurs possibles : {valeurs_disponibles}"
     )
 
 
@@ -300,24 +372,35 @@ def _collecter_questions(
         que si le catalogue est resolu dans le contexte ; sinon on
         s'arrete.
 
-    Cette strategie garantit que l'utilisateur ne voit jamais de questions
-    qui ne le concernent pas (branches laterales non choisies)."""
+    Pour les questions conditionnelles (en aval d'une branche dont le
+    parent n'a pas encore ete repondu), on les remonte aussi mais en
+    annotant `parent_champ` + `parent_valeur` : le template les rendra
+    cachees au depart et le mini-JS subsidiaires_cascade.js les affichera
+    quand l'utilisateur cliquera la bonne valeur. Resultat : un seul
+    aller-retour serveur quel que soit le nombre de questions en cascade
+    (cf. #58.1)."""
     questions: list[QuestionFormulaire] = []
     _ajouter_question(questions, noeud_formulaire)
 
-    # On essaie de descendre seulement si la valeur du noeud bloquant est
-    # connue dans le contexte. Mais par definition, si on arrive ici c'est
-    # que la valeur est absente : donc on s'arrete au 1er noeud.
-    # CEPENDANT : le walker peut etre appele depuis un point ou la 1re
-    # question est repondue mais d'autres en aval ne le sont pas.
-    # Pour rester correct, on essaie de descendre branche par branche
-    # selon le contexte.
     valeur = contexte.get(noeud_formulaire["champ"])
     if valeur is not None:
+        # Cas "1re question deja repondue dans l'URL" : on descend
+        # uniquement la branche choisie, sans questions conditionnelles.
         for branche in noeud_formulaire.get("branches", []):
             if _valeurs_egales(branche.get("valeur"), valeur):
                 _collecter_aval_si_chemin_unique(branche, contexte, questions)
                 break
+    else:
+        # Cas standard : on explore toutes les sous-branches du noeud
+        # bloquant pour proposer les questions conditionnelles en cascade.
+        for branche in noeud_formulaire.get("branches", []):
+            _collecter_aval_conditionnel(
+                branche,
+                contexte,
+                questions,
+                parent_champ=noeud_formulaire["champ"],
+                parent_valeur=branche.get("valeur"),
+            )
 
     return questions
 
@@ -361,7 +444,52 @@ def _collecter_aval_si_chemin_unique(
                 break
 
 
-def _ajouter_question(questions: list[QuestionFormulaire], noeud: dict) -> None:
+def _collecter_aval_conditionnel(
+    branche: dict,
+    contexte: dict[str, Any],
+    questions: list[QuestionFormulaire],
+    parent_champ: str,
+    parent_valeur: Any,
+) -> None:
+    """Comme `_collecter_aval_si_chemin_unique` mais pour le cas "1re
+    question pas encore repondue" : on remonte les questions formulaire
+    rencontrees en les annotant avec leur dependance au parent.
+
+    Le front cachera les questions tant que `parent_champ` ne vaut pas
+    `parent_valeur` cote utilisateur, et les revelera au clic. Aucun
+    aller-retour serveur intermediaire necessaire.
+
+    Si la sous-question est DEJA repondue dans le contexte (typiquement
+    via un pre-fill cascade.js -> mapping_sous_culture_vers_branche.flags,
+    cf. culture_irriguee_type=mais quand on a clique 'Mais' en sous-culture),
+    on ne la propose pas : c'est de la redondance UX.
+
+    On ne descend pas les catalogues internes (resolus serveur uniquement)
+    ni les sous-branches conditionnelles a 2 niveaux (rare en pratique,
+    et ca alourdirait inutilement le rendu)."""
+    if "noeud" not in branche:
+        return
+    sous = branche["noeud"]
+    type_noeud = sous.get("type_noeud")
+    if type_noeud != "formulaire":
+        return
+    # Skip si la sous-question est deja resolue par le contexte (pre-fill).
+    if contexte.get(sous["champ"]) is not None:
+        return
+    _ajouter_question(
+        questions,
+        sous,
+        parent_champ=parent_champ,
+        parent_valeur=parent_valeur,
+    )
+
+
+def _ajouter_question(
+    questions: list[QuestionFormulaire],
+    noeud: dict,
+    parent_champ: str | None = None,
+    parent_valeur: Any = None,
+) -> None:
     """Ajoute une question si pas deja presente (par champ)."""
     champ = noeud["champ"]
     if any(q.champ == champ for q in questions):
@@ -377,6 +505,8 @@ def _ajouter_question(questions: list[QuestionFormulaire], noeud: dict) -> None:
                 {"valeur": b["valeur"], "libelle": b.get("libelle")}
                 for b in noeud.get("branches", [])
             ],
+            parent_champ=parent_champ,
+            parent_valeur=parent_valeur,
         )
     )
 
@@ -390,10 +520,15 @@ def _build_id_index(arbre: dict) -> dict[str, dict]:
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
         _walk_for_index(racine, index)
-    for entry in arbre.get("plafonnements", []) or []:
-        regle = entry.get("regle")
-        if regle and "id" in regle:
-            index[regle["id"]] = regle
+    # Regles hors-arbre referencables par renvoi_vers : plafonnements et
+    # regles partagees (ex: r_cie_courte_types_0_I_II, atteint depuis les
+    # branches type_0/I/II du couvert courte). Sans ca, le parcours leve
+    # ParcoursError sur ces feuilles.
+    for cle in ("plafonnements", "regles_partagees"):
+        for entry in arbre.get(cle, []) or []:
+            regle = entry.get("regle")
+            if regle and "id" in regle:
+                index[regle["id"]] = regle
     return index
 
 

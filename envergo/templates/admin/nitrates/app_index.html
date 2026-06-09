@@ -1,22 +1,337 @@
-{% extends "admin/app_index.html" %}
+{% extends "admin/base_site.html" %}
 
-{% block content_title %}
-  <h1>{{ app_label|capfirst }}</h1>
-  <div class="module" style="margin-bottom:1rem;">
-    <h2>Outils nitrates</h2>
-    <ul class="actionlist" style="padding-left:1.2rem; margin:0.5rem 0;">
-      <li>
-        <a href="{% url 'nitrates_admin_validation_index' %}">📋 Dashboard validation des feuilles</a>
-        — tableau Miro × YAML × simulateur × Playwright
-      </li>
-      <li>
-        <a href="{% url 'nitrates_admin_yaml_tree' %}">🌳 Viewer / éditeur de l'arbre YAML</a>
-        — voir / éditer l'arbre de décision actif
-      </li>
-      <li>
-        <a href="{% url 'nitrates_yaml_browser_list' %}">📝 Mini browser YAML pleine page</a>
-        — coloration syntaxique + Darcula
-      </li>
-    </ul>
+{% load i18n %}
+
+{# Layout custom pour la page d'accueil admin nitrates : on sort
+   completement du carcan colMS/colM de l'admin Django pour avoir
+   un layout plein-largeur propre. #}
+{% block coltype %}flex{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ app_label }} nitrates-admin-index{% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+    › {{ app_list.0.name|default:app_label|capfirst }}
   </div>
+{% endblock %}
+
+{% block content %}
+  <h1>{{ app_label|capfirst }}</h1>
+
+  <div class="nitrates-admin-top">
+
+    {# ─── Acces rapide ────────────────────────────────────────── #}
+    <div class="module nitrates-admin-tools">
+      <h2>Accès rapide</h2>
+      <ul class="actionlist" style="padding-left:1.2rem; margin:0.5rem 0;">
+        <li>
+          <a href="{% url 'nitrates_simulateur' %}">🧮 Simulateur public</a>
+          — version utilisateur final (sans authentification)
+        </li>
+        <li>
+          <a href="{% url 'nitrates_admin_validation_index' %}">📋 Dashboard validation des feuilles</a>
+          — tableau Miro × YAML × simulateur × Playwright
+        </li>
+        <li>
+          <a href="{% url 'admin:nitrates_decisiontree_changelist' %}">🌳 Arbres de décision</a>
+          — liste de tous les arbres (actif, brouillons, archives) avec actions
+        </li>
+        <li>
+          <a href="{% url 'nitrates_yaml_browser_list' %}">📝 Mini browser YAML pleine page</a>
+          — coloration syntaxique + Darcula
+        </li>
+      </ul>
+    </div>
+
+    {# ─── Diagramme Mermaid ──────────────────────────────────── #}
+    <div class="module nitrates-admin-diagram">
+      <h2>Modèle de données nitrates</h2>
+      {# djlint:off #}
+      <div class="mermaid" id="nitrates-mermaid">
+classDiagram
+    class ArbreDeDecision {
+      +contenu (JSON YAML)
+      +status (draft/active/archive)
+      +Source de vérité runtime
+    }
+    class BrancheCulturale {
+      +identifiant
+      +Sous-arbre emprunté
+    }
+    class Fertilisant {
+      +identifiant
+      +libelle_public
+      +categorie (enum)
+      +type_reglementaire
+    }
+    class CodePrescription {
+      +identifiant
+      +mots_cles
+      +texte_court
+    }
+    class NoteReglementaire {
+      +identifiant
+      +libelle_court
+      +regions_concernees
+      +departements_concernes
+    }
+    class EvenementPhenologique {
+      +identifiant
+      +libelle_public
+      +date_calendrier
+    }
+    class Culture {
+      +identifiant
+      +libelle_public
+      +occupation_sol (enum)
+    }
+    class GroupeCultureUI {
+      +identifiant
+      +libelle_public
+      +Regroupement UX (cascade form)
+    }
+    BrancheCulturale ..> ArbreDeDecision : feed (branche sur)
+    Fertilisant ..> ArbreDeDecision : référencé par
+    CodePrescription ..> ArbreDeDecision : référencé par
+    NoteReglementaire ..> ArbreDeDecision : référencé par
+    EvenementPhenologique ..> ArbreDeDecision : référencé par (bornes)
+    NoteReglementaire ..> CodePrescription : référencé par
+    Culture --o GroupeCultureUI : cascade UI
+    Culture --o BrancheCulturale : route arbre
+      </div>
+      {# djlint:on #}
+    </div>
+  </div>
+
+  {# ─── Liste des modeles avec description integree ──────────── #}
+  {% for app in app_list %}
+    <div class="app-{{ app.app_label }} module nitrates-admin-models">
+      <table>
+        <caption>
+          <a href="{{ app.app_url }}" class="section">{{ app.name }}</a>
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Modèle</th>
+            <th scope="col">Rôle</th>
+            <th scope="col">{% translate 'Add' %}</th>
+            <th scope="col">{% translate 'Change' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for model in app.models %}
+            <tr class="model-{{ model.object_name|lower }}">
+              <th scope="row">
+                <span class="nitrates-model-icon">
+                  {% if model.object_name == "DecisionTree" %}
+                    🌳
+                  {% elif model.object_name == "GroupeCultureUI" %}
+                    🌱
+                  {% elif model.object_name == "Culture" %}
+                    🌾
+                  {% elif model.object_name == "BrancheCulturale" %}
+                    🌿
+                  {% elif model.object_name == "Fertilisant" %}
+                    🪣
+                  {% elif model.object_name == "CodePrescription" %}
+                    📜
+                  {% elif model.object_name == "NoteReglementaire" %}
+                    📑
+                  {% elif model.object_name == "EvenementPhenologique" %}
+                    🌸
+                  {% elif model.object_name == "RpgCulture" %}
+                    📊
+                  {% endif %}
+                </span>
+                {% if model.admin_url %}
+                  <a href="{{ model.admin_url }}">{{ model.name }}</a>
+                {% else %}
+                  {{ model.name }}
+                {% endif %}
+              </th>
+              <td class="nitrates-model-role">
+                {% if model.object_name == "DecisionTree" %}
+                  Source de vérité runtime de la moulinette.
+                {% elif model.object_name == "GroupeCultureUI" %}
+                  Regroupement <strong>UX uniquement</strong> pour le 1er select
+                  de la cascade formulaire (« Culture d'hiver », « Prairies ou
+                  luzerne »…). Aucune logique métier ne branche dessus.
+                {% elif model.object_name == "Culture" %}
+                  Culture finale choisie par l'utilisateur (« Colza », « Maïs »…).
+                  Sert de <strong>mapper</strong> entre la cascade UI et la branche
+                  d'arbre empruntée (FK <code>branche_culturale</code> +
+                  <code>occupation_sol</code>).
+                {% elif model.object_name == "BrancheCulturale" %}
+                  Identifiant de sous-arbre du YAML (« colza »,
+                  « culture_printemps »…). Plusieurs cultures peuvent emprunter
+                  la même branche. C'est ce sur quoi l'arbre branche réellement
+                  au niveau <code>culture</code>.
+                {% elif model.object_name == "Fertilisant" %}
+                  Fertilisant utilisateur (« Fientes de volailles »,
+                  « Lisier porcin »…).
+                {% elif model.object_name == "CodePrescription" %}
+                  Prescription affichée en résultat de simulation (PC1, PC2…).
+                  Lié optionnellement à une <strong>NoteReglementaire</strong>.
+                {% elif model.object_name == "NoteReglementaire" %}
+                  Note de l'arrêté PAN (note_5, note_7…). Porte la liste
+                  des régions / départements concernés (utilisé pour résoudre
+                  les zones type « note_5 »).
+                {% elif model.object_name == "EvenementPhenologique" %}
+                  Borne flottante de période (« brunissement_des_soies »,
+                  « derniere_coupe_luzerne »…), avec date conventionnelle JJ/MM
+                  pour le rendu calendrier.
+                {% elif model.object_name == "RpgCulture" %}
+                  Référentiel officiel IGN/ASP des codes culture du RPG
+                  (Registre Parcellaire Graphique). Utilisé pour mapper les
+                  codes parcelles vers des libellés métier.
+                {% endif %}
+              </td>
+              {% if model.add_url %}
+                <td>
+                  <a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a>
+                </td>
+              {% else %}
+                <td></td>
+              {% endif %}
+              {% if model.admin_url %}
+                {% if model.view_only %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a>
+                  </td>
+                {% else %}
+                  <td>
+                    <a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a>
+                  </td>
+                {% endif %}
+              {% else %}
+                <td></td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+
+  {# Mermaid via CDN — chargé uniquement sur cette page admin. #}
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'default',
+      securityLevel: 'strict',
+    });
+  </script>
+
+  <style>
+    /* On extend base_site.html directement (pas app_index.html), donc
+       le carcan colMS/colM n'est pas applique. On force float:none au
+       cas ou. */
+    body.nitrates-admin-index #content {
+      width: 100%;
+    }
+
+    body.nitrates-admin-index #content-main {
+      float: none !important;
+      width: 100% !important;
+      margin-right: 0 !important;
+    }
+
+    .nitrates-admin-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+      gap: 1.5rem;
+      align-items: start;
+      margin-bottom: 1.5rem;
+      padding-right: 1rem;
+    }
+
+    @media (max-width: 1100px) {
+      .nitrates-admin-top {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .nitrates-admin-diagram {
+      margin-right: 1rem;
+    }
+
+    .nitrates-admin-diagram .mermaid {
+      background: #fff;
+      border: 1px solid #e1e1e1;
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin: 0.75rem 1rem;
+      overflow: auto;
+    }
+
+    .nitrates-admin-diagram .mermaid svg {
+      max-width: 100%;
+      width: 100%;
+      height: auto !important;
+      display: block;
+      margin: 0 auto;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .nitrates-admin-diagram .mermaid {
+        background: #1e1e1e;
+        border-color: #333;
+      }
+    }
+
+    /* Table des modeles : colonne Role en position 2. */
+    .nitrates-admin-models {
+      margin-right: 3rem;
+      max-width: calc(100% - 1rem);
+      overflow-x: auto;
+    }
+
+    .nitrates-admin-models table {
+      width: 100%;
+      table-layout: auto;
+      max-width: 100%;
+    }
+
+    .nitrates-admin-models th[scope="row"] {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    .nitrates-model-icon {
+      display: inline-block;
+      width: 1.2em;
+      text-align: center;
+      margin-right: 0.25rem;
+    }
+
+    .nitrates-admin-models td.nitrates-model-role {
+      font-size: 0.85rem;
+      color: #444;
+      line-height: 1.45;
+      padding: 0.4rem 0.6rem;
+      overflow-wrap: break-word;
+    }
+
+    .nitrates-admin-models td.nitrates-model-role code {
+      background: #f0f0f0;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .nitrates-admin-models td.nitrates-model-role {
+        color: #ccc;
+      }
+
+      .nitrates-admin-models td.nitrates-model-role code {
+        background: #2a2a2a;
+        color: #f0d090;
+      }
+    }
+  </style>
 {% endblock %}

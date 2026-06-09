@@ -50,6 +50,9 @@ NIVEAUX = ("culture", "sous_culture", "type_fertilisant", "complement")
 
 DATE_JJ_MM_RE = re.compile(r"^\d{2}/\d{2}$")
 ID_RE = re.compile(r"^[a-z][a-zA-Z0-9_]*$")
+# Borne calculatrice : event (+|-) N (jours|semaines|mois). Cf.
+# spec_grammaire_calculatrice + validator._BORNE_EVENT_OFFSET_RE.
+BORNE_EVENT_OFFSET_RE = re.compile(r"^[a-z][a-zA-Z0-9_]*[+-]\d+(jours|semaines|mois)$")
 
 
 def _choices(values: tuple[str, ...], blank: bool = False) -> list[tuple[str, str]]:
@@ -62,12 +65,20 @@ def _choices(values: tuple[str, ...], blank: bool = False) -> list[tuple[str, st
 
 
 def _is_valid_date_or_event(val: str) -> bool:
-    """Une borne de période est soit JJ/MM soit un identifiant
-    d'événement phénologique (slug). On ne valide pas l'existence de
-    l'événement ici, c'est le validator global qui s'en charge."""
+    """Une borne de période est :
+      - une date JJ/MM, ou
+      - un identifiant d'événement phénologique / input requis (slug), ou
+      - un événement avec offset (cf. spec calculatrice) :
+        `event+Njours`, `event-Nsemaines`, `event+Nmois`.
+
+    On ne valide pas l'existence de l'événement / input ici, c'est le
+    validator global qui s'en charge.
+    """
     if DATE_JJ_MM_RE.match(val):
         return True
-    return bool(ID_RE.match(val))
+    if ID_RE.match(val):
+        return True
+    return bool(BORNE_EVENT_OFFSET_RE.match(val))
 
 
 class _BaseYamlForm(forms.Form):
@@ -135,14 +146,19 @@ class RegleForm(_BaseYamlForm):
     """Édition d'une règle.
 
     Les périodes sont parsées via `periodes-{i}-du / -au / -regime` dans
-    le POST (pas via FormSet pour rester simple). `inputs_requis` est
-    une chaîne CSV.
+    le POST (pas via FormSet pour rester simple).
+
+    `inputs_requis` est parsé via le naming
+    `inputs_requis-{i}-id / -label / -type / -placeholder` (objets nouvelle
+    grammaire calculatrice, cf. spec form admin calculatrice).
+
+    Le parsing est robuste a la suppression d'un input non-final (cf.
+    `_parse_inputs_requis`).
     """
 
     id = forms.CharField(required=False)
     type = forms.ChoiceField(choices=_choices(REGLE_TYPES, blank=True), required=False)
     composant = forms.CharField(required=False)
-    inputs_requis = forms.CharField(required=False)
     message = forms.CharField(required=False)
     texte = forms.CharField(required=False)
     texte_condition = forms.CharField(required=False)
@@ -157,10 +173,13 @@ class RegleForm(_BaseYamlForm):
         super().__init__(*args, **kwargs)
         self._periodes: list[dict] = []
         self._periodes_seen = False
+        self._inputs_requis: list = []
+        self._inputs_requis_seen = False
 
     def _parse_periodes(self) -> list[dict]:
-        """Lit periodes-0-du, periodes-0-au, periodes-0-regime, etc.
-        S'arrête à la première ligne complètement vide."""
+        """Lit periodes-0-du, periodes-0-au, periodes-0-regime,
+        periodes-0-masque, periodes-0-condition, etc. S'arrête à la
+        première ligne complètement vide."""
         if not self.is_bound:
             return []
         data = self.data
@@ -170,7 +189,11 @@ class RegleForm(_BaseYamlForm):
             du = (data.get(f"periodes-{i}-du") or "").strip()
             au = (data.get(f"periodes-{i}-au") or "").strip()
             regime = (data.get(f"periodes-{i}-regime") or "").strip()
-            if not du and not au and not regime:
+            masque_raw = data.get(f"periodes-{i}-masque")
+            # checkbox HTML : presente -> coche (truthy), absente -> non coche.
+            masque = masque_raw not in (None, "", "false", "0")
+            condition = (data.get(f"periodes-{i}-condition") or "").strip()
+            if not du and not au and not regime and not masque and not condition:
                 break
             p: dict = {}
             if du:
@@ -196,14 +219,83 @@ class RegleForm(_BaseYamlForm):
                         f"Période #{i + 1} : régime '{regime}' inconnu.",
                     )
                 p["regime"] = regime
+            # On ne pousse `masque` que si true : evite de polluer le YAML
+            # avec `masque: false` partout (defaut implicite).
+            if masque:
+                p["masque"] = True
+            # Condition : on valide juste le format ici (le check input_id
+            # existe / type=date est fait par le validator global au save).
+            # Normalisation : un seul espace autour de l'op.
+            if condition:
+                from envergo.nitrates.yaml_tree.condition import (
+                    ConditionParseError,
+                    parse_condition,
+                )
+
+                try:
+                    parsed = parse_condition(condition)
+                except ConditionParseError as exc:
+                    self.add_error(
+                        None,
+                        f"Période #{i + 1} : condition invalide ({exc}).",
+                    )
+                    p["condition"] = condition
+                else:
+                    p["condition"] = parsed.normalise()
             periodes.append(p)
             i += 1
         return periodes
+
+    def _parse_inputs_requis(self) -> list:
+        """Lit `inputs_requis-{i}-id / -label / -type / -placeholder` (objets
+        nouvelle grammaire calculatrice). On collecte d'abord les indices
+        presents dans le POST (sans arret a la 1re ligne vide), puis on
+        les traite dans l'ordre numerique.
+
+        Pourquoi pas un arret sur ligne vide : quand l'utilisateur supprime
+        un input non-final (ex : il garde #1 mais vire #0), un parseur
+        sequentiel s'arrete a #0 et perd #1. La presente impl est robuste
+        a la suppression d'inputs au milieu.
+        """
+        if not self.is_bound:
+            return []
+        data = self.data
+        # Trouve tous les indices N presents dans le POST via les noms
+        # `inputs_requis-N-...`.
+        indices: set[int] = set()
+        for key in data.keys():
+            m = re.match(r"^inputs_requis-(\d+)-", key)
+            if m:
+                indices.add(int(m.group(1)))
+        out: list = []
+        for i in sorted(indices):
+            iid = (data.get(f"inputs_requis-{i}-id") or "").strip()
+            label = (data.get(f"inputs_requis-{i}-label") or "").strip()
+            label_court = (data.get(f"inputs_requis-{i}-label_court") or "").strip()
+            itype = (data.get(f"inputs_requis-{i}-type") or "").strip()
+            placeholder = (data.get(f"inputs_requis-{i}-placeholder") or "").strip()
+            if not (iid or label or label_court or itype or placeholder):
+                continue
+            entry: dict = {}
+            if iid:
+                entry["id"] = iid
+            if label:
+                entry["label"] = label
+            if label_court:
+                entry["label_court"] = label_court
+            if itype:
+                entry["type"] = itype
+            if placeholder:
+                entry["placeholder"] = placeholder
+            out.append(entry)
+        return out
 
     def clean(self):
         cd = super().clean()
         self._periodes = self._parse_periodes()
         self._periodes_seen = True
+        self._inputs_requis = self._parse_inputs_requis()
+        self._inputs_requis_seen = True
         return cd
 
     @property
@@ -212,6 +304,13 @@ class RegleForm(_BaseYamlForm):
             self._periodes = self._parse_periodes()
             self._periodes_seen = True
         return self._periodes
+
+    @property
+    def inputs_requis(self) -> list:
+        if not self._inputs_requis_seen:
+            self._inputs_requis = self._parse_inputs_requis()
+            self._inputs_requis_seen = True
+        return self._inputs_requis
 
     def to_new_data(self) -> dict:
         cd = self.cleaned_data
@@ -228,11 +327,13 @@ class RegleForm(_BaseYamlForm):
             new_data["periodes"] = []
         if cd.get("composant", "").strip():
             new_data["composant"] = cd["composant"].strip()
-        inputs_raw = cd.get("inputs_requis", "").strip()
-        if inputs_raw:
-            new_data["inputs_requis"] = [
-                x.strip() for x in inputs_raw.split(",") if x.strip()
-            ]
+        else:
+            # vide explicite : supprime la cle
+            new_data["composant"] = None
+        # inputs_requis : parses depuis inputs_requis-N-* (cf. _parse_inputs_requis).
+        # Toujours pousser une liste (potentiellement vide) pour signaler
+        # la mise a jour explicite a editor.update_regle.
+        new_data["inputs_requis"] = self.inputs_requis
         # Pour les champs textuels optionnels : on pousse None quand vide pour
         # signaler explicitement la suppression a editor.update_regle (sinon
         # la cle absente = on garde l'ancienne valeur, l'utilisateur ne peut

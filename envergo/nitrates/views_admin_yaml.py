@@ -9,7 +9,7 @@ Source de verite : la table `DecisionTree`.
 """
 
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -20,6 +20,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import YamlLexer
 
 from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.permissions import can_activate_tree, can_edit_active
 from envergo.nitrates.yaml_admin.flatten import iter_entries
 from envergo.nitrates.yaml_admin.fold import compute_open_paths
 from envergo.nitrates.yaml_admin.tags import (
@@ -116,6 +117,7 @@ class YamlTreeView(TemplateView):
 
         ctx.update(
             {
+                "arbre": arbre,
                 "metadata": arbre.get("metadata") or {},
                 "racine": racine,
                 "items": items,
@@ -126,14 +128,15 @@ class YamlTreeView(TemplateView):
                 "open_paths": open_paths,
                 "quick_filters": QUICK_FILTERS,
                 "stats": _compute_stats(items),
-                "querystring_base": _querystring_base(vue, filtre, tree.pk),
+                "querystring_base": _querystring_base(vue, filtre, tree.pk, mode),
                 "tree": tree,
                 "active_tree": active_tree,
                 "is_viewing_active": active_tree and active_tree.pk == tree.pk,
                 "mode": mode,
                 "is_editing": mode == "edition",
                 "lock_blocked_by": lock_blocked_by,
-                "edited_origin_name": _edited_origin_name(tree),
+                "edited_origin_name": _edited_origin_name(tree, self.request.user),
+                "can_activate_this_tree": can_activate_tree(self.request.user, tree),
                 "recent_revisions": (
                     list(tree.revisions.order_by("-created_at")[:5])
                     if mode == "edition"
@@ -174,6 +177,11 @@ class EditActiveView(View):
         return self._do(request)
 
     def _do(self, request):
+        if not can_edit_active(request.user):
+            return HttpResponseForbidden(
+                "L'édition de l'arbre actif est réservée aux administrateurs. "
+                "Vous pouvez cloner l'arbre actif pour créer votre propre brouillon."
+            )
         draft = DecisionTree.find_or_create_edit_draft(request.user)
         if draft is None:
             return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
@@ -186,25 +194,21 @@ class CancelEditView(View):
     """Sort du mode edition. Libere le lock si l'utilisateur le detenait.
 
     Le draft sous-jacent reste en DB (pas de suppression) -- l'utilisateur
-    pourra le reprendre via "Editer l'arbre actif" plus tard.
+    pourra le reprendre plus tard.
 
-    Redirige vers le viewer de l'arbre actif (UX : retour au point de
-    depart, sans exposer le draft).
+    Redirige vers le viewer du DRAFT que l'utilisateur vient de modifier
+    (en mode lecture, sans `mode=edition`). Permet de continuer a explorer
+    le brouillon, et de relancer une edition via le bouton si besoin.
+    Avant 2026-05-28 on redirigeait vers l'actif, ce qui perturbait
+    l'utilisateur qui pensait avoir perdu son travail.
     """
 
     def post(self, request, pk, *args, **kwargs):
         tree = get_object_or_404(DecisionTree, pk=pk)
         tree.release_lock(request.user)
-        active = (
-            DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
-            .only("pk")
-            .first()
+        return HttpResponseRedirect(
+            reverse("nitrates_admin_yaml_tree") + f"?tree_id={tree.pk}"
         )
-        if active is not None:
-            return HttpResponseRedirect(
-                reverse("nitrates_admin_yaml_tree") + f"?tree_id={active.pk}"
-            )
-        return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -289,11 +293,20 @@ class CreateDraftView(View):
         return HttpResponseRedirect(url)
 
 
-def _edited_origin_name(tree: DecisionTree) -> str:
+def _edited_origin_name(tree: DecisionTree, user=None) -> str:
     """Pour l'UX d'edition : le nom de l'arbre source que l'utilisateur
     croit editer. Si le draft a ete cree depuis l'actif, c'est le nom de
     cet actif. Sinon (parent archive ou null), le nom du draft lui-meme.
+
+    Cas particulier : un external_observator ne peut pas declencher
+    'Editer l'arbre actif' (cache pour lui). Ses drafts viennent donc
+    forcement du bouton 'Cloner' explicite et il s'attend a voir le nom
+    de son clone, pas celui de la source. Pour eux on retourne tree.name.
     """
+    from envergo.nitrates.permissions import is_external_observator
+
+    if user is not None and is_external_observator(user):
+        return tree.name
     if tree.status == DecisionTree.STATUS_DRAFT and tree.parent_id:
         return tree.parent.name
     return tree.name
@@ -311,9 +324,14 @@ def _resolve_tree(tree_id) -> DecisionTree | None:
     return DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
 
 
-def _querystring_base(vue: str, filtre: str, tree_pk) -> str:
+def _querystring_base(vue: str, filtre: str, tree_pk, mode: str = "lecture") -> str:
     """Querystring pour les liens de la barre de fold (sans expand/expand_deep,
-    ces deux la sont gerees au cas par cas dans le template)."""
+    ces deux la sont gerees au cas par cas dans le template).
+
+    Inclut `mode=edition` quand l'utilisateur est en train d'editer : sans
+    ca, les liens filtre/vue/reset fold faisaient sortir silencieusement du
+    mode edition (drop de `mode=edition` au passage de page).
+    """
     parts = []
     if vue and vue != "arbre":
         parts.append(f"vue={vue}")
@@ -321,6 +339,8 @@ def _querystring_base(vue: str, filtre: str, tree_pk) -> str:
         parts.append(f"filtre={filtre}")
     if tree_pk is not None:
         parts.append(f"tree_id={tree_pk}")
+    if mode == "edition":
+        parts.append("mode=edition")
     return "&".join(parts)
 
 

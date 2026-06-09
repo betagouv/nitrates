@@ -28,6 +28,18 @@
   const latInput = document.getElementById("id_lat");
   if (!mapEl || !lngInput || !latInput) return;
 
+  // Issues #89 + #96 : devoile la suite du form (Culture / Fertilisant /
+  // Submit) quand l'utilisateur clique sur la carte. Initial state pose
+  // cote serveur via `hidden` sur #form-after-localisation + message
+  // #form-locked-message visible. Idempotent (peut etre appele plusieurs
+  // fois sans effet de bord).
+  function revealFormAfterLocalisation() {
+    const formZone = document.getElementById("form-after-localisation");
+    const lockedMsg = document.getElementById("form-locked-message");
+    if (formZone) formZone.hidden = false;
+    if (lockedMsg) lockedMsg.hidden = true;
+  }
+
   const map = L.map(mapEl, { attributionControl: false }).setView(
     INITIAL_CENTER,
     INITIAL_ZOOM
@@ -291,6 +303,9 @@
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
+
+    // Issues #89 + #96 : devoile le formulaire au 1er clic carte.
+    revealFormAfterLocalisation();
 
     if (marker) {
       marker.setLatLng(e.latlng);

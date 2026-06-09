@@ -145,6 +145,11 @@ class DecisionTree(models.Model):
             models.Index(fields=["status"]),
         ]
         ordering = ["-activated_at", "-created_at"]
+        # Affiche "Arbre de décision" dans l'admin Django (au lieu de
+        # "Decision tree" derive du nom de classe). La classe Python reste
+        # `DecisionTree` pour ne pas casser les ~45 fichiers qui l'importent.
+        verbose_name = "Arbre de décision"
+        verbose_name_plural = "Arbres de décision"
 
     def __str__(self):
         return f"{self.name} ({self.status})"
@@ -598,7 +603,10 @@ def _branche_screenshot_path(instance, filename):
     On utilise regle_id si dispo (court et lisible), sinon pk. Pas le
     chemin_yaml complet : trop long pour le max_length du ImageField
     apres slugification."""
-    folder = instance.regle_id or f"id-{instance.pk or 'new'}"
+    # Borne le folder : certains regle_id couvert depassent 60 char et le
+    # chemin complet depasse le max_length du storage. Les regle_id CP sont
+    # courts, donc inchanges en pratique.
+    folder = (instance.regle_id or f"id-{instance.pk or 'new'}")[:60]
     return f"nitrates_validation/{folder}/{filename}"
 
 
@@ -717,6 +725,23 @@ class BrancheValidation(models.Model):
         help_text="Statut courant : derniere action enregistree",
     )
 
+    # ─── Flag « cas special a verifier » (rempli au seed) ────────────────
+    # Independant du statut de validation humaine : c'est une note POSEE
+    # PAR LE SEED pour attirer l'oeil du valideur sur un point precis
+    # (divergence YAML vs board, formulation a trancher, feuille
+    # calculatrice sans texte fige a comparer visuellement, ...). Permet
+    # de ne pas perdre la trace des cas a regarder lors de la
+    # re-validation humaine. Re-rempli a chaque seed (idempotent).
+    flag_verif = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Cas special signale au seed, a verifier manuellement",
+    )
+    note_verif = models.TextField(
+        blank=True,
+        help_text="Detail du cas a verifier (pose par le seed, pas une action user)",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -733,9 +758,14 @@ class BrancheValidation(models.Model):
 
     def actions_par_user(self):
         """Pour chaque user qui a deja valide cette branche, sa derniere
-        action. Permet d'afficher 'Max valide le X, Emma valide le Y'."""
+        action. Permet d'afficher 'Max valide le X, Emma valide le Y'.
+
+        Trie en Python (et non en SQL via order_by) pour reutiliser le
+        cache du prefetch_related cote vue. Le BrancheValidationAction
+        Meta.ordering est ['-created_at'] (DESC), donc on parcourt en sens
+        inverse pour avoir l'ordre ASC sans re-query."""
         seen = {}
-        for a in self.actions.order_by("created_at"):
+        for a in sorted(self.actions.all(), key=lambda a: a.created_at):
             seen[a.user_id] = a
         return list(seen.values())
 
@@ -771,3 +801,19 @@ class BrancheValidationAction(models.Model):
     def __str__(self):
         user_disp = self.user.email if self.user_id else "?"
         return f"{user_disp} -> {self.statut} ({self.created_at:%d/%m/%Y %H:%M})"
+
+
+# ─── Référentiels (cf. carte #61 — migration referentiels.yaml) ───────────────
+# Modèles définis dans un module séparé pour la lisibilité ; ré-exportés ici
+# pour que Django les enregistre dans l'app nitrates et que les imports
+# `from envergo.nitrates.models import X` fonctionnent.
+
+from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
+    BrancheCulturale,
+    CodePrescription,
+    Culture,
+    EvenementPhenologique,
+    Fertilisant,
+    GroupeCultureUI,
+    NoteReglementaire,
+)

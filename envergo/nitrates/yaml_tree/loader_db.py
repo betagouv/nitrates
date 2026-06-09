@@ -26,6 +26,17 @@ def load_active_tree() -> dict:
     return DecisionTree.objects.get(status=DecisionTree.STATUS_ACTIVE).contenu
 
 
+def load_tree_by_id(tree_pk: int) -> dict:
+    """Renvoie le contenu JSON d'un tree par son pk. Pour le mode preview
+    d'un brouillon : le simulateur charge un draft specifique au lieu de
+    l'actif. Leve `DecisionTree.DoesNotExist` si l'id n'existe pas.
+
+    Securite : pas de check d'autorisation ici, c'est a l'appelant de
+    valider que l'utilisateur a le droit de voir ce tree.
+    """
+    return DecisionTree.objects.get(pk=tree_pk).contenu
+
+
 def load_active_tree_raw() -> str:
     """Renvoie le YAML brut (round-trip ruamel) de l'arbre actif.
 

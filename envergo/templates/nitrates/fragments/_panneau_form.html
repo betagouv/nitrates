@@ -83,86 +83,106 @@ remplis au clic carte (cf. simulator.js).
            value="{{ data.code_insee|default:'' }}">
   </div>
 
-  {# ─── Culture ────────────────────────────────────────────────────── #}
-  <div class="form-section" id="section-culture" style="margin-top: 40px;">
-    <h2 class="form-section-title">Culture</h2>
-
-    <div class="form-question-group">
-      <p class="form-question-text">Catégorie de culture ou couvert *</p>
-      <div data-cascade="categorie_culture"></div>
-    </div>
-
-    <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
-      <p class="form-question-text">Précisez le type de culture *</p>
-      <div data-cascade="sous_culture_form"></div>
-    </div>
-  </div>
-
   {% comment %}
+  Issues #89 + #96 : tant que l'utilisateur n'a pas clique sur la carte,
+  on cache les sections Culture / Fertilisant / Submit et on affiche un
+  message d'invite. Decache au clic carte (cf. simulator.js).
+  L'attribut hidden initial est applique cote serveur en fonction de
+  data.lat / data.lng (utile sur rechargement avec params dans l'URL).
+  {% endcomment %}
+  {% if data.lat and data.lng %}
+    {% with form_locked=False %}{% endwith %}
+  {% else %}
+    <div id="form-locked-message" class="form-locked-message" role="status">
+      <p>
+        <strong>Cliquez sur la carte</strong> pour saisir votre localisation.
+        Le formulaire de simulation s'affichera dès que votre parcelle sera renseignée.
+      </p>
+    </div>
+  {% endif %}
+
+  <div id="form-after-localisation"
+       {% if not data.lat or not data.lng %}hidden{% endif %}>
+
+    {# ─── Culture ────────────────────────────────────────────────────── #}
+    <div class="form-section" id="section-culture" style="margin-top: 40px;">
+      <h2 class="form-section-title">Culture</h2>
+
+      <div class="form-question-group">
+        <p class="form-question-text">Catégorie de culture ou couvert *</p>
+        <div data-cascade="categorie_culture"></div>
+      </div>
+
+      <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
+        <p class="form-question-text">Précisez le type de culture *</p>
+        <div data-cascade="sous_culture_form"></div>
+      </div>
+    </div>
+
+    {% comment %}
   Hidden inputs : occupation_sol + sous_culture sont resolus cote front
   via mapping_sous_culture_vers_branche, et envoyes au backend pour
   piloter le parcours d'arbre. Les `flags` (ex culture_irriguee_type
-  pour mais, prairie_permanente pour PC16, sous_culture_couvert pour
-  intercultures) sont aussi injectes en hidden au moment du submit.
-  {% endcomment %}
-  <input type="hidden"
-         name="occupation_sol"
-         id="id_occupation_sol"
-         value="{{ data.occupation_sol|default:'' }}">
-  <input type="hidden"
-         name="sous_culture"
-         id="id_sous_culture"
-         value="{{ data.sous_culture|default:'' }}">
-  <input type="hidden"
-         name="culture_irriguee_type"
-         id="id_culture_irriguee_type"
-         value="{{ data.culture_irriguee_type|default:'' }}">
-  <input type="hidden"
-         name="prairie_permanente"
-         id="id_prairie_permanente"
-         value="{{ data.prairie_permanente|default:'' }}">
-  <input type="hidden"
-         name="sous_culture_couvert"
-         id="id_sous_culture_couvert"
-         value="{{ data.sous_culture_couvert|default:'' }}">
-
-  {# ─── Fertilisant ────────────────────────────────────────────────── #}
-  <div class="form-section"
-       id="section-fertilisant"
-       style="margin-top: 40px">
-    <h2 class="form-section-title">Fertilisant</h2>
-
-    <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
-      <p class="form-question-text">Catégorie de fertilisant *</p>
-      <div data-cascade="categorie_fertilisant"></div>
-    </div>
-
-    <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
-      <p class="form-question-text">Fertilisant précis *</p>
-      <div data-cascade="sous_fertilisant"></div>
-      <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
-    </div>
-
-    {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
+  pour mais, prairie_permanente pour PC16) sont aussi injectes en hidden
+  au moment du submit.
+    {% endcomment %}
     <input type="hidden"
-           name="type_fertilisant"
-           id="id_type_fertilisant"
-           value="{{ data.type_fertilisant|default:'' }}">
-  </div>
+           name="occupation_sol"
+           id="id_occupation_sol"
+           value="{{ data.occupation_sol|default:'' }}">
+    <input type="hidden"
+           name="sous_culture"
+           id="id_sous_culture"
+           value="{{ data.sous_culture|default:'' }}">
+    <input type="hidden"
+           name="culture_irriguee_type"
+           id="id_culture_irriguee_type"
+           value="{{ data.culture_irriguee_type|default:'' }}">
+    <input type="hidden"
+           name="prairie_permanente"
+           id="id_prairie_permanente"
+           value="{{ data.prairie_permanente|default:'' }}">
 
-  {% comment %}
+    {# ─── Fertilisant ────────────────────────────────────────────────── #}
+    <div class="form-section"
+         id="section-fertilisant"
+         style="margin-top: 40px">
+      <h2 class="form-section-title">Fertilisant</h2>
+
+      <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
+        <p class="form-question-text">Catégorie de fertilisant *</p>
+        <div data-cascade="categorie_fertilisant"></div>
+      </div>
+
+      <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
+        <p class="form-question-text">Fertilisant précis *</p>
+        <div data-cascade="sous_fertilisant"></div>
+        <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
+      </div>
+
+      {# type_fertilisant resolu cote front via mapping_sous_fertilisant_vers_type #}
+      <input type="hidden"
+             name="type_fertilisant"
+             id="id_type_fertilisant"
+             value="{{ data.type_fertilisant|default:'' }}">
+    </div>
+
+    {% comment %}
   Questions complementaires en cours de saisie : rendues dans le panneau
   resultat (a droite). Quand toutes repondues, le recap s'affiche en
   dessous du form via _qc_recap.html.
-  {% endcomment %}
-  {% if afficher_resultat and qc_repondues %}
-    <div class="form-section questions-complementaires-box"
-         style="margin-top: 32px">{% include "nitrates/fragments/_qc_recap.html" %}</div>
-  {% endif %}
+    {% endcomment %}
+    {% if afficher_resultat and qc_repondues %}
+      <div class="form-section questions-complementaires-box"
+           style="margin-top: 32px">{% include "nitrates/fragments/_qc_recap.html" %}</div>
+    {% endif %}
 
-  {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
+    {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
 
-  <div style="margin-top: 32px;">
-    <button type="submit" class="fr-btn">Lancer la simulation</button>
+    <div style="margin-top: 32px;">
+      <button type="submit" class="fr-btn">Lancer la simulation</button>
+    </div>
+
   </div>
+  {# /#form-after-localisation #}
 </form>

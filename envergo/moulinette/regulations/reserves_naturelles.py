@@ -1,14 +1,15 @@
 from math import ceil
 
-import shapely
 from django import forms
 from django.contrib.gis.db.models import MultiPolygonField
 from django.contrib.gis.db.models.aggregates import Union
 from django.contrib.gis.geos import MultiLineString
 from django.db.models.functions import Cast
-from pyproj import Geod
 
 from envergo.moulinette.regulations import CriterionEvaluator, HaieRegulationEvaluator
+
+# shapely + pyproj lazy-loaded dans get_catalog_data : evite chargement boot.
+# Non utilise par le simulateur nitrates.
 
 
 class ReservesNaturellesRegulation(HaieRegulationEvaluator):
@@ -47,6 +48,9 @@ class ReservesNaturelles(CriterionEvaluator):
 
     def get_catalog_data(self):
         """Compute the length of hedges to remove in reserve naturelle"""
+
+        import shapely
+        from pyproj import Geod
 
         catalog = super().get_catalog_data()
         hedges_to_remove = self.catalog["haies"].hedges_to_remove()

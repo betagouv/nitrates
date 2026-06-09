@@ -184,8 +184,8 @@ def test_colza_type_III_zone_note_5(setup):
 
 
 def test_colza_type_III_hors_note_5(setup):
-    """Type III + Reims (hors note 5) : 2 periodes (idem 4a mais
-    interdiction etendue jusqu'au 31/01), pc11."""
+    """Type III + Reims (hors note 5) : 2 periodes, pc11. L'interdiction
+    couvre 01/09 -> 31/01 (valeurs de l'arbre de reference #63)."""
     ev = _evaluator(_moulinette(type_fertilisant="type_III", code_insee=INSEE_REIMS_51))
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_colza_type_III_autres"
@@ -196,5 +196,5 @@ def test_colza_type_III_hors_note_5(setup):
             "au": "15/10",
             "regime": "autorisation_sous_condition",
         },
-        {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+        {"du": "01/09", "au": "31/01", "regime": "interdiction"},
     ]

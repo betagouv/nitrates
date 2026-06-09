@@ -1,0 +1,192 @@
+{% comment %}
+Partial : assets CodeMirror 5 (YAML mode + folding + search + thèmes).
+A inclure dans le {% block extra_css %} / {% block extra_js %} d'un
+template qui veut un editeur YAML (lecture seule ou editable).
+
+Sert le mini-browser pleine page ET la vue split/brut de l'editeur admin.
+
+Note : CDN cloudflare. Si bloque en enterprise, mirror vers staticfiles.
+{% endcomment %}
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/darcula.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/idea.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+
+{% comment %}
+Helper JS global : `mountYamlCodeMirror(textarea, {readOnly, themeKey})`.
+- Mount sur un <textarea> (sa value devient le contenu initial).
+- `themeKey` (str) : cle localStorage pour persister le theme choisi par
+  user, partageable entre vues (mini-browser, admin yaml viewer, etc).
+- Retourne l'instance CodeMirror pour permettre des actions custom
+  (fold-all, save, etc).
+{% endcomment %}
+<style>
+  .yaml-cm-wrap {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .yaml-cm-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--background-alt-grey, #f6f6f6);
+    border: 1px solid var(--border-default-grey, #ccc);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    font-size: 0.85rem;
+  }
+
+  .yaml-cm-toolbar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .yaml-cm-toolbar select,
+  .yaml-cm-toolbar button {
+    padding: 3px 10px;
+    font-size: 0.85rem;
+    border-radius: 3px;
+    border: 1px solid var(--border-default-grey, #ccc);
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .yaml-cm-toolbar button:hover {
+    background: var(--background-alt-blue-france, #e3e3fd);
+  }
+
+  .yaml-cm-editor {
+    flex: 1;
+    min-height: 300px;
+    border: 1px solid var(--border-default-grey, #ccc);
+    border-radius: 0 0 4px 4px;
+    overflow: hidden;
+  }
+
+  .yaml-cm-editor .CodeMirror {
+    height: 100% !important;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .CodeMirror-foldmarker {
+    color: #f4a;
+    background: rgb(0 0 0 / 20%);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-family: inherit;
+  }
+</style>
+
+<script>
+  (function () {
+    "use strict";
+    const STORAGE_THEME_DEFAULT = "nitrates_yaml_codemirror_theme";
+
+    window.mountYamlCodeMirror = function (textarea, opts) {
+      opts = opts || {};
+      const readOnly = !!opts.readOnly;
+      const themeKey = opts.themeKey || STORAGE_THEME_DEFAULT;
+      const initialTheme = localStorage.getItem(themeKey) || "darcula";
+
+      // Wrapper visuel autour : toolbar (theme select + fold) + editeur.
+      const wrap = document.createElement("div");
+      wrap.className = "yaml-cm-wrap";
+      const toolbar = document.createElement("div");
+      toolbar.className = "yaml-cm-toolbar";
+      toolbar.innerHTML = `
+        <label>
+          Thème :
+          <select data-cm-theme>
+            <option value="darcula">Darcula</option>
+            <option value="dracula">Dracula</option>
+            <option value="material-darker">Material Darker</option>
+            <option value="monokai">Monokai</option>
+            <option value="default">Light</option>
+            <option value="idea">IntelliJ IDEA</option>
+          </select>
+        </label>
+        <button type="button" data-cm-fold-all>Tout replier</button>
+        <button type="button" data-cm-unfold-all>Tout déplier</button>
+        <span style="opacity:0.6;font-size:0.78rem">Ctrl/Cmd+F : recherche</span>
+      `;
+      const editorContainer = document.createElement("div");
+      editorContainer.className = "yaml-cm-editor";
+      wrap.appendChild(toolbar);
+      wrap.appendChild(editorContainer);
+      textarea.parentNode.insertBefore(wrap, textarea);
+      editorContainer.appendChild(textarea);
+
+      const editor = CodeMirror.fromTextArea(textarea, {
+        mode: "yaml",
+        theme: initialTheme,
+        lineNumbers: true,
+        readOnly: readOnly,
+        lineWrapping: false,
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+        extraKeys: {
+          "Ctrl-F": "find",
+          "Cmd-F": "find",
+          "Ctrl-G": "findNext",
+          "Cmd-G": "findNext",
+        },
+      });
+
+      const themeSelect = toolbar.querySelector("[data-cm-theme]");
+      themeSelect.value = initialTheme;
+      themeSelect.addEventListener("change", () => {
+        editor.setOption("theme", themeSelect.value);
+        localStorage.setItem(themeKey, themeSelect.value);
+      });
+      toolbar.querySelector("[data-cm-fold-all]").addEventListener("click", () => {
+        for (let l = editor.firstLine(); l <= editor.lastLine(); l++) {
+          editor.foldCode(CodeMirror.Pos(l, 0), null, "fold");
+        }
+      });
+      toolbar.querySelector("[data-cm-unfold-all]").addEventListener("click", () => {
+        for (let l = editor.firstLine(); l <= editor.lastLine(); l++) {
+          editor.foldCode(CodeMirror.Pos(l, 0), null, "unfold");
+        }
+      });
+
+      // Sync vers le <textarea> a chaque change : si l'editeur est dans
+      // un <form>, le submit standard envoie ainsi le texte modifie sans
+      // intervention supplementaire.
+      editor.on("change", () => editor.save());
+
+      window.addEventListener("resize", () => editor.refresh());
+      return editor;
+    };
+  })();
+</script>

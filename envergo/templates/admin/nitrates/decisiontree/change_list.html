@@ -1,8 +1,11 @@
 {% extends "admin/change_list.html" %}
 
 {% block object-tools-items %}
-  <li>
-    <a href="{% url 'nitrates_admin_yaml_edit_active' %}" class="addlink">✏️ Éditer l'arbre actif</a>
-  </li>
+  {# can_edit_active : superuser et staff intras OK, external_observator non. #}
+  {% if can_edit_active %}
+    <li>
+      <a href="{% url 'nitrates_admin_yaml_edit_active' %}" class="addlink">✏️ Éditer l'arbre actif</a>
+    </li>
+  {% endif %}
   {{ block.super }}
 {% endblock %}

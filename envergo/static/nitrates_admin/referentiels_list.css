@@ -1,0 +1,17 @@
+/* Liste admin des referentiels nitrates (Culture, Fertilisant, etc.) :
+ * autorise le wrap sur les colonnes libelle_public / libelle_court / mots_cles
+ * qui peuvent etre tres longues (ex. "Culture de cereales d'hiver semees
+ * en automne et recoltees au printemps"). Sans ca, la colonne s'allonge
+ * sur une ligne unique et masque le reste de la table.
+ */
+#result_list td.field-libelle_public,
+#result_list td.field-libelle_court,
+#result_list td.field-mots_cles,
+#result_list td.field-texte_court,
+#result_list th.field-libelle_public,
+#result_list th.field-libelle_court,
+#result_list th.field-mots_cles,
+#result_list th.field-texte_court {
+  white-space: normal;
+  max-width: 280px;
+}

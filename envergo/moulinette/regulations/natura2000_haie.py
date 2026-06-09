@@ -1,15 +1,16 @@
 from math import ceil
 
-import shapely
 from django import forms
 from django.contrib.gis.db.models import MultiPolygonField
 from django.contrib.gis.db.models.aggregates import Union
 from django.contrib.gis.geos import MultiLineString
 from django.db.models.functions import Cast
-from pyproj import Geod
 
 from envergo.evaluations.models import RESULTS
 from envergo.moulinette.regulations import CriterionEvaluator, HaieRegulationEvaluator
+
+# shapely + pyproj lazy-loaded dans get_catalog_data : evite chargement boot.
+# Non utilise par le simulateur nitrates.
 
 
 class Natura2000HaieRegulation(HaieRegulationEvaluator):
@@ -72,6 +73,9 @@ class Natura2000Haie(CriterionEvaluator):
 
     def get_catalog_data(self):
         """Let's compute the length of hedges crossing the N2000 perimeter."""
+
+        import shapely
+        from pyproj import Geod
 
         hedges = self.catalog["haies"].hedges_to_remove()
         hors_alignement = [h for h in hedges if h.hedge_type != "alignement"]

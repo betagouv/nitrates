@@ -36,6 +36,11 @@ ARBRE_VALIDE_YAML = textwrap.dedent(
               id: "r_hors_zvn"
               type: "non_applicable"
               message: "ZV non concernee."
+          - valeur: true
+            regle:
+              id: "r_en_zvn"
+              type: "non_applicable"
+              message: "Reglementation nitrates applicable."
     """
 )
 

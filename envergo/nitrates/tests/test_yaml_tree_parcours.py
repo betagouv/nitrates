@@ -405,3 +405,224 @@ def test_pan_colza_type_II_zone_note_5_true(arbre_pan):
     assert isinstance(res, Resultat)
     assert res.regle_id == "r_colza_type_II_note5"
     assert res.note == "note_5"
+
+
+# ─── Renvoi vers regles_partagees (couvert courte) ─────────────────────────
+
+
+@pytest.mark.parametrize(
+    "sous_culture,type_fert,regle_attendue",
+    [
+        ("cie_courte", "type_0", "r_cie_courte_types_0_I_II"),
+        ("cie_courte", "type_I", "r_cie_courte_types_0_I_II"),
+        ("cie_courte", "type_II", "r_cie_courte_types_0_I_II"),
+        ("cine_courte", "type_0", "r_cine_courte_types_0_I_II"),
+        ("cine_courte", "type_I", "r_cine_courte_types_0_I_II"),
+        ("cine_courte", "type_II", "r_cine_courte_types_0_I_II"),
+    ],
+)
+def test_couvert_courte_renvoi_vers_regle_partagee(
+    arbre_pan, sous_culture, type_fert, regle_attendue
+):
+    """Les branches type 0/I/II du couvert courte renvoient vers une regle
+    `regles_partagees` (r_cie_courte_types_0_I_II / r_cine_courte_...).
+
+    Regression : ces regles vivent hors de l'arbre (section
+    `regles_partagees`) ; si `_build_id_index` ne les indexe pas, le
+    parcours leve ParcoursError sur ces 6 feuilles en prod. Cf. fix index
+    parcours + regles_partagees."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "couvert_intercultures",
+            "sous_culture": sous_culture,
+            "type_fertilisant": type_fert,
+        },
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == regle_attendue
+
+
+# ─── Cascade questions conditionnelles (#58.1) ─────────────────────────────
+
+
+def test_questions_conditionnelles_remontees_avec_parent_champ(arbre_pan):
+    """Cas mais irrigue : sans culture_irriguee dans le contexte, on doit
+    recevoir AUSSI la sous-question culture_irriguee_type (sur la branche
+    culture_irriguee=true), annotee parent_champ=culture_irriguee +
+    parent_valeur=True. Resultat : 1 seul aller-retour serveur, le front
+    cachera la sous-question jusqu'au clic sur "Oui" (cf. #58.1)."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+        },
+    )
+    assert isinstance(res, QuestionsSubsidiaires)
+    champs = {q.champ for q in res.questions}
+    assert "culture_irriguee" in champs
+    assert "culture_irriguee_type" in champs
+    q_type = next(q for q in res.questions if q.champ == "culture_irriguee_type")
+    assert q_type.parent_champ == "culture_irriguee"
+    assert q_type.parent_valeur is True
+    q_irr = next(q for q in res.questions if q.champ == "culture_irriguee")
+    assert q_irr.parent_champ is None
+
+
+def test_questions_conditionnelles_pas_remontees_si_parent_repondu(arbre_pan):
+    """Cas mais irrigue, culture_irriguee=False deja dans l'URL : on n'a
+    plus besoin de proposer culture_irriguee_type (la branche non-irriguee
+    pointe direct vers une regle). La question conditionnelle ne doit
+    pas etre remontee."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+            "culture_irriguee": False,
+        },
+    )
+    # culture_irriguee=False mene direct a une regle, pas de question.
+    assert isinstance(res, Resultat)
+
+
+def test_question_conditionnelle_pre_resolue_par_contexte(arbre_pan):
+    """Cas mais sous-culture cliquee : cascade.js pre-remplit
+    culture_irriguee_type=mais via mapping_sous_culture_vers_branche.flags.
+    Du coup, meme si culture_irriguee n'est pas encore repondu, on ne
+    doit PAS proposer la sous-question culture_irriguee_type (elle est
+    deja resolue) -- juste demander culture_irriguee."""
+    res = parcours(
+        arbre_pan,
+        {
+            "en_zone_vulnerable": True,
+            "occupation_sol": "culture_principale",
+            "sous_culture": "culture_printemps",
+            "sous_culture_printemps": "mais",
+            "type_fertilisant": "type_III",
+            # pre-fill via cascade.js depuis mapping referentiel
+            "culture_irriguee_type": "mais",
+        },
+    )
+    assert isinstance(res, QuestionsSubsidiaires)
+    champs = {q.champ for q in res.questions}
+    assert "culture_irriguee" in champs
+    # La sous-question culture_irriguee_type ne doit PAS apparaitre
+    # puisqu'elle est deja pre-remplie cote front.
+    assert "culture_irriguee_type" not in champs
+
+
+# ─── has_borne_flottante ───────────────────────────────────────────────────
+
+
+def test_has_borne_flottante_false_si_que_dates_fixes():
+    """Cas mixte standard (que des bornes JJ/MM) : pas de borne
+    flottante. Le template ne doit pas afficher "Sinon, regle de base —"
+    dans ce cas (fix #81)."""
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_borne_flottante is False
+
+
+def test_has_borne_flottante_true_si_borne_phenologique():
+    """Cas mixte phenologique : une periode a un slug `brunissement_des_soies`
+    comme borne. Le template doit afficher "Sinon, regle de base —" pour
+    le fallback dates fixes."""
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {
+                "du": "15/07",
+                "au": "brunissement_des_soies",
+                "regime": "autorisation_sous_condition",
+            },
+            {"du": "15/07", "au": "15/02", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_borne_flottante is True
+
+
+def test_has_borne_flottante_false_si_pas_de_periodes():
+    """Cas degenere : pas de periodes, has_borne_flottante=False."""
+    res = Resultat(regle_id="r_test", type="libre", periodes=None)
+    assert res.has_borne_flottante is False
+    res2 = Resultat(regle_id="r_test", type="libre", periodes=[])
+    assert res2.has_borne_flottante is False
+
+
+# ─── Branche `valeurs: [a, b]` (regroupement, cf. #61 phase 3) ──────────────
+
+
+def _arbre_avec_valeurs_regroupees() -> dict:
+    """Arbre qui regroupe icpe_e et icpe_d sur une seule branche via
+    `valeurs: [icpe_e, icpe_d]`."""
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_plan",
+                "champ": "plan_epandage",
+                "texte": "Plan d'épandage ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "regle": {"id": "r_icpe_a", "type": "interdiction"},
+                    },
+                    {
+                        "valeurs": ["icpe_e", "icpe_d"],
+                        "libelle": "ICPE E ou D",
+                        "regle": {"id": "r_icpe_ed_groupe", "type": "interdiction"},
+                    },
+                    {
+                        "valeur": "non_concerne",
+                        "regle": {"id": "r_non_concerne", "type": "libre"},
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_branche_valeurs_pluriel_matche_icpe_e():
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_e"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_ed_groupe"
+
+
+def test_branche_valeurs_pluriel_matche_icpe_d():
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_d"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_ed_groupe"
+
+
+def test_branche_valeur_singulier_prime_si_specifique():
+    """icpe_a a une branche singulier dédiée : ne tombe pas sur le groupe."""
+    res = parcours(
+        _arbre_avec_valeurs_regroupees(),
+        {"plan_epandage": "icpe_a"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_icpe_a"

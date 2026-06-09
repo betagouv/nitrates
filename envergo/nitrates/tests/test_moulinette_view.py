@@ -87,7 +87,31 @@ def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata)
     assert b"glementation nitrates applicable" in response.content
     # Question subsidiaire rendue dans le panneau resultat
     assert b"resultat-panel--questions" in response.content
-    assert b"Une question compl" in response.content
+    # Titre du panneau questions subsidiaires (au pluriel depuis #58.1 :
+    # on peut maintenant rendre plusieurs questions en cascade).
+    assert b"Questions compl" in response.content
+
+
+def test_panneaux_debug_actifs_par_flag_dedie(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Le bloc Debug parcours est gate par NITRATES_FORM_DEBUG_PANELS,
+    independamment de DEBUG. Permet de l'activer en staging sans DEBUG=True."""
+    settings.DEBUG = False
+    settings.NITRATES_FORM_DEBUG_PANELS = True
+    response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
+    assert b"Debug parcours" in response.content
+
+
+def test_panneaux_debug_caches_sans_flag(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Sans le flag, pas de bloc Debug meme si DEBUG=True (le flag est la
+    seule source de verite a present)."""
+    settings.DEBUG = True
+    settings.NITRATES_FORM_DEBUG_PANELS = False
+    response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
+    assert b"Debug parcours" not in response.content
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):
@@ -111,6 +135,8 @@ def test_resultat_rendu_chemin_complet_sol_non_cultive(
     # juste "Épandage" + phrase "L'épandage est interdit..."). On verifie
     # la presence du libelle "interdit" dans la phrase.
     assert b"interdit" in response.content
-    # Periode toute l'annee (1er janvier au 31 decembre)
-    assert b"01/01" in response.content
-    assert b"31/12" in response.content
+    # Periode toute l'annee, ecrite en annee agricole (01/07 -> 30/06)
+    # pour que le calendrier d'epandage rende une zone rouge pleine
+    # sur l'axe juil-juin (cf. #54).
+    assert b"01/07" in response.content
+    assert b"30/06" in response.content

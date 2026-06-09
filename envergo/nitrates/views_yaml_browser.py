@@ -28,7 +28,11 @@ class YamlBrowserListView(TemplateView):
             DecisionTree.STATUS_DRAFT: 1,
             DecisionTree.STATUS_ARCHIVE: 2,
         }
-        trees = list(DecisionTree.objects.all().order_by("-updated_at"))
+        # select_related(parent) : le template fait `{% if tree.parent %}`
+        # qui declenche une query lazy par ligne sans ca.
+        trees = list(
+            DecisionTree.objects.select_related("parent").order_by("-updated_at")
+        )
         trees.sort(key=lambda t: (order_status.get(t.status, 9), -t.id))
         ctx["trees"] = trees
         return ctx

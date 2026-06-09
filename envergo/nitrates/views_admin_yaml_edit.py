@@ -58,6 +58,49 @@ def _evenements_phenologiques() -> list[dict]:
     return out
 
 
+def _regle_referentiel_choices() -> dict:
+    """Choices fermees pour les champs canoniques d'une regle.
+
+    - code_prescription : alimente depuis referentiels.yaml::codes_prescription.
+      Affiche `pcN — mots_cles`, tooltip = texte_court.
+    - note : alimente depuis referentiels.yaml::notes.
+      Affiche `note_N — libelle_court`, tooltip = condition_declenchement.
+
+    Une entree vide est toujours acceptee : toutes les regles n'ont pas
+    un code de prescription ni une note (cas frequent).
+    """
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ref = load_referentiels() or {}
+    except Exception:
+        return {"code_prescription": [], "note": []}
+
+    codes_pc = []
+    for slug, data in (ref.get("codes_prescription") or {}).items():
+        data = data or {}
+        codes_pc.append(
+            {
+                "value": slug,
+                "libelle": data.get("mots_cles") or slug,
+                "description": (data.get("texte_court") or "").strip(),
+            }
+        )
+
+    notes = []
+    for slug, data in (ref.get("notes") or {}).items():
+        data = data or {}
+        notes.append(
+            {
+                "value": slug,
+                "libelle": data.get("libelle_court") or slug,
+                "description": (data.get("condition_declenchement") or "").strip(),
+            }
+        )
+
+    return {"code_prescription": codes_pc, "note": notes}
+
+
 def _parse_path(raw: str | None) -> tuple[str, ...]:
     """Convertit `?path=n_root/q_culture` en tuple ('n_root', 'q_culture').
     Vide ou None -> tuple vide (=racine).
@@ -81,6 +124,43 @@ def _parse_valeur(raw):
     if raw == "False":
         return False
     return raw
+
+
+def _render_banner_oob(request, tree) -> str:
+    """Re-rendu du bandeau d'edition en mode hx-swap-oob.
+
+    Permet au bouton '↩ Annuler' (et au bloc historique) de refleter les
+    revisions a jour sans full reload. Sinon le bandeau garde l'etat
+    initial du chargement de page : si on est entre en edition sans
+    revisions, '↩ Annuler' restait disabled meme apres une modif.
+
+    IMPORTANT : on doit reproduire ICI tout le contexte que `YamlTreeView`
+    passe au template `_edit_banner.html`, sinon le rerender perd des
+    variables conditionnelles (#87 : `can_activate_this_tree` manquant
+    -> branche else -> bouton 'Sauvegarder et publier' disparait apres
+    chaque modif inline).
+
+    Appele dans chaque vue d'edition inline qui modifie l'arbre.
+    """
+    from envergo.nitrates.permissions import can_activate_tree
+    from envergo.nitrates.views_admin_yaml import _edited_origin_name
+
+    banner_html = render(
+        request,
+        "nitrates_admin/yaml_tree/_edit_banner.html",
+        {
+            "tree": tree,
+            "edited_origin_name": _edited_origin_name(tree, request.user),
+            "can_activate_this_tree": can_activate_tree(request.user, tree),
+            "recent_revisions": list(tree.revisions.order_by("-created_at")[:5]),
+        },
+    ).content.decode("utf-8")
+    return banner_html.replace(
+        '<div class="yaml-admin__edit-banner" id="yaml-admin-edit-banner">',
+        '<div class="yaml-admin__edit-banner" id="yaml-admin-edit-banner"'
+        ' hx-swap-oob="outerHTML">',
+        1,
+    )
 
 
 def _render_partial_node_response(
@@ -157,6 +237,8 @@ def _render_partial_node_response(
         )
         rendered = rendered + toast_html
 
+    rendered = rendered + _render_banner_oob(request, tree)
+
     response = HttpResponse(rendered)
     response["HX-Retarget"] = f"#node-{slugify(parent_path_str)}"
     response["HX-Reswap"] = "outerHTML"
@@ -164,28 +246,21 @@ def _render_partial_node_response(
 
 
 def _refresh_response(request, message: str) -> HttpResponse:
-    """Reponse htmx qui declenche un rechargement de la page courante en
-    preservant son URL complete (et donc tous les ?expand=...).
+    """Reponse htmx qui force un rechargement complet de la page courante.
 
     Le message est passe via Django messages framework -- il sera
-    affiche en toaster sur la page rechargee.
+    affiche en toaster sur la page rechargee. Le scroll est restaure
+    par le JS de base.html (sessionStorage).
 
-    htmx envoie l'URL courante du navigateur dans `HX-Current-URL`, ce
-    qui permet de la rejouer en redirect (preserve fold/unfold). En
-    fallback on tente Referer, puis HX-Refresh.
+    On utilise HX-Refresh:true qui force un vrai reload navigateur. C'est
+    plus brutal que HX-Redirect mais garantit qu'on voit l'arbre apres
+    annulation/restauration -- sinon le HTML cote client reste sur l'etat
+    pre-mutation.
     """
     if message:
         messages.info(request, message)
-    # `message` peut transiter par les vues a partir de strings construites
-    # (ex incluant valeur de branche). On escape pour CodeQL XSS.
     response = HttpResponse(f"<div class='yaml-tree__add-ok'>{escape(message)}</div>")
-    current_url = request.META.get("HTTP_HX_CURRENT_URL") or request.META.get(
-        "HTTP_REFERER"
-    )
-    if current_url:
-        response["HX-Redirect"] = current_url
-    else:
-        response["HX-Refresh"] = "true"
+    response["HX-Refresh"] = "true"
     return response
 
 
@@ -224,6 +299,14 @@ def _check_editable(tree: DecisionTree, user) -> str | None:
     d'editer ce tree. None sinon."""
     if tree.status != DecisionTree.STATUS_DRAFT:
         return "L'édition n'est possible que sur un draft."
+    # External observator : ne peut editer que ses propres drafts.
+    from envergo.nitrates.permissions import is_external_observator
+
+    if is_external_observator(user) and tree.created_by_id != user.pk:
+        return (
+            "Ce brouillon ne vous appartient pas. "
+            "Vous pouvez le cloner pour en faire votre propre brouillon."
+        )
     if tree.is_locked_by_other(user):
         return f"Édition verrouillée par {tree.locked_by.email if tree.locked_by else 'un autre utilisateur'}."
     # Refresh le lock (timestamp)
@@ -341,7 +424,15 @@ class EditNodeView(View):
         # dans le row, sans les enfants -- htmx swap outerHTML sur le row).
         tree.refresh_from_db()
         node = editor.get_node_at(tree.contenu, path)
-        return render(
+        from envergo.nitrates.yaml_admin.preview import (
+            build_preview_url,
+            compute_simulator_params,
+        )
+
+        preview_link = build_preview_url(
+            tree.pk, compute_simulator_params(tree.contenu, path)
+        )
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_node_row.html",
             {
@@ -350,8 +441,51 @@ class EditNodeView(View):
                 "path": path,
                 "path_str": "/".join(path),
                 "tags": get_tags("noeud", node),
+                "preview_link": preview_link,
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
+
+
+def _regle_from_post(regle_orig: dict, post, form: RegleForm) -> dict:
+    """Reconstruit un dict `regle` pour le re-render 422 du formulaire en
+    cas d'echec de validation, en preservant les saisies utilisateur.
+
+    Sans ca, le formulaire re-rendu efface tout : l'utilisateur perd ses
+    modifications et doit tout ressaisir (bug critique reporte 2026-05-27).
+
+    Strategie :
+      - on part de `regle_orig` comme fallback,
+      - on overlay les champs textuels directement depuis le POST (raw),
+      - on overlay periodes + inputs_requis parses par le form
+        (le form les parse meme en cas d'erreurs de validation, cf.
+        _parse_periodes / _parse_inputs_requis qui ne raise pas).
+    """
+    out = {**regle_orig}
+    # Champs scalaires : on prend tels quels depuis le POST (raw),
+    # sans cleaning, sinon une checkbox decochee passerait inapercue.
+    SCALAR_FIELDS = (
+        "id",
+        "type",
+        "composant",
+        "message",
+        "texte",
+        "texte_condition",
+        "code_prescription",
+        "source_juridique",
+        "note",
+        "plafonnement_associe",
+        "plafond_azote_kg_n_ha",
+    )
+    for f in SCALAR_FIELDS:
+        if f in post:
+            val = (post.get(f) or "").strip()
+            out[f] = val if val else None
+    out["a_completer"] = bool(post.get("a_completer"))
+    # periodes + inputs_requis : reparse via le form (deja fait dans clean()).
+    out["periodes"] = form.periodes
+    out["inputs_requis"] = form.inputs_requis
+    return out
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -384,6 +518,7 @@ class EditRegleView(View):
                 "valeur": valeur,
                 "errors": [],
                 "evenements_phenologiques": _evenements_phenologiques(),
+                "regle_choices": _regle_referentiel_choices(),
             },
         )
 
@@ -412,16 +547,21 @@ class EditRegleView(View):
                 FieldError(field, " / ".join(msgs))
                 for field, msgs in form.errors.items()
             ]
+            # Bug fix : sur 422, on doit RE-AFFICHER les saisies de l'utilisateur,
+            # pas la regle d'origine, sinon il perd tout. On overlay les valeurs
+            # POST sur la regle originale.
+            regle_display = _regle_from_post(branche["regle"], request.POST, form)
             return render(
                 request,
                 "nitrates_admin/yaml_tree/forms/_regle_form.html",
                 {
                     "tree": tree,
-                    "regle": {**branche["regle"]},
+                    "regle": regle_display,
                     "parent_path_str": "/".join(parent_path),
                     "valeur": valeur,
                     "errors": form_errors,
                     "evenements_phenologiques": _evenements_phenologiques(),
+                    "regle_choices": _regle_referentiel_choices(),
                 },
                 status=422,
             )
@@ -447,23 +587,26 @@ class EditRegleView(View):
                     "valeur": valeur,
                     "errors": result.errors,
                     "evenements_phenologiques": _evenements_phenologiques(),
+                    "regle_choices": _regle_referentiel_choices(),
                 },
                 status=422,
             )
         # Succes : re-render la regle entiere (pas juste une ligne)
         tree.refresh_from_db()
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
-        return render(
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_regle_block.html",
             {
                 "tree": tree,
+                "arbre": tree.contenu,
                 "regle": branche["regle"],
                 "is_editing": True,
                 "parent_path": "/".join(parent_path),
                 "valeur": valeur,
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -482,6 +625,7 @@ class CancelEditRegleView(View):
             "nitrates_admin/yaml_tree/forms/_regle_block.html",
             {
                 "tree": tree,
+                "arbre": tree.contenu,
                 "regle": branche["regle"],
                 "is_editing": True,
                 "parent_path": "/".join(parent_path),
@@ -525,6 +669,7 @@ class EditBrancheView(View):
                     if "renvoi_vers" in branche
                     else []
                 ),
+                "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
             },
         )
 
@@ -615,7 +760,7 @@ class EditBrancheView(View):
             tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
 
         # Re-render le bloc branche en lecture
-        return render(
+        body = render(
             request,
             "nitrates_admin/yaml_tree/forms/_branche_block.html",
             {
@@ -625,7 +770,8 @@ class EditBrancheView(View):
                 "valeur": new_valeur,
                 "is_editing": True,
             },
-        )
+        ).content.decode("utf-8")
+        return HttpResponse(body + _render_banner_oob(request, tree))
 
 
 def _render_branche_error(request, tree, branche, parent_path, valeur, field, msg):
@@ -640,9 +786,61 @@ def _render_branche_error(request, tree, branche, parent_path, valeur, field, ms
             "parent_path_str": "/".join(parent_path),
             "valeur": valeur,
             "errors": [FieldError(field, msg)],
+            "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
         },
         status=422,
     )
+
+
+# Mapping niveau d'un noeud formulaire -> cle de referentiels.yaml. Si un
+# parent appartient a ce mapping, l'edition de ses branches enfants force la
+# selection de la valeur dans un dropdown ferme (les slugs canoniques du
+# referentiel). Source unique : envergo/nitrates/specs/referentiels.yaml.
+_NIVEAU_TO_REFERENTIEL_KEY = {
+    "type_fertilisant": "types_fertilisants",
+    "sous_culture": "sous_cultures",
+}
+
+
+def _branche_value_choices(arbre: dict, parent_path: tuple[str, ...]) -> list[dict]:
+    """Liste fermee des valeurs canoniques pour les branches enfants d'un
+    parent dont le niveau est mappe a une cle de referentiels.yaml.
+
+    Retourne [] si le parent n'a pas de niveau mappe -> le template
+    retombera sur un <input> libre. Sinon retourne
+    [{value, libelle, description}] pour alimenter un <select> ferme.
+    """
+    parent = editor.get_node_at(arbre, parent_path)
+    if not isinstance(parent, dict):
+        return []
+    if parent.get("type_noeud") != "formulaire":
+        return []
+    ref_key = _NIVEAU_TO_REFERENTIEL_KEY.get(parent.get("niveau"))
+    if not ref_key:
+        return []
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ref = load_referentiels() or {}
+    except Exception:
+        return []
+    items = ref.get(ref_key) or {}
+    out = []
+    for slug, data in items.items():
+        data = data or {}
+        out.append(
+            {
+                "value": slug,
+                "libelle": data.get("libelle_court")
+                or data.get("libelle_public")
+                or data.get("libelle")
+                or slug,
+                "description": data.get("libelle_public")
+                or data.get("description")
+                or "",
+            }
+        )
+    return out
 
 
 def _coerce_valeur(raw: str, target_type):
@@ -731,12 +929,18 @@ class AddChildView(View):
             {
                 "tree": tree,
                 "parent_path_str": "/".join(parent_path),
+                "parent_niveau": (
+                    parent.get("niveau") if isinstance(parent, dict) else None
+                ),
                 "allowed_kinds": allowed,
                 "selected_kind": kind,
                 "errors": [],
                 "form_data": form_data,
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 "catalogue_refs": CATALOGUE_RESOLVERS,
+                "renvoi_targets": _list_renvoi_targets(tree.contenu),
+                "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
+                "regle_choices": _regle_referentiel_choices(),
             },
         )
 
@@ -1012,16 +1216,34 @@ def _render_add_error(
 def _render_add_errors(
     request, tree, parent_path, allowed, kind, errors, form_data=None
 ):
+    # Log au stdout pour faciliter le debug : Django renvoie 422 mais ne
+    # logue pas les messages d'erreur, l'utilisateur ne voit que le
+    # 422 dans le terminal/network.
+    import sys
+
+    print(
+        f"[add-child 422] tree={tree.pk} path={'/'.join(parent_path)} "
+        f"kind={kind!r} errors=[",
+        ", ".join(f"{e.field!r}: {e.message!r}" for e in errors),
+        "]",
+        file=sys.stderr,
+        flush=True,
+    )
+    parent = editor.get_node_at(tree.contenu, parent_path)
     return render(
         request,
         "nitrates_admin/yaml_tree/forms/_add_form.html",
         {
             "tree": tree,
             "parent_path_str": "/".join(parent_path),
+            "parent_niveau": parent.get("niveau") if isinstance(parent, dict) else None,
             "allowed_kinds": allowed,
             "selected_kind": kind,
             "errors": errors,
             "form_data": form_data or {},
+            "renvoi_targets": _list_renvoi_targets(tree.contenu),
+            "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
+            "regle_choices": _regle_referentiel_choices(),
             "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
         },
         status=422,
@@ -1030,10 +1252,18 @@ def _render_add_errors(
 
 @method_decorator(staff_member_required, name="dispatch")
 class CancelAddChildView(View):
-    """GET : ferme le formulaire d'ajout (renvoie un fragment vide)."""
+    """GET : ferme le formulaire d'ajout.
+
+    Retourne le `<div id="add-zone-{path}"></div>` vide reinitialise plutot
+    qu'une chaine vide. Sinon le swap outerHTML supprime carrement la zone
+    cible, et le prochain clic sur le bouton `+` du noeud genere un
+    htmx:targetError (le selecteur ne matche plus rien dans le DOM).
+    """
 
     def get(self, request, tree_pk):
-        return HttpResponse("")
+        path = request.GET.get("path", "")
+        slug = slugify(path)
+        return HttpResponse(f'<div id="add-zone-{slug}"></div>')
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -1058,6 +1288,43 @@ class DeleteBrancheView(View):
         return _render_partial_node_response(
             request, tree, parent_path, f"Branche {valeur!r} supprimée."
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ReorderBranchesView(View):
+    """POST : reordonne les branches d'un noeud parent.
+
+    ?path=<parent_path>
+    body : `order=val1,val2,val3,...` (valeurs des branches dans le
+        nouvel ordre desire). Les valeurs `True`/`False` doivent etre
+        envoyees telles quelles (strings) ; on les decode comme bool
+        pour matcher la cle de stockage.
+    """
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        order_raw = request.POST.get("order", "")
+        if not order_raw:
+            return HttpResponseForbidden("Aucun ordre fourni.")
+        # Liste des valeurs : on garde les strings et on decode les bools
+        # avec `_parse_valeur` (cf. _parse_valeur : "True" -> True, ...).
+        ordered_valeurs = [_parse_valeur(v) for v in order_raw.split(",")]
+        result = editor.reorder_branches(
+            tree, parent_path, ordered_valeurs, request.user
+        )
+        if not result.ok:
+            return HttpResponseForbidden(
+                "; ".join(e.message for e in result.errors)
+                or "Réordonnancement refusé.",
+            )
+        # Pas de re-render : le DOM est deja a jour cote front (SortableJS
+        # a deja deplace les elements). On renvoie juste un 204 + le
+        # banner OOB pour rafraichir l'historique de revisions.
+        return HttpResponse(_render_banner_oob(request, tree))
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -1511,12 +1778,17 @@ class ActivateTreeView(View):
     """
 
     def post(self, request, tree_pk):
+        from envergo.nitrates.permissions import can_activate_tree
         from envergo.nitrates.yaml_tree import load_tree_admin
         from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
 
         tree = get_object_or_404(DecisionTree, pk=tree_pk)
         if tree.status != DecisionTree.STATUS_DRAFT:
             return HttpResponseForbidden("Seul un draft peut etre publie.")
+        if not can_activate_tree(request.user, tree):
+            return HttpResponseForbidden(
+                "L'activation d'un brouillon est réservée aux administrateurs."
+            )
         err = _check_editable(tree, request.user)
         if err:
             return HttpResponseForbidden(err)
