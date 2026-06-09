@@ -6,6 +6,7 @@ import pytest
 from envergo.nitrates.yaml_tree.condition import (
     ConditionParseError,
     parse_condition,
+    parse_condition_expr,
     validate_condition,
 )
 
@@ -191,3 +192,85 @@ def test_validate_condition_normalise_offset():
     """normalise() preserve l'offset des 2 cotes."""
     c = parse_condition("date_semis+4semaines>15/12")
     assert c.normalise() == "date_semis+4semaines > 15/12"
+
+
+# ─── conjonction `&&` (ET) ──────────────────────────────────────────────────
+
+
+def test_parse_condition_expr_simple_une_comparaison():
+    """Sans &&, une seule comparaison ; les proprietes de compat delèguent."""
+    expr = parse_condition_expr("date_x < 05/12")
+    assert len(expr.comparaisons) == 1
+    assert expr.input_id == "date_x"
+    assert expr.op == "<"
+    assert expr.date_litterale == "05/12"
+
+
+def test_parse_condition_expr_deux_comparaisons():
+    expr = parse_condition_expr("date_semis > 15/09 && date_semis < 15/11")
+    assert len(expr.comparaisons) == 2
+    c1, c2 = expr.comparaisons
+    assert (
+        c1.gauche.event == "date_semis" and c1.op == ">" and c1.droite.date == "15/09"
+    )
+    assert (
+        c2.gauche.event == "date_semis" and c2.op == "<" and c2.droite.date == "15/11"
+    )
+
+
+def test_parse_condition_expr_normalise():
+    """normalise() reassemble les comparaisons avec ' && ' canonique."""
+    expr = parse_condition_expr("date_x<05/12&&date_y>=01/01")
+    assert expr.normalise() == "date_x < 05/12 && date_y >= 01/01"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "date_x < 05/12 && ",  # part droite vide
+        " && date_x < 05/12",  # part gauche vide
+        "date_x < 05/12 && && date_y > 01/01",  # part du milieu vide
+        "date_x < 05/12 && pas une comparaison",  # 2e part mal formee
+    ],
+)
+def test_parse_condition_expr_invalides(raw):
+    with pytest.raises(ConditionParseError):
+        parse_condition_expr(raw)
+
+
+def test_validate_condition_et_valide():
+    expr, err = validate_condition(
+        "date_semis > 15/09 && date_semis < 15/11", _inputs_date()
+    )
+    assert err is None
+    assert len(expr.comparaisons) == 2
+
+
+def test_validate_condition_et_part_event_inconnu():
+    """Une part reference un input absent -> tout est rejete."""
+    expr, err = validate_condition(
+        "date_semis > 15/09 && date_inconnu < 15/11", _inputs_date()
+    )
+    assert expr is None
+    assert "date_inconnu" in err
+
+
+def test_validate_condition_et_part_constante_rejetee():
+    """Une part comparant deux dates fixes (constante) -> rejete, meme si les
+    autres parts sont valides."""
+    expr, err = validate_condition(
+        "date_semis > 15/09 && 15/12 < 31/01", _inputs_date()
+    )
+    assert expr is None
+    assert "event" in err
+
+
+def test_validate_condition_et_mix_offset():
+    expr, err = validate_condition(
+        "date_semis+4semaines > 15/12 && date_destruction-20jours < 15/01",
+        _inputs_date(),
+    )
+    assert err is None
+    assert len(expr.comparaisons) == 2
+    assert expr.comparaisons[0].gauche.n == 4
+    assert expr.comparaisons[1].gauche.sign == "-"

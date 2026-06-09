@@ -426,6 +426,37 @@ body.yaml-admin--busy .yaml-admin__global-overlay {
   font-weight: 600;
 }
 
+/* Lignes de periode (du / au / regime / masque / condition) : on veut TOUT
+   sur UNE seule ligne, avec des champs assez larges pour lire l'integralite
+   du texte (dates event±offset, conditions longues). On refuse donc le wrap
+   ET la compression des champs (flex-shrink:0 + largeurs fixes ci-dessous) ;
+   si la rangee depasse le panneau, on scrolle horizontalement plutot que de
+   tasser les champs. (cf. retour user : preferer le debordement + scroll au
+   passage sur 2 lignes.) */
+.yaml-tree__form-label:has([data-condition-cell]) {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+/* Dans une ligne periode, les champs ne se compriment plus et prennent une
+   largeur fixe genereuse (override le flex:1/min-width:0 generique). */
+.yaml-tree__form-label:has([data-condition-cell]) input,
+.yaml-tree__form-label:has([data-condition-cell]) select,
+.yaml-tree__form-label:has([data-condition-cell]) > span {
+  flex: 0 0 auto;
+}
+
+.yaml-tree__form-label:has([data-condition-cell]) input[name$="-du"],
+.yaml-tree__form-label:has([data-condition-cell]) input[name$="-au"] {
+  width: 30ch;
+  max-width: none;
+}
+
+.yaml-tree__form-label:has([data-condition-cell]) [data-condition-cell] {
+  width: 52ch;
+  max-width: none;
+}
+
 .yaml-tree__form-label input,
 .yaml-tree__form-label select {
   flex: 1;
@@ -1264,6 +1295,31 @@ details[open] > summary.yaml-tree__row::before {
 }
 
 .yaml-tree__periode-flag code {
+  font-size: 0.85em;
+}
+
+/* Bornage min/max d'un input de calculatrice, affiche inline dans le bloc
+   regle (uniquement quand min ou max est pose). Teinte bleutee neutre pour
+   se distinguer des tags de regime/periode. */
+.yaml-tree__input-borne {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-left: 0.3rem;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  color: #1a3c5e;
+  background: #e7f0fa;
+  border: 1px solid #90b8db;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.yaml-tree__input-borne-tag {
+  color: #2f5d85;
+}
+
+.yaml-tree__input-borne code {
   font-size: 0.85em;
 }
 

@@ -90,14 +90,12 @@
                      name="periodes-{{ forloop.counter0 }}-du"
                      value="{{ p.du|default_if_none:'' }}"
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-au"
                      value="{{ p.au|default_if_none:'' }}"
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <select name="periodes-{{ forloop.counter0 }}-regime"
                       data-regime-select
                       style="max-width:22ch">
@@ -118,10 +116,9 @@
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-condition"
                      value="{{ p.condition|default_if_none:'' }}"
-                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM && date_xxx > JJ/MM"
                      data-condition-cell
-                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
-                     style="max-width:34ch">
+                     title="Mini-DSL : <terme> <op> <terme>, plusieurs comparaisons jointes par && (ET). Terme = JJ/MM, event, ou event±Nunite. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition.">
                 <button type="button"
                         class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
                         title="Supprimer cette période"
@@ -145,14 +142,12 @@
                      name="periodes-{{ regle.periodes|length|default:0 }}-du"
                      value=""
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <input type="text"
                      name="periodes-{{ regle.periodes|length|default:0 }}-au"
                      value=""
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
                       data-regime-select
                       style="max-width:22ch">
@@ -172,10 +167,9 @@
               <input type="text"
                      name="periodes-{{ regle.periodes|length|default:0 }}-condition"
                      value=""
-                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM && date_xxx > JJ/MM"
                      data-condition-cell
-                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
-                     style="max-width:34ch">
+                     title="Mini-DSL : <terme> <op> <terme>, plusieurs comparaisons jointes par && (ET). Terme = JJ/MM, event, ou event±Nunite. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition.">
                 <button type="button"
                         class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
                         title="Supprimer cette période"
@@ -279,8 +273,6 @@
                                style="max-width:10ch">
                       </label>
                     </div>
-                    {# Bornage saisie (#126) : min/max JJ/MM. Ex couvert recolte
-                       avant 31/12 -> max 31/12 ; apres 01/01 -> min 01/01. #}
                     <div class="yaml-tree__form-row">
                       <label class="yaml-tree__form-label">
                         <span>min (JJ/MM)</span>

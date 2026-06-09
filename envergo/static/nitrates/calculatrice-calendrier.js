@@ -236,13 +236,14 @@
   const CONDITION_RE = new RegExp(
     "^\\s*(" + _TERME + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + _TERME + ")\\s*$"
   );
-  function evalCondition(rawCond, valeurs) {
-    if (!rawCond) return true;
-    const m = CONDITION_RE.exec(rawCond);
-    if (!m) return true; // condition mal formee : permissif (validator backend l'aura rejete)
+  // Evalue UNE comparaison `terme op terme`. Retourne true si vraie OU si un
+  // terme n'est pas resolvable (event non saisi / part mal formee) -> mode
+  // permissif (la periode reste affichee sans distorsion ; le validator
+  // backend a deja rejete les conditions reellement invalides a la saisie).
+  function evalComparaison(rawCmp, valeurs) {
+    const m = CONDITION_RE.exec(rawCmp);
+    if (!m) return true;
     const op = m[2];
-    // Chaque terme resolu en jour agricole via parseBorne (gere date,
-    // event, event±offset). jour === null => event non saisi => permissif.
     const gauche = parseBorne(m[1], valeurs).jour;
     const droite = parseBorne(m[3], valeurs).jour;
     if (gauche === null || droite === null) return true;
@@ -255,6 +256,15 @@
       case "!=": return gauche !== droite;
     }
     return true;
+  }
+  // Une condition = 1+ comparaisons jointes par `&&` (conjonction / ET) : vraie
+  // si TOUTES le sont. Pas de `||` ni de parentheses (cf. condition.py backend,
+  // qui DOIT rester synchro). Condition absente => true.
+  function evalCondition(rawCond, valeurs) {
+    if (!rawCond) return true;
+    return rawCond
+      .split("&&")
+      .every((cmp) => evalComparaison(cmp, valeurs));
   }
 
   // Hierarchie de severite des regimes pour la linearisation visuelle
@@ -284,8 +294,16 @@
   //     QUE sur l'intersection avec les jours déjà couverts par une
   //     période principale en passe 1. Hors intersection : silence
   //     (la période est sans effet, pas d'affichage). Sur la zone
-  //     intersection, le masque ecrase la principale (override : c'est
-  //     le but du masque, ex 'interdit avant 4 semaines apres semis').
+  //     intersection :
+  //       - vs la PRINCIPALE sous-jacente : le masque ecrase toujours
+  //         (override : c'est le but du masque, ex 'interdit avant
+  //         4 semaines apres semis' override l'autorise du cadre).
+  //       - vs un AUTRE masque qui a deja peint le meme jour : hierarchie
+  //         de severite, le plus restrictif gagne (interdiction >
+  //         autorisation_sous_condition > libre). Sans ca, le dernier
+  //         masque de la liste gagnait, et un masque ASC tardif pouvait
+  //         cannibaliser un masque interdiction anterieur (bug observe :
+  //         l'interdit '20j avant destruction' efface par l'ASC du semis).
   //
   // Le `libre` initial = pas de zone overlay (fond vert visible).
   function computeRegimePerDay(periodes, valeurs) {
@@ -294,6 +312,12 @@
     // Sentinel : qui a touché chaque jour en passe 1 ? Sert à savoir
     // si une période masque peut écrire à cet index ou non.
     const principalCovers = new Array(TOTAL_JOURS).fill(false);
+
+    // Regime pose par un masque (passe 2) a chaque index, ou null si aucun
+    // masque n'a encore touche ce jour. Sert a arbitrer DEUX masques qui se
+    // chevauchent par severite (le 1er masque override la principale ; les
+    // suivants ne gagnent que s'ils sont >= severes).
+    const masqueRegime = new Array(TOTAL_JOURS).fill(null);
 
     // Compte le nombre de principales qui couvrent chaque jour. Sert a
     // distinguer un jour de CHEVAUCHEMENT reel (>=1 principale qui contient
@@ -352,7 +376,16 @@
         if (i === du && principalEnds[i] > 0 && principalStarts[i] === 0) {
           return;
         }
-        result[i] = regime;
+        // 1er masque sur ce jour : override la principale. Masque suivant :
+        // ne gagne que s'il est >= severe que le masque deja en place (sinon
+        // un ASC tardif ecraserait un interdit anterieur).
+        if (
+          masqueRegime[i] === null ||
+          (SEVERITE_REGIME[regime] ?? 0) >= (SEVERITE_REGIME[masqueRegime[i]] ?? 0)
+        ) {
+          result[i] = regime;
+          masqueRegime[i] = regime;
+        }
       };
       if (du <= au) {
         for (let i = du; i <= au; i++) apply(i);
@@ -482,24 +515,9 @@
     // fond global de la barre.
     const segmentsRaw = computeSegments(regimeParJour);
 
-    // Jours des dates saisies (semis/destruction) : a ces frontieres, c'est
-    // le tick NOIR qui materialise la transition. On supprime alors la
-    // bordure de zone du cote concerne pour ne pas avoir un double trait
-    // (tick noir + bord de zone colle a 1px). REGLE GENERALE, symetrique :
-    // un bord de zone (gauche ou droit) ADJACENT a une date saisie (a +/-1
-    // jour, car une zone finit AU jour saisi et la suivante commence le
-    // LENDEMAIN -- meme transition) perd sa bordure de ce cote. Vaut pour
-    // tous les regimes (interdiction/autorisation) et les 2 sens.
-    const inputDaysZone = [];
-    for (const inp of inputs) {
-      const j = jjmmToJourAgricole(valeurs[inp.id]);
-      if (j !== null) inputDaysZone.push(j);
-    }
-    // s.du = bord GAUCHE (1er jour de la zone) ; s.au = bord DROIT (dernier
-    // jour inclus). Chacun est "absorbe" s'il est adjacent a une date saisie.
-    const bordAdjacentInput = (jour) =>
-      inputDaysZone.some((d) => Math.abs(d - jour) <= 1);
-
+    // Les zones n'ont plus de bordure verticale : chaque frontiere est
+    // materialisee par un unique tic (cf. renderBornes / CSS --big-tick).
+    // Une zone ne porte donc que son fond colore + son z-index.
     const zonesHtml = segmentsRaw
       .map((s) => {
         const couleur = REGIME_COULEUR_ZONE[s.regime];
@@ -512,11 +530,6 @@
           `calendrier-epandage__zone--${couleur}`,
         ];
         if (flottant) classes.push("calendrier-epandage__zone--flottant");
-        // Bordures supprimees aux frontieres marquees par un tick noir.
-        if (bordAdjacentInput(s.au))
-          classes.push("calendrier-epandage__zone--no-border-right");
-        if (bordAdjacentInput(s.du))
-          classes.push("calendrier-epandage__zone--no-border-left");
         // Tooltip : phrase humaine qui decrit la fenetre. On cherche la
         // periode YAML d'origine qui couvre ce segment (premier match)
         // pour reutiliser sa structure (du, au, regime) et generer une
@@ -795,13 +808,22 @@
         if (it.couleur && it.couleur !== "noir") {
           cls.push(`calendrier-epandage__period-date--${it.couleur}`);
         }
-        if (it.kind === "input") {
-          cls.push("calendrier-epandage__period-date--big-tick");
-        }
+        // TOUS les ticks (frontieres de zone ET dates saisies) sont des
+        // big-tick : un SEUL trait vertical qui traverse toute la barre puis
+        // deborde de quelques px sous elle pour rejoindre le label. C'est ce
+        // meme trait unique qui materialise la frontiere -- les zones n'ont
+        // donc plus de border-left/right (cf. CSS). Garantit une ligne
+        // continue, meme couleur, parfaitement alignee (un seul element par
+        // frontiere au lieu de bordure-de-zone + leader separe).
+        cls.push("calendrier-epandage__period-date--big-tick");
         const tip = it.title || it.label;
+        // Le texte est dans un span INTERNE place sur une couche z-index
+        // superieure aux tics (cf. CSS .period isolation) : ainsi aucune barre
+        // verticale ne coupe le libelle quand deux dates sont proches. Le tic
+        // (::before) reste sur la couche basse, derriere tous les textes.
         return `<span class="${cls.join(" ")}"
                        style="left:${it.pct.toFixed(3)}%"
-                       data-tooltip="${escapeHtml(tip)}">${escapeHtml(it.label)}</span>`;
+                       data-tooltip="${escapeHtml(tip)}"><span class="calendrier-epandage__period-date-label">${escapeHtml(it.label)}</span></span>`;
       })
       .join("");
     return `<div class="calendrier-epandage__period">${inner}</div>`;
@@ -1230,76 +1252,44 @@
     for (const el of labels) {
       el.style.marginLeft = "0px"; // reset avant mesure
     }
-    // Cible de snap commune (tics ET bordures de zone) : on aligne un BORD de
-    // trait sur la grille de pixels physiques ENTIERS. Un trait de 1px CSS =
-    // DPR px physiques ; pour qu'il soit net (pas d'anti-alias), ses bords
-    // doivent tomber sur des entiers physiques. snapCss(x) renvoie le delta
-    // (px CSS) pour ramener le point x sur l'entier physique le plus proche.
-    // La MEME grille sert aux tics (centre du trait -> entier => bords sur
-    // entiers) et aux bordures de zone (bord de l'element -> entier), pour
-    // qu'un tic externe et la bordure interne du meme jour coincident pile.
+    // snapCss(x) : delta (px CSS) pour ramener le point physique x sur
+    // l'entier physique le plus proche. Le bord du fond de zone est snappe
+    // ainsi pour que le fond colore s'arrete pile sur un pixel entier ; le
+    // tic (centre sur la date, peint [centre-0.5, centre+0.5]) snappe sur le
+    // MEME entier -> son trait de 1px recouvre exactement la couture du fond.
+    // Le tic etant le SEUL trait de frontiere (plus de border-left/right) et
+    // dessine par-dessus le fond (couche .period au-dessus des zones), tout
+    // ecart sous-pixel du fond passe sous le tic : la ligne reste nette et
+    // continue de la barre au label.
     const snapCss = (xCss) => {
       const phys = xCss * dpr;
       return (Math.round(phys) - phys) / dpr; // delta a appliquer
     };
-    for (const el of labels) {
-      const r = el.getBoundingClientRect();
-      const center = (r.left + r.right) / 2; // x physique du trait (px CSS)
-      el.style.marginLeft = `${snapCss(center).toFixed(3)}px`;
-    }
 
-    // ── Pixel-snap des BORDURES de zone ─────────────────────────────────
-    // Les bordures gauche/droite des zones (border 1px) tombaient a position
-    // fractionnaire variable -> 1px CSS etale sur 2px physiques (plus epais
-    // que les tics) ET desaligne du tic externe du meme jour. On snappe le
-    // bord de chaque zone sur la MEME grille que les tics : la bordure
-    // devient nette et pile alignee avec le tic qui descend vers la date.
+    // ── Pixel-snap du fond des zones ────────────────────────────────────
+    // Aligne les bords gauche/droit du fond colore sur la grille de pixels
+    // (sinon le fond bave d'1px et le tic ne tombe plus dessus).
     const bar = mount.querySelector(".calendrier-epandage__bar");
     if (bar) {
       const barRect = bar.getBoundingClientRect();
       const zonesEl = [...bar.querySelectorAll(".calendrier-epandage__zone")];
-      // 1) Snap des bords de chaque zone sur la grille + reset des bordures.
-      const meta = []; // {z, leftPhys, rightPhys, rang}
-      const rangZone = (z) =>
-        TICK_PRIORITE[
-          (z.className.match(/--(rouge|orange|vert)/) || ["", "vert"])[1]
-        ] ?? -1;
       for (const z of zonesEl) {
         const r = z.getBoundingClientRect();
         const dLeft = snapCss(r.left);
         const dRight = snapCss(r.right);
         z.style.left = `${(r.left - barRect.left + dLeft).toFixed(3)}px`;
         z.style.width = `${(r.width - dLeft + dRight).toFixed(3)}px`;
-        z.style.borderLeftWidth = "";
-        z.style.borderRightWidth = "";
-        meta.push({
-          z,
-          leftPhys: (r.left + dLeft) * dpr,
-          rightPhys: (r.right + dRight) * dpr,
-          rang: rangZone(z),
-        });
       }
-      // 2) Anti double-bord a une frontiere inter-zones (bord droit de A ==
-      //    bord gauche de B) : on ne garde QU'UNE bordure, celle de la zone
-      //    la PLUS RESTRICTIVE (rouge > orange). C'est le sens metier : une
-      //    frontiere ASC->interdit est une frontiere d'INTERDICTION (rouge),
-      //    pas d'autorisation. On supprime donc la bordure du cote le moins
-      //    restrictif.
-      for (let i = 0; i < meta.length; i++) {
-        for (let j = 0; j < meta.length; j++) {
-          if (i === j) continue;
-          if (Math.abs(meta[i].rightPhys - meta[j].leftPhys) < 1) {
-            // frontiere : zone i finit ou zone j commence.
-            if (meta[i].rang >= meta[j].rang) {
-              // i (>=) impose sa bordure droite -> on retire le bord gauche de j
-              meta[j].z.style.borderLeftWidth = "0px";
-            } else {
-              // j (plus restrictif) impose son bord gauche -> retire bord droit de i
-              meta[i].z.style.borderRightWidth = "0px";
-            }
-          }
-        }
-      }
+    }
+
+    // ── Pixel-snap des TICS (traits verticaux ::before) ─────────────────
+    // Chaque tic fait 1px CSS centre sur la date via translateX(-50%). On
+    // nudge le label d'un sous-pixel pour que le CENTRE du trait retombe pile
+    // sur un pixel physique entier -> trait net (pas d'anti-alias etale).
+    for (const el of labels) {
+      const r = el.getBoundingClientRect();
+      const center = (r.left + r.right) / 2; // x physique du trait (px CSS)
+      el.style.marginLeft = `${snapCss(center).toFixed(3)}px`;
     }
   }
 

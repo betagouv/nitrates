@@ -101,16 +101,15 @@
   z-index: 1;
 }
 
-/* Frontiere deja materialisee par un tick noir (date saisie semis/
-   destruction) : on retire la bordure de zone de ce cote pour eviter le
-   double trait (tick noir + bord de zone colle a 1px). cf. retour user :
-   la borne de la zone doit etre REMPLACEE par la barre de destruction,
-   pas affichee a cote. */
-.calendrier-epandage__zone--no-border-left {
+/* Calendrier DYNAMIQUE (calculatrice, dans .calc-cal) uniquement : pas de
+   bordure de zone. Chaque frontiere y est materialisee par un unique tick
+   (--big-tick) qui traverse la barre et deborde sous elle (cf. JS
+   renderBornes) -> un seul trait par frontiere, ligne continue parfaitement
+   alignee. Le calendrier STATIQUE (templatetag, regles non-calculatrice)
+   garde ses bordures de zone ci-dessus : il n'a pas de tic plein-hauteur. */
+.calc-cal .calendrier-epandage__zone--rouge,
+.calc-cal .calendrier-epandage__zone--orange {
   border-left: none;
-}
-
-.calendrier-epandage__zone--no-border-right {
   border-right: none;
 }
 
@@ -146,6 +145,42 @@
      statique (sans JS) garde cette hauteur de base. */
   height: 38px;
   margin-top: 8px;
+}
+
+/* Calendrier DYNAMIQUE (calculatrice) : deux couches z-index DANS .period --
+   les tics (::before) en bas, les LIBELLES en haut -- pour qu'aucune barre
+   verticale ne coupe un texte quand deux dates sont proches. Tous les tics
+   (z-index 1) passent ainsi DERRIERE tous les libelles (z-index 2), quel que
+   soit l'ordre DOM ou la row.
+
+   `.period` recoit z-index:3 (> zones rouge/orange a z-index 0/1) : tout le
+   bloc tics+libelles remonte ainsi AU-DESSUS du fond des zones. C'est ce qui
+   remplace le z-index:5 pose autrefois sur chaque --big-tick (necessaire car
+   le transform de .period-date cree un contexte qui piegeait le ::before
+   sous les zones). En montant .period entier, on n'a plus besoin de lever
+   chaque tic individuellement -> les ticks ne piegent plus les libelles.
+   Le calendrier statique n'a qu'une row et pas de tic plein-hauteur : non
+   concerne (les regles --big-tick ne s'y appliquent pas). */
+.calc-cal .calendrier-epandage__period {
+  position: relative;
+  z-index: 3;
+  isolation: isolate;
+}
+
+/* Dans .calc-cal, le tic ne porte plus de z-index sur l'ELEMENT (sinon il
+   piege le libelle interne au-dessus de lui). Il vit sur la couche basse via
+   son ::before ; c'est .period (z-index:3) qui le tient au-dessus des zones. */
+.calc-cal .calendrier-epandage__period-date--big-tick {
+  z-index: auto;
+}
+
+.calc-cal .calendrier-epandage__period-date::before {
+  z-index: 1;
+}
+
+.calc-cal .calendrier-epandage__period-date-label {
+  position: relative;
+  z-index: 2;
 }
 
 .calendrier-epandage__period-date {

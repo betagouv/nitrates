@@ -61,6 +61,21 @@
       </ul>
     {% endif %}
 
+    {% comment %}Inputs saisis (calculatrice) : on n'affiche un tag inline que
+       pour les bornes min/max effectivement posees (sinon rien). Permet de
+       voir d'un coup d'oeil le bornage d'une date sans ouvrir le formulaire.
+    {% endcomment %}
+    {% for inp in regle.inputs_requis %}
+      {% if inp.min or inp.max %}
+        <span class="yaml-tree__input-borne"
+              title="Bornage de l'input « {{ inp.label|default:inp.id }} »">
+          <code>{{ inp.label_court|default:inp.id }}</code>
+          {% if inp.min %}<span class="yaml-tree__input-borne-tag">min <code>{{ inp.min }}</code></span>{% endif %}
+          {% if inp.max %}<span class="yaml-tree__input-borne-tag">max <code>{{ inp.max }}</code></span>{% endif %}
+        </span>
+      {% endif %}
+    {% endfor %}
+
     {% if regle.plafond_azote_kg_n_ha %}
       <span class="yaml-tree__plafond">≤ <strong>{{ regle.plafond_azote_kg_n_ha }} kg N/ha</strong></span>
     {% endif %}
