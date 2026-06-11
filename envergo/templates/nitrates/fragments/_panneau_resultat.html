@@ -44,10 +44,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
           {% include "nitrates/fragments/_resultat_questions.html" %}
         {% elif ev.regle %}
-          {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
-          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
-          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
-          {% epandage_header ev.regle %}
+          {% comment %}Le calendrier (plus bas) est le 1er element visuel du resultat : le bloc "Epandage / aujourd'hui" a ete retire (#85).{% endcomment %}
         {% else %}
           {# Fallback ancien rendu si pas de regle (cas edge non_disponible). #}
           <div class="resultat-row">

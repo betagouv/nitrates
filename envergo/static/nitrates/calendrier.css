@@ -10,8 +10,7 @@
    / vert ailleurs. Tokens alignes sur le DSFR (rouge marianne, warning,
    success), contraste AA garanti pour le texte 'ink' sur fond clair. */
 .calendrier-epandage,
-.calc-cal,
-.epandage-header {
+.calc-cal {
   --cal-rouge-fill: #ffe9e9;
   --cal-rouge-ink: #ce0500;
   --cal-orange-fill: #fef0e3;
@@ -393,76 +392,6 @@
     rgb(22 22 22 / 35%) 2px,
     rgb(22 22 22 / 35%) 3px
   );
-}
-
-/* ─── Header epandage dynamique (issue #28) ─────────────────────────── */
-
-.epandage-header {
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.epandage-header__row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-
-.epandage-header__title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-title-grey);
-}
-
-.epandage-header__date-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.epandage-header__date {
-  color: var(--text-mention-grey);
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-.epandage-header__badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.epandage-header__badge--rouge {
-  background: var(--cal-rouge-fill);
-  color: var(--cal-rouge-ink);
-}
-
-.epandage-header__badge--orange {
-  background: var(--cal-orange-fill);
-  color: var(--cal-orange-ink);
-}
-
-.epandage-header__badge--vert {
-  background: var(--cal-vert-fill);
-  color: var(--cal-vert-ink);
-}
-
-.epandage-header__badge--gris {
-  background: #eaeaea;
-  color: #666;
-}
-
-.epandage-header__phrase {
-  margin: 12px 0 0;
-  color: var(--text-default-grey);
-  line-height: 1.5;
 }
 
 /* ─── Calendrier dynamique (calculatrice) ───────────────────────────────

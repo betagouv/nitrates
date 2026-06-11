@@ -96,11 +96,10 @@ class Resultat:
         """Serialise pour exposition JSON cote front (json_script Django).
 
         Utilise par :
-          - epandage_aujourdhui.js : calcul du statut effectif a la date
-            du jour. Besoin de regle_id / type / periodes / texte_condition.
           - calculatrice-calendrier.js : rendu du calendrier dynamique
-            pour les feuilles type=calculatrice. Besoin en plus de
-            composant / inputs_requis / verdict (= message).
+            pour les feuilles type=calculatrice. Besoin de regle_id / type /
+            periodes / texte_condition / composant / inputs_requis /
+            verdict (= message).
         """
         return {
             "regle_id": self.regle_id,
