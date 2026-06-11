@@ -179,13 +179,15 @@ remplis au clic carte (cf. simulator.js).
     </div>
 
     {% comment %}
-  Questions complementaires en cours de saisie : rendues dans le panneau
-  resultat (a droite). Quand toutes repondues, le recap s'affiche en
-  dessous du form via _qc_recap.html.
+  Questions complementaires (#112) : rendues SOUS le formulaire, dans un seul
+  bloc violet (repondues editables + en attente). Tant qu'une QC est en
+  attente (qc_en_attente), le panel resultat de droite est masque et on reste
+  en colonne unique. Une fois tout repondu, ce bloc reste affiche en recap et
+  le resultat apparait a droite.
     {% endcomment %}
-    {% if afficher_resultat and qc_repondues %}
+    {% if qc_en_attente or qc_repondues %}
       <div class="form-section questions-complementaires-box"
-           style="margin-top: 32px">{% include "nitrates/fragments/_qc_recap.html" %}</div>
+           style="margin-top: 32px">{% include "nitrates/fragments/_qc_sous_form.html" %}</div>
     {% endif %}
 
     {% include "nitrates/fragments/_form_hidden_passthrough.html" %}

@@ -46,6 +46,9 @@
   <script defer src="{% static 'nitrates/cascade.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
+    {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
+    {# resultat final -> section Localisation/resultat en haut (#112). #}
+    <script defer src="{% static 'nitrates/scroll_resultat.js' %}"></script>
   {% endif %}
 {% endblock %}
 
@@ -81,15 +84,24 @@
       </div>
     </div>
 
-    {# ─── Section formulaire + resultats ───────────────────────────── #}
-    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat %} layout--split{% endif %}"
+    {% comment %}
+    Section formulaire + resultats.
+    Le panel resultat (colonne droite + layout--split) n'apparait QUE quand un
+    resultat final est pret, c'est-a-dire qu'il reste aucune question
+    complementaire a poser (qc_en_attente == False). Tant qu'une QC est en
+    attente, on reste en colonne unique : le formulaire occupe toute la largeur
+    et les questions complementaires sont rendues sous lui (#112).
+    {% endcomment %}
+    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat and not qc_en_attente %} layout--split{% endif %}"
          style="align-items: flex-start">
 
-      {# Colonne gauche : form + carte #}
-      <div class="fr-col-12 fr-col-lg-5 form-col">{% include "nitrates/fragments/_panneau_form.html" %}</div>
+      {# Colonne gauche : form + carte (+ QC sous le form si en attente) #}
+      <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-5{% endif %} form-col">
+        {% include "nitrates/fragments/_panneau_form.html" %}
+      </div>
 
-      {# Colonne droite : resultat (si dispo) #}
-      {% if afficher_resultat %}
+      {# Colonne droite : resultat final, seulement si plus aucune QC en attente #}
+      {% if afficher_resultat and not qc_en_attente %}
         <div class="fr-col-12 fr-col-lg-7 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
       {% endif %}
 

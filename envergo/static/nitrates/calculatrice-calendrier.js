@@ -1084,8 +1084,13 @@
     // et la mention conditionnelle.
     const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
     const segments = computeSegments(regimeParJour);
-    // Lignes des segments colores, avec leur regime pour les trier ensuite.
-    const lignesColorees = [];
+
+    // Ordre de presentation (maquette #130) : interdiction d'abord, puis
+    // autorisation sous condition (prio), puis l'autorisation pure (#85) en
+    // dernier (prio 2). Tri stable -> ordre chronologique conserve au sein
+    // d'un meme regime.
+    const PRIORITE = { interdiction: 0, autorisation_sous_condition: 1, plafonnement: 1 };
+    const lignes = [];
     for (const seg of segments) {
       const regime = seg.regime;
       if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
@@ -1111,28 +1116,23 @@
           ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
         }
       }
-      lignesColorees.push({ regime, html: `<li>${ligne}</li>` });
+      lignes.push({ prio: PRIORITE[regime] ?? 9, html: `<li>${ligne}</li>` });
     }
 
-    // Ordre des puces (#85) : interdiction puis autorisation sous condition,
-    // puis l'autorisation pure (vert) en dernier. On trie les lignes colorees
-    // par cet ordre de regime (stable sur les segments d'un meme regime).
-    const ordre = { interdiction: 0, plafonnement: 1, autorisation_sous_condition: 2 };
-    lignesColorees.sort((a, b) => (ordre[a.regime] ?? 9) - (ordre[b.regime] ?? 9));
-    const lignes = lignesColorees.map((l) => l.html);
-
-    // Periode d'autorisation pure (vert) = segments de regime "libre", non
-    // listes ci-dessus. Fusionnee (dont le wrap juin->juillet) en UNE ligne
-    // francaise (#85), ajoutee EN DERNIER.
+    // Periode d'autorisation pure (vert, #85) = jours ni interdits ni sous
+    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne. Prio 2
+    // -> placee en dernier par le tri ci-dessous.
     const ligneAutorisation = buildLigneAutorisation(segments);
-    if (ligneAutorisation) lignes.push(`<li>${ligneAutorisation}</li>`);
+    if (ligneAutorisation) {
+      lignes.push({ prio: 2, html: `<li>${ligneAutorisation}</li>` });
+    }
 
     if (lignes.length === 0) return "";
-    // Pas de titre "Récapitulatif" (#85) : le calendrier + la liste a puces
-    // se suffisent, on n'ajoute pas d'intertitre.
+    lignes.sort((a, b) => a.prio - b.prio);
+    // Maquette #130 : pas de titre "Récapitulatif", liste nue (sans puces).
     return `
       <div class="calc-cal__recap">
-        <ul>${lignes.join("")}</ul>
+        <ul class="calc-cal__recap-list">${lignes.map((l) => l.html).join("")}</ul>
       </div>
     `;
   }

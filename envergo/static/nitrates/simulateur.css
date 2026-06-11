@@ -211,11 +211,38 @@ body {
 
 .resultat-panel.resultat-panel--questions {
   /* Fond violet pastel valide par la designeuse (cf. #58.2). Distingue
-     visuellement les questions complementaires (etape 2) du reste de la
-     page. Le mode dark sera traite a part dans une carte transverse. */
+     visuellement les questions complementaires (etape 2) du reste de la page.
+
+     Mode dark (#112) : ce fond violet reste CLAIR dans les deux themes. Or en
+     dark, les variables DSFR de texte (--text-*-grey) basculent vers du clair
+     -> texte clair sur violet clair = illisible. On REDEFINIT donc localement
+     ces variables vers des teintes sombres : tout texte/label/radio de ce
+     bloc qui s'appuie sur elles redevient lisible, sans toucher au reste de la
+     page ni au choix du violet. Valeurs = tokens "grey" du theme light DSFR. */
+  --text-title-grey: #161616;
+  --text-default-grey: #3a3a3a;
+  --text-mention-grey: #666;
+  --text-action-high-grey: #161616;
+  --border-action-high-blue-france: #000091;
+  --background-default-grey: #fff;
+
   background: #cecefc;
   padding: 30px;
   border-radius: 4px;
+
+  /* Couleur de texte de base du bloc (titres fr-h*, paragraphes, labels qui
+     n'utiliseraient pas une variable ci-dessus). */
+  color: #161616;
+}
+
+/* Titres et labels DSFR a l'interieur : forcer la teinte sombre meme si une
+   regle DSFR dark les a passes en clair via une autre variable. */
+.resultat-panel.resultat-panel--questions h2,
+.resultat-panel.resultat-panel--questions .fr-h3,
+.resultat-panel.resultat-panel--questions .fr-text--lead,
+.resultat-panel.resultat-panel--questions .form-question-text,
+.resultat-panel.resultat-panel--questions .fr-label {
+  color: #161616;
 }
 
 .resultat-panel.resultat-panel--questions .form-question-group {

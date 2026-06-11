@@ -3,24 +3,30 @@
 /* Calendrier d'epandage 12 mois (annee agricole juil -> juin).
    Reproduit le look de la maquette site-nitrates-maquette/index.html. */
 
-/* ─── Palette unique (DSFR) ──────────────────────────────────────────────
+/* ─── Palette unique (maquette #130) ─────────────────────────────────────
    UN seul couple `fill` (fond pale de zone) + `ink` (bordure, tick, label,
    puce de legende, badge) par famille. Tout le reste du fichier doit
    reutiliser CES variables — interdiction d'introduire un 4e rouge / orange
-   / vert ailleurs. Tokens alignes sur le DSFR (rouge marianne, warning,
-   success), contraste AA garanti pour le texte 'ink' sur fond clair. */
+   / vert ailleurs.
+
+   Valeurs issues de la maquette palette (#130) :
+     Autorise          fond #c3fad5  contour #4b9f6c (green-emeraude)
+     Interdit          fond #fddede  contour #f95a5c (red-marianne)
+     Sous conditions   fond #fddede  contour #fa7a35 (orange-terre-battue)
+   Note : le sous-condition partage le MEME fond rouge que l'interdit ; il
+   s'en distingue par les hachures orange (toujours presentes, cf. plus bas)
+   et par sa bordure orange. Indispensable pour les malvoyants (texture +
+   teinte de bord, pas seulement la couleur de fond). */
 .calendrier-epandage,
 .calc-cal {
-  --cal-rouge-fill: #ffe9e9;
-  --cal-rouge-ink: #ce0500;
-  --cal-orange-fill: #fef0e3;
+  --cal-rouge-fill: #fddede;
+  --cal-rouge-ink: #f95a5c;
 
-  /* Orange franc, distinct du rouge marianne (#ce0500). L'ancien #b34000
-     etait un orange brule trop proche du rouge -> frontieres ASC/interdit
-     indistinguables (cf. retour user). */
-  --cal-orange-ink: #ed6a1c;
-  --cal-vert-fill: #dffee6;
-  --cal-vert-ink: #18753c;
+  /* Sous-condition : fond = rouge (maquette), seul l'ink reste orange. */
+  --cal-orange-fill: #fddede;
+  --cal-orange-ink: #fa7a35;
+  --cal-vert-fill: #c3fad5;
+  --cal-vert-ink: #4b9f6c;
 }
 
 .calendrier-epandage {
@@ -82,8 +88,11 @@
 
 .calendrier-epandage__zone--rouge {
   background: var(--cal-rouge-fill);
-  border-left: 1px solid var(--cal-rouge-ink);
-  border-right: 1px solid var(--cal-rouge-ink);
+
+  /* Cadre complet (maquette #130) : la zone est cernee sur ses 4 cotes.
+     Les bordures top/bottom manquaient -> le segment n'etait pas "encadre"
+     comme dans la maquette. */
+  border: 1px solid var(--cal-rouge-ink);
 
   /* Interdiction = fond du regime de base, doit rester derriere les zones
      d'autorisation sous condition (cf. #88). */
@@ -92,8 +101,19 @@
 
 .calendrier-epandage__zone--orange {
   background: var(--cal-orange-fill);
-  border-left: 1px solid var(--cal-orange-ink);
-  border-right: 1px solid var(--cal-orange-ink);
+  border: 1px solid var(--cal-orange-ink);
+
+  /* Sous-condition TOUJOURS hachure (maquette #130) : meme fond rouge que
+     l'interdit, distingue par des hachures orange. La texture (et non la
+     seule couleur) porte l'info -> lisible pour les malvoyants. Le marqueur
+     `--flottant` (borne phenologique) n'est plus le seul a hachurer. */
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 5px,
+    var(--cal-orange-ink) 5px,
+    var(--cal-orange-ink) 10px
+  );
 
   /* Autorisation sous condition = derogation locale qui doit etre visible
      par-dessus l'interdiction de base, peu importe l'ordre DOM (#88). */
@@ -101,25 +121,30 @@
 }
 
 /* Calendrier DYNAMIQUE (calculatrice, dans .calc-cal) uniquement : pas de
-   bordure de zone. Chaque frontiere y est materialisee par un unique tick
-   (--big-tick) qui traverse la barre et deborde sous elle (cf. JS
+   bordure laterale de zone. Chaque frontiere y est materialisee par un unique
+   tick (--big-tick) qui traverse la barre et deborde sous elle (cf. JS
    renderBornes) -> un seul trait par frontiere, ligne continue parfaitement
-   alignee. Le calendrier STATIQUE (templatetag, regles non-calculatrice)
-   garde ses bordures de zone ci-dessus : il n'a pas de tic plein-hauteur. */
+   alignee. On garde en revanche les bordures top/bottom (maquette #130) pour
+   encadrer la zone. Le calendrier STATIQUE (templatetag, regles
+   non-calculatrice) garde ses bordures laterales : il n'a pas de tic
+   plein-hauteur. */
 .calc-cal .calendrier-epandage__zone--rouge,
 .calc-cal .calendrier-epandage__zone--orange {
   border-left: none;
   border-right: none;
 }
 
+/* Point "aujourd'hui" centre VERTICALEMENT dans la barre (maquette #130).
+   Barre = 46px, point = 9px -> top via 50% + translateY(-50%), independant
+   de la hauteur exacte de la barre. Le label se pose juste sous le point. */
 .calendrier-epandage__today {
   position: absolute;
-  top: 8px;
+  top: 50%;
   width: 9px;
   height: 9px;
   background: #161616;
   border-radius: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 2;
   pointer-events: none;
 }
@@ -320,18 +345,13 @@
   background: var(--cal-orange-ink);
 }
 
-/* Zone hachuree : segment dont une borne est phenologique (date flottante).
-   Patterne en bandes diagonales noires sur fond de la couleur du regime,
-   pour signaler visuellement que la duree exacte n'est pas figee. */
-.calendrier-epandage__zone--flottant {
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent 0,
-    transparent 6px,
-    rgb(22 22 22 / 22%) 6px,
-    rgb(22 22 22 / 22%) 8px
-  );
-}
+/* Borne phenologique (date flottante) : on N'utilise PLUS les hachures comme
+   signal (maquette #130 — les hachures sont desormais le marqueur PERMANENT
+   du sous-condition, cf. --orange ci-dessus). La classe reste posee par le JS
+   (renderCalendrier) mais ne doit plus repeindre le fond : sinon, sur une zone
+   orange flottante, ces hachures noires ecraseraient les hachures orange. On
+   la laisse donc inerte. Le caractere "non fige" de la duree est porte par les
+   libelles de bornes en italique, pas par la zone. */
 
 .calendrier-epandage__phenologique {
   margin-top: 0.5rem;
@@ -372,8 +392,17 @@
   border-color: var(--cal-rouge-ink);
 }
 
+/* Puce sous-condition : hachuree orange en permanence, comme la zone (maquette
+   #130). Hachures resserrees (4px de periode) pour rester lisibles a 12px. */
 .calendrier-epandage__legende-puce--orange {
-  background: var(--cal-orange-fill);
+  background-color: var(--cal-orange-fill);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 2px,
+    var(--cal-orange-ink) 2px,
+    var(--cal-orange-ink) 4px
+  );
   border-color: var(--cal-orange-ink);
 }
 
@@ -626,13 +655,12 @@
   margin-top: 1.5rem;
 }
 
-.calc-cal__recap h4 {
-  margin: 0 0 0.5rem;
-}
-
-.calc-cal__recap ul {
+/* Liste nue (maquette #130) : pas de puces, pas d'indentation de puce.
+   Le verbe en gras de chaque ligne porte deja le rythme visuel. */
+.calc-cal__recap-list {
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  list-style: none;
   line-height: 1.6;
 }
 
