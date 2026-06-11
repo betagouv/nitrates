@@ -65,24 +65,49 @@ def _est_borne_fixe(s: str) -> bool:
     return isinstance(s, str) and len(s) == 5 and s[2] == "/"
 
 
+def _libelle_phenologique(slug: str) -> str:
+    """Resout un slug d'evenement phenologique vers son `libelle_public`
+    (referentiels.yaml > evenements_phenologiques), ex
+    `derniere_coupe_luzerne` -> "Dernière coupe de la luzerne".
+
+    Fallback si le slug est absent du referentiel ou sans libelle_public :
+    le slug rendu lisible (underscores -> espaces), jamais le snake_case brut
+    (cf. #85)."""
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+
+        ev = (load_referentiels().get("evenements_phenologiques") or {}).get(slug)
+        if ev and ev.get("libelle_public"):
+            return ev["libelle_public"]
+    except Exception:
+        pass
+    return str(slug).replace("_", " ")
+
+
+def _minuscule_initiale(s: str) -> str:
+    """Minuscule la 1ere lettre (le reste intact). Pour inserer un libelle
+    capitalise au milieu d'une phrase sans casser les majuscules internes
+    (ex "Brunissement des soies (maïs)" -> "brunissement des soies (maïs)")."""
+    return s[:1].lower() + s[1:] if s else s
+
+
 @register.simple_tag
 def periode_phrase(periode: dict) -> str:
     """Formate une periode en phrase humaine pour le panneau resultat.
 
     Bornes fixes JJ/MM : `du 15/07 au 15/02`.
-    Borne phenologique en debut : `de « derniere_coupe_luzerne » au 31/12`.
-    Borne phenologique en fin : `du 15/07 au « brunissement_des_soies »`.
-
-    Les guillemets francais autour des slugs phenologiques signalent
-    visuellement a l'utilisateur que ce n'est pas une vraie date
-    (cf. #88, retour Emma).
+    Borne phenologique : on resout le slug vers son `libelle_public`
+    lisible (cf. #85), ex `de la dernière coupe de la luzerne au 15/01`.
+    Le prefixe passe de "du" a "de" quand la 1ere borne est phenologique.
     """
     du = periode.get("du", "")
     au = periode.get("au", "")
     du_fixe = _est_borne_fixe(du)
     au_fixe = _est_borne_fixe(au)
-    du_str = du if du_fixe else f"« {du} »"
-    au_str = au if au_fixe else f"« {au} »"
+    # Le libelle phenologique est capitalise dans le referentiel (usage titre).
+    # Insere en milieu de phrase ("de X au Y"), on minuscule sa 1ere lettre.
+    du_str = du if du_fixe else _minuscule_initiale(_libelle_phenologique(du))
+    au_str = au if au_fixe else _minuscule_initiale(_libelle_phenologique(au))
     prefixe = "du" if du_fixe else "de"
     return f"{prefixe} {du_str} au {au_str}"
 
