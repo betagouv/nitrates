@@ -272,8 +272,17 @@ def update_branch_content(
                 )
             ]
         )
-    # 2. Le contenu lui-meme est valide (niveau 1)
-    grammar_kind = _grammar_kind_from_content_kind(content_kind)
+    # 2. Le contenu lui-meme est valide (niveau 1).
+    # Pour un noeud, on derive le grammar kind du type_noeud REEL du contenu
+    # (et non du content_kind d'entree) : le content_kind "noeud_catalogue"
+    # peut produire un noeud catalogue_parametre quand la source choisie est
+    # "expression" (fusion UX #128). On valide alors avec le bon schema.
+    if content_kind.startswith("noeud_") and isinstance(content_data, dict):
+        grammar_kind = _kind_from_node(content_data) or _grammar_kind_from_content_kind(
+            content_kind
+        )
+    else:
+        grammar_kind = _grammar_kind_from_content_kind(content_kind)
     res = validate_node_local(content_data, grammar_kind, arbre=tree.contenu)
     if not res.ok:
         return EditResult.from_validation(res)
@@ -395,6 +404,83 @@ def delete_node(
         mutate=lambda contenu: _apply_delete_node(contenu, path),
         summary=f"Nœud {node.get('id', '')} supprimé",
     )
+
+
+def convert_node_to_catalogue_parametre(
+    tree: DecisionTree,
+    path: tuple[str, ...],
+    user,
+) -> EditResult:
+    """Convertit un noeud existant (formulaire complement ou catalogue) en
+    `catalogue_parametre` (#128), SUR PLACE et SANS PERTE.
+
+    Cas d'usage : remplacer une question complementaire « S'agit-il d'un
+    effluent peu charge ? » par une resolution automatique par expression,
+    en gardant les branches deja construites (true/false + leur sous-arbre).
+
+    Transformation :
+      - type_noeud -> "catalogue_parametre"
+      - on RETIRE les champs propres au formulaire : niveau, texte, aide, source
+      - on GARDE id et champ (champ = nom logique de sortie, tracabilite)
+      - on GARDE toutes les branches et leur contenu (noeud/regle/renvoi_vers)
+      - on ajoute `expression: ""` (vide) sur chaque branche qui n'en a pas,
+        a remplir ensuite par le juriste (l'arbre ne sera pas activable tant
+        que les expressions sont vides : le validateur deep les refuse).
+
+    Refuse la racine (un catalogue_parametre racine n'a pas de sens : la
+    racine resout en_zone_vulnerable) et les noeuds deja catalogue_parametre.
+    """
+    node = get_node_at(tree.contenu, path)
+    if node is None:
+        return EditResult.fail([FieldError("", "Nœud introuvable.")])
+    if len(path) < 2:
+        return EditResult.fail(
+            [FieldError("", "La racine ne peut pas être convertie.")]
+        )
+    tn = node.get("type_noeud")
+    if tn == "catalogue_parametre":
+        return EditResult.fail(
+            [FieldError("", "Ce nœud est déjà un catalogue paramétré.")]
+        )
+    if tn not in ("formulaire", "catalogue"):
+        return EditResult.fail(
+            [FieldError("", f"Type de nœud {tn!r} non convertible.")]
+        )
+    if not node.get("champ"):
+        return EditResult.fail(
+            [
+                FieldError(
+                    "",
+                    "Le nœud doit avoir un `champ` pour être converti "
+                    "(nom logique de sortie du catalogue paramétré).",
+                )
+            ]
+        )
+
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_EDIT,
+        target_path="/".join(path),
+        description=(f"Conversion du nœud {node.get('id', '')} en catalogue paramétré"),
+        mutate=lambda contenu: _apply_convert_to_catalogue_parametre(contenu, path),
+        summary=f"Nœud {node.get('id', '')} converti en catalogue paramétré",
+    )
+
+
+def _apply_convert_to_catalogue_parametre(contenu: dict, path: tuple[str, ...]) -> None:
+    node = get_node_at(contenu, path)
+    if node is None:
+        return
+    node["type_noeud"] = "catalogue_parametre"
+    # Retire les champs propres au formulaire / catalogue SIG.
+    for cle in ("niveau", "texte", "aide", "source", "reference"):
+        node.pop(cle, None)
+    # Ajoute une expression vide sur chaque branche qui n'en a pas, pour que
+    # le juriste la remplisse. On preserve valeur + contenu intacts.
+    for branche in node.get("branches") or []:
+        if isinstance(branche, dict) and "expression" not in branche:
+            branche["expression"] = ""
 
 
 # ─── Commit pipeline ───────────────────────────────────────────────────────
@@ -564,6 +650,8 @@ def _kind_from_node(node: dict) -> str | None:
         return "noeud_formulaire"
     if tn == "catalogue":
         return "noeud_catalogue"
+    if tn == "catalogue_parametre":
+        return "noeud_catalogue_parametre"
     return None
 
 
@@ -575,6 +663,7 @@ _GRAMMAR_KIND = {
     "noeud_formulaire_type_fertilisant": "noeud_formulaire",
     "noeud_formulaire_complement": "noeud_formulaire",
     "noeud_catalogue": "noeud_catalogue",
+    "noeud_catalogue_parametre": "noeud_catalogue_parametre",
     "regle": "regle",
     "renvoi_vers": "renvoi_vers",
 }

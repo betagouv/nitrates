@@ -40,6 +40,23 @@
       {% endfor %}
     </div>
 
+    {% if parent_type_noeud == "catalogue_parametre" %}
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Expression Python évaluée en sandbox sur le contexte (sous_fertilisant, type_fertilisant, zone_note_5…). Première vraie l'emporte.">
+          <span>expression (routage)</span>
+          <input type="text"
+                 name="expression"
+                 value="{{ branche.expression|default_if_none:'' }}"
+                 placeholder="ex: sous_fertilisant == 'effluents_peu_charges_elevage'"
+                 required>
+        </label>
+        {% for err in errors %}
+          {% if err.field == "expression" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>libelle</span>

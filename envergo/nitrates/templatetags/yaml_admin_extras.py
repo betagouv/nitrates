@@ -83,7 +83,7 @@ _KIND_LABELS = {
     "noeud_formulaire_sous_culture": "🌿 Question — sous-culture",
     "noeud_formulaire_type_fertilisant": "💧 Question — type de fertilisant",
     "noeud_formulaire_complement": "➕ Question — complément",
-    "noeud_catalogue": "📋 Catalogue (calcul / SIG / référentiel)",
+    "noeud_catalogue": "📋 Catalogue (SIG / référentiel / calcul / expression)",
     "regle": "⚖️ Règle (interdiction, plafond, calculatrice…)",
     "renvoi_vers": "↪️ Renvoi vers une règle existante",
 }

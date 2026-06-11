@@ -68,6 +68,36 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
 
 {% elif kind == "noeud_catalogue" %}
   <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>mode de résolution (source)</span>
+      <select name="c_source" data-catalogue-source-select required>
+        {% for s in catalogue_sources_ui %}
+          <option value="{{ s }}" {% if form_data.c_source == s %}selected{% endif %}>
+            {% if s == "expression" %}
+              expression (Python / variables URL)
+            {% else %}
+              {{ s }}
+            {% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+
+  {# Hint affiché uniquement en mode expression (toggle JS). #}
+  <p class="yaml-tree__form-hint" data-catalogue-expr-hint hidden>
+    Résolution par <strong>expression Python</strong> : chaque branche que
+    vous ajouterez portera une expression évaluée sur le contexte
+    (ex&nbsp;: <code>sous_fertilisant == 'effluents_peu_charges_elevage'</code>).
+    La première vraie l'emporte ; aucune question n'est posée.
+  </p>
+
+  {# Référence catalogue : pertinente seulement pour les sources SIG/résolveur,
+     masquée en mode expression. #}
+  <div class="yaml-tree__form-row" data-catalogue-ref-row>
     <label class="yaml-tree__form-label"
            title="Référence du résolveur backend. Sélectionner une référence pré-remplit aussi le champ technique.">
       <span>référence catalogue</span>
@@ -83,7 +113,8 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     </label>
   </div>
   <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
+    <label class="yaml-tree__form-label"
+           title="Nom logique du résultat : clé écrite dans le contexte (traçabilité). En mode expression, le routage est porté par les expressions des branches.">
       <span>champ technique</span>
       <input type="text"
              name="c_champ"
@@ -95,29 +126,31 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>source</span>
-      <select name="c_source" required>
-        {% for s in "sig,mapping_referentiel,calcul"|split:"," %}
-          <option value="{{ s }}" {% if form_data.c_source == s %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    {% for err in errors %}
-      {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
-    {% endfor %}
-  </div>
   <script>
     (function () {
-      const select = document.querySelector('[data-catalogue-ref-select]');
+      const sourceSelect = document.querySelector('[data-catalogue-source-select]');
+      const refSelect = document.querySelector('[data-catalogue-ref-select]');
+      const refRow = document.querySelector('[data-catalogue-ref-row]');
       const champInput = document.querySelector('[data-catalogue-champ-input]');
-      if (!select || !champInput) return;
-      select.addEventListener('change', () => {
-        const opt = select.options[select.selectedIndex];
-        const slug = opt && opt.dataset.champ;
-        if (slug) champInput.value = slug;
-      });
+      const exprHint = document.querySelector('[data-catalogue-expr-hint]');
+      // Pré-remplit le champ technique depuis la référence choisie.
+      if (refSelect && champInput) {
+        refSelect.addEventListener('change', () => {
+          const opt = refSelect.options[refSelect.selectedIndex];
+          const slug = opt && opt.dataset.champ;
+          if (slug) champInput.value = slug;
+        });
+      }
+      // Masque référence + hint selon le mode de résolution.
+      function syncMode() {
+        const isExpr = sourceSelect && sourceSelect.value === 'expression';
+        if (refRow) refRow.hidden = isExpr;
+        if (exprHint) exprHint.hidden = !isExpr;
+      }
+      if (sourceSelect) {
+        sourceSelect.addEventListener('change', syncMode);
+        syncMode();
+      }
     })();
   </script>
   <details class="yaml-tree__form-advanced">
