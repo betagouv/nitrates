@@ -173,6 +173,10 @@ def compute_simulator_params(
 
     # On parcourt le chemin en accumulant les params arbre + sig_constraints.
     sig_constraints: dict = {}
+    # Expressions de branche traversees sous un catalogue_parametre (#128).
+    # On les resout en fin de parcours : il faut un sous_fertilisant qui
+    # satisfait l'expression pour que la preview tombe sur le bon cas.
+    expressions_a_satisfaire: list[str] = []
     if path and path[0] == racine.get("id"):
         current = racine
         for next_id in path[1:]:
@@ -182,7 +186,16 @@ def compute_simulator_params(
             if branche is None:
                 break
             valeur = branche.get("valeur")
-            if type_noeud == "formulaire" and champ and valeur is not None:
+            if type_noeud == "catalogue_parametre":
+                # Branche resolue par expression : on memorise l'expression
+                # pour deriver ensuite un sous_fertilisant qui la satisfait.
+                # La `valeur` (tracabilite) est aussi exposee sous son champ.
+                expr = branche.get("expression")
+                if expr:
+                    expressions_a_satisfaire.append(expr)
+                if champ and valeur is not None and champ not in params:
+                    params[champ] = _stringify_valeur(valeur)
+            elif type_noeud == "formulaire" and champ and valeur is not None:
                 params[champ] = _stringify_valeur(valeur)
             elif type_noeud == "catalogue" and champ:
                 # en_zone_vulnerable est aussi exposable en param URL.
@@ -222,6 +235,29 @@ def compute_simulator_params(
                 and final_champ not in params
             ):
                 params[final_champ] = _stringify_valeur(leaf_branch[1])
+        # Cas catalogue_parametre feuille (#128) : le path s'arrete sur le
+        # noeud, leaf_branch designe la branche choisie. On recupere son
+        # expression pour deriver le sous_fertilisant qui la satisfait.
+        elif (
+            isinstance(current, dict)
+            and current.get("type_noeud") == "catalogue_parametre"
+        ):
+            final_champ = current.get("champ")
+            branche_choisie = None
+            if leaf_branch and leaf_branch[0] == final_champ:
+                for b in current.get("branches") or []:
+                    if isinstance(b, dict) and b.get("valeur") == leaf_branch[1]:
+                        branche_choisie = b
+                        break
+                if final_champ and leaf_branch[1] is not None:
+                    params.setdefault(final_champ, _stringify_valeur(leaf_branch[1]))
+            # Sans leaf_branch, on prend la 1re branche (cas "traverse sans
+            # choisir" -> on montre au moins un cas valide du catalogue).
+            if branche_choisie is None:
+                branches = current.get("branches") or []
+                branche_choisie = branches[0] if branches else None
+            if isinstance(branche_choisie, dict) and branche_choisie.get("expression"):
+                expressions_a_satisfaire.append(branche_choisie["expression"])
 
     # Choix d'un point de reference qui satisfait les contraintes SIG.
     point = _select_point(sig_constraints)
@@ -245,7 +281,54 @@ def compute_simulator_params(
         if v:
             params.setdefault(k, v)
 
+    # Catalogue parametre (#128) : si le chemin a traverse des branches
+    # resolues par expression, le sous_fertilisant derive par defaut ci-dessus
+    # (premier mappant vers le type) ne satisfait probablement PAS l'expression
+    # (ex `'effluent_peu_charge' in sous_fertilisant`). On cherche un
+    # sous_fertilisant qui rend toutes les expressions vraies, et on l'impose
+    # (avec sa categorie) pour que la fleche preview tombe sur le bon cas.
+    if expressions_a_satisfaire:
+        sf = _sous_fertilisant_satisfaisant(
+            expressions_a_satisfaire, params, params.get("type_fertilisant")
+        )
+        if sf:
+            params["sous_fertilisant"] = sf
+            cat = _find_categorie_fertilisant(sf)
+            if cat:
+                params["categorie_fertilisant"] = cat
+
     return params
+
+
+def _sous_fertilisant_satisfaisant(
+    expressions: list[str],
+    params: dict,
+    type_fertilisant: str | None,
+) -> str | None:
+    """Retourne un slug sous_fertilisant qui rend TOUTES les `expressions`
+    vraies (catalogue_parametre, preview). On teste chaque sous_fertilisant
+    du referentiel en sandbox (meme evaluateur que le runtime), avec le
+    contexte courant + ce sous_fertilisant. Premier qui matche l'emporte.
+
+    On restreint aux sous_fertilisants mappant vers `type_fertilisant` si
+    fourni (coherence avec la branche type deja choisie), sinon tous.
+    Retourne None si aucun ne satisfait (l'appelant garde le defaut).
+    """
+    from envergo.nitrates.yaml_tree.expression import evaluer_expression
+
+    ref = _load_ref()
+    mapping = (ref or {}).get("mapping_sous_fertilisant_vers_type") or {}
+    candidats = [
+        sf
+        for sf, tf in mapping.items()
+        if type_fertilisant is None or tf == type_fertilisant
+    ]
+    for sf in candidats:
+        contexte = dict(params)
+        contexte["sous_fertilisant"] = sf
+        if all(evaluer_expression(expr, contexte) for expr in expressions):
+            return sf
+    return None
 
 
 def _select_point(sig_constraints: dict) -> dict:

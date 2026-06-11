@@ -142,13 +142,16 @@ REGLE_SCHEMA = {
     },
 }
 
-# Primitive `noeud` : interne, soit "formulaire" (question utilisateur), soit
-# "catalogue" (donnee resolue automatiquement).
+# Primitive `noeud` : interne. Trois familles :
+#   - "formulaire"          : question posee a l'utilisateur
+#   - "catalogue"           : donnee resolue automatiquement (lecture contexte)
+#   - "catalogue_parametre" : branche choisie par evaluation d'expression
+#                             Python sur le contexte (cf. #128)
 NOEUD_SCHEMA = {
     "type": "object",
     "required": ["type_noeud", "id", "champ", "branches"],
     "properties": {
-        "type_noeud": {"enum": ["formulaire", "catalogue"]},
+        "type_noeud": {"enum": ["formulaire", "catalogue", "catalogue_parametre"]},
         "id": {"type": "string", "pattern": "^[qn]_[a-zA-Z0-9_]+$"},
         "champ": {"type": "string"},
         "branches": {
@@ -181,12 +184,18 @@ NOEUD_SCHEMA = {
 }
 
 # Primitive `branche` : reponse possible. Doit contenir EXACTEMENT UN de
-# {noeud, regle, renvoi_vers} et EXACTEMENT UN de {valeur, valeurs}.
+# {noeud, regle, renvoi_vers}, et exactement un MECANISME DE SELECTION parmi :
+#   - `valeur`     : valeur unique comparee au contexte (catalogue / formulaire)
+#   - `valeurs`    : liste de valeurs equivalentes (regroupement DB, cf. #61)
+#   - `expression` : expression Python evaluee en sandbox, pour les noeuds
+#                    `catalogue_parametre` (cf. #128). Une branche `expression`
+#                    PEUT porter en plus une `valeur` (tracabilite : ecrite
+#                    dans le contexte si l'expression l'emporte), mais ce n'est
+#                    pas elle qui pilote le branchement.
 #
 # `valeurs: [a, b]` (pluriel) permet de grouper plusieurs valeurs sur une
 # meme branche (ex `plan_epandage` qui matche `icpe_e_ou_d` = soit `icpe_e`
 # soit `icpe_d`). Le walker du parcours teste l'appartenance a la liste.
-# Cf. #61 phase 3 : extension de la grammaire pour les regroupements DB.
 BRANCHE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -197,17 +206,38 @@ BRANCHE_SCHEMA = {
             "minItems": 1,
             "items": {"type": ["string", "boolean", "integer"]},
         },
+        # Expression Python (catalogue_parametre). La grammaire fine (chaine
+        # non vide, compilable, pas de dunder) est validee par
+        # validator._check_catalogue_parametre.
+        "expression": {"type": "string"},
         "libelle": {"type": "string"},
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
     },
     "allOf": [
-        # Exactement un de {valeur, valeurs} :
+        # Exactement un mecanisme de selection parmi {valeur, valeurs, expression}.
+        # Le cas `expression` autorise une `valeur` complementaire (tracabilite),
+        # d'ou le `valeurs` interdit a ses cotes mais `valeur` tolere.
         {
             "oneOf": [
-                {"required": ["valeur"]},
-                {"required": ["valeurs"]},
+                # valeur seule (catalogue / formulaire classique)
+                {
+                    "required": ["valeur"],
+                    "not": {"required": ["valeurs"]},
+                    "properties": {"expression": False},
+                },
+                # valeurs seules (regroupement)
+                {
+                    "required": ["valeurs"],
+                    "not": {"required": ["valeur"]},
+                    "properties": {"expression": False},
+                },
+                # expression (catalogue_parametre), valeur optionnelle tracabilite
+                {
+                    "required": ["expression"],
+                    "not": {"required": ["valeurs"]},
+                },
             ]
         },
         # Exactement un de {noeud, regle, renvoi_vers} :

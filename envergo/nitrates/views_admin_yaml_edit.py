@@ -33,11 +33,14 @@ from envergo.nitrates.yaml_admin.forms import (
     RegleForm,
 )
 from envergo.nitrates.yaml_admin.grammar import (
+    CATALOGUE_SOURCES_UI,
+    SOURCE_EXPRESSION,
     FieldError,
     collect_champs_by_niveau,
     get_allowed_child_kinds,
 )
 from envergo.nitrates.yaml_admin.tags import get_tags
+from envergo.nitrates.yaml_tree.expression import valider_expression
 
 
 def _evenements_phenologiques() -> list[dict]:
@@ -119,9 +122,11 @@ def _parse_valeur(raw):
     """
     if raw is None:
         return None
-    if raw == "True":
+    # Tolere les deux casses : `True`/`False` (rendu Django d'un bool) et
+    # `true`/`false` (saisie utilisateur, valeur de branche YAML booleenne).
+    if raw in ("True", "true"):
         return True
-    if raw == "False":
+    if raw in ("False", "false"):
         return False
     return raw
 
@@ -402,6 +407,10 @@ class EditNodeView(View):
             # `reference` est optionnel : envoye toujours pour permettre
             # la suppression (cf. convention update_node).
             new_data["reference"] = request.POST.get("reference", "").strip()
+        elif node.get("type_noeud") == "catalogue_parametre":
+            # Catalogue en mode expression : on edite seulement le champ
+            # logique. Le routage (expressions) se modifie branche par branche.
+            new_data["champ"] = request.POST.get("champ", "").strip()
 
         result = editor.update_node(tree, path, new_data, request.user)
         if not result.ok:
@@ -655,6 +664,7 @@ class EditBrancheView(View):
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
         if branche is None:
             return HttpResponseForbidden("Branche introuvable.")
+        parent = editor.get_node_at(tree.contenu, parent_path)
         return render(
             request,
             "nitrates_admin/yaml_tree/forms/_branche_form.html",
@@ -664,6 +674,9 @@ class EditBrancheView(View):
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
+                "parent_type_noeud": (
+                    parent.get("type_noeud") if isinstance(parent, dict) else None
+                ),
                 "renvoi_targets": (
                     _list_renvoi_targets(tree.contenu)
                     if "renvoi_vers" in branche
@@ -716,6 +729,37 @@ class EditBrancheView(View):
             )
         new_valeur = _coerce_valeur(new_valeur_raw, type(valeur))
 
+        # Branche sous un catalogue_parametre : on valide et persiste son
+        # expression de routage (#128).
+        parent = editor.get_node_at(tree.contenu, parent_path)
+        new_expression = None
+        if isinstance(parent, dict) and parent.get("type_noeud") == (
+            "catalogue_parametre"
+        ):
+            new_expression = request.POST.get("expression", "").strip()
+            if not new_expression:
+                return _render_branche_error(
+                    request,
+                    tree,
+                    branche,
+                    parent_path,
+                    valeur,
+                    "expression",
+                    "L'expression est requise pour une branche de catalogue "
+                    "paramétré.",
+                )
+            expr_err = valider_expression(new_expression)
+            if expr_err:
+                return _render_branche_error(
+                    request,
+                    tree,
+                    branche,
+                    parent_path,
+                    valeur,
+                    "expression",
+                    expr_err,
+                )
+
         # Si la nouvelle valeur != ancienne, on verifie qu'elle n'entre pas
         # en collision avec une autre branche du meme parent.
         if new_valeur != valeur:
@@ -747,6 +791,8 @@ class EditBrancheView(View):
                 description=f"Édition de la branche {valeur!r}",
             )
             branche["valeur"] = new_valeur
+            if new_expression is not None:
+                branche["expression"] = new_expression
             if new_libelle:
                 branche["libelle"] = new_libelle
             elif "libelle" in branche:
@@ -777,15 +823,24 @@ class EditBrancheView(View):
 def _render_branche_error(request, tree, branche, parent_path, valeur, field, msg):
     from envergo.nitrates.yaml_admin.grammar import FieldError
 
+    parent = editor.get_node_at(tree.contenu, parent_path)
+    # Sur erreur, on re-affiche la saisie utilisateur (notamment l'expression)
+    # plutot que la branche d'origine, pour ne pas la perdre.
+    branche_display = dict(branche)
+    if request.method == "POST" and "expression" in request.POST:
+        branche_display["expression"] = request.POST.get("expression", "")
     return render(
         request,
         "nitrates_admin/yaml_tree/forms/_branche_form.html",
         {
             "tree": tree,
-            "branche": branche,
+            "branche": branche_display,
             "parent_path_str": "/".join(parent_path),
             "valeur": valeur,
             "errors": [FieldError(field, msg)],
+            "parent_type_noeud": (
+                parent.get("type_noeud") if isinstance(parent, dict) else None
+            ),
             "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
         },
         status=422,
@@ -932,12 +987,16 @@ class AddChildView(View):
                 "parent_niveau": (
                     parent.get("niveau") if isinstance(parent, dict) else None
                 ),
+                "parent_type_noeud": (
+                    parent.get("type_noeud") if isinstance(parent, dict) else None
+                ),
                 "allowed_kinds": allowed,
                 "selected_kind": kind,
                 "errors": [],
                 "form_data": form_data,
                 "champs_by_niveau": collect_champs_by_niveau(tree.contenu),
                 "catalogue_refs": CATALOGUE_RESOLVERS,
+                "catalogue_sources_ui": CATALOGUE_SOURCES_UI,
                 "renvoi_targets": _list_renvoi_targets(tree.contenu),
                 "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
                 "regle_choices": _regle_referentiel_choices(),
@@ -999,6 +1058,37 @@ class AddChildView(View):
         branche_data: dict = {"valeur": valeur}
         if libelle:
             branche_data["libelle"] = libelle
+
+        # Branche sous un noeud catalogue_parametre (#128) : elle porte une
+        # `expression` Python (routage) en plus de la valeur (etiquette +
+        # tracabilite). On l'exige et on la valide avant de creer la branche.
+        if parent.get("type_noeud") == "catalogue_parametre":
+            expression = request.POST.get("expression", "").strip()
+            if not expression:
+                return _render_add_error(
+                    request,
+                    tree,
+                    parent_path,
+                    allowed,
+                    kind,
+                    "expression",
+                    "L'expression est requise pour une branche de catalogue "
+                    "paramétré.",
+                    form_data=request.POST,
+                )
+            expr_err = valider_expression(expression)
+            if expr_err:
+                return _render_add_error(
+                    request,
+                    tree,
+                    parent_path,
+                    allowed,
+                    kind,
+                    "expression",
+                    expr_err,
+                    form_data=request.POST,
+                )
+            branche_data["expression"] = expression
 
         # 1) Cree la branche (squelette).
         res_branch = editor.add_branch(tree, parent_path, branche_data, request.user)
@@ -1091,12 +1181,22 @@ def _build_content_data(
         data["id"] = post.get("c_id", "").strip() or _auto_id(
             "n", parent_path, valeur, arbre
         )
-        data["type_noeud"] = "catalogue"
-        data["champ"] = post.get("c_champ", "").strip()
-        data["source"] = post.get("c_source", "").strip()
-        ref = post.get("c_reference", "").strip()
-        if ref:
-            data["reference"] = ref
+        source = post.get("c_source", "").strip()
+        if source == SOURCE_EXPRESSION:
+            # Mode "expression" du catalogue : le branchement se fait par
+            # expression Python sur chaque branche (#128). En interne c'est un
+            # type_noeud catalogue_parametre, mais cote UI c'est juste un
+            # catalogue dont la source est "expression". Pas de `source`
+            # stockee (le type_noeud porte deja l'information).
+            data["type_noeud"] = "catalogue_parametre"
+            data["champ"] = post.get("c_champ", "").strip()
+        else:
+            data["type_noeud"] = "catalogue"
+            data["champ"] = post.get("c_champ", "").strip()
+            data["source"] = source
+            ref = post.get("c_reference", "").strip()
+            if ref:
+                data["reference"] = ref
         data["branches"] = []
     elif kind == "regle":
         data["id"] = post.get("c_id", "").strip() or _auto_id(
@@ -1239,8 +1339,13 @@ def _render_add_errors(
             "parent_niveau": parent.get("niveau") if isinstance(parent, dict) else None,
             "allowed_kinds": allowed,
             "selected_kind": kind,
+            "parent_type_noeud": (
+                parent.get("type_noeud") if isinstance(parent, dict) else None
+            ),
             "errors": errors,
             "form_data": form_data or {},
+            "catalogue_refs": CATALOGUE_RESOLVERS,
+            "catalogue_sources_ui": CATALOGUE_SOURCES_UI,
             "renvoi_targets": _list_renvoi_targets(tree.contenu),
             "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
             "regle_choices": _regle_referentiel_choices(),
@@ -1355,6 +1460,37 @@ class DeleteNodeView(View):
             tree,
             parent_path,
             f"Nœud {path[-1] if path else ''} supprimé.",
+        )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ConvertNodeView(View):
+    """POST : convertit un nœud (question complémentaire ou catalogue) en
+    catalogue_parametre, sur place, sans perdre les branches existantes
+    (#128). Chaque branche reçoit une `expression` vide à remplir ensuite.
+
+    ?path=<node_path>
+    """
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        path = _parse_path(request.GET.get("path"))
+        result = editor.convert_node_to_catalogue_parametre(tree, path, request.user)
+        if not result.ok:
+            return HttpResponseForbidden(
+                "; ".join(e.message for e in result.errors) or "Conversion refusée."
+            )
+        # Re-render le nœud converti lui-même (son type a changé, ses branches
+        # portent maintenant une expression vide).
+        return _render_partial_node_response(
+            request,
+            tree,
+            path,
+            f"Nœud {path[-1] if path else ''} converti en catalogue paramétré. "
+            f"Renseignez l'expression de chaque branche.",
         )
 
 

@@ -10,6 +10,10 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
      id="branche-block-{{ parent_path|default_if_none:''|slugify }}-{{ valeur|slugify }}">
   <div class="yaml-tree__branche-header__row">
     <span class="yaml-tree__valeur">{{ branche.valeur }}</span>
+    {% if branche.expression %}
+      <code class="yaml-tree__expression"
+            title="Expression de routage (catalogue paramétré) : branche prise si vraie">🧮 {{ branche.expression }}</code>
+    {% endif %}
     {% if branche.libelle %}<span class="yaml-tree__libelle">{{ branche.libelle }}</span>{% endif %}
 
     {% if is_editing %}

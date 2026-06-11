@@ -119,6 +119,28 @@
       {% endfor %}
     </div>
 
+    {% if parent_type_noeud == "catalogue_parametre" %}
+      {% comment %}
+        Branche d'un catalogue paramétré (#128) : elle est choisie par
+        évaluation d'une expression Python sur le contexte. La valeur ci-dessus
+        sert d'étiquette/traçabilité ; l'expression ci-dessous fait le routage.
+      {% endcomment %}
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Expression Python évaluée en sandbox sur le contexte de parcours (sous_fertilisant, type_fertilisant, zone_note_5…). Variable absente = None. re disponible. Première vraie l'emporte.">
+          <span>expression (routage)</span>
+          <input type="text"
+                 name="expression"
+                 value="{{ form_data.expression|default_if_none:'' }}"
+                 placeholder="ex: sous_fertilisant == 'effluents_peu_charges_elevage'"
+                 required>
+        </label>
+        {% for err in errors %}
+          {% if err.field == "expression" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <div class="yaml-tree__form-row">
       <label class="yaml-tree__form-label">
         <span>libelle (optionnel)</span>
@@ -137,7 +159,7 @@
                 hx-trigger="change"
                 hx-target="#add-zone-{{ parent_path_str|slugify }}"
                 hx-swap="outerHTML"
-                hx-include="[name='valeur'],[name='libelle']">
+                hx-include="[name='valeur'],[name='libelle'],[name='expression']">
           {% for k in allowed_kinds %}
             <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
           {% endfor %}

@@ -193,6 +193,31 @@ def _walk(
             )
         return
 
+    if type_noeud == "catalogue_parametre":
+        # On explore TOUTES les branches (couverture exhaustive de la mini-app
+        # de validation), comme un catalogue. Le routage runtime se fait par
+        # expression (cf. #128) mais pour l'enumeration on materialise chaque
+        # issue possible. La `valeur` de tracabilite est posee dans le contexte
+        # quand elle existe ; le label retombe sur l'expression sinon.
+        for i, branche in enumerate(noeud.get("branches", [])):
+            sous_contexte = dict(contexte)
+            if "valeur" in branche:
+                sous_contexte[champ] = branche["valeur"]
+                etiquette = f"{champ}={branche['valeur']}"
+            else:
+                etiquette = f"{champ}~expr#{i + 1}"
+            sous_label = path_label + [etiquette]
+            _explore_branche(
+                branche,
+                sous_contexte,
+                sous_label,
+                nouveau_chemin,
+                cas,
+                index,
+                profondeur,
+            )
+        return
+
     if type_noeud == "formulaire":
         for branche in noeud.get("branches", []):
             valeur = branche.get("valeur")

@@ -58,6 +58,25 @@
                   hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
                   hx-target="#add-zone-{{ path|slugify }}"
                   hx-swap="outerHTML">+</button>
+          {% comment %}
+            Conversion en catalogue paramétré : pertinente uniquement sur une
+            question complémentaire (niveau=complement) ou un catalogue SIG.
+            Convertir une culture / sous_culture / type_fertilisant n'a pas de
+            sens métier — on n'affiche pas le bouton dans ces cas.
+          {% endcomment %}
+          {% if ancestors_path and noeud.champ %}
+            {% if noeud.type_noeud == "catalogue" or noeud.niveau == "complement" %}
+              <button type="button"
+                      class="yaml-tree__edit-btn yaml-tree__edit-btn--convert"
+                      title="Convertir en catalogue paramétré (remplace la question par une résolution par expression, garde les branches)"
+                      hx-post="{% url 'nitrates_admin_yaml_convert_catalogue_parametre' tree_pk=tree.pk %}?path={{ path }}"
+                      hx-target="#node-{{ path|slugify }}"
+                      hx-swap="outerHTML"
+                      hx-confirm="Convertir ce nœud en catalogue paramétré ? Les branches et leur contenu sont conservés ; chaque branche recevra une expression à renseigner. La question ne sera plus posée à l'utilisateur.">
+                🧮
+              </button>
+            {% endif %}
+          {% endif %}
           {% if ancestors_path %}
             <button type="button"
                     class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"

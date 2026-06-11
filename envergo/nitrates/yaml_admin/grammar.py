@@ -28,6 +28,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from envergo.nitrates.yaml_tree.expression import valider_expression
+
 # ─── Constantes grammaire ──────────────────────────────────────────────────
 
 NIVEAUX_FORMULAIRE_ORDRE = ["culture", "sous_culture", "type_fertilisant", "complement"]
@@ -46,6 +48,15 @@ REGLE_TYPES = [
 ]
 
 CATALOGUE_SOURCES = ["sig", "mapping_referentiel", "calcul"]
+
+# Valeur de `source` (UI uniquement) qui bascule un catalogue en mode
+# "resolution par expression Python" (#128). N'est PAS stockee dans le YAML :
+# elle determine que le builder produit un type_noeud catalogue_parametre.
+SOURCE_EXPRESSION = "expression"
+
+# Sources proposees dans le dropdown du formulaire catalogue (ordre = ordre
+# d'affichage). `expression` en dernier (mode avance).
+CATALOGUE_SOURCES_UI = CATALOGUE_SOURCES + [SOURCE_EXPRESSION]
 
 ID_NOEUD_FORMULAIRE_RE = re.compile(r"^q_[a-zA-Z0-9_]+$")
 ID_NOEUD_CATALOGUE_RE = re.compile(r"^n_[a-zA-Z0-9_]+$")
@@ -106,6 +117,8 @@ def validate_node_local(
         errors.extend(_validate_noeud_formulaire(data))
     elif kind == "noeud_catalogue":
         errors.extend(_validate_noeud_catalogue(data))
+    elif kind == "noeud_catalogue_parametre":
+        errors.extend(_validate_noeud_catalogue_parametre(data))
     elif kind == "regle":
         errors.extend(_validate_regle(data))
     elif kind == "branche":
@@ -116,7 +129,12 @@ def validate_node_local(
         errors.append(FieldError("kind", f"Type inconnu : {kind!r}."))
 
     # Unicite de l'id dans l'arbre (sauf branche qui n'a pas d'id propre).
-    if arbre is not None and kind in {"noeud_formulaire", "noeud_catalogue", "regle"}:
+    if arbre is not None and kind in {
+        "noeud_formulaire",
+        "noeud_catalogue",
+        "noeud_catalogue_parametre",
+        "regle",
+    }:
         new_id = data.get("id")
         if new_id and _id_already_used(arbre, new_id, exclude_path=own_path):
             errors.append(
@@ -189,6 +207,49 @@ def _validate_noeud_catalogue(data: dict) -> list[FieldError]:
     return errors
 
 
+def _validate_noeud_catalogue_parametre(data: dict) -> list[FieldError]:
+    """Noeud catalogue_parametre (issue #128) : id n_*, champ requis, PAS de
+    source (le branchement se fait par expression, pas par lecture SIG).
+
+    On valide aussi les expressions des branches deja presentes (un noeud
+    fraichement cree peut n'en avoir aucune -- tolere comme squelette)."""
+    errors: list[FieldError] = []
+    nid = data.get("id")
+    if not nid:
+        errors.append(FieldError("id", "L'identifiant est requis."))
+    elif not ID_NOEUD_CATALOGUE_RE.match(nid):
+        errors.append(
+            FieldError(
+                "id",
+                "Format invalide : l'identifiant d'un noeud catalogue parametre "
+                "doit commencer par 'n_' (ex: n_origine_effluent).",
+            )
+        )
+    if not data.get("champ"):
+        errors.append(FieldError("champ", "Le champ technique est requis."))
+    for i, branche in enumerate(data.get("branches") or []):
+        if not isinstance(branche, dict):
+            continue
+        expr = branche.get("expression")
+        if expr is None:
+            # Branche sans expression sous un catalogue_parametre : invalide
+            # (le routage se fait par expression). Tolere uniquement si la
+            # branche est un squelette totalement vide.
+            if branche:
+                errors.append(
+                    FieldError(
+                        f"branches[{i}].expression",
+                        "Chaque branche d'un catalogue parametre doit porter "
+                        "une expression.",
+                    )
+                )
+            continue
+        err = valider_expression(expr)
+        if err:
+            errors.append(FieldError(f"branches[{i}].expression", err))
+    return errors
+
+
 def _validate_regle(data: dict) -> list[FieldError]:
     errors: list[FieldError] = []
     rid = data.get("id")
@@ -243,7 +304,15 @@ def _validate_regle(data: dict) -> list[FieldError]:
 
 def _validate_branche(data: dict) -> list[FieldError]:
     errors: list[FieldError] = []
-    if "valeur" not in data:
+    # Une branche porte soit `valeur` (catalogue/formulaire classique), soit
+    # `expression` (branche d'un catalogue_parametre, #128). Si elle porte
+    # une expression, on la valide ; la `valeur` devient alors optionnelle
+    # (tracabilite).
+    if "expression" in data:
+        err = valider_expression(data.get("expression"))
+        if err:
+            errors.append(FieldError("expression", err))
+    elif "valeur" not in data:
         errors.append(FieldError("valeur", "La valeur de branche est requise."))
     # On accepte les branches sans contenu (squelette draft).
     # Une branche peut avoir 0 ou 1 de {noeud, regle, renvoi_vers}.
@@ -336,7 +405,9 @@ def get_allowed_child_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[s
             continue  # doublon interdit pour les 3 niveaux principaux
         allowed.append(f"noeud_formulaire_{niveau}")
 
-    # Catalogue, regle, renvoi_vers : toujours autorises.
+    # Catalogue (le mode de resolution -- sig / referentiel / calcul /
+    # expression -- est choisi DANS le formulaire catalogue, pas comme un
+    # kind separe), regle, renvoi_vers : toujours autorises.
     allowed.append("noeud_catalogue")
     allowed.append("regle")
     allowed.append("renvoi_vers")

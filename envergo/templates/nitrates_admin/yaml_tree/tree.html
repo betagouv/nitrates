@@ -285,7 +285,14 @@
           let best = null;
           let bestDist = Infinity;
           for (const code of document.querySelectorAll('.yaml-tree__id')) {
+            // Ignore les ids non rendus : ceux dans un <details> fermé ont
+            // offsetParent === null (display:none implicite) et un rect
+            // dégénéré (0x0 en haut de page). Sans ce filtre, on attrapait
+            // toujours le 1er id du DOM (q_culture_principale_type), d'où
+            // l'auto-sélection systématique du premier nœud.
+            if (code.offsetParent === null) continue;
             const r = code.getBoundingClientRect();
+            if (r.width === 0 && r.height === 0) continue;
             if (r.bottom < 0 || r.top > window.innerHeight) continue;
             const mid = (r.top + r.bottom) / 2;
             const dist = Math.abs(mid - centerY);
@@ -300,6 +307,14 @@
         document.addEventListener('click', (e) => {
           const a = e.target.closest('a[data-preserve-state]');
           if (!a) return;
+          // On ne preserve la position QUE si l'utilisateur a reellement
+          // navigue dans l'arbre (scroll volontaire). A l'arrivee sur la page
+          // (scroll en haut), trouverRegleVisible() attrapait le 1er noeud
+          // pres du centre (n_zvn / r_hors_zvn / q_culture_principale_type)
+          // et le forcait en #regle=...&edit=1 -> auto-selection + auto-edition
+          // parasites du premier noeud. On exige donc un scroll significatif.
+          const aScrolle = (window.scrollY || window.pageYOffset || 0) > 200;
+          if (!aScrolle) return;
           const rid = trouverRegleVisible();
           if (!rid) return;
           const sep = a.href.includes('#') ? '&' : '#';

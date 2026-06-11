@@ -19,6 +19,7 @@ from typing import Iterable
 from jsonschema import Draft202012Validator
 
 from envergo.nitrates.yaml_tree.condition import validate_condition
+from envergo.nitrates.yaml_tree.expression import valider_expression
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -75,6 +76,7 @@ def validate_arbre(
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
+    errors.extend(_check_catalogue_parametre(arbre))
     errors.extend(_check_branches_booleennes_exhaustives(arbre))
 
     if referentiels:
@@ -702,6 +704,70 @@ def _check_calculatrice(arbre: dict) -> list[str]:
     return errors
 
 
+# ─── Noeuds catalogue_parametre (eval sandboxe, cf. #128) ──────────────────
+
+
+def _check_catalogue_parametre(arbre: dict) -> list[str]:
+    """Validation des noeuds `type_noeud == 'catalogue_parametre'` (issue #128).
+
+    Regles :
+      1. Au moins une branche.
+      2. Chaque branche porte une `expression` (str non vide) -- pas de
+         `valeur`/`valeurs` seules (le routage se fait par expression). Une
+         `valeur` complementaire de tracabilite reste toleree (gere par le
+         schema), mais l'`expression` est obligatoire.
+      3. Chaque `expression` est valide : compilable en mode 'eval' et sans
+         attribut dunder (cf. expression.valider_expression). On ne l'execute
+         jamais ici.
+      4. Cible de branche valide (noeud / regle / renvoi_vers) -- deja garanti
+         par le schema branche, on ne re-verifie pas.
+
+    Pas de notion de branche `defaut` : si aucune expression n'est vraie a
+    runtime, le parcours leve ParcoursError (cf. parcours._resoudre_catalogue_parametre).
+    """
+    errors: list[str] = []
+    racine = arbre.get("arbre", {}).get("noeud")
+    if not isinstance(racine, dict):
+        return errors
+
+    for noeud in _walk_node(racine):
+        if not isinstance(noeud, dict):
+            continue
+        if noeud.get("type_noeud") != "catalogue_parametre":
+            continue
+        nid = noeud.get("id", "?")
+        branches = noeud.get("branches") or []
+        if not branches:
+            errors.append(
+                f"[catalogue_parametre] noeud '{nid}' : au moins une branche "
+                f"avec `expression` attendue."
+            )
+            continue
+        for i, branche in enumerate(branches, start=1):
+            if not isinstance(branche, dict):
+                continue
+            expr = branche.get("expression")
+            if expr is None:
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : "
+                    f"`expression` obligatoire (le routage d'un noeud "
+                    f"catalogue_parametre se fait par expression, pas par valeur)."
+                )
+                continue
+            if not isinstance(expr, str) or not expr.strip():
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : "
+                    f"`expression` doit etre une chaine non vide."
+                )
+                continue
+            err = valider_expression(expr)
+            if err:
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : {err}"
+                )
+    return errors
+
+
 # ─── Ordre des niveaux formulaire ───────────────────────────────────────────
 
 
@@ -853,6 +919,12 @@ def _check_branches_booleennes_exhaustives(arbre: dict) -> list[str]:
         if not isinstance(noeud, dict):
             continue
         if "branches" not in noeud:
+            continue
+        # Les noeuds catalogue_parametre routent par expression, pas par
+        # valeur booleenne : leurs `valeur` (true/false/inconnu) ne sont que
+        # de la tracabilite. L'exhaustivite y est assuree par les expressions
+        # (ou leur absence => ParcoursError), pas par une paire true/false.
+        if noeud.get("type_noeud") == "catalogue_parametre":
             continue
         branches = noeud.get("branches") or []
         valeurs = {b.get("valeur") for b in branches if isinstance(b, dict)}
