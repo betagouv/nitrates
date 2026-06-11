@@ -66,18 +66,14 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
         {% if ev.regle %}
 
           {% comment %}
-          Phrase d'intro au-dessus du calendrier (#85) : on ne l'affiche QUE
-          dans deux cas :
-            - calculatrice (couverts) : le message porte une consigne
-              specifique au composant dynamique (hors scope #85) ;
-            - interdiction toute l'annee : le calendrier seul ne dirait rien,
-              on garde le message (ex "interdit toute l'annee sur sol non
-              cultive").
-          Tous les autres resultats : pas d'intro, juste le calendrier puis la
-          liste des periodes datees en dessous.
+          Phrase d'intro au-dessus du calendrier (#85) : UNIQUEMENT pour une
+          interdiction toute l'annee (ex "interdit toute l'annee sur sol non
+          cultive"), ou le calendrier seul ne dirait rien. Pour tous les
+          autres cas (dont les couverts), le calendrier est le 1er element et
+          le texte libre du YAML part dans le panneau debug plus bas.
           {% endcomment %}
           {% est_interdit_toute_lannee ev.regle as intro_toute_lannee %}
-          {% if ev.regle.type == "calculatrice" or intro_toute_lannee %}
+          {% if intro_toute_lannee %}
             {% if ev.regle.message %}
               <p class="fr-mt-2w">{{ ev.regle.message }}</p>
             {% elif ev.regle.texte %}
@@ -104,57 +100,25 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
-          Periodes (texte). Pour les regles non-mixtes : "Periode
-          d'interdiction". Pour mixte : on liste chaque periode avec son
-          regime (interdiction / autorisation_sous_condition).
+          Liste UNIQUE des periodes datees, en puces (#85), ordre (du plus au
+          moins restrictif, cf. tag periodes_datees) : interdiction, plafond,
+          autorisation sous condition, puis la periode d'autorisation pure
+          (vert) en dernier. L'autorisation pure = jours ni interdits ni sous
+          condition (complement, fusion des plages), affichee meme sans
+          periode YAML (cas "libre" = autorise toute l'annee).
+          Vaut pour mixte ET non-mixte. Les regles calculatrice (couverts) ont
+          leur propre recap cote JS, on n'en met pas ici (pas de doublon).
           {% endcomment %}
-          {% comment %}
-          Pour les regles calculatrice, le recap textuel est rendu cote JS
-          dans le composant (calendrier-dynamique-couvert), avec annotations
-          dynamiques (« jusqu'a 4 semaines apres semis »). Pas de doublon ici.
-          {% endcomment %}
-          {% if ev.regle.periodes and ev.regle.type != "calculatrice" %}
-            {% if ev.regle.type == "mixte" %}
-              {% comment %}
-              On liste chaque periode avec son regime : d'abord les
-              "autorisation_sous_condition", puis les "interdiction", puis le
-              "plafonnement". Pas d'intertitre "Sinon, regle de base" (#85).
-              {% endcomment %}
-              <ul class="fr-mb-0 periodes-mixte">
-                {% for p in ev.regle.periodes %}
-                  {% if p.regime == "autorisation_sous_condition" %}
-                    <li>
-                      <strong>Autorisé sous conditions :</strong>
-                      {% periode_phrase p %}.
-                    </li>
-                  {% endif %}
-                {% endfor %}
-                {% for p in ev.regle.periodes %}
-                  {% if p.regime == "interdiction" %}
-                    <li>
-                      <strong>Interdiction :</strong>
-                      {% periode_phrase p %}.
-                    </li>
-                  {% endif %}
-                {% endfor %}
-                {% for p in ev.regle.periodes %}
-                  {% if p.regime == "plafonnement" %}
-                    <li>
-                      <strong>Plafond :</strong>
-                      {% periode_phrase p %}.
-                    </li>
-                  {% endif %}
+          {% if ev.regle.type != "calculatrice" %}
+            {% periodes_datees ev.regle as puces_periodes %}
+            {% if puces_periodes %}
+              <ul class="fr-mb-0 periodes-liste">
+                {% for puce in puces_periodes %}
+                  <li>
+                    <strong>{{ puce.label }} :</strong> {{ puce.phrase }}
+                  </li>
                 {% endfor %}
               </ul>
-            {% else %}
-              <p>
-                <strong>Période d'interdiction :</strong>
-                {% for p in ev.regle.periodes %}
-                  du {{ p.du }} au {{ p.au }}
-                  {% if not forloop.last %};{% endif %}
-                {% endfor %}
-                .
-              </p>
             {% endif %}
           {% endif %}
 
@@ -320,6 +284,13 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                 <dd>
                   <code>{{ ev.regle.regle_id|default:"—" }}</code>
                 </dd>
+                {% comment %}Texte libre du YAML (message / texte) : deplace ici (#85) -- il ne s'affiche plus au-dessus du calendrier.{% endcomment %}
+                {% if ev.regle.message or ev.regle.texte %}
+                  <dt>message / texte (YAML)</dt>
+                  <dd>
+                    {{ ev.regle.message|default:ev.regle.texte }}
+                  </dd>
+                {% endif %}
               </dl>
             </div>
 

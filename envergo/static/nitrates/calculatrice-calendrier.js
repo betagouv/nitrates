@@ -1084,7 +1084,8 @@
     // et la mention conditionnelle.
     const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
     const segments = computeSegments(regimeParJour);
-    const lignes = [];
+    // Lignes des segments colores, avec leur regime pour les trier ensuite.
+    const lignesColorees = [];
     for (const seg of segments) {
       const regime = seg.regime;
       if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
@@ -1110,15 +1111,62 @@
           ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
         }
       }
-      lignes.push(`<li>${ligne}</li>`);
+      lignesColorees.push({ regime, html: `<li>${ligne}</li>` });
     }
+
+    // Ordre des puces (#85) : interdiction puis autorisation sous condition,
+    // puis l'autorisation pure (vert) en dernier. On trie les lignes colorees
+    // par cet ordre de regime (stable sur les segments d'un meme regime).
+    const ordre = { interdiction: 0, plafonnement: 1, autorisation_sous_condition: 2 };
+    lignesColorees.sort((a, b) => (ordre[a.regime] ?? 9) - (ordre[b.regime] ?? 9));
+    const lignes = lignesColorees.map((l) => l.html);
+
+    // Periode d'autorisation pure (vert) = segments de regime "libre", non
+    // listes ci-dessus. Fusionnee (dont le wrap juin->juillet) en UNE ligne
+    // francaise (#85), ajoutee EN DERNIER.
+    const ligneAutorisation = buildLigneAutorisation(segments);
+    if (ligneAutorisation) lignes.push(`<li>${ligneAutorisation}</li>`);
+
     if (lignes.length === 0) return "";
+    // Pas de titre "Récapitulatif" (#85) : le calendrier + la liste a puces
+    // se suffisent, on n'ajoute pas d'intertitre.
     return `
       <div class="calc-cal__recap">
-        <h4 class="fr-h6">Récapitulatif</h4>
         <ul>${lignes.join("")}</ul>
       </div>
     `;
+  }
+
+  // Construit la ligne "Periode d'autorisation : du X au Y et du Z au W" a
+  // partir des segments de regime "libre" (les jours purement autorises).
+  // Fusionne le wrap d'annee (segment finissant au jour 364 + segment
+  // commencant au jour 0 = une seule plage continue). "" si aucun jour libre.
+  function buildLigneAutorisation(segments) {
+    let libres = segments
+      .filter((s) => !REGIME_COULEUR_ZONE[s.regime]) // libre/vert uniquement
+      .map((s) => ({ du: s.du, au: s.au }));
+    if (libres.length === 0) return "";
+    // Fusion du wrap : derniere plage finit au dernier jour ET 1ere commence
+    // au jour 0 -> elles n'en font qu'une, a cheval sur juillet.
+    if (
+      libres.length >= 2 &&
+      libres[0].du === 0 &&
+      libres[libres.length - 1].au === TOTAL_JOURS - 1
+    ) {
+      const premiere = libres.shift();
+      const derniere = libres.pop();
+      libres.push({ du: derniere.du, au: premiere.au });
+    }
+    const morceaux = libres.map(
+      (p) => `du ${jourAgricoleToLisible(p.du)} au ${jourAgricoleToLisible(p.au)}`
+    );
+    let plages;
+    if (morceaux.length === 1) {
+      plages = morceaux[0];
+    } else {
+      plages = morceaux.slice(0, -1).join(", ") + " et " + morceaux[morceaux.length - 1];
+    }
+    return `<strong>Autorisé</strong> ${plages}`;
   }
 
   function escapeHtml(s) {

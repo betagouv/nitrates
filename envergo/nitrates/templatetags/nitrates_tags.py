@@ -95,19 +95,28 @@ def _minuscule_initiale(s: str) -> str:
 def periode_phrase(periode: dict) -> str:
     """Formate une periode en phrase humaine pour le panneau resultat.
 
-    Bornes fixes JJ/MM : `du 15/07 au 15/02`.
+    Bornes fixes : format date lisible unifie `du 15 juil. au 15 fév.`
+    (#85, meme format que le calendrier dynamique).
     Borne phenologique : on resout le slug vers son `libelle_public`
-    lisible (cf. #85), ex `de la dernière coupe de la luzerne au 15/01`.
+    lisible (cf. #85), ex `de la dernière coupe de la luzerne au 15 jan.`.
     Le prefixe passe de "du" a "de" quand la 1ere borne est phenologique.
     """
     du = periode.get("du", "")
     au = periode.get("au", "")
     du_fixe = _est_borne_fixe(du)
     au_fixe = _est_borne_fixe(au)
-    # Le libelle phenologique est capitalise dans le referentiel (usage titre).
-    # Insere en milieu de phrase ("de X au Y"), on minuscule sa 1ere lettre.
-    du_str = du if du_fixe else _minuscule_initiale(_libelle_phenologique(du))
-    au_str = au if au_fixe else _minuscule_initiale(_libelle_phenologique(au))
+    # Borne fixe -> date lisible "15 juil.". Borne phenologique -> libelle
+    # public, minuscule car insere en milieu de phrase ("de X au Y").
+    du_str = (
+        _date_lisible(*_parse_jjmm(du))
+        if du_fixe
+        else _minuscule_initiale(_libelle_phenologique(du))
+    )
+    au_str = (
+        _date_lisible(*_parse_jjmm(au))
+        if au_fixe
+        else _minuscule_initiale(_libelle_phenologique(au))
+    )
     prefixe = "du" if du_fixe else "de"
     return f"{prefixe} {du_str} au {au_str}"
 
@@ -242,6 +251,174 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
         (j_du / _TOTAL_DAYS * 100, (_TOTAL_DAYS - j_du) / _TOTAL_DAYS * 100),
         (0.0, (j_au + 1) / _TOTAL_DAYS * 100),
     ]
+
+
+# Abreviations de mois alignees sur le calendrier dynamique (JS
+# calculatrice-calendrier.js : MOIS_AGRICOLES). Format "15 juil.", "15 aoû.".
+# Index = mois civil 1..12 -> abreviation. On unifie ce format partout (#85).
+_MOIS_ABREV = {
+    1: "jan.",
+    2: "fév.",
+    3: "mar.",
+    4: "avr.",
+    5: "mai",
+    6: "juin",  # "juin" en entier pour le distinguer de "juil." (juillet)
+    7: "juil.",
+    8: "aoû.",
+    9: "sept.",
+    10: "oct.",
+    11: "nov.",
+    12: "déc.",
+}
+
+
+def _date_lisible(jour: int, mois: int) -> str:
+    """(jour, mois) civil -> "15 juil." (jour + mois abrege, format unifie).
+    Le 1er du mois est rendu "1er" (ex "1er fév.")."""
+    jour_fmt = "1er" if jour == 1 else str(jour)
+    return f"{jour_fmt} {_MOIS_ABREV.get(mois, str(mois))}"
+
+
+def _jour_agricole_to_date(j: int) -> tuple[int, int]:
+    """Jour agricole 0-indexe (0 = 1er juillet) -> (jour, mois) civil."""
+    civil = (j + _OFFSET_ANNEE_AGRICOLE) % _TOTAL_DAYS
+    mois = 0
+    while civil >= _DAYS_PER_MONTH[mois]:
+        civil -= _DAYS_PER_MONTH[mois]
+        mois += 1
+    return civil + 1, mois + 1
+
+
+def _plages_autorisation(periodes, regle_type: str) -> list[tuple[int, int]]:
+    """Calcule les plages de jours PUREMENT autorises (le vert) = complement
+    sur l'annee des periodes interdiction + autorisation_sous_condition.
+
+    - Les bornes phenologiques sont projetees sur leur date_calendrier
+      (via _parse_jjmm), comme les zones dessinees sur la barre.
+    - Gere le wrap de l'annee agricole (juillet->juin) : une plage autorisee
+      qui enjambe le 30 juin / 1er juillet est rendue continue.
+
+    Retourne une liste de (jour_debut_agricole, jour_fin_agricole) inclusifs.
+    """
+    occupe = [False] * _TOTAL_DAYS
+    for p in periodes or []:
+        regime = (p.get("regime") or regle_type) or ""
+        if regime not in ("interdiction", "autorisation_sous_condition"):
+            continue
+        du = _parse_jjmm(p.get("du", ""))
+        au = _parse_jjmm(p.get("au", ""))
+        if du is None or au is None:
+            continue
+        j_du = _day_of_year(*du)
+        j_au = _day_of_year(*au)
+        if j_du <= j_au:
+            for i in range(j_du, j_au + 1):
+                occupe[i] = True
+        else:  # wrap d'annee
+            for i in range(j_du, _TOTAL_DAYS):
+                occupe[i] = True
+            for i in range(0, j_au + 1):
+                occupe[i] = True
+
+    # Plages de jours libres (non occupes), en ordre agricole.
+    plages = []
+    i = 0
+    while i < _TOTAL_DAYS:
+        if occupe[i]:
+            i += 1
+            continue
+        debut = i
+        while i < _TOTAL_DAYS and not occupe[i]:
+            i += 1
+        plages.append((debut, i - 1))
+
+    # Fusion du wrap : si la 1ere plage commence au jour 0 et la derniere
+    # finit au jour 364, c'est une seule plage continue a cheval sur juillet.
+    if len(plages) >= 2 and plages[0][0] == 0 and plages[-1][1] == _TOTAL_DAYS - 1:
+        premiere = plages.pop(0)
+        derniere = plages.pop(-1)
+        plages.append((derniere[0], premiere[1]))
+
+    return plages
+
+
+def _joindre_plages_fr(plages: list[tuple[int, int]]) -> str:
+    """Formate les plages [(j_debut, j_fin), ...] en une phrase francaise :
+    1 plage  -> "du A au B"
+    2 plages -> "du A au B et du C au D"
+    3+       -> "du A au B, du C au D et du E au F"
+    """
+    morceaux = []
+    for debut, fin in plages:
+        d = _date_lisible(*_jour_agricole_to_date(debut))
+        f = _date_lisible(*_jour_agricole_to_date(fin))
+        morceaux.append(f"du {d} au {f}")
+    if not morceaux:
+        return ""
+    if len(morceaux) == 1:
+        return morceaux[0]
+    return ", ".join(morceaux[:-1]) + " et " + morceaux[-1]
+
+
+@register.simple_tag
+def periode_autorisation_phrase(regle) -> str:
+    """Phrase d'une seule ligne listant les plages d'autorisation pure (vert)
+    d'une regle, ou "" si l'epandage n'est jamais purement autorise.
+
+    Ex : "du 1er fév. au 14 oct." ; "du 16 jan. au 14 oct. et du 16 nov. au
+    14 déc.". Utilise sous le calendrier statique (#85)."""
+    if regle is None:
+        return ""
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    plages = _plages_autorisation(periodes, regle_type)
+    return _joindre_plages_fr(plages)
+
+
+# Libelle de puce par regime effectif (liste des periodes datees, #85).
+_LABEL_PERIODE = {
+    "autorisation_sous_condition": "Autorisé sous conditions",
+    "interdiction": "Interdiction",
+    "plafonnement": "Plafond",
+}
+# Ordre d'affichage des puces (du plus au moins restrictif) : interdiction,
+# plafond, autorisation sous condition. L'autorisation pure (vert) ferme la
+# liste, geree a part.
+_ORDRE_REGIME = ["interdiction", "plafonnement", "autorisation_sous_condition"]
+
+
+@register.simple_tag
+def periodes_datees(regle) -> list[dict]:
+    """Liste ordonnee des puces a afficher sous le calendrier statique (#85) :
+
+    [{"label": "Interdiction", "phrase": "..."},
+     {"label": "Autorisé sous conditions", "phrase": "..."},
+     {"label": "Période d'autorisation", "phrase": "du ... au ..."}]
+
+    Ordre (du plus restrictif au moins) : interdiction -> plafond ->
+    autorisation sous condition -> autorisation pure (vert) en dernier.
+    Les periodes YAML sont groupees par regime EFFECTIF (p.regime sinon le
+    type de la regle). `phrase` est formatee via periode_phrase (format date
+    unifie + libelles phenologiques lisibles).
+    """
+    if regle is None:
+        return []
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+
+    puces = []
+    for regime in _ORDRE_REGIME:
+        for p in periodes:
+            if (p.get("regime") or regle_type) == regime:
+                puces.append(
+                    {"label": _LABEL_PERIODE[regime], "phrase": periode_phrase(p)}
+                )
+
+    # Autorisation pure (vert) en derniere puce.
+    autorisation = periode_autorisation_phrase(regle)
+    if autorisation:
+        puces.append({"label": "Période d'autorisation", "phrase": autorisation})
+    return puces
 
 
 @register.simple_tag
