@@ -4,13 +4,18 @@
 
 /* ─── Recherche commune (BAN) ──────────────────────────────────────── */
 
-/* z-index assez haut pour passer au-dessus des panes Leaflet (max ~700
-   pour les tooltips). Sans ca, la dropdown de l'autocomplete commune
-   est cachee par le SVG GeoJSON des zones ZV. */
+/* z-index AU-DESSUS des controles Leaflet : les conteneurs .leaflet-top
+   (zoom +/- et controle de couches/legende IGN) sont a z-index 1000. Comme
+   .map-search-wrapper cree un contexte d'empilement, c'est SA valeur (et non
+   le 9999 interne des suggestions, piege dans ce contexte) qui est comparee
+   aux controles. A 1000 ex-aequo, la carte (plus loin dans le DOM) passait
+   devant -> la dropdown d'autocomplete etait masquee par les boutons/legende.
+   On monte donc le wrapper a 1100 : les suggestions recouvrent toute la carte
+   et ses controles. */
 .map-search-wrapper {
   position: relative;
   margin-bottom: 6px;
-  z-index: 1000;
+  z-index: 1100;
 }
 
 .ban-suggestions {
