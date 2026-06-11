@@ -244,6 +244,30 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
     ]
 
 
+@register.simple_tag
+def est_interdit_toute_lannee(regle) -> bool:
+    """Vrai si la regle est une interdiction couvrant TOUTE l'annee, soit une
+    unique periode d'interdiction 01/07 -> 30/06 (bornes de l'annee agricole).
+
+    Sert a n'afficher la phrase d'intro (regle.message) au-dessus du
+    calendrier que dans ce cas (#85) -- tous les autres resultats n'ont que le
+    calendrier + la liste des periodes.
+    """
+    if regle is None:
+        return False
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    interdictions = [
+        p for p in periodes if (p.get("regime") or regle_type) == "interdiction"
+    ]
+    # Toute l'annee = exactement 1 periode d'interdiction, bornee 01/07->30/06,
+    # et aucune autre periode (ASC, plafond...) qui viendrait nuancer.
+    if len(interdictions) != 1 or len(periodes) != 1:
+        return False
+    p = interdictions[0]
+    return p.get("du") == "01/07" and p.get("au") == "30/06"
+
+
 @register.inclusion_tag("nitrates/fragments/_calendrier.html")
 def calendrier_epandage(regle):
     """Rend un calendrier 12 mois colore avec les periodes interdites/

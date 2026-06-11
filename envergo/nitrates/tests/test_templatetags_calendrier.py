@@ -10,6 +10,7 @@ from envergo.nitrates.templatetags.nitrates_tags import (
     _day_of_year,
     _segment_interdit,
     calendrier_epandage,
+    est_interdit_toute_lannee,
 )
 
 # La fixture session `update_default_site` (envergo/conftest.py) cree un
@@ -234,3 +235,34 @@ def test_calendrier_regime_periode_prime_sur_type_global():
     # 1 seul segment rouge (le 2e), pas de segment pour le 1er (libre)
     assert len(ctx["segments"]) == 1
     assert ctx["segments"][0]["couleur"] == "rouge"
+
+
+# ─── est_interdit_toute_lannee (#85) ────────────────────────────────────────
+
+
+def test_toute_lannee_vrai_pour_interdiction_01_07_30_06():
+    r = _regle(type="interdiction", periodes=[{"du": "01/07", "au": "30/06"}])
+    assert est_interdit_toute_lannee(r) is True
+
+
+def test_toute_lannee_faux_pour_interdiction_hivernale():
+    # Colza type_II : interdiction 15/12 -> 15/01, pas toute l'annee.
+    r = _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    assert est_interdit_toute_lannee(r) is False
+
+
+def test_toute_lannee_faux_si_regle_none():
+    assert est_interdit_toute_lannee(None) is False
+
+
+def test_toute_lannee_faux_si_autre_periode_presente():
+    # Une interdiction pleine annee MAIS avec une autre periode -> pas "toute
+    # l'annee" au sens simple (le calendrier nuance).
+    r = _regle(
+        type="mixte",
+        periodes=[
+            {"du": "01/07", "au": "30/06", "regime": "interdiction"},
+            {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+        ],
+    )
+    assert est_interdit_toute_lannee(r) is False

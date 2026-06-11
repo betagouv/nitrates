@@ -65,11 +65,24 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
         {% if ev.regle %}
 
-          {# Texte introductif (message specifique a la regle, ex maïs brunissement) #}
-          {% if ev.regle.message %}
-            <p class="fr-mt-2w">{{ ev.regle.message }}</p>
-          {% elif ev.regle.texte %}
-            <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
+          {% comment %}
+          Phrase d'intro au-dessus du calendrier (#85) : on ne l'affiche QUE
+          dans deux cas :
+            - calculatrice (couverts) : le message porte une consigne
+              specifique au composant dynamique (hors scope #85) ;
+            - interdiction toute l'annee : le calendrier seul ne dirait rien,
+              on garde le message (ex "interdit toute l'annee sur sol non
+              cultive").
+          Tous les autres resultats : pas d'intro, juste le calendrier puis la
+          liste des periodes datees en dessous.
+          {% endcomment %}
+          {% est_interdit_toute_lannee ev.regle as intro_toute_lannee %}
+          {% if ev.regle.type == "calculatrice" or intro_toute_lannee %}
+            {% if ev.regle.message %}
+              <p class="fr-mt-2w">{{ ev.regle.message }}</p>
+            {% elif ev.regle.texte %}
+              <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
+            {% endif %}
           {% endif %}
 
           {% comment %}
