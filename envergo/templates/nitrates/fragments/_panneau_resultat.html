@@ -103,53 +103,36 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% if ev.regle.periodes and ev.regle.type != "calculatrice" %}
             {% if ev.regle.type == "mixte" %}
               {% comment %}
-              Affichage en 2 temps :
-                1. les periodes "autorisation_sous_condition" (derogation
-                   locale, qu'elle soit phenologique ou non) en haut.
-                2. les periodes "interdiction" (regle de base) en dessous,
-                   precedees d'une mention "Sinon, regle de base —" sur sa
-                   propre ligne (italic) pour expliciter que c'est le
-                   fallback.
-
-              On affiche le prefixe "Sinon, regle de base —" des qu'on a
-              au moins une autorisation_sous_condition ET au moins une
-              interdiction (peu importe que les bornes soient fixes ou
-              phenologiques). Sinon (mixte avec uniquement de l'interdiction
-              ou uniquement de l'autorisation), pas de prefixe.
+              On liste chaque periode avec son regime : d'abord les
+              "autorisation_sous_condition", puis les "interdiction", puis le
+              "plafonnement". Pas d'intertitre "Sinon, regle de base" (#85).
               {% endcomment %}
-              {% with has_autorisation=ev.regle.has_autorisation_sous_condition has_interdiction=ev.regle.has_interdiction %}
-                <ul class="fr-mb-0 periodes-mixte">
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "autorisation_sous_condition" %}
-                      <li>
-                        <strong>Autorisé sous conditions :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                  {% if has_autorisation and has_interdiction %}
-                    <li class="periodes-mixte__fallback-intro">
-                      <em>Sinon, règle de base</em>
+              <ul class="fr-mb-0 periodes-mixte">
+                {% for p in ev.regle.periodes %}
+                  {% if p.regime == "autorisation_sous_condition" %}
+                    <li>
+                      <strong>Autorisé sous conditions :</strong>
+                      {% periode_phrase p %}.
                     </li>
                   {% endif %}
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "interdiction" %}
-                      <li>
-                        <strong>Interdiction :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "plafonnement" %}
-                      <li>
-                        <strong>Plafond :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                </ul>
-              {% endwith %}
+                {% endfor %}
+                {% for p in ev.regle.periodes %}
+                  {% if p.regime == "interdiction" %}
+                    <li>
+                      <strong>Interdiction :</strong>
+                      {% periode_phrase p %}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+                {% for p in ev.regle.periodes %}
+                  {% if p.regime == "plafonnement" %}
+                    <li>
+                      <strong>Plafond :</strong>
+                      {% periode_phrase p %}.
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
             {% else %}
               <p>
                 <strong>Période d'interdiction :</strong>
