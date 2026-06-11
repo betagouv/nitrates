@@ -44,6 +44,8 @@
   </script>
   <script defer src="{% static 'nitrates/simulator.js' %}"></script>
   <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
+  <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
     <script defer src="{% static 'nitrates/epandage_aujourdhui.js' %}"></script>
