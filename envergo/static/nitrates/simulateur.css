@@ -4,13 +4,18 @@
 
 /* ─── Recherche commune (BAN) ──────────────────────────────────────── */
 
-/* z-index assez haut pour passer au-dessus des panes Leaflet (max ~700
-   pour les tooltips). Sans ca, la dropdown de l'autocomplete commune
-   est cachee par le SVG GeoJSON des zones ZV. */
+/* z-index AU-DESSUS des controles Leaflet : les conteneurs .leaflet-top
+   (zoom +/- et controle de couches/legende IGN) sont a z-index 1000. Comme
+   .map-search-wrapper cree un contexte d'empilement, c'est SA valeur (et non
+   le 9999 interne des suggestions, piege dans ce contexte) qui est comparee
+   aux controles. A 1000 ex-aequo, la carte (plus loin dans le DOM) passait
+   devant -> la dropdown d'autocomplete etait masquee par les boutons/legende.
+   On monte donc le wrapper a 1100 : les suggestions recouvrent toute la carte
+   et ses controles. */
 .map-search-wrapper {
   position: relative;
   margin-bottom: 6px;
-  z-index: 1000;
+  z-index: 1100;
 }
 
 .ban-suggestions {
@@ -42,6 +47,24 @@
 
 .ban-suggestions li:hover {
   background: #f0f0f0;
+}
+
+/* Mode sombre (#83) : les suggestions avaient un fond blanc fixe + texte gris
+   -> illisible en sombre. On passe a un fond gris fonce + texte clair, avec un
+   survol legerement plus clair. */
+[data-fr-theme="dark"] .ban-suggestions {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li {
+  border-bottom-color: #444;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li:hover {
+  background: #3a3a3a;
 }
 
 /* ─── Localisation read-only (commune / dept / region) ────────────── */
@@ -125,6 +148,18 @@
 
 /* Espacement entre 2 form-question-group consecutifs dans une section */
 .form-section .form-question-group + .form-question-group {
+  margin-top: 22px;
+}
+
+/* ─── Couvert interculture longue : saisie en 2 questions (hack front) ───
+   Les 4 radios d'origine sous_culture_form restent dans le DOM (source de
+   verite, soumis avec le form) mais sont masques visuellement ; couvert_split.js
+   monte 2 sous-questions a la place et recompose la valeur. */
+.couvert-split__origin-hidden {
+  display: none;
+}
+
+.couvert-split__group + .couvert-split__group {
   margin-top: 22px;
 }
 
