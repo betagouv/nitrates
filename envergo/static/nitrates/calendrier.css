@@ -769,3 +769,72 @@
 .calendrier-epandage__tooltip[data-visible="true"] {
   opacity: 1;
 }
+
+/* ─── Mode sombre (#83) ──────────────────────────────────────────────────
+   Le calendrier porte des couleurs custom hardcodees (noir #161616 pour les
+   tics/point/labels "aujourd'hui"/semis/destruction, gris #666 pour les mois)
+   qui ne suivent pas le theme DSFR. En sombre, le noir devient invisible sur
+   le fond #1e1e1e. On surcharge donc ici, sous [data-fr-theme="dark"], par des
+   teintes claires. Les fills/inks de zones (rouge/orange/vert pastel) restent
+   identiques : ce sont des fonds clairs qui contrastent deja bien sur sombre.
+
+   On garde la meme palette de zones (lisible sur sombre) et on ne touche QUE
+   l'encre neutre (noir -> blanc casse) + les gris de second plan. */
+[data-fr-theme="dark"] {
+  /* Encre neutre du calendrier : blanc casse en sombre (au lieu de #161616). */
+  --cal-ink-neutre-dark: #f5f5f5;
+  --cal-gris-second-dark: #9a9a9a;
+}
+
+/* Mois (Juil, Aout, ...) : gris trop sombre -> gris clair lisible. */
+[data-fr-theme="dark"] .calendrier-epandage__months {
+  color: var(--cal-gris-second-dark);
+}
+
+/* Point "aujourd'hui" + son label : noir -> blanc casse. */
+[data-fr-theme="dark"] .calendrier-epandage__today {
+  background: var(--cal-ink-neutre-dark);
+}
+
+[data-fr-theme="dark"] .calendrier-epandage__today::after {
+  color: var(--cal-ink-neutre-dark);
+}
+
+/* Bornes phenologiques NOIRES uniquement (semis / destruction) : on les passe
+   en blanc casse. IMPORTANT : on NE touche PAS aux dates fixes colorees
+   (31 juil., 12 oct., 31 jan.) qui portent --phenologique MAIS aussi une classe
+   couleur --rouge/--orange (cf. JS renderBornes). Le :not() les exclut : elles
+   gardent leur teinte de regime, deja lisible sur sombre.
+
+   Une borne est "noire" = --phenologique sans classe couleur. On cible donc le
+   tic (::before), son label interne (calc-cal) et le color du parent (statique
+   sans label interne). */
+[data-fr-theme="dark"]
+  .calendrier-epandage__period-date--phenologique:not(
+    .calendrier-epandage__period-date--rouge,
+    .calendrier-epandage__period-date--orange
+  ) {
+  color: var(--cal-ink-neutre-dark);
+}
+
+[data-fr-theme="dark"]
+  .calendrier-epandage__period-date--phenologique:not(
+    .calendrier-epandage__period-date--rouge,
+    .calendrier-epandage__period-date--orange
+  )::before {
+  background: var(--cal-ink-neutre-dark);
+}
+
+[data-fr-theme="dark"]
+  .calc-cal
+  .calendrier-epandage__period-date--phenologique:not(
+    .calendrier-epandage__period-date--rouge,
+    .calendrier-epandage__period-date--orange
+  )
+  .calendrier-epandage__period-date-label {
+  color: var(--cal-ink-neutre-dark);
+}
+
+/* Texte d'aide / mentions grises du recap : le DSFR les passe deja en clair
+   via --text-mention-grey, rien a forcer. La barre "libre" (fond vert pastel)
+   et les zones gardent leurs fills clairs : OK sur sombre. */

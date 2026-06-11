@@ -552,3 +552,94 @@ body {
 .form-locked-message p {
   margin: 0;
 }
+
+/* ─── Bascule de theme clair/sombre, pied de page (#83) ──────────────────── */
+
+.nitrates-theme-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.nitrates-theme-toggle__btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--border-default-grey, #ddd);
+  border-radius: 4px;
+  background: var(--background-default-grey, #fff);
+  color: var(--text-default-grey, #3a3a3a);
+}
+
+.nitrates-theme-toggle__btn:hover {
+  background: var(--background-alt-grey, #f3f4f6);
+}
+
+/* Bouton du theme actuellement force (light ou dark) : mis en avant. */
+.nitrates-theme-toggle__btn--active {
+  border-color: var(--border-action-high-blue-france, #000091);
+  background: var(--background-action-low-blue-france, #e3e3fd);
+  color: var(--text-action-high-blue-france, #000091);
+}
+
+/* ─── Mode sombre : bloc Questions complementaires (#83) ─────────────────
+   En light le bloc est violet pastel clair (#cecefc) + texte noir (#112). En
+   sombre on bascule vers un violet FONCE (#24244b) + texte blanc, qui s'integre
+   au theme sombre au lieu de detoner comme un ilot clair. On reaffecte les
+   variables DSFR localement (inverse du fix #112) pour que titres / labels /
+   radios suivent, et on adapte le bouton. */
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions {
+  --text-title-grey: #fff;
+  --text-default-grey: #e9e9f5;
+  --text-mention-grey: #c4c4dd;
+  --text-action-high-grey: #fff;
+
+  /* Bordure du radio coche : un violet clair visible sur le fond fonce. */
+  --border-action-high-blue-france: #b8b8f8;
+  --background-default-grey: #24244b;
+
+  background: #24244b;
+  color: #fff;
+}
+
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions h2,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-h3,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-text--lead,
+[data-fr-theme="dark"]
+  .resultat-panel.resultat-panel--questions
+  .form-question-text,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-label {
+  color: #fff;
+}
+
+/* Boutons primaires du simulateur en sombre (hero "Voir les regles", submit
+   "Lancer la simulation") : par defaut le DSFR dark rend un texte bleu fonce
+   sur un fond violet-bleu clair -> contraste insuffisant (retour Max #83). On
+   force un bouton bleu france franc + texte blanc, plus lisible et net.
+   Regle GENERALE (tous les .fr-btn de la page simulateur). Le bouton du bloc
+   QC est re-traite juste apres (cascade : meme specificite, ordre l'emporte). */
+[data-fr-theme="dark"] .fr-container .fr-btn {
+  background-color: #6a6af5;
+  color: #fff;
+}
+
+[data-fr-theme="dark"] .fr-container .fr-btn:hover {
+  background-color: #8585f6;
+}
+
+/* Bouton du bloc QC en sombre : sur le violet fonce #24244b, on veut un bouton
+   qui ressort en clair (violet tres clair + texte fonce). Place APRES la regle
+   generale pour la surcharger sur ce bloc precis. */
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-btn {
+  background-color: #c3c3fb;
+  color: #1b1b35;
+}
+
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-btn:hover {
+  background-color: #d6d6fd;
+}
