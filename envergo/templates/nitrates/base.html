@@ -15,3 +15,10 @@
 {% block footer %}
   {% include 'nitrates/_footer.html' %}
 {% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  {% if is_building %}
+    {% include 'nitrates/_bandeau_construction.html' %}
+  {% endif %}
+{% endblock %}
