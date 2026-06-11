@@ -1084,6 +1084,12 @@
     // et la mention conditionnelle.
     const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
     const segments = computeSegments(regimeParJour);
+
+    // Ordre de presentation impose par la maquette (#130) : les interdictions
+    // d'abord, puis les autorisations sous condition. On classe chaque regime
+    // par priorite ; tri stable (Array.sort) pour conserver l'ordre
+    // chronologique des segments a l'interieur d'un meme regime.
+    const PRIORITE = { interdiction: 0, autorisation_sous_condition: 1, plafonnement: 1 };
     const lignes = [];
     for (const seg of segments) {
       const regime = seg.regime;
@@ -1110,13 +1116,14 @@
           ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
         }
       }
-      lignes.push(`<li>${ligne}</li>`);
+      lignes.push({ prio: PRIORITE[regime] ?? 9, html: `<li>${ligne}</li>` });
     }
     if (lignes.length === 0) return "";
+    lignes.sort((a, b) => a.prio - b.prio);
+    // Maquette #130 : pas de titre "Récapitulatif", pas de puces (liste nue).
     return `
       <div class="calc-cal__recap">
-        <h4 class="fr-h6">Récapitulatif</h4>
-        <ul>${lignes.join("")}</ul>
+        <ul class="calc-cal__recap-list">${lignes.map((l) => l.html).join("")}</ul>
       </div>
     `;
   }
