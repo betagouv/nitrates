@@ -266,3 +266,24 @@ def test_toute_lannee_faux_si_autre_periode_presente():
         ],
     )
     assert est_interdit_toute_lannee(r) is False
+
+
+def test_calendrier_borne_phenologique_label_resolu():
+    """Le label du tick d'une borne phenologique est resolu vers son
+    libelle_public lisible, pas le slug snake_case (#85)."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="mixte",
+            periodes=[
+                {"du": "15/12", "au": "15/01", "regime": "interdiction"},
+                {
+                    "du": "derniere_coupe_luzerne",
+                    "au": "15/01",
+                    "regime": "autorisation_sous_condition",
+                },
+            ],
+        )
+    )
+    labels = [b["label"] for b in ctx["bornes"]]
+    assert "Dernière coupe de la luzerne" in labels
+    assert "derniere_coupe_luzerne" not in labels

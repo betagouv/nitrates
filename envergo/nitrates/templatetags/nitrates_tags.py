@@ -319,8 +319,22 @@ def calendrier_epandage(regle):
                     }
                 )
         else:
-            # Periode avec evenement phenologique -> on l'affiche en texte
-            periodes_phenologiques.append(p)
+            # Periode avec evenement phenologique inconnu (pas de
+            # date_calendrier) -> affichee en texte a part. On resout les
+            # bornes vers leur libelle lisible (#85, plus de snake_case).
+            du = p.get("du", "")
+            au = p.get("au", "")
+            periodes_phenologiques.append(
+                {
+                    **p,
+                    "du_label": (
+                        du if DATE_JJMM_RE.match(str(du)) else _libelle_phenologique(du)
+                    ),
+                    "au_label": (
+                        au if DATE_JJMM_RE.match(str(au)) else _libelle_phenologique(au)
+                    ),
+                }
+            )
 
     # Marqueur "aujourd'hui"
     today = date.today()
@@ -334,11 +348,16 @@ def calendrier_epandage(regle):
     for p in periodes:
         if _parse_jjmm(p.get("du", "")) and _parse_jjmm(p.get("au", "")):
             seg = _segment_interdit(p)
+            du_pheno = not DATE_JJMM_RE.match(str(p["du"]))
+            au_pheno = not DATE_JJMM_RE.match(str(p["au"]))
             bornes_brutes.append(
                 {
-                    "label": p["du"],
+                    # Label affiche sous le tick : pour une borne phenologique
+                    # on resout le slug vers son libelle_public lisible (#85),
+                    # plus de snake_case sur la barre. Date fixe : inchange.
+                    "label": _libelle_phenologique(p["du"]) if du_pheno else p["du"],
                     "pct": seg[0][0],
-                    "is_phenologique": not DATE_JJMM_RE.match(str(p["du"])),
+                    "is_phenologique": du_pheno,
                 }
             )
             if len(seg) == 1:
@@ -348,9 +367,9 @@ def calendrier_epandage(regle):
                 end_pct = seg[1][0] + seg[1][1]
             bornes_brutes.append(
                 {
-                    "label": p["au"],
+                    "label": _libelle_phenologique(p["au"]) if au_pheno else p["au"],
                     "pct": end_pct,
-                    "is_phenologique": not DATE_JJMM_RE.match(str(p["au"])),
+                    "is_phenologique": au_pheno,
                 }
             )
 

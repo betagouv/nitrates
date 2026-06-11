@@ -53,7 +53,7 @@ Inputs (cf. templatetag calendrier_epandage) :
       <ul class="calendrier-epandage__phenologique fr-text--sm">
         {% for p in periodes_phenologiques %}
           <li>
-            du <strong>{{ p.du }}</strong> au <strong>{{ p.au }}</strong>
+            du <strong>{{ p.du_label|default:p.du }}</strong> au <strong>{{ p.au_label|default:p.au }}</strong>
           </li>
         {% endfor %}
       </ul>
