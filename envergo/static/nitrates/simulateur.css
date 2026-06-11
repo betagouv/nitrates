@@ -49,6 +49,24 @@
   background: #f0f0f0;
 }
 
+/* Mode sombre (#83) : les suggestions avaient un fond blanc fixe + texte gris
+   -> illisible en sombre. On passe a un fond gris fonce + texte clair, avec un
+   survol legerement plus clair. */
+[data-fr-theme="dark"] .ban-suggestions {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li {
+  border-bottom-color: #444;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li:hover {
+  background: #3a3a3a;
+}
+
 /* ─── Localisation read-only (commune / dept / region) ────────────── */
 
 .localisation-readonly {
