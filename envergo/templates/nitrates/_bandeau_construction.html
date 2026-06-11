@@ -1,0 +1,28 @@
+{% load static %}
+
+{% comment %}
+  Bandeau "site en construction" (issue #113), affiche uniquement quand
+  is_building=True (root public alpha-testeur).
+
+  Deux elements qui se relaient en fondu doux, pilotes au scroll par la
+  visibilite du header (cf. construction.js) :
+   - un ruban jaune chantier a 45deg dans le coin haut-gauche, visible tant
+     que le header est a l'ecran (non cliquable) ;
+   - une barre fine horizontale sticky en haut, pleine largeur, qui fait un
+     fondu entrant par le haut des que le header sort de l'ecran, avec le
+     picto + le disclaimer directive nitrates.
+{% endcomment %}
+<div class="nitrates-construction" data-nitrates-construction>
+  <div class="nitrates-construction__ribbon" aria-hidden="true">
+    <span class="nitrates-construction__icon">🚧</span>
+    <span class="nitrates-construction__ribbon-label">En construction</span>
+  </div>
+  <div class="nitrates-construction__bar" role="note">
+    <span class="nitrates-construction__icon" aria-hidden="true">🚧</span>
+    Ce site est en cours de construction&nbsp;: il peut encore contenir des
+    erreurs sur l'interprétation de la directive nitrates.
+  </div>
+</div>
+
+<link href="{% static 'nitrates/construction.css' %}" rel="stylesheet">
+<script defer src="{% static 'nitrates/construction.js' %}"></script>

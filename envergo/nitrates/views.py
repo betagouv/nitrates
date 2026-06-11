@@ -1,7 +1,6 @@
 import json
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -57,19 +56,26 @@ _QC_LIBELLES = {
 }
 
 
-@method_decorator(login_required, name="dispatch")
 class HomeView(View):
-    """Racine `/` : sert le meme simulateur que `/simulateur/`, mais
-    protege par ProConnect. Permet de differencier les URL d'admin
-    (accessibles aux juristes connectes) du parcours user public.
+    """Racine `/` : sert le meme simulateur que `/simulateur/`, mais en
+    mode "alpha-testeur public" -> sans les panneaux debug et avec le
+    bandeau "site en construction".
 
-    On delegue tout a `MoulinetteView.get()` pour eviter la duplication.
+    Acces : ouvert sans connexion quand NITRATES_ROOT_OUVERT=True (le
+    middleware RequireLoginEverywhere exempte alors `/`). Sinon, reste
+    derriere le lockdown ProConnect comme le reste du site.
+
+    On delegue tout a `MoulinetteView.get()` (via des flags surchargeables)
+    pour eviter toute duplication de logique avec `/simulateur/`.
     """
 
     def get(self, request, *args, **kwargs):
         # Import retarde pour eviter d'instancier MoulinetteView avant que
         # ses dependances (referentiels DB, etc.) soient chargees.
-        return MoulinetteView().get(request, *args, **kwargs)
+        view = MoulinetteView()
+        view.force_debug = False  # jamais de panneaux debug sur le root public
+        view.is_building = True  # bandeau "site en construction"
+        return view.get(request, *args, **kwargs)
 
 
 @method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
@@ -239,7 +245,18 @@ class MoulinetteView(View):
 
     Sans lat/lng : on rend le formulaire vide.
     Avec lat/lng + (optionnel) reponses cascade : on rend le resultat.
+
+    Deux flags surchargeables par les sous-vues (cf. HomeView) controlent
+    le rendu sans dupliquer la logique :
+      - `force_debug` : None -> suit NITRATES_FORM_DEBUG_PANELS (defaut
+        simulateur). True/False -> force l'affichage des panneaux debug.
+      - `is_building` : affiche le bandeau "site en construction" (mode
+        alpha-testeur sur le root public).
     """
+
+    # None = comportement par defaut (settings). Une sous-vue peut forcer.
+    force_debug = None
+    is_building = False
 
     def get(self, request, *args, **kwargs):
         from django.conf import settings
@@ -284,8 +301,15 @@ class MoulinetteView(View):
             "afficher_resultat": False,
             # Active les panels debug (info parcelle, chemin parcouru,
             # result_code, etc.). Pilote par NITRATES_FORM_DEBUG_PANELS pour
-            # pouvoir activer en staging sans avoir DEBUG=True.
-            "debug": settings.NITRATES_FORM_DEBUG_PANELS,
+            # pouvoir activer en staging sans avoir DEBUG=True. Une sous-vue
+            # (HomeView, root public) peut forcer a False via force_debug.
+            "debug": (
+                settings.NITRATES_FORM_DEBUG_PANELS
+                if self.force_debug is None
+                else self.force_debug
+            ),
+            # Bandeau "site en construction" (mode alpha-testeur, root public).
+            "is_building": self.is_building,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
             "qc_repondues_champs": [],

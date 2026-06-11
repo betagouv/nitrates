@@ -77,6 +77,10 @@ class RequireLoginEverywhere:
         # vers /admin/login/ -> boucle infinie de next= imbrique.
         if path.startswith("/oidc/"):
             return True
+        # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
+        # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.
+        if path == "/" and getattr(settings, "NITRATES_ROOT_OUVERT", False):
+            return True
         return False
 
     def __call__(self, request):
