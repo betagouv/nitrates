@@ -133,6 +133,18 @@
   margin-top: 22px;
 }
 
+/* ─── Couvert interculture longue : saisie en 2 questions (hack front) ───
+   Les 4 radios d'origine sous_culture_form restent dans le DOM (source de
+   verite, soumis avec le form) mais sont masques visuellement ; couvert_split.js
+   monte 2 sous-questions a la place et recompose la valeur. */
+.couvert-split__origin-hidden {
+  display: none;
+}
+
+.couvert-split__group + .couvert-split__group {
+  margin-top: 22px;
+}
+
 /* ─── Carte ────────────────────────────────────────────────────────── */
 
 /* Leaflet pose des elements de proxy (.leaflet-proxy) hors viewport
