@@ -406,6 +406,12 @@ class MoulinetteView(View):
         ctx.update(
             {
                 "afficher_resultat": True,
+                # Tant qu'une QC est en attente, on n'affiche PAS le panel
+                # resultat : on reste en colonne unique et on pose les QC sous
+                # le formulaire (cf. simulateur.html / _panneau_form.html). Le
+                # resultat n'apparait a droite qu'une fois toutes les QC
+                # repondues (premier_qc == None). (#112)
+                "qc_en_attente": premier_qc is not None,
                 "moulinette": moulinette,
                 "regulations_evaluees": regulations_evaluees,
                 "premier_evaluator_avec_questions": premier_qc,

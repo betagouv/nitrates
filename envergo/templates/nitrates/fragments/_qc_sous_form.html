@@ -1,0 +1,62 @@
+{% load nitrates_tags %}
+
+{% comment %}
+Bloc unique "Questions complementaires", rendu SOUS le formulaire principal
+(colonne gauche), dans le <form id="form-simulateur"> (#112).
+
+Contient, dans l'ordre chronologique du parcours :
+  1. les QC deja repondues (qc_repondues) : radios editables, l'utilisateur
+     peut changer une reponse pour repartir la cascade sans tout reprendre ;
+  2. les QC en attente (premier_evaluator_avec_questions.questions) : les
+     nouvelles questions a remplir, avec cascade conditionnelle (#58.1).
+
+Comme ce bloc est DANS le form principal, les inputs n'ont pas besoin de
+form="form-simulateur" (form_attr=""). subsidiaires_cascade.js opere sur
+.resultat-panel--questions, qui reste la classe du conteneur.
+{% endcomment %}
+
+<div class="resultat-panel resultat-panel--questions qc-sous-form"
+     id="qc-bloc"
+     {% if qc_en_attente %}data-qc-en-attente="true"{% endif %}>
+  <h2 class="fr-h3">Questions complémentaires</h2>
+  <p class="fr-text--lead">
+    Pour finaliser le résultat de votre simulation, merci de répondre aux
+    questions ci-dessous.
+  </p>
+
+  {% comment %}1. QC deja repondues (editables).{% endcomment %}
+  {% for entry in qc_repondues %}
+    {% include "nitrates/fragments/_qc_question_item.html" with q=entry id_prefix="id_qc_sf_done_" form_attr="" selected_valeur=entry.valeur forloop_first=forloop.first %}
+  {% endfor %}
+
+  {% comment %}2. QC en attente (cascade conditionnelle). La 1re n'est "first"
+  (pas de margin-top) que s'il n'y a aucune QC repondue au-dessus.{% endcomment %}
+  {% if premier_evaluator_avec_questions %}
+    {% for q in premier_evaluator_avec_questions.questions_subsidiaires.questions %}
+      {% if forloop.first and not qc_repondues %}
+        {% include "nitrates/fragments/_qc_question_item.html" with q=q id_prefix="id_qc_sf_new_" form_attr="" selected_valeur=data|get_item:q.champ forloop_first=True %}
+      {% else %}
+        {% include "nitrates/fragments/_qc_question_item.html" with q=q id_prefix="id_qc_sf_new_" form_attr="" selected_valeur=data|get_item:q.champ forloop_first=False %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+
+  <div style="margin-top: 24px;">
+    <button type="submit" class="fr-btn">Relancer la simulation</button>
+  </div>
+</div>
+
+{% comment %}
+Debug parcours (#112) : en mode QC en attente, le panneau resultat de droite
+n'est pas rendu -> on expose ici le meme panel debug (gate par `debug`) pour ne
+pas perdre l'outil de suivi du parcours pendant la saisie des QC.
+{% endcomment %}
+{% if debug %}
+  {% for entry in regulations_evaluees %}
+    {% with ev=entry.evaluator %}
+      {% if ev.questions_subsidiaires %}
+        {% include "nitrates/fragments/_debug_parcours.html" %}
+      {% endif %}
+    {% endwith %}
+  {% endfor %}
+{% endif %}

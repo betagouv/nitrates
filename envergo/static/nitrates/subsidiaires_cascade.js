@@ -62,4 +62,8 @@
     // Sync initial (cas ou un parent est deja coche par checked depuis l'URL)
     rafraichirVisibilite(parentChamp);
   }
+
+  // L'auto-scroll vers les QC est gere par scroll_resultat.js (#112), qui
+  // couvre aussi le cas "resultat final" et attend la stabilisation du layout
+  // (carte Leaflet, images) avant de scroller.
 })();
