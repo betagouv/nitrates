@@ -41,6 +41,10 @@
           <a href="{% url 'nitrates_yaml_browser_list' %}">📝 Mini browser YAML pleine page</a>
           — coloration syntaxique + Darcula
         </li>
+        <li>
+          <a href="{% url 'nitrates_admin_ouverture_index' %}">🗺️ Ouverture géographique</a>
+          — piloter les régions / départements où le simulateur est ouvert
+        </li>
       </ul>
     </div>
 
@@ -142,6 +146,8 @@ classDiagram
                     🌸
                   {% elif model.object_name == "RpgCulture" %}
                     📊
+                  {% elif model.object_name == "DepartementOuverture" %}
+                    🗺️
                   {% endif %}
                 </span>
                 {% if model.admin_url %}
@@ -185,6 +191,10 @@ classDiagram
                   Référentiel officiel IGN/ASP des codes culture du RPG
                   (Registre Parcellaire Graphique). Utilisé pour mapper les
                   codes parcelles vers des libellés métier.
+                {% elif model.object_name == "DepartementOuverture" %}
+                  Bornage géographique du simulateur (carte #57) : ouvre ou
+                  ferme le formulaire par département. Pilotage visuel sur la
+                  page <strong>Ouverture géographique</strong> (drag&drop).
                 {% endif %}
               </td>
               {% if model.add_url %}

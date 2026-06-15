@@ -8,7 +8,13 @@ from envergo.nitrates.views import (
     HomeView,
     MoulinetteView,
     ReferentielsView,
+    ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
+)
+from envergo.nitrates.views_admin_ouverture import (
+    ouverture_index,
+    ouverture_toggle,
+    ouverture_toggle_region,
 )
 from envergo.nitrates.views_admin_validation import (
     validation_create,
@@ -69,6 +75,11 @@ urlpatterns = [
         "geojson/zv/",
         ZoneVulnerableGeoJSONView.as_view(),
         name="nitrates_zv_geojson",
+    ),
+    path(
+        "geojson/zar/",
+        ZoneActionRenforceeGeoJSONView.as_view(),
+        name="nitrates_zar_geojson",
     ),
     path(
         "api/referentiels/",
@@ -258,5 +269,21 @@ urlpatterns = [
         "admin/nitrates/validation/<int:pk>/edit-meta/",
         validation_edit_meta,
         name="nitrates_admin_validation_edit_meta",
+    ),
+    # Bornage géographique du simulateur (carte #57).
+    path(
+        "admin/nitrates/ouverture-geographique/",
+        ouverture_index,
+        name="nitrates_admin_ouverture_index",
+    ),
+    path(
+        "admin/nitrates/ouverture-geographique/toggle/",
+        ouverture_toggle,
+        name="nitrates_admin_ouverture_toggle",
+    ),
+    path(
+        "admin/nitrates/ouverture-geographique/toggle-region/",
+        ouverture_toggle_region,
+        name="nitrates_admin_ouverture_toggle_region",
     ),
 ]

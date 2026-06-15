@@ -84,6 +84,7 @@
         <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
            style="color:#fff">Arbres (liste)</a>
         <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
+        <a href="{% url 'nitrates_admin_ouverture_index' %}" style="color:#fff;">Ouverture géographique</a>
       </nav>
       <span style="margin-left:auto;color:#cdd6e4;">
         {% if user.is_authenticated %}{{ user.email }}{% endif %}
