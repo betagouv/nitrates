@@ -313,3 +313,11 @@ envergo/nitrates/scripts/validation/out_yaml/
 envergo/nitrates/scripts/provision_team.sh
 # Dumps DB devops (regenerables via dumpdata)
 /branches_validation_dump.json
+
+# Override compose local par agent (syndication multi-worktrees, cf PORTS.local.md)
+docker-compose.*.local.yml
+PORTS.local.md
+
+# Artefacts générés de capture validation couvert (carte #140) — régénérables
+e2e/nitrates/_capture_couvert_manifeste.json
+e2e/nitrates/_captures_couvert/
