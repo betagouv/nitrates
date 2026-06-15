@@ -217,7 +217,9 @@ def admin_url_for_resultat(context, chemin, draft_tree_id=None):
             return ""
         is_draft = tree.status == DecisionTree.STATUS_DRAFT
     else:
-        tree = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
+        tree = DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+        ).first()
         if tree is None:
             return ""
 

@@ -43,9 +43,9 @@ from envergo.nitrates.yaml_tree import (
     ParcoursError,
     QuestionsSubsidiaires,
     Resultat,
-    load_active_tree,
     load_tree_by_id,
     parcours,
+    select_active_tree,
 )
 
 # Mapping regle.type (YAML) -> RESULTS Envergo.
@@ -171,7 +171,7 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     # ─── Construction du contexte ──────────────────────────────────────────
 
     def _load_decision_tree(self) -> dict:
-        # Source de verite : la table DecisionTree (un seul actif a la fois).
+        # Source de verite : la table DecisionTree.
         # Cas preview admin : si `draft_tree_id` est dans le QS, on charge
         # ce draft a la place de l'actif (cf. killer feature #80). La
         # verification d'autorisation est faite cote vue (MoulinetteView)
@@ -185,9 +185,10 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
                 # Draft inexistant : fallback silencieux sur l'actif. Mieux
                 # vaut une eval sur l'actif qu'une 500.
                 pass
-        # La gestion du PAR R44 viendra plus tard via un champ region_code
-        # sur le modele.
-        return load_active_tree()
+        # Selection dynamique PAN / PAR / ZAR selon la geo du point. Le catalog
+        # (region_code, zar_zone_id) a deja ete peuple par
+        # MoulinetteNitrates.get_catalog_data avant l'evaluation des criteres.
+        return select_active_tree(self.catalog)
 
     def _contexte_initial(self) -> dict:
         contexte = {

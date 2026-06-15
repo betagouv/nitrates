@@ -55,18 +55,22 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "status_badge",
+        "scope",
+        "region_code",
+        "activation_map",
+        "weight",
         "activated_at",
         "updated_at",
         "created_at",
         "created_by",
         "actions_links",
     )
-    list_filter = ("status",)
-    search_fields = ("name",)
+    list_filter = ("status", "scope", "region_code")
+    search_fields = ("name", "region_code")
     ordering = ("-activated_at", "-created_at")
-    # `created_by` est affiche dans list_display : sans select_related,
-    # 1 query par ligne pour resoudre le User. Avec, 1 JOIN unique.
-    list_select_related = ("created_by",)
+    # `created_by` + `activation_map` sont affiches dans list_display : sans
+    # select_related, 1 query par ligne pour les resoudre. Avec, des JOIN.
+    list_select_related = ("created_by", "activation_map")
     readonly_fields = (
         "yaml_preview",
         "edit_link",
@@ -77,6 +81,18 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (None, {"fields": ("name", "status", "parent", "edit_link")}),
+        (
+            "Zone d'activation (sélection dynamique PAN / PAR / ZAR)",
+            {
+                "fields": ("scope", "region_code", "activation_map", "weight"),
+                "description": (
+                    "PAN = national (ni région ni couche). PAR régional = "
+                    "scope « region » + code région. ZAR = scope « zar » + "
+                    "couche d'activation SIG. Le poids départage les "
+                    "superpositions (le plus élevé gagne)."
+                ),
+            },
+        ),
         (
             "Contenu YAML (lecture seule — utiliser l'éditeur pour modifier)",
             {"fields": ("yaml_preview",)},

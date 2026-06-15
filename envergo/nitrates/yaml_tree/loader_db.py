@@ -12,18 +12,77 @@ vues (`cache_page`).
 
 from io import StringIO
 
+from django.db.models import Q
 from ruamel.yaml import YAML
 
 from envergo.nitrates.models import DecisionTree
 
 
-def load_active_tree() -> dict:
-    """Renvoie le contenu JSON de l'arbre actif.
+def select_active_tree(catalog: dict) -> dict:
+    """Selectionne le contenu de l'arbre actif le plus specifique pour ce point.
 
-    Leve `DecisionTree.DoesNotExist` si aucun tree n'est actif (cas
-    anormal : migration ratee, prod sans donnees importees).
+    Data-driven (pas de cascade if/elif) : chaque DecisionTree actif declare
+    une zone d'activation (national / region / couche SIG) et un poids. On
+    construit dynamiquement le predicat d'activation a partir du catalog et on
+    retient le candidat active de poids MAX.
+
+    Resolution metier : ZAR (poids max) > PAR region > PAN (filet, matche
+    partout). Le PAN est toujours candidat -> il y a toujours un resultat tant
+    qu'un arbre national actif existe.
+
+    Leve `DecisionTree.DoesNotExist` si aucun arbre applicable (PAN manquant).
     """
-    return DecisionTree.objects.get(status=DecisionTree.STATUS_ACTIVE).contenu
+    region_code = catalog.get("region_code") or ""
+    zar_zone_id = catalog.get("zar_zone_id")
+
+    actifs = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+
+    # Predicat d'activation construit a la volee : on n'ajoute la branche
+    # region/zar que si le contexte fournit l'info correspondante. Ajouter un
+    # scope futur (dept, bassin) = une clause Q de plus, zero if metier.
+    activation_q = Q(scope=DecisionTree.SCOPE_NATIONAL)  # matche toujours
+    if region_code:
+        activation_q |= Q(scope=DecisionTree.SCOPE_REGION, region_code=region_code)
+    if zar_zone_id is not None:
+        # Filtrage par PK de zone (indexe) -- meme pattern perf que
+        # MoulinetteNitrates.get_criteria (evite un ST_Intersects exact).
+        activation_q |= Q(
+            scope=DecisionTree.SCOPE_ZAR,
+            activation_map__zones__id=zar_zone_id,
+        )
+
+    tree = actifs.filter(activation_q).order_by("-weight", "-activated_at").first()
+    if tree is None:
+        raise DecisionTree.DoesNotExist(
+            "Aucun arbre actif applicable (PAN manquant ?)."
+        )
+    return tree.contenu
+
+
+def active_national_tree_qs():
+    """Queryset des arbres PAN actifs (scope=national).
+
+    Pour les sites admin/form qui font une requete ORM directe (queryset, pas
+    `contenu`). La structure du formulaire se base toujours sur le PAN.
+    """
+    return DecisionTree.objects.filter(
+        status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+    )
+
+
+def load_active_tree() -> dict:
+    """Renvoie le contenu JSON de l'arbre PAN actif (scope=national).
+
+    Source de verite du FORMULAIRE et des seeds : la structure des questions
+    se base toujours sur le PAN. La selection PAN/PAR/ZAR pour l'EVALUATION
+    passe par `select_active_tree`.
+
+    Leve `DecisionTree.DoesNotExist` si aucun PAN actif (cas anormal :
+    migration ratee, prod sans donnees importees).
+    """
+    return DecisionTree.objects.get(
+        status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+    ).contenu
 
 
 def load_tree_by_id(tree_pk: int) -> dict:
@@ -38,12 +97,14 @@ def load_tree_by_id(tree_pk: int) -> dict:
 
 
 def load_active_tree_raw() -> str:
-    """Renvoie le YAML brut (round-trip ruamel) de l'arbre actif.
+    """Renvoie le YAML brut (round-trip ruamel) de l'arbre PAN actif.
 
     Utilise par le viewer admin pour la coloration syntaxique. Vide si
     `contenu_yaml_brut` n'a pas ete renseigne (import minimal).
     """
-    return DecisionTree.objects.get(status=DecisionTree.STATUS_ACTIVE).contenu_yaml_brut
+    return DecisionTree.objects.get(
+        status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+    ).contenu_yaml_brut
 
 
 def load_active_tree_admin():
