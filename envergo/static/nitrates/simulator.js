@@ -40,6 +40,38 @@
     if (lockedMsg) lockedMsg.hidden = true;
   }
 
+  // ─── Carte #57 : bornage geographique ────────────────────────────────
+  // Quand la parcelle cliquee est dans un departement non ouvert, on masque
+  // le formulaire et on affiche un message dedie (#form-region-fermee).
+
+  function masquerFormulaire() {
+    const formZone = document.getElementById("form-after-localisation");
+    const lockedMsg = document.getElementById("form-locked-message");
+    if (formZone) formZone.hidden = true;
+    if (lockedMsg) lockedMsg.hidden = true;
+  }
+
+  function masquerMessageFerme() {
+    const fermee = document.getElementById("form-region-fermee");
+    if (fermee) fermee.hidden = true;
+  }
+
+  function afficherMessageFerme(regionLabel, departmentCode) {
+    const fermee = document.getElementById("form-region-fermee");
+    if (!fermee) return;
+    const lieu = document.getElementById("form-region-fermee-lieu");
+    if (lieu) {
+      if (regionLabel) {
+        lieu.textContent = regionLabel;
+      } else if (departmentCode) {
+        lieu.textContent = "votre département (" + departmentCode + ")";
+      } else {
+        lieu.textContent = "votre secteur";
+      }
+    }
+    fermee.hidden = false;
+  }
+
   const map = L.map(mapEl, { attributionControl: false }).setView(
     INITIAL_CENTER,
     INITIAL_ZOOM
@@ -126,6 +158,43 @@
   zvLayer.on("add", loadZvIfNeeded);
   zvLayer.addTo(map);
 
+  // Carte #34 : overlay ZAR (Zone d'Action Renforcée). Couvre toutes les ZAR
+  // chargées (potentiellement plusieurs régions ; aujourd'hui le Grand Est).
+  // Non affiché par défaut : c'est une tickbox que l'utilisateur active.
+  const zarLayer = L.geoJSON(null, {
+    style: () => ({
+      color: "#c9191e",
+      weight: 2.5,
+      fillColor: "#ff1a1a",
+      fillOpacity: 0.6,
+    }),
+    onEachFeature: (feature, layer) => {
+      const p = feature.properties || {};
+      const titre = p.nom_complet || p.nom || "ZAR";
+      layer.bindTooltip(`${titre}${p.departement ? " (" + p.departement + ")" : ""}`, {
+        sticky: true,
+      });
+    },
+  });
+  let zarLoaded = false;
+  function loadZarIfNeeded() {
+    if (zarLoaded) return;
+    zarLoaded = true;
+    fetch(window.NITRATES_ZAR_GEOJSON_URL)
+      .then((r) => r.json())
+      .then((data) => {
+        zarLayer.addData(data);
+        // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
+        zarLayer.bringToFront();
+      })
+      .catch((err) => console.error("ZAR GeoJSON load failed:", err));
+  }
+  zarLayer.on("add", function () {
+    loadZarIfNeeded();
+    // Si la couche est déjà chargée, on la repasse au premier plan au ré-add.
+    if (zarLoaded) zarLayer.bringToFront();
+  });
+
   L.control
     .layers(
       {
@@ -135,6 +204,7 @@
       {
         "Cadastre": cadastreOverlay,
         "Zones vulnérables nitrates": zvLayer,
+        "Zones d'action renforcée (ZAR)": zarLayer,
       },
       { collapsed: false }
     )
@@ -304,8 +374,10 @@
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
 
-    // Issues #89 + #96 : devoile le formulaire au 1er clic carte.
-    revealFormAfterLocalisation();
+    // Carte #57 : on NE devoile PAS le formulaire immediatement. On attend
+    // la reponse localisation (DebugView) qui indique si le simulateur est
+    // ouvert pour ce departement. Si ouvert -> on revele le form ; sinon ->
+    // message "pas encore ouvert". cf. .then() ci-dessous.
 
     if (marker) {
       marker.setLatLng(e.latlng);
@@ -330,6 +402,17 @@
       .then(([data, communeInfo, parcelInfo]) => {
         renderDebug(data, communeInfo, parcelInfo);
         updateLocalisationReadonly(data, communeInfo.nom);
+        // Carte #57 : bornage geographique. Le backend renvoie
+        // simulateur_ouvert selon le departement de la parcelle. Si ouvert,
+        // on devoile le formulaire ; sinon on affiche le message "pas encore
+        // ouvert" et on garde le formulaire masque.
+        if (data.simulateur_ouvert) {
+          masquerMessageFerme();
+          revealFormAfterLocalisation();
+        } else {
+          masquerFormulaire();
+          afficherMessageFerme(data.region_label, data.department_code);
+        }
         // Pousse le code INSEE dans le hidden : il sera soumis avec
         // le form et utilise cote backend pour resoudre la zone
         // montagne (D113-14) sans charger les polygones communes.

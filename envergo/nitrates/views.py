@@ -15,6 +15,7 @@ from envergo.nitrates.bassins import (
     bassin_label_from_attributes,
 )
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
+from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 
@@ -128,6 +129,63 @@ class ZoneVulnerableGeoJSONView(View):
         return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
+@method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
+class ZoneActionRenforceeGeoJSONView(View):
+    """Renvoie les polygones ZAR (Zone d'Action Renforcée) en GeoJSON.
+
+    Couvre TOUTES les Map de type zone_action_renforcee (potentiellement
+    plusieurs régions ; pour l'instant le Grand Est seul). Affiché comme
+    overlay optionnel sur la carte du simulateur (tickbox), cf. carte #34.
+
+    Les ZAR sont des petites zones (aires d'alimentation de captage), donc
+    une tolérance de simplification faible suffit. Cache 24h (mêmes raisons
+    que la ZV : données quasi-statiques).
+
+    Format : FeatureCollection WGS84.
+    """
+
+    # ~0.0005° ≈ 50m : les ZAR sont petites, on garde plus de détail que la ZV.
+    SIMPLIFY_TOLERANCE = 0.0005
+
+    def get(self, request, *args, **kwargs):
+        from django.db import connection
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    ST_AsGeoJSON(
+                        ST_SimplifyPreserveTopology(
+                            z.geometry::geometry, %s
+                        )
+                    ),
+                    z.attributes
+                FROM geodata_zone z
+                JOIN geodata_map m ON z.map_id = m.id
+                WHERE m.map_type = %s
+                """,
+                [self.SIMPLIFY_TOLERANCE, MAP_TYPES.zone_action_renforcee],
+            )
+            features = []
+            for geom_json, attributes in cur.fetchall():
+                attrs = attributes or {}
+                if isinstance(attrs, str):
+                    attrs = json.loads(attrs)
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(geom_json),
+                        "properties": {
+                            "nom": attrs.get("NOMZAR"),
+                            "nom_complet": attrs.get("NOMCOMPL"),
+                            "type": attrs.get("TYPABRG"),
+                            "departement": attrs.get("CDDEPT"),
+                        },
+                    }
+                )
+        return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
 class DebugView(View):
     """Renvoie les infos géographiques pour un point (lng, lat) cliqué.
 
@@ -185,6 +243,11 @@ class DebugView(View):
                 "region_label": region_label,
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
+                # Bornage géographique (carte #57) : le simulateur n'est ouvert
+                # que dans certaines régions/départements. Si fermé, le front
+                # affiche un message au lieu du formulaire. Allowlist : fermé
+                # par défaut.
+                "simulateur_ouvert": departement_est_ouvert(department_code),
             }
         )
 
