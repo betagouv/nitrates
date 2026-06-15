@@ -369,3 +369,33 @@ class EvenementPhenologiqueAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_public", "date_calendrier")
     search_fields = ("identifiant", "libelle_public")
     ordering = ("identifiant",)
+
+
+from envergo.nitrates.models import DepartementOuverture  # noqa: E402
+
+
+@admin.register(DepartementOuverture)
+class DepartementOuvertureAdmin(admin.ModelAdmin):
+    """Ouverture géographique du simulateur (carte #57).
+
+    Le pilotage visuel se fait sur la page dédiée « Ouverture géographique »
+    (drag&drop). Cet admin ORM offre une vue tabulaire + actions bulk en
+    secours (filtre par région, ouvrir/fermer une sélection).
+    """
+
+    list_display = ("code", "nom", "region_label", "est_ouvert")
+    list_filter = ("est_ouvert", "region_label")
+    search_fields = ("code", "nom", "region_label", "region_code")
+    list_editable = ("est_ouvert",)
+    ordering = ("region_label", "ordre_affichage", "code")
+    actions = ("ouvrir_selection", "fermer_selection")
+
+    @admin.action(description="Ouvrir le simulateur pour les départements sélectionnés")
+    def ouvrir_selection(self, request, queryset):
+        n = queryset.update(est_ouvert=True)
+        self.message_user(request, f"{n} département(s) ouvert(s).")
+
+    @admin.action(description="Fermer le simulateur pour les départements sélectionnés")
+    def fermer_selection(self, request, queryset):
+        n = queryset.update(est_ouvert=False)
+        self.message_user(request, f"{n} département(s) fermé(s).")

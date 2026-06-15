@@ -26,6 +26,7 @@ MAP_TYPES = Choices(
     ("zonage", "Identifiant zonage"),
     ("zone_sensible_ep", "Zone sensible EP"),
     ("zv_nitrates", "Zone vulnérable nitrates"),
+    ("zone_action_renforcee", "Zone action renforcée nitrates"),
     ("rpg_parcelle", "Parcelle RPG"),
 )
 

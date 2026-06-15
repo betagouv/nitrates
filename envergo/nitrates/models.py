@@ -827,6 +827,11 @@ class BrancheValidationAction(models.Model):
 # pour que Django les enregistre dans l'app nitrates et que les imports
 # `from envergo.nitrates.models import X` fonctionnent.
 
+# Pilotage géographique de l'ouverture du simulateur (cf. carte #57).
+from envergo.nitrates.models_ouverture import (  # noqa: E402, F401
+    DepartementOuverture,
+    departement_est_ouvert,
+)
 from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
     BrancheCulturale,
     CodePrescription,

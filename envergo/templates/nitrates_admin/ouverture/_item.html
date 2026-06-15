@@ -1,0 +1,31 @@
+{% comment %}
+  Un item d'une liste plate de colonne : soit un en-tête de région (non
+  draggable, avec bouton "tout ouvrir/fermer la région"), soit un département
+  (chip draggable).
+  Variables : item, bucket ("ouvert" / "ferme").
+{% endcomment %}
+{% if item.type == "entete" %}
+  <li class="ouverture__entete" data-entete>
+    <span>{{ item.region_label }}</span>
+    {% if bucket == "ouvert" %}
+      <button type="button"
+              class="ouverture__region-toggle"
+              data-region-toggle
+              data-region-code="{{ item.region_code }}"
+              data-cible="false"
+              title="Fermer tous les départements de cette région">⛔ tout fermer</button>
+    {% else %}
+      <button type="button"
+              class="ouverture__region-toggle"
+              data-region-toggle
+              data-region-code="{{ item.region_code }}"
+              data-cible="true"
+              title="Ouvrir tous les départements de cette région">✅ tout ouvrir</button>
+    {% endif %}
+  </li>
+{% else %}
+  <li class="ouverture__dept" data-code="{{ item.dept.code }}">
+    <span class="ouverture__dept-code">{{ item.dept.code }}</span>
+    {% if item.dept.nom %}<span class="ouverture__dept-nom">{{ item.dept.nom }}</span>{% endif %}
+  </li>
+{% endif %}
