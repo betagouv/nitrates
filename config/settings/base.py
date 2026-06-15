@@ -487,6 +487,12 @@ NITRATES_FORM_DEBUG_PANELS = env.bool(
 # Pilote par env var pour pouvoir ouvrir/refermer le root sans redeploy.
 NITRATES_ROOT_OUVERT = env.bool("DJANGO_NITRATES_ROOT_OUVERT", default=False)
 
+# Id du board Miro juriste (arbre réglementaire). Sert à construire les
+# deeplinks `?moveToWidget=<id>` du dashboard de validation. Snapshot des
+# widget_id dans envergo/nitrates/specs/snapshot_miro/arbre_complet/<date>/.
+# Configurable car le board peut être dupliqué/refactoré (cf. carte #140).
+NITRATES_MIRO_BOARD_ID = env("DJANGO_NITRATES_MIRO_BOARD_ID", default="uXjVG_mixZA=")
+
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
 

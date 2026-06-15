@@ -11,6 +11,7 @@ Tableau qui croise pour chaque feuille `culture_principale` :
 Cf. issue #28 / sprint MVP-1 fin.
 """
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError
@@ -148,7 +149,10 @@ def validation_detail(request, pk):
     return render(
         request,
         "nitrates_admin/validation/detail.html",
-        {"branche": branche},
+        {
+            "branche": branche,
+            "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
+        },
     )
 
 
@@ -229,6 +233,7 @@ def validation_edit_meta(request, pk):
         "yaml_snapshot": 50000,
         "resultat_miro": 500,
         "code_pc_miro": 20,
+        "miro_widget_id": 40,
         "note_verif": 2000,
     }
     updated = []

@@ -693,6 +693,16 @@ class BrancheValidation(models.Model):
         help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
     )
     code_pc_miro = models.CharField(max_length=20, blank=True)
+    # Id du widget Miro de la feuille-resultat sur le board juriste. Permet
+    # un deeplink cliquable `?moveToWidget=<id>` (Miro recentre la vue sur
+    # la box) — sans ambiguite, contrairement aux screenshots. Pose au seed
+    # par rapprochement SVG (cf. snapshot_miro/.../mapping_couvert.json),
+    # editable manuellement. Cf. carte #140.
+    miro_widget_id = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="data-widget-id du board Miro (pour deeplink moveToWidget)",
+    )
     screenshot_miro = models.ImageField(
         upload_to=_branche_screenshot_path,
         blank=True,

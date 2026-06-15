@@ -80,13 +80,14 @@
               {% endif %}
             </td>
             <td class="vc-row__media">
+              {% if branche.miro_widget_id %}<span class="vc-miro-link" title="Lien moveToWidget renseigné">🔗</span>{% endif %}
               {% if branche.screenshot_miro %}
                 <img src="{{ branche.screenshot_miro.url }}"
                      alt="Miro"
                      class="vc-thumb vc-clickable"
                      data-lightbox
                      data-src="{{ branche.screenshot_miro.url }}">
-              {% else %}
+              {% elif not branche.miro_widget_id %}
                 <span style="color:#999">—</span>
               {% endif %}
             </td>

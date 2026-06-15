@@ -56,6 +56,20 @@
       {# 1. Miro #}
       <div class="vd-col">
         <h2>📐 Miro juriste</h2>
+        {% if branche.miro_widget_id %}
+          <p class="vd-miro-link">
+            <a href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
+               target="_blank"
+               rel="noopener">↗ Ouvrir la feuille dans le board Miro</a>
+            <span class="vd-miro-id">(widget {{ branche.miro_widget_id }})</span>
+          </p>
+        {% else %}
+          <p style="color:#999">
+            Pas de lien Miro. Coller l'id du widget ci-dessous
+            (board → clic droit sur la box → « Copy link to widget »,
+            l'id est la valeur de <code>moveToWidget=</code>).
+          </p>
+        {% endif %}
         {% if branche.screenshot_miro %}
           <img src="{{ branche.screenshot_miro.url }}"
                alt="Miro"
@@ -86,6 +100,15 @@
                    value="{{ branche.code_pc_miro }}"
                    class="vd-edit-input"
                    maxlength="20">
+          </label>
+          <label class="vd-edit-label">
+            Id widget Miro (moveToWidget)
+            <input type="text"
+                   name="miro_widget_id"
+                   value="{{ branche.miro_widget_id }}"
+                   class="vd-edit-input"
+                   placeholder="3458764674736757749"
+                   maxlength="40">
           </label>
           <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
         </form>
