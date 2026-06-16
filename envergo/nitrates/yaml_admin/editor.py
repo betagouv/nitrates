@@ -50,10 +50,14 @@ class EditResult:
     errors: list[FieldError] = field(default_factory=list)
     # Description courte pour la timeline / undo
     summary: str = ""
+    # Nouvel id du noeud quand une mutation le renomme (ex conversion en
+    # catalogue_parametre : q_* -> n_*). Permet a la vue de re-render avec le
+    # bon path. None si l'id n'a pas change.
+    new_id: str | None = None
 
     @classmethod
-    def success(cls, summary: str = "") -> "EditResult":
-        return cls(ok=True, summary=summary)
+    def success(cls, summary: str = "", new_id: str | None = None) -> "EditResult":
+        return cls(ok=True, summary=summary, new_id=new_id)
 
     @classmethod
     def fail(cls, errors: list[FieldError]) -> "EditResult":
@@ -421,7 +425,11 @@ def convert_node_to_catalogue_parametre(
     Transformation :
       - type_noeud -> "catalogue_parametre"
       - on RETIRE les champs propres au formulaire : niveau, texte, aide, source
-      - on GARDE id et champ (champ = nom logique de sortie, tracabilite)
+      - on RENOMME l'id en 'n_*' (convention catalogue_parametre, cf.
+        grammar.ID_NOEUD_CATALOGUE_RE) : un id 'q_*' herite du formulaire
+        violerait la regle de validation et bloquerait toute edition du noeud.
+        Les renvoi_vers pointant vers l'ancien id sont reportes.
+      - on GARDE champ (nom logique de sortie, tracabilite)
       - on GARDE toutes les branches et leur contenu (noeud/regle/renvoi_vers)
       - on ajoute `expression: ""` (vide) sur chaque branche qui n'en a pas,
         a remplir ensuite par le juriste (l'arbre ne sera pas activable tant
@@ -457,6 +465,7 @@ def convert_node_to_catalogue_parametre(
             ]
         )
 
+    nouvel_id = _id_catalogue_parametre(node.get("id"))
     return _commit_mutation(
         tree=tree,
         user=user,
@@ -465,7 +474,20 @@ def convert_node_to_catalogue_parametre(
         description=(f"Conversion du nœud {node.get('id', '')} en catalogue paramétré"),
         mutate=lambda contenu: _apply_convert_to_catalogue_parametre(contenu, path),
         summary=f"Nœud {node.get('id', '')} converti en catalogue paramétré",
+        new_id=nouvel_id,
     )
+
+
+def _id_catalogue_parametre(ancien_id: str | None) -> str | None:
+    """Id conforme a la convention catalogue_parametre (prefixe 'n_').
+    q_xxx -> n_xxx ; deja n_* -> inchange ; autre -> prefixe 'n_'. None si vide."""
+    if not ancien_id:
+        return None
+    if ancien_id.startswith("n_"):
+        return ancien_id
+    if ancien_id.startswith("q_"):
+        return "n_" + ancien_id[2:]
+    return "n_" + ancien_id
 
 
 def _apply_convert_to_catalogue_parametre(contenu: dict, path: tuple[str, ...]) -> None:
@@ -476,11 +498,36 @@ def _apply_convert_to_catalogue_parametre(contenu: dict, path: tuple[str, ...]) 
     # Retire les champs propres au formulaire / catalogue SIG.
     for cle in ("niveau", "texte", "aide", "source", "reference"):
         node.pop(cle, None)
+    # Renomme l'id pour respecter la convention des catalogue_parametre
+    # (prefixe 'n_', cf. grammar.ID_NOEUD_CATALOGUE_RE). Un noeud formulaire
+    # converti a un id 'q_*' qui violerait la regle de validation et bloquerait
+    # toute edition ulterieure du noeud. On reporte le renommage sur les
+    # renvoi_vers qui pointaient vers l'ancien id.
+    ancien_id = node.get("id")
+    nouvel_id = _id_catalogue_parametre(ancien_id)
+    if nouvel_id and nouvel_id != ancien_id:
+        node["id"] = nouvel_id
+        racine = contenu.get("arbre", {}).get("noeud")
+        if racine:
+            _reporter_renvois(racine, ancien_id, nouvel_id)
     # Ajoute une expression vide sur chaque branche qui n'en a pas, pour que
     # le juriste la remplisse. On preserve valeur + contenu intacts.
     for branche in node.get("branches") or []:
         if isinstance(branche, dict) and "expression" not in branche:
             branche["expression"] = ""
+
+
+def _reporter_renvois(noeud: dict, ancien_id: str, nouvel_id: str) -> None:
+    """Met a jour recursivement les `renvoi_vers` pointant vers `ancien_id`."""
+    if not isinstance(noeud, dict):
+        return
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        if branche.get("renvoi_vers") == ancien_id:
+            branche["renvoi_vers"] = nouvel_id
+        if "noeud" in branche:
+            _reporter_renvois(branche["noeud"], ancien_id, nouvel_id)
 
 
 # ─── Commit pipeline ───────────────────────────────────────────────────────
@@ -494,6 +541,7 @@ def _commit_mutation(
     description: str,
     mutate,
     summary: str,
+    new_id: str | None = None,
 ) -> EditResult:
     """Pattern d'application d'une mutation :
        1. Enregistrer une revision avec snapshot d'avant
@@ -513,7 +561,7 @@ def _commit_mutation(
         mutate(tree.contenu)
         tree.contenu_yaml_brut = _dump_yaml(tree.contenu)
         tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
-    return EditResult.success(summary=summary)
+    return EditResult.success(summary=summary, new_id=new_id)
 
 
 def _dump_yaml(contenu: dict) -> str:
@@ -574,11 +622,20 @@ def _apply_set_branch_content(
     branche = get_branche_at(contenu, parent_path, branche_valeur)
     if branche is None:
         return
-    # On efface les autres clefs de contenu pour respecter "exactement un de".
-    for key in ("noeud", "regle", "renvoi_vers"):
+    # On efface les autres clefs de contenu pour respecter "exactement un de"
+    # (cf. BRANCHE_SCHEMA oneOf : noeud/regle/renvoi_vers/renvoi_arbre/feuille_vide).
+    for key in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide"):
         if key != storage_key and key in branche:
             del branche[key]
-    branche[storage_key] = content_data
+    # Clefs SCALAIRES (string/bool) : le builder renvoie {key: valeur}, on
+    # stocke la valeur brute (le schema attend une string / un bool, pas un
+    # dict). Les clefs structurelles (noeud/regle) stockent le dict tel quel.
+    if storage_key in ("renvoi_vers", "renvoi_arbre", "feuille_vide") and isinstance(
+        content_data, dict
+    ):
+        branche[storage_key] = content_data.get(storage_key)
+    else:
+        branche[storage_key] = content_data
 
 
 def _apply_delete_branch(
@@ -681,4 +738,8 @@ def _storage_key_from_content_kind(content_kind: str) -> str:
         return "regle"
     if content_kind == "renvoi_vers":
         return "renvoi_vers"
+    if content_kind == "renvoi_arbre":
+        return "renvoi_arbre"
+    if content_kind == "feuille_vide":
+        return "feuille_vide"
     raise ValueError(f"content_kind inconnu : {content_kind}")

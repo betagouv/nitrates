@@ -214,6 +214,11 @@ BRANCHE_SCHEMA = {
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
+        # Renvoi explicite vers un autre arbre de la cascade (region|national).
+        "renvoi_arbre": {"type": "string"},
+        # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.
+        # validator). Rend la branche cliquable ; au runtime = no-match/fallback.
+        "feuille_vide": {"type": "boolean"},
     },
     "allOf": [
         # Exactement un mecanisme de selection parmi {valeur, valeurs, expression}.
@@ -240,12 +245,14 @@ BRANCHE_SCHEMA = {
                 },
             ]
         },
-        # Exactement un de {noeud, regle, renvoi_vers} :
+        # Exactement un de {noeud, regle, renvoi_vers, renvoi_arbre, feuille_vide} :
         {
             "oneOf": [
                 {"required": ["noeud"]},
                 {"required": ["regle"]},
                 {"required": ["renvoi_vers"]},
+                {"required": ["renvoi_arbre"]},
+                {"required": ["feuille_vide"]},
             ]
         },
     ],

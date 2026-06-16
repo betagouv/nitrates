@@ -56,12 +56,10 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         "name",
         "status_badge",
         "scope",
-        "region_code",
+        "region_col",
         "activation_map",
-        "weight",
-        "activated_at",
+        "weight_col",
         "updated_at",
-        "created_at",
         "created_by",
         "actions_links",
     )
@@ -158,7 +156,11 @@ class DecisionTreeAdmin(admin.ModelAdmin):
                 edit_url,
             )
         if obj.status == DecisionTree.STATUS_ACTIVE:
-            edit_active_url = reverse("nitrates_admin_yaml_edit_active")
+            # On passe tree_id pour que l'edition cible l'actif de CETTE zone
+            # (PAN/PAR/ZAR), pas le PAN par defaut.
+            edit_active_url = (
+                reverse("nitrates_admin_yaml_edit_active") + f"?tree_id={obj.pk}"
+            )
             return format_html(
                 '<a class="button" href="{}">Voir</a> '
                 '<a class="button" style="background:#1f4789;color:#fff;" href="{}">'
@@ -174,6 +176,16 @@ class DecisionTreeAdmin(admin.ModelAdmin):
             view_url,
             clone_url,
         )
+
+    @admin.display(description="Rég.", ordering="region_code")
+    def region_col(self, obj):
+        # En-tete court : la valeur fait 2 chiffres, inutile d'imposer la
+        # largeur de "Code region" a la colonne.
+        return obj.region_code or "—"
+
+    @admin.display(description="Poids", ordering="weight")
+    def weight_col(self, obj):
+        return obj.weight
 
     @admin.display(description="Statut", ordering="status")
     def status_badge(self, obj):
@@ -205,7 +217,10 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
         edit_url = view_url + "&mode=edition"
         clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
-        edit_active_url = reverse("nitrates_admin_yaml_edit_active")
+        # tree_id pour cibler l'actif de CETTE zone (PAN/PAR/ZAR), pas le PAN.
+        edit_active_url = (
+            reverse("nitrates_admin_yaml_edit_active") + f"?tree_id={obj.pk}"
+        )
         if obj.status == DecisionTree.STATUS_DRAFT:
             # Draft : Voir + Éditer + Cloner (utile aux external_observator
             # pour cloner un draft d'autrui en faire le leur).

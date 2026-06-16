@@ -42,10 +42,11 @@ from envergo.nitrates.yaml_tree import (
     BesoinCatalogue,
     ParcoursError,
     QuestionsSubsidiaires,
+    RenvoiArbre,
     Resultat,
     load_tree_by_id,
     parcours,
-    select_active_tree,
+    select_active_trees,
 )
 
 # Mapping regle.type (YAML) -> RESULTS Envergo.
@@ -69,9 +70,6 @@ TYPE_REGLE_TO_RESULT = {
 # sont lues directement depuis form_kwargs["data"] (request.GET brut)
 # parce que l'ensemble des champs possibles est dicte par l'arbre YAML --
 # on ne veut pas les declarer un par un dans MoulinetteFormNitrates.
-# categorie_fertilisant est exclu du contexte parcours : c'est de la
-# tracabilite front, l'arbre ne s'en sert pas (le mapping vers
-# type_fertilisant est deja resolu cote client via referentiels.yaml).
 CHAMPS_CATALOG = (
     "occupation_sol",
     "sous_culture",
@@ -86,8 +84,11 @@ CHAMPS_EXCLUS_CONTEXTE = {
     "lng",
     "code_insee",  # utilise pour resoudre la zone montagne, pas un champ d'arbre
     "categorie_culture",  # tracabilite front (cf. mapping_sous_culture_vers_branche)
-    "sous_culture_form",  # tracabilite front (libelle UI)
-    "categorie_fertilisant",  # tracabilite front (cf. mapping_sous_fertilisant_vers_type)
+    # sous_culture_form (= identifiant Culture precis, ex 'mais',
+    # 'prairie_moins_6_mois_printemps') et categorie_fertilisant (ex 'fumiers',
+    # 'digestats') NE sont PLUS exclus : ils portent une distinction fine que
+    # les noeuds catalogue_parametre des PAR exploitent par expression Python
+    # (sous_culture / type_fertilisant seuls ne suffisent pas a discriminer).
     "leaflet-base-layers_64",  # parametre Leaflet leftover, non metier
     "draft_tree_id",  # preview admin d'un brouillon, route le chargement de l'arbre
 }
@@ -95,6 +96,14 @@ CHAMPS_EXCLUS_CONTEXTE = {
 # Garde-fou contre une boucle infinie de resolutions catalogue (un arbre
 # normal n'a pas plus de quelques noeuds catalogue empiles).
 MAX_ITERATIONS_CATALOGUE = 20
+
+# Garde-fou contre une boucle de renvois cross-arbre (ZAR -> PAR -> ZAR ...).
+# Borne large : en pratique la cascade fait au plus quelques sauts.
+MAX_ITERATIONS_CASCADE = 20
+
+# Sentinelle : _evaluer_un_arbre la retourne quand l'arbre courant ne mene a
+# aucune feuille (no-match) -> la cascade passe a l'arbre suivant.
+_NO_MATCH = object()
 
 # Alias historique : la sentinelle vit maintenant dans `catalogue_refs`
 # (cf. CATALOGUE_NON_RESOLVABLE). On expose un alias prive ici pour
@@ -108,7 +117,7 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     choice_label = "Arbre de decision PAN"
 
     def evaluate(self):
-        arbre = self._load_decision_tree()
+        arbres = self._load_decision_trees()  # [ArbreCandidat, ...] poids desc
         contexte = self._contexte_initial()
         # On garde une reference sur le contexte pour l'exposer dans le
         # panel debug (utile pour comprendre la resolution complete :
@@ -116,79 +125,163 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         # resolues par les noeuds catalogue, etc.).
         self._contexte = contexte
 
-        # Boucle catalogue : tant que parcours() bute sur un noeud
-        # catalogue interne (genre zone_note_5), on resout via SIG et
-        # on relance.
+        # Trace de la cascade pour le panel debug : ordre + statut de chaque
+        # arbre candidat (selectionne / no-match / renvoi / matche).
+        self._candidats = list(arbres)  # liste ArbreCandidat (ordre de poids)
+        self._cascade_trace: list[dict] = []
+        self._arbre_matche = None  # l'ArbreCandidat qui a produit le resultat
+
+        # CASCADE d'overrides (cf. plan LOT 1b) : les arbres sont tries par
+        # poids decroissant [ZAR, PAR, PAN]. On tente le plus specifique
+        # ENTIEREMENT ; s'il ne mene a aucune feuille (no-match = override
+        # partiel), ou s'il fait un renvoi explicite (renvoi_arbre), on
+        # RECOMMENCE le parcours sur l'arbre suivant/cible avec LE MEME contexte
+        # cumulatif. Le PAN (couvrant) est le filet final.
+        restants = list(arbres)
+        par_scope = {a.scope: a for a in arbres}
+        dernier_no_match = None
+
+        for _ in range(MAX_ITERATIONS_CASCADE):
+            if not restants:
+                break
+            candidat = restants.pop(0)
+            # Memorise l'arbre en cours : c'est lui (et non le PAN par defaut)
+            # qui porte les questions subsidiaires / le resultat final. La vue
+            # s'en sert pour re-collecter les QC + le lien admin.
+            self._arbre_courant = candidat.contenu
+            self._arbre_courant_candidat = candidat
+            issue = self._evaluer_un_arbre(candidat.contenu, contexte)
+
+            if issue is _NO_MATCH:
+                self._cascade_trace.append({"candidat": candidat, "statut": "no-match"})
+                dernier_no_match = self._parcours_error
+                continue
+
+            if isinstance(issue, RenvoiArbre):
+                self._cascade_trace.append(
+                    {
+                        "candidat": candidat,
+                        "statut": f"renvoi -> {issue.scope_cible}",
+                    }
+                )
+                cible = par_scope.get(issue.scope_cible)
+                if cible is None:
+                    self._parcours_error = (
+                        f"renvoi_arbre vers scope '{issue.scope_cible}' : aucun "
+                        f"arbre actif de ce scope pour ce point."
+                    )
+                    self._result_code = RESULTS.non_disponible
+                    self._result = RESULTS.non_disponible
+                    return
+                restants = [a for a in restants if a.scope != issue.scope_cible]
+                restants.insert(0, cible)
+                continue
+
+            # Statut terminal : resultat / questions / catalogue manquant.
+            statut = "matche" if self.regle else "questions/incomplet"
+            self._cascade_trace.append({"candidat": candidat, "statut": statut})
+            self._arbre_matche = candidat
+            return
+
+        # Tous en no-match (PAN inclus = anormal) ou boucle de renvois.
+        self._parcours_error = dernier_no_match or "cascade epuisee"
+        self._result_code = RESULTS.non_disponible
+        self._result = RESULTS.non_disponible
+
+    def _evaluer_un_arbre(self, arbre: dict, contexte: dict):
+        """Parcourt UN arbre (avec resolution des catalogues internes).
+
+        Retourne :
+          - `_NO_MATCH` si le parcours bute sur un no-match (ParcoursError)
+            -> l'appelant tente l'arbre suivant ;
+          - un `RenvoiArbre` si l'arbre renvoie explicitement vers un autre
+            -> l'appelant bascule sur l'arbre cible ;
+          - None si un statut terminal a ete pose sur self (resultat /
+            questions subsidiaires / catalogue manquant / boucle).
+
+        Le `contexte` est partage et mute (les valeurs catalogue resolues y
+        sont ecrites) -> elles sont reinjectees dans les arbres suivants.
+        """
+        # Boucle catalogue : tant que parcours() bute sur un noeud catalogue
+        # interne (genre zone_note_5), on resout via SIG et on relance.
         for _ in range(MAX_ITERATIONS_CATALOGUE):
             try:
                 res = parcours(arbre, contexte)
             except ParcoursError as exc:
-                # Cas typique : la valeur d'URL n'a pas de branche
-                # correspondante dans le draft en cours (incoherence
-                # arbre vs form, ou regroupement de branches modifie
-                # apres saisie). On ne veut pas 500 : on bascule en
-                # non_disponible avec le message en debug.
+                # No-match : la valeur du contexte n'a pas de branche dans CET
+                # arbre. Pour un PAR non couvrant, c'est normal -> on signale a
+                # l'appelant de passer a l'arbre suivant (override en cascade).
                 self._parcours_error = str(exc)
-                self._result_code = RESULTS.non_disponible
-                self._result = RESULTS.non_disponible
-                return
+                return _NO_MATCH
+
+            if isinstance(res, RenvoiArbre):
+                # Renvoi explicite vers un autre arbre : remonte a la cascade.
+                self._chemin = res.chemin_partiel
+                return res
 
             if isinstance(res, BesoinCatalogue):
                 resolu = self._resoudre_catalogue(res)
                 if resolu is _CATALOGUE_NON_RESOLVABLE:
-                    # Dataset SIG manquant pour cette reference. On ne
-                    # peut pas continuer : on retourne non_disponible
-                    # avec un message debug. Cas typique MVP : zonage
-                    # montagne, zone_note_5, etc.
+                    # Dataset SIG manquant pour cette reference. On ne peut pas
+                    # continuer : non_disponible avec un message debug. Cas
+                    # typique MVP : zonage montagne, zone_note_5, etc.
                     self._catalogue_manquant = res
                     self._chemin = res.chemin_partiel
                     self._result_code = RESULTS.non_disponible
                     self._result = RESULTS.non_disponible
-                    return
+                    return None
                 contexte[res.champ] = resolu
                 continue
 
             if isinstance(res, QuestionsSubsidiaires):
+                # L'arbre courant a besoin de reponses : il PRIME, on ne tombe
+                # PAS sur l'arbre suivant (R3). On batch toutes ses questions.
                 self._questions_subsidiaires = res
                 self._chemin = res.chemin_partiel
                 self._result_code = RESULTS.non_disponible
                 self._result = RESULTS.non_disponible
-                return
+                return None
 
             if isinstance(res, Resultat):
                 self._appliquer_resultat(res)
-                return
+                return None
 
-            # Inattendu (parcours() ne retourne que ces 3 dataclasses)
+            # Inattendu (parcours() ne retourne que ces dataclasses)
             self._result_code = RESULTS.non_disponible
             self._result = RESULTS.non_disponible
-            return
+            return None
 
         # Trop de catalogues empiles : on protege contre une boucle.
         self._result_code = RESULTS.non_disponible
         self._result = RESULTS.non_disponible
+        return None
 
     # ─── Construction du contexte ──────────────────────────────────────────
 
-    def _load_decision_tree(self) -> dict:
-        # Source de verite : la table DecisionTree.
-        # Cas preview admin : si `draft_tree_id` est dans le QS, on charge
-        # ce draft a la place de l'actif (cf. killer feature #80). La
-        # verification d'autorisation est faite cote vue (MoulinetteView)
-        # qui strip le parametre si l'utilisateur n'a pas le droit.
+    def _load_decision_trees(self) -> list[tuple[str, dict]]:
+        """Liste ORDONNEE (poids decroissant) de (scope, contenu) a tenter en
+        cascade.
+
+        Cas preview admin : si `draft_tree_id` est dans le QS, on previsualise
+        CE draft SEUL (pas de cascade -- on veut voir ce draft precis). La
+        verification d'autorisation est faite cote vue (MoulinetteView) qui
+        strip le parametre si l'utilisateur n'a pas le droit.
+
+        Sinon : selection dynamique PAN / PAR / ZAR selon la geo du point. Le
+        catalog (region_code, zar_zone_id) a deja ete peuple par
+        MoulinetteNitrates.get_catalog_data avant l'evaluation des criteres.
+        """
         raw_data = self.moulinette.form_kwargs.get("data", {}) or {}
         draft_id = raw_data.get("draft_tree_id")
         if draft_id:
             try:
-                return load_tree_by_id(int(draft_id))
+                # Preview d'un draft : un seul arbre, scope ignore (pas de
+                # cascade en preview).
+                return [("draft", load_tree_by_id(int(draft_id)))]
             except (DecisionTree.DoesNotExist, ValueError, TypeError):
-                # Draft inexistant : fallback silencieux sur l'actif. Mieux
-                # vaut une eval sur l'actif qu'une 500.
+                # Draft inexistant : fallback silencieux sur la cascade active.
                 pass
-        # Selection dynamique PAN / PAR / ZAR selon la geo du point. Le catalog
-        # (region_code, zar_zone_id) a deja ete peuple par
-        # MoulinetteNitrates.get_catalog_data avant l'evaluation des criteres.
-        return select_active_tree(self.catalog)
+        return select_active_trees(self.catalog)
 
     def _contexte_initial(self) -> dict:
         contexte = {
@@ -327,6 +420,33 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
     def questions_subsidiaires(self):
         """Les questions a poser si on n'a pas encore atteint une feuille."""
         return getattr(self, "_questions_subsidiaires", None)
+
+    @property
+    def arbre_courant(self):
+        """L'arbre (contenu) REELLEMENT utilise par la cascade (peut etre un
+        PAR/ZAR, pas le PAN). La vue s'en sert pour re-collecter les questions
+        complementaires du bon arbre (sinon le PAN n'a pas les QC du ZAR)."""
+        return getattr(self, "_arbre_courant", None)
+
+    @property
+    def arbre_matche(self):
+        """L'ArbreCandidat (pk/name/scope) qui a effectivement produit le
+        resultat ou les questions. Sert au lien admin (cible le bon arbre) et au
+        debug. None si la cascade n'a rien produit."""
+        return getattr(self, "_arbre_matche", None) or getattr(
+            self, "_arbre_courant_candidat", None
+        )
+
+    @property
+    def candidats(self):
+        """Liste ordonnee (poids desc) des ArbreCandidat actives pour ce point."""
+        return getattr(self, "_candidats", [])
+
+    @property
+    def cascade_trace(self):
+        """Trace de la cascade : [{candidat, statut}] (selectionne -> no-match /
+        renvoi / matche). Pour le panel debug resultat."""
+        return getattr(self, "_cascade_trace", [])
 
     @property
     def catalogue_manquant(self):

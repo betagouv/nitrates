@@ -201,7 +201,7 @@ class Command(BaseCommand):
             )
 
         try:
-            validate_arbre(arbre, referentiels)
+            validate_arbre(arbre, referentiels, scope=scope)
         except ValidationError as e:
             raise CommandError(
                 "Arbre invalide :\n  - " + "\n  - ".join(e.errors)

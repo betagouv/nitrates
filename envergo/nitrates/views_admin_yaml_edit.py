@@ -1259,6 +1259,10 @@ def _build_content_data(
                 data[k] = v
     elif kind == "renvoi_vers":
         data["renvoi_vers"] = post.get("c_renvoi_vers", "").strip()
+    elif kind == "renvoi_arbre":
+        data["renvoi_arbre"] = post.get("c_renvoi_arbre", "").strip()
+    elif kind == "feuille_vide":
+        data["feuille_vide"] = True
     return data
 
 
@@ -1483,14 +1487,19 @@ class ConvertNodeView(View):
             return HttpResponseForbidden(
                 "; ".join(e.message for e in result.errors) or "Conversion refusée."
             )
-        # Re-render le nœud converti lui-même (son type a changé, ses branches
-        # portent maintenant une expression vide).
+        # La conversion renomme l'id (q_* -> n_*) : on re-render avec le NOUVEAU
+        # path, sinon les actions htmx suivantes cibleraient l'ancien id
+        # (introuvable -> 403, "ca sauvegarde pas"). result.new_id porte le
+        # nouvel id quand un renommage a eu lieu.
+        nouveau_path = path
+        if result.new_id and path:
+            nouveau_path = path[:-1] + (result.new_id,)
         return _render_partial_node_response(
             request,
             tree,
-            path,
-            f"Nœud {path[-1] if path else ''} converti en catalogue paramétré. "
-            f"Renseignez l'expression de chaque branche.",
+            nouveau_path,
+            f"Nœud {nouveau_path[-1] if nouveau_path else ''} converti en "
+            f"catalogue paramétré. Renseignez l'expression de chaque branche.",
         )
 
 
@@ -1511,7 +1520,7 @@ class ValidateTreeView(View):
             )
         arbre = load_tree_admin(tree)
         try:
-            validate_arbre(arbre)
+            validate_arbre(arbre, scope=tree.scope)
             errors: list[str] = []
         except ValidationError as e:
             errors = list(e.errors)
@@ -1875,7 +1884,7 @@ class EditRawYamlView(View):
             )
         # Validation profonde
         try:
-            validate_arbre(arbre_dict)
+            validate_arbre(arbre_dict, scope=tree.scope)
         except ValidationError as exc:
             return render(
                 request,
@@ -1930,7 +1939,7 @@ class ActivateTreeView(View):
             return HttpResponseForbidden(err)
         arbre = load_tree_admin(tree)
         try:
-            validate_arbre(arbre)
+            validate_arbre(arbre, scope=tree.scope)
         except ValidationError as e:
             # Refus : on renvoie le panneau de validation pour que
             # l'utilisateur voit precisement ce qui bloque.

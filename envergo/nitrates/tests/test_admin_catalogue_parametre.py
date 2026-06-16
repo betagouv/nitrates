@@ -311,7 +311,8 @@ def test_convert_complement_preserve_branches_et_contenu(staff_client):
     )
     assert r.status_code == 200
     draft.refresh_from_db()
-    node = editor.get_node_at(draft.contenu, ("n_zvn", "q_effluent"))
+    # La conversion renomme l'id q_effluent -> n_effluent (convention).
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
     # type converti
     assert node["type_noeud"] == "catalogue_parametre"
     # champ gardé, niveau/texte/aide retirés
@@ -363,10 +364,11 @@ def test_editer_branche_persiste_expression(staff_client):
         f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
         f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
     )
-    # édite la branche true pour lui donner une expression
+    # édite la branche true pour lui donner une expression. La conversion a
+    # renomme q_effluent -> n_effluent, on adresse donc le nouvel id.
     r = c.post(
         f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
-        f"?path=n_zvn/q_effluent&valeur=true",
+        f"?path=n_zvn/n_effluent&valeur=true",
         {
             "valeur_new": "true",
             "expression": "sous_fertilisant == 'effluents_peu_charges_elevage'",
@@ -375,7 +377,7 @@ def test_editer_branche_persiste_expression(staff_client):
     )
     assert r.status_code == 200
     draft.refresh_from_db()
-    node = editor.get_node_at(draft.contenu, ("n_zvn", "q_effluent"))
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
     btrue = [b for b in node["branches"] if b["valeur"] is True][0]
     assert btrue["expression"] == "sous_fertilisant == 'effluents_peu_charges_elevage'"
 
@@ -391,7 +393,7 @@ def test_editer_branche_expression_vide_rejetee(staff_client):
     )
     r = c.post(
         f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
-        f"?path=n_zvn/q_effluent&valeur=true",
+        f"?path=n_zvn/n_effluent&valeur=true",
         {"valeur_new": "true", "expression": "", "libelle": "Oui"},
     )
     assert r.status_code == 422
@@ -408,7 +410,78 @@ def test_editer_branche_expression_dunder_rejetee(staff_client):
     )
     r = c.post(
         f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
-        f"?path=n_zvn/q_effluent&valeur=true",
+        f"?path=n_zvn/n_effluent&valeur=true",
         {"valeur_new": "true", "expression": "().__class__", "libelle": "Oui"},
     )
     assert r.status_code == 422
+
+
+# ─── Conversion formulaire -> catalogue_parametre : renommage id q_ -> n_ ───
+
+
+def test_conversion_renomme_id_q_en_n_et_reporte_renvois():
+    """Convertir un noeud formulaire (id q_*) en catalogue_parametre doit
+    renommer l'id en n_* (convention) et reporter les renvoi_vers, sinon le
+    noeud converti viole la regle de validation et devient ineditable."""
+    contenu = {
+        "arbre": {
+            "noeud": {
+                "id": "n_root",
+                "type_noeud": "catalogue",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "id": "q_effluent",
+                            "type_noeud": "formulaire",
+                            "champ": "effluent",
+                            "niveau": "complement",
+                            "texte": "?",
+                            "branches": [{"valeur": True, "regle": {"id": "r_ok"}}],
+                        },
+                    },
+                    {"valeur": False, "renvoi_vers": "q_effluent"},
+                ],
+            }
+        }
+    }
+    editor._apply_convert_to_catalogue_parametre(contenu, ("n_root", "q_effluent"))
+    node = contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["type_noeud"] == "catalogue_parametre"
+    assert node["id"] == "n_effluent"  # q_ -> n_
+    # renvoi_vers reporte sur le nouvel id
+    assert contenu["arbre"]["noeud"]["branches"][1]["renvoi_vers"] == "n_effluent"
+    # L'id respecte desormais la regle catalogue_parametre : plus AUCUNE erreur
+    # sur le champ 'id' (le bug d'origine). Les expressions vides restent a
+    # remplir par le juriste -> ces erreurs-la sont normales et attendues.
+    res = grammar.validate_node_local(node, "noeud_catalogue_parametre")
+    assert not any(e.field == "id" for e in res.errors), res.errors
+
+
+def test_conversion_id_deja_n_inchange():
+    """Un noeud catalogue (id n_*) converti garde son id (deja conforme)."""
+    contenu = {
+        "arbre": {
+            "noeud": {
+                "id": "n_root",
+                "type_noeud": "catalogue",
+                "champ": "x",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "id": "n_zone",
+                            "type_noeud": "catalogue",
+                            "champ": "zone",
+                            "source": "sig",
+                            "branches": [{"valeur": True, "regle": {"id": "r_ok"}}],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    editor._apply_convert_to_catalogue_parametre(contenu, ("n_root", "n_zone"))
+    node = contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["id"] == "n_zone"

@@ -38,7 +38,7 @@ moulinette, request (pour draft_tree_id).
     <div class="nitrates-debug-panel__section">
       <h5 class="nitrates-debug-panel__title">
         Chemin parcouru
-        {% admin_url_for_resultat ev.chemin request.GET.draft_tree_id as admin_link %}
+        {% admin_url_for_resultat ev.chemin request.GET.draft_tree_id ev.arbre_matche.pk as admin_link %}
         {% if admin_link %}
           <a class="nitrates-debug-panel__admin-link"
              href="{{ admin_link }}"
@@ -54,6 +54,38 @@ moulinette, request (pour draft_tree_id).
           </li>
         {% endfor %}
       </ol>
+    </div>
+  {% endif %}
+
+  {% if ev.candidats %}
+    <div class="nitrates-debug-panel__section">
+      <h5 class="nitrates-debug-panel__title">Arbres (cascade PAN / PAR / ZAR)</h5>
+      <dl class="nitrates-debug-panel__dl">
+        <dt>candidats (poids ↓)</dt>
+        <dd>
+          {% for a in ev.candidats %}
+            <code>{{ a.scope }}:{{ a.name }} (w{{ a.weight }})</code>
+            {% if not forloop.last %}·{% endif %}
+          {% endfor %}
+        </dd>
+        <dt>cascade</dt>
+        <dd>
+          {% for t in ev.cascade_trace %}
+            <code>{{ t.candidat.scope }} → {{ t.statut }}</code>
+            {% if not forloop.last %}·{% endif %}
+          {% empty %}
+            <code>—</code>
+          {% endfor %}
+        </dd>
+        <dt>arbre appliqué</dt>
+        <dd>
+          {% if ev.arbre_matche %}
+            <code>{{ ev.arbre_matche.scope }}:{{ ev.arbre_matche.name }} (#{{ ev.arbre_matche.pk }})</code>
+          {% else %}
+            <code>—</code>
+          {% endif %}
+        </dd>
+      </dl>
     </div>
   {% endif %}
 
@@ -78,6 +110,10 @@ moulinette, request (pour draft_tree_id).
         <dt>en_zone_vulnerable</dt>
         <dd>
           <code>{{ moulinette.catalog.en_zone_vulnerable }}</code>
+        </dd>
+        <dt>en_zar</dt>
+        <dd>
+          <code>{{ moulinette.catalog.en_zar }}</code>
         </dd>
         <dt>zone_montagne_d113_14</dt>
         <dd>

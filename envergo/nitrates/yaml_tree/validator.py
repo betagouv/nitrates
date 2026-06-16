@@ -39,6 +39,7 @@ def validate_arbre(
     arbre: dict,
     referentiels: dict | None = None,
     references_sig_supportees: set[str] | None = None,
+    scope: str = "national",
 ) -> None:
     """Lance toute la chaine de validation. Leve ValidationError si KO.
 
@@ -56,6 +57,12 @@ def validate_arbre(
     reference n'est pas couverte par le backend (= dataset SIG manquant).
     Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
     que les datasets -- mais on les liste pour traque.
+
+    scope : type d'arbre ('national' = PAN, 'region'/'zar' = PAR). Le PAN doit
+    etre COUVRANT (toutes les valeurs booleennes couvertes, cf. exhaustivite).
+    Les PAR/ZAR sont des OVERRIDES PARTIELS : un cas non couvert retombe sur
+    l'arbre de poids inferieur (no-match -> cascade). On ne leur applique donc
+    PAS le check d'exhaustivite booleenne.
     """
     errors: list[str] = []
 
@@ -77,7 +84,13 @@ def validate_arbre(
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
     errors.extend(_check_catalogue_parametre(arbre))
-    errors.extend(_check_branches_booleennes_exhaustives(arbre))
+    # Exhaustivite booleenne : seulement pour le PAN (couvrant). Les PAR/ZAR
+    # sont des overrides partiels -> les trous sont legitimes (fallback cascade).
+    if scope == "national":
+        errors.extend(_check_branches_booleennes_exhaustives(arbre))
+        # Feuille vide interdite pour le PAN (il doit produire une regle
+        # partout, pas de reponse sans incidence). Autorisee pour PAR/ZAR.
+        errors.extend(_check_pas_de_feuille_vide(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -220,6 +233,19 @@ def _check_renvois_vers(arbre: dict, ids: dict[str, list[str]]) -> list[str]:
             errors.append(
                 f"[renvoi_vers] '{cible}' (depuis branche valeur="
                 f"{branche.get('valeur')!r}) ne pointe vers aucun id existant"
+            )
+    return errors
+
+
+def _check_pas_de_feuille_vide(arbre: dict) -> list[str]:
+    """Le PAN ne doit contenir aucune feuille_vide : il est couvrant et doit
+    produire une regle sur chaque chemin. (Les PAR/ZAR, eux, les autorisent.)"""
+    errors: list[str] = []
+    for branche in _walk_branches(arbre):
+        if branche.get("feuille_vide"):
+            errors.append(
+                "[feuille_vide] une feuille vide n'est pas autorisee dans le "
+                "PAN national (l'arbre doit etre couvrant). Reservee aux PAR/ZAR."
             )
     return errors
 

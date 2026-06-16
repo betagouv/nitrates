@@ -240,6 +240,11 @@ class DebugView(View):
                 "bassin": bassin_code_from_attributes(attrs),
             }
 
+        en_zar = Zone.objects.filter(
+            map__map_type=MAP_TYPES.zone_action_renforcee,
+            geometry__intersects=point,
+        ).exists()
+
         return JsonResponse(
             {
                 "lng": lng,
@@ -249,6 +254,7 @@ class DebugView(View):
                 "region_label": region_label,
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
+                "en_zar": en_zar,
                 # Bornage géographique (carte #57) : le simulateur n'est ouvert
                 # que dans certaines régions/départements. Si fermé, le front
                 # affiche un message au lieu du formulaire. Allowlist : fermé
@@ -429,15 +435,25 @@ class MoulinetteView(View):
             load_tree_by_id,
         )
 
-        # Si on est en preview d'un draft, on collecte les QC du draft.
-        draft_id = request.GET.get("draft_tree_id")
-        if draft_id:
-            try:
-                arbre_actif = load_tree_by_id(int(draft_id))
-            except (DecisionTree.DoesNotExist, ValueError, TypeError):
+        # On collecte les QC sur l'arbre REELLEMENT evalue par la cascade
+        # (peut etre un PAR/ZAR, pas le PAN). Sinon le panel gauche ne
+        # retrouverait pas les QC du ZAR (le PAN ne les a pas).
+        arbre_actif = None
+        for e in regulations_evaluees:
+            ac = getattr(e["evaluator"], "arbre_courant", None)
+            if ac:
+                arbre_actif = ac
+                break
+        if arbre_actif is None:
+            # Fallback (pas d'eval arbre, ex preview draft ou hors ZV).
+            draft_id = request.GET.get("draft_tree_id")
+            if draft_id:
+                try:
+                    arbre_actif = load_tree_by_id(int(draft_id))
+                except (DecisionTree.DoesNotExist, ValueError, TypeError):
+                    arbre_actif = load_active_tree()
+            else:
                 arbre_actif = load_active_tree()
-        else:
-            arbre_actif = load_active_tree()
         contexte_courant = dict(request.GET.items())
         # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
         # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre

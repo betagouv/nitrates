@@ -10,6 +10,7 @@ invalider quand un nouveau tree est active. Le cache HTTP reste sur les
 vues (`cache_page`).
 """
 
+from dataclasses import dataclass
 from io import StringIO
 
 from django.db.models import Q
@@ -18,28 +19,27 @@ from ruamel.yaml import YAML
 from envergo.nitrates.models import DecisionTree
 
 
-def select_active_tree(catalog: dict) -> dict:
-    """Selectionne le contenu de l'arbre actif le plus specifique pour ce point.
+@dataclass
+class ArbreCandidat:
+    """Un arbre actif candidat de la cascade, avec son identite (pour le debug
+    et les liens admin) en plus de son contenu."""
 
-    Data-driven (pas de cascade if/elif) : chaque DecisionTree actif declare
-    une zone d'activation (national / region / couche SIG) et un poids. On
-    construit dynamiquement le predicat d'activation a partir du catalog et on
-    retient le candidat active de poids MAX.
+    pk: int
+    name: str
+    scope: str
+    weight: int
+    contenu: dict
 
-    Resolution metier : ZAR (poids max) > PAR region > PAN (filet, matche
-    partout). Le PAN est toujours candidat -> il y a toujours un resultat tant
-    qu'un arbre national actif existe.
 
-    Leve `DecisionTree.DoesNotExist` si aucun arbre applicable (PAN manquant).
+def _activation_q(catalog: dict) -> Q:
+    """Predicat d'activation construit a la volee depuis le catalog (geo).
+
+    Data-driven (pas de cascade if/elif) : on n'ajoute la branche region/zar que
+    si le contexte fournit l'info correspondante. Ajouter un scope futur (dept,
+    bassin) = une clause Q de plus, zero if metier.
     """
     region_code = catalog.get("region_code") or ""
     zar_zone_id = catalog.get("zar_zone_id")
-
-    actifs = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
-
-    # Predicat d'activation construit a la volee : on n'ajoute la branche
-    # region/zar que si le contexte fournit l'info correspondante. Ajouter un
-    # scope futur (dept, bassin) = une clause Q de plus, zero if metier.
     activation_q = Q(scope=DecisionTree.SCOPE_NATIONAL)  # matche toujours
     if region_code:
         activation_q |= Q(scope=DecisionTree.SCOPE_REGION, region_code=region_code)
@@ -50,13 +50,50 @@ def select_active_tree(catalog: dict) -> dict:
             scope=DecisionTree.SCOPE_ZAR,
             activation_map__zones__id=zar_zone_id,
         )
+    return activation_q
 
-    tree = actifs.filter(activation_q).order_by("-weight", "-activated_at").first()
-    if tree is None:
+
+def select_active_trees(catalog: dict) -> list["ArbreCandidat"]:
+    """Liste ORDONNEE (poids decroissant) d'ArbreCandidat (pk/name/scope/contenu)
+    des arbres actifs
+    actives pour ce point. Pour la CASCADE d'evaluation : on tente l'arbre de
+    plus haut poids ; s'il ne mene a aucune feuille (override partiel =
+    no-match), on passe au suivant ; le PAN (poids min, matche partout) est le
+    filet final.
+
+    Le `scope` est remonte pour resoudre les renvois explicites
+    (`renvoi_arbre: region|national`) qui basculent d'un arbre a l'autre.
+
+    Resolution metier : ZAR (20) > PAR region (10) > PAN (1).
+
+    Leve `DecisionTree.DoesNotExist` si la liste est vide (PAN manquant).
+    """
+    trees = list(
+        DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+        .filter(_activation_q(catalog))
+        .order_by("-weight", "-activated_at")
+    )
+    if not trees:
         raise DecisionTree.DoesNotExist(
             "Aucun arbre actif applicable (PAN manquant ?)."
         )
-    return tree.contenu
+    return [
+        ArbreCandidat(
+            pk=t.pk, name=t.name, scope=t.scope, weight=t.weight, contenu=t.contenu
+        )
+        for t in trees
+    ]
+
+
+def select_active_tree(catalog: dict) -> dict:
+    """Contenu de l'arbre actif le plus specifique (poids max) pour ce point.
+
+    Conserve pour les usages qui veulent UN seul arbre (sans cascade). La
+    cascade d'evaluation utilise `select_active_trees`.
+
+    Leve `DecisionTree.DoesNotExist` si aucun arbre applicable (PAN manquant).
+    """
+    return select_active_trees(catalog)[0].contenu
 
 
 def active_national_tree_qs():

@@ -345,10 +345,19 @@ class DecisionTree(models.Model):
     def clone_to_draft(cls, source: "DecisionTree", user=None) -> "DecisionTree":
         """Clone un tree existant en nouveau draft. Le contenu et le YAML
         brut sont dupliques en profondeur. Le nouveau draft pointe vers
-        `source` via `parent`."""
+        `source` via `parent`.
+
+        La zone d'activation (scope / region_code / activation_map / weight)
+        est HERITEE de la source : un draft de PAR/ZAR reste dans sa zone, pour
+        que la preview et l'activation soient coherentes (sinon un draft de ZAR
+        deviendrait un PAN a l'activation)."""
         return cls.objects.create(
             name=cls.unique_draft_name(source.name, user=user),
             status=cls.STATUS_DRAFT,
+            scope=source.scope,
+            region_code=source.region_code,
+            activation_map=source.activation_map,
+            weight=source.weight,
             contenu=copy.deepcopy(source.contenu),
             contenu_yaml_brut=source.contenu_yaml_brut,
             parent=source,

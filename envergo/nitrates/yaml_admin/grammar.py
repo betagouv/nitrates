@@ -125,6 +125,10 @@ def validate_node_local(
         errors.extend(_validate_branche(data))
     elif kind == "renvoi_vers":
         errors.extend(_validate_renvoi_vers(data, arbre))
+    elif kind == "renvoi_arbre":
+        errors.extend(_validate_renvoi_arbre(data))
+    elif kind == "feuille_vide":
+        errors.extend(_validate_feuille_vide(data))
     else:
         errors.append(FieldError("kind", f"Type inconnu : {kind!r}."))
 
@@ -348,6 +352,31 @@ def _validate_renvoi_vers(data: dict, arbre: dict | None) -> list[FieldError]:
     return errors
 
 
+RENVOI_ARBRE_SCOPES = ("region", "national")
+
+
+def _validate_renvoi_arbre(data: dict) -> list[FieldError]:
+    cible = data.get("renvoi_arbre") if isinstance(data, dict) else None
+    if not cible:
+        return [FieldError("renvoi_arbre", "Le scope cible est requis.")]
+    if cible not in RENVOI_ARBRE_SCOPES:
+        return [
+            FieldError(
+                "renvoi_arbre",
+                f"Scope invalide {cible!r} : attendu "
+                f"{' ou '.join(RENVOI_ARBRE_SCOPES)}.",
+            )
+        ]
+    return []
+
+
+def _validate_feuille_vide(data: dict) -> list[FieldError]:
+    # Marqueur booleen sans autre champ : on tolere {feuille_vide: True}.
+    if not (isinstance(data, dict) and data.get("feuille_vide") is True):
+        return [FieldError("feuille_vide", "feuille_vide doit valoir true.")]
+    return []
+
+
 def _is_valid_date_jjmm(s: str) -> bool:
     try:
         jour, mois = s.split("/")
@@ -411,6 +440,11 @@ def get_allowed_child_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[s
     allowed.append("noeud_catalogue")
     allowed.append("regle")
     allowed.append("renvoi_vers")
+    # Renvoi explicite vers un autre arbre + feuille vide : utiles pour les
+    # PAR/ZAR (overrides partiels). Proposes toujours ; la validation deep
+    # (a l'activation) refuse une feuille_vide dans un PAN national.
+    allowed.append("renvoi_arbre")
+    allowed.append("feuille_vide")
 
     # Garde-fou : si parent_node est None (chemin invalide), on ne fait
     # confiance a rien.

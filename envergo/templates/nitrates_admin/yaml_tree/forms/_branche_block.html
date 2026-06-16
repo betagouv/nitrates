@@ -43,4 +43,24 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
       <code class="yaml-tree__renvoi-target">→ {{ branche.renvoi_vers }}</code>
     </div>
   {% endif %}
+
+  {% if branche.renvoi_arbre %}
+    <div class="yaml-tree__renvoi">
+      <span class="yaml-tag tag-renvoi" title="Renvoi vers un autre arbre">
+        <span class="yaml-tag__icon" aria-hidden="true">🔀</span>
+        <span class="yaml-tag__label">renvoi arbre</span>
+      </span>
+      <code class="yaml-tree__renvoi-target">→ {{ branche.renvoi_arbre }}</code>
+    </div>
+  {% endif %}
+
+  {% if branche.feuille_vide %}
+    <div class="yaml-tree__renvoi">
+      <span class="yaml-tag tag-renvoi"
+            title="Feuille vide : réponse sans règle (fallback)">
+        <span class="yaml-tag__icon" aria-hidden="true">∅</span>
+        <span class="yaml-tag__label">feuille vide</span>
+      </span>
+    </div>
+  {% endif %}
 </div>

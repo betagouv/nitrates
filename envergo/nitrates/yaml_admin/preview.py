@@ -144,6 +144,7 @@ def compute_simulator_params(
     arbre: dict,
     path: tuple[str, ...],
     leaf_branch: tuple[str, object] | None = None,
+    point_override: dict | None = None,
 ) -> dict:
     """Retourne le dict {champ: valeur} a passer en GET au simulateur pour
     atterrir sur ce noeud (au plus pres).
@@ -259,8 +260,11 @@ def compute_simulator_params(
             if isinstance(branche_choisie, dict) and branche_choisie.get("expression"):
                 expressions_a_satisfaire.append(branche_choisie["expression"])
 
-    # Choix d'un point de reference qui satisfait les contraintes SIG.
-    point = _select_point(sig_constraints)
+    # Choix d'un point de reference. Si l'arbre est active par une couche SIG
+    # (ex ZAR), `point_override` impose un point REEL dans cette couche -- sinon
+    # la preview tomberait hors zone et l'arbre ne s'activerait pas. A defaut,
+    # on resout le point par les contraintes SIG du chemin (ZV, note_5...).
+    point = point_override or _select_point(sig_constraints)
     for k, v in point.items():
         if v:
             params.setdefault(k, v)
@@ -340,6 +344,26 @@ def _select_point(sig_constraints: dict) -> dict:
         except (TypeError, KeyError):
             continue
     return _POINTS["reims_zv"]  # fallback ultime
+
+
+def point_for_activation_map(activation_map) -> dict | None:
+    """Point reel (lat/lng/code_insee) a l'interieur de la couche SIG d'un
+    arbre (ex ZAR), pour que la preview tombe DANS la zone d'activation.
+
+    Prend le centroide d'une zone de la Map. Generique : marche pour toute
+    couche d'activation, pas seulement la ZAR Grand Est. Retourne None si la
+    Map n'a pas de geometrie exploitable (-> on retombe sur le resolveur SIG).
+    """
+    if activation_map is None:
+        return None
+    zone = activation_map.zones.exclude(geometry__isnull=True).first()
+    if zone is None or zone.geometry is None:
+        return None
+    centroid = zone.geometry.centroid
+    # code_insee laisse vide : les arbres actives par couche SIG (ZAR) ne
+    # dependent pas du zonage commune ; le point geographique suffit a resoudre
+    # en_zar / region / ZV cote moulinette.
+    return {"lat": f"{centroid.y:.6f}", "lng": f"{centroid.x:.6f}"}
 
 
 # ─── Cascade form ──────────────────────────────────────────────────────────

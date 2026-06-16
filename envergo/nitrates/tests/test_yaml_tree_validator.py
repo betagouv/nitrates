@@ -646,6 +646,30 @@ def test_branche_booleenne_manquante_leve_erreur_false():
     assert "False" in msgs
 
 
+def test_exhaustivite_booleenne_seulement_pour_national():
+    """Un arbre booleen incomplet (branche False manquante) :
+    - scope national (PAN) -> bloque (le PAN doit etre couvrant) ;
+    - scope region/zar (PAR override partiel) -> PASSE (les trous sont
+      legitimes, le cas non couvert retombe en cascade sur l'arbre inferieur).
+    """
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"] = [
+        b for b in a["arbre"]["noeud"]["branches"] if b["valeur"] is True
+    ]
+    # national : bloque
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a, scope="national")
+    assert "[exhaustivite]" in " ".join(exc.value.errors)
+    # region / zar : pas d'erreur d'exhaustivite
+    for scope in ("region", "zar"):
+        try:
+            validate_arbre(a, scope=scope)
+        except ValidationError as e:
+            assert not any(
+                "exhaustivite" in m for m in e.errors
+            ), f"exhaustivite ne devrait pas bloquer en scope={scope}"
+
+
 def test_branches_non_booleennes_ne_declenchent_pas_exhaustivite():
     """Pour les noeuds dont les branches sont des slugs (type_0, colza, ...),
     on ne contraint pas l'exhaustivite : le domaine peut etre ouvert."""

@@ -363,4 +363,28 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       {% if err.field == "renvoi_vers" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
+
+{% elif kind == "renvoi_arbre" %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>arbre cible</span>
+      <select name="c_renvoi_arbre" required>
+        <option value="">— choisir —</option>
+        <option value="region"
+                {% if form_data.c_renvoi_arbre == "region" %}selected{% endif %}>PAR régional</option>
+        <option value="national"
+                {% if form_data.c_renvoi_arbre == "national" %}selected{% endif %}>PAN national</option>
+      </select>
+    </label>
+    {% for err in errors %}
+      {% if err.field == "renvoi_arbre" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+    {% endfor %}
+  </div>
+
+{% elif kind == "feuille_vide" %}
+  <p class="yaml-tree__form-help">
+    Réponse explicite sans règle : rend cette branche sélectionnable dans le
+    formulaire, mais ne produit aucun résultat — l'évaluation retombe sur
+    l'arbre inférieur (PAR puis PAN). Réservée aux PAR/ZAR. Aucun champ à saisir.
+  </p>
 {% endif %}

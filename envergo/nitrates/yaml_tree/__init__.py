@@ -14,6 +14,7 @@ Modules :
 
 from envergo.nitrates.yaml_tree.loader import load_arbre, load_referentiels
 from envergo.nitrates.yaml_tree.loader_db import (
+    ArbreCandidat,
     active_national_tree_qs,
     load_active_tree,
     load_active_tree_admin,
@@ -22,12 +23,14 @@ from envergo.nitrates.yaml_tree.loader_db import (
     load_tree_by_id,
     load_tree_raw,
     select_active_tree,
+    select_active_trees,
 )
 from envergo.nitrates.yaml_tree.parcours import (
     BesoinCatalogue,
     ParcoursError,
     QuestionFormulaire,
     QuestionsSubsidiaires,
+    RenvoiArbre,
     Resultat,
     collecter_qc_du_chemin,
     parcours,
@@ -44,6 +47,8 @@ __all__ = [
     "load_tree_by_id",
     "load_tree_raw",
     "select_active_tree",
+    "select_active_trees",
+    "ArbreCandidat",
     "active_national_tree_qs",
     "validate_arbre",
     "ValidationError",
@@ -52,6 +57,7 @@ __all__ = [
     "QuestionsSubsidiaires",
     "QuestionFormulaire",
     "BesoinCatalogue",
+    "RenvoiArbre",
     "ParcoursError",
     "collecter_qc_du_chemin",
 ]

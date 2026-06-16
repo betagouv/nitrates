@@ -166,6 +166,20 @@ class BesoinCatalogue:
     chemin_partiel: list[str] = field(default_factory=list)
 
 
+@dataclass
+class RenvoiArbre:
+    """Le parcours a atteint une feuille `renvoi_arbre` : renvoi EXPLICITE vers
+    un autre arbre de la cascade (ex une branche ZAR qui renvoie au PAR).
+
+    `scope_cible` designe l'arbre vise par son scope (region / national).
+    L'evaluateur, qui connait la liste des arbres actifs pour ce point, bascule
+    sur l'arbre candidat de ce scope et le re-parcourt depuis sa racine avec le
+    meme contexte cumulatif."""
+
+    scope_cible: str  # "region" | "national" | "zar"
+    chemin_partiel: list[str] = field(default_factory=list)
+
+
 class ParcoursError(Exception):
     """Levee quand l'arbre est dans un etat impossible a parcourir
     (ex : valeur du contexte ne correspond a aucune branche)."""
@@ -173,7 +187,7 @@ class ParcoursError(Exception):
 
 def parcours(
     arbre: dict, contexte: dict[str, Any]
-) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
+) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Point d'entree principal. Descend l'arbre depuis la racine."""
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
@@ -231,12 +245,29 @@ def _descendre_branche(
     contexte: dict[str, Any],
     chemin: list[str],
     index_ids: dict[str, dict],
-) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
+) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Une fois la branche choisie, on suit ce qu'elle pointe."""
+    if branche.get("feuille_vide"):
+        # Feuille vide : reponse explicite SANS regle (rend la branche
+        # cliquable dans le formulaire sans produire de resultat). Au runtime
+        # = no-match -> la cascade tombe sur l'arbre inferieur (PAR puis PAN).
+        # Reservee aux PAR/ZAR (le PAN doit etre couvrant, cf. validateur).
+        raise ParcoursError(
+            f"feuille_vide atteinte (chemin {'/'.join(chemin)}) : "
+            f"pas de regle ici, fallback vers l'arbre inferieur."
+        )
     if "noeud" in branche:
         return _descendre(branche["noeud"], contexte, chemin, index_ids)
     if "regle" in branche:
         return _faire_resultat(branche["regle"], chemin)
+    if "renvoi_arbre" in branche:
+        # Renvoi explicite vers un autre arbre de la cascade (ex ZAR -> PAR).
+        # L'evaluateur resout le scope cible et re-parcourt cet arbre.
+        scope_cible = branche["renvoi_arbre"]
+        return RenvoiArbre(
+            scope_cible=scope_cible,
+            chemin_partiel=chemin + [f"renvoi_arbre:{scope_cible}"],
+        )
     if "renvoi_vers" in branche:
         cible_id = branche["renvoi_vers"]
         cible = index_ids.get(cible_id)
@@ -256,7 +287,9 @@ def _descendre_branche(
         ):
             return _descendre(cible, contexte, new_chemin, index_ids)
         return _faire_resultat(cible, new_chemin)
-    raise ParcoursError(f"branche sans noeud/regle/renvoi_vers : {branche!r}")
+    raise ParcoursError(
+        f"branche sans noeud/regle/renvoi_vers/renvoi_arbre : {branche!r}"
+    )
 
 
 def _resoudre_catalogue_parametre(
@@ -491,6 +524,18 @@ def _collecter_aval_si_chemin_unique(
             return
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
+                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                break
+        return
+
+    if type_noeud == "catalogue_parametre":
+        # Catalogue parametre : pas de question utilisateur, mais on doit le
+        # TRAVERSER pour atteindre les questions en aval (sinon le batch
+        # s'arrete net et le front rejoue un aller-retour). Le branchement se
+        # fait par expression (premiere vraie l'emporte), comme dans le
+        # parcours reel.
+        for sb in sous.get("branches", []):
+            if evaluer_expression(sb.get("expression"), contexte):
                 _collecter_aval_si_chemin_unique(sb, contexte, questions)
                 break
 

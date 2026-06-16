@@ -9,6 +9,9 @@
 
   const INITIAL_CENTER = [48.96, 4.36];
   const INITIAL_ZOOM = 8;
+  // Point pre-clique par defaut : dans la couche ZAR Grand Est (dev/debug),
+  // pour tomber direct sur un cas ZAR sans chercher un point a la main.
+  const DEFAULT_ZAR_POINT = { lat: 49.544282, lng: 4.248692 };
 
   const ZV_COLORS_BY_BASSIN = {
     FRA: "#e7a854",
@@ -232,6 +235,11 @@
         })`
       : "NON";
 
+    const zarClass = data.en_zar
+      ? "nitrates-debug__badge-yes"
+      : "nitrates-debug__badge-no";
+    const zarText = data.en_zar ? "OUI" : "NON";
+
     const ci = communeInfo || {};
     const communeHtml = ci.nom
       ? `${ci.nom} (INSEE ${ci.code || "—"})`
@@ -255,6 +263,7 @@
         }</dd>
         <dt>Parcelle cadastre</dt><dd>${parcelHtml}</dd>
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
+        <dt>Zone d'action renforcée (ZAR)</dt><dd class="${zarClass}">${zarText}</dd>
       </dl>
     `;
   }
@@ -421,6 +430,16 @@
       })
       .catch((err) => renderError(err.message || String(err)));
   });
+
+  // Aucun lat/lng pre-rempli : on pre-clique un point ZAR par defaut (dev)
+  // pour atterrir direct sur un cas ZAR. Le fire() reutilise le handler
+  // ci-dessus (marker + debug + reveal form). Place APRES le on("click").
+  if (isNaN(initialLng) || isNaN(initialLat)) {
+    map.setView([DEFAULT_ZAR_POINT.lat, DEFAULT_ZAR_POINT.lng], 13);
+    map.fire("click", {
+      latlng: L.latLng(DEFAULT_ZAR_POINT.lat, DEFAULT_ZAR_POINT.lng),
+    });
+  }
 
   // ─── Recherche commune BAN ─────────────────────────────────────────
   const searchInput = document.getElementById("map-search");
