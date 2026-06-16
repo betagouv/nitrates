@@ -39,5 +39,6 @@ jsonschema
 ruamel.yaml
 pyyaml
 py7zr
+openpyxl
 Pygments
 mozilla-django-oidc

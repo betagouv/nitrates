@@ -32,6 +32,7 @@ from envergo.nitrates.zonage_montagne import (
     zonage_montagne_pour_commune,
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
+from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 
 # Sentinelle retournée par un résolveur quand on ne sait pas trancher
 # (dataset SIG manquant, code INSEE absent, etc.). L'évaluator l'attrape
@@ -97,6 +98,14 @@ def _resolve_zone_note_7_montagne(ctx: ResolveContext) -> Any:
 
 def _resolve_zone_note_7_vs_note_6(ctx: ResolveContext) -> Any:
     return note_7_vs_note_6_pour_commune(ctx.code_insee, variante="elargie")
+
+
+def _resolve_zone_grand_est_1(ctx: ResolveContext) -> Any:
+    return est_zone_grand_est_1(ctx.code_insee)
+
+
+def _resolve_zone_grand_est_2(ctx: ResolveContext) -> Any:
+    return est_zone_grand_est_2(ctx.code_insee)
 
 
 # ─── Registre ─────────────────────────────────────────────────────────
@@ -173,6 +182,32 @@ CATALOGUE_RESOLVERS: tuple[CatalogueResolver, ...] = (
         champ="zonage_montagne_regional",
         valeurs_branches=("note_7", "note_6"),
         resolve=_resolve_zone_note_7_vs_note_6,
+    ),
+    CatalogueResolver(
+        reference="zone_grand_est_1",
+        label="Zone Grand Est 1 (PAR7 — maïs / prairies / luzerne)",
+        description=(
+            "Vrai si la commune est en Zone Est 1 du PAR7 Grand Est "
+            "(alinéa 1 art. 3 : allongement interdiction Type II/III sur "
+            "maïs et prairies>6mois / luzerne). Communes 08/51/52/57 listées "
+            "+ départements 54/55/88 entiers. Résolu via le code INSEE."
+        ),
+        champ="zone_grand_est_1",
+        valeurs_branches=("True", "False"),
+        resolve=_resolve_zone_grand_est_1,
+    ),
+    CatalogueResolver(
+        reference="zone_grand_est_2",
+        label="Zone Grand Est 2 (PAR7 — vigne)",
+        description=(
+            "Vrai si la commune est en Zone Est 2 du PAR7 Grand Est "
+            "(alinéa 2 art. 3 : allongement interdiction Type II/III pour la "
+            "vigne uniquement). Départements 08/10/51/52 entiers. Résolu via "
+            "le code INSEE."
+        ),
+        champ="zone_grand_est_2",
+        valeurs_branches=("True", "False"),
+        resolve=_resolve_zone_grand_est_2,
     ),
 )
 
