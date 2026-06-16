@@ -41,6 +41,19 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
         <span class="yaml-tag__label">renvoi</span>
       </span>
       <code class="yaml-tree__renvoi-target">→ {{ branche.renvoi_vers }}</code>
+      {% if branche.patch.code_prescription %}
+        <span class="yaml-tag tag-renvoi"
+              title="Patch : remplace ces codes de prescription sur la feuille atteinte">
+          <span class="yaml-tag__icon" aria-hidden="true">🩹</span>
+          <span class="yaml-tag__label">patch PC</span>
+        </span>
+        <code class="yaml-tree__renvoi-target">
+          {% for src, dst in branche.patch.code_prescription.items %}
+            {{ src }}→{{ dst }}
+            {% if not forloop.last %},{% endif %}
+          {% endfor %}
+        </code>
+      {% endif %}
     </div>
   {% endif %}
 

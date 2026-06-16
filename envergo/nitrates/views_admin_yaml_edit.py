@@ -670,6 +670,10 @@ class EditBrancheView(View):
         if branche is None:
             return HttpResponseForbidden("Branche introuvable.")
         parent = editor.get_node_at(tree.contenu, parent_path)
+        # Patch existant (remap code_prescription) : on l'expose en texte
+        # 'src -> dst' (une ligne par remap) pour pre-remplir le textarea.
+        patch_remap = (branche.get("patch") or {}).get("code_prescription") or {}
+        patch_pc_text = "\n".join(f"{src} -> {dst}" for src, dst in patch_remap.items())
         return render(
             request,
             "nitrates_admin/yaml_tree/forms/_branche_form.html",
@@ -688,6 +692,7 @@ class EditBrancheView(View):
                     else []
                 ),
                 "valeur_choices": _branche_value_choices(tree.contenu, parent_path),
+                "patch_pc_text": patch_pc_text,
             },
         )
 
@@ -807,6 +812,16 @@ class EditBrancheView(View):
             # existe dans l'arbre -- le validateur deep le fera.
             if "renvoi_vers" in branche and new_renvoi:
                 branche["renvoi_vers"] = new_renvoi
+            # Patch optionnel sur renvoi_vers : remap de codes de prescription
+            # sur la feuille atteinte. Saisi en texte, une regle par ligne au
+            # format 'pcX -> pcY'. Plusieurs lignes = plusieurs remaps. Vide =
+            # pas de patch (on retire la cle si elle existait).
+            if "renvoi_vers" in branche:
+                remap = _parse_patch_pc(request.POST.get("patch_pc", ""))
+                if remap:
+                    branche["patch"] = {"code_prescription": remap}
+                else:
+                    branche.pop("patch", None)
             tree.contenu_yaml_brut = editor._dump_yaml(tree.contenu)
             tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
 
@@ -921,6 +936,25 @@ def _branche_value_choices(arbre: dict, parent_path: tuple[str, ...]) -> list[di
             }
         )
     return out
+
+
+def _parse_patch_pc(raw: str) -> dict:
+    """Parse le textarea du patch : une regle par ligne 'pcX -> pcY'.
+    Retourne {src: dst}. Ignore les lignes vides / mal formees. Accepte '->'
+    ou ':' comme separateur, espaces tolerants."""
+    remap: dict = {}
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        sep = "->" if "->" in line else (":" if ":" in line else None)
+        if not sep:
+            continue
+        src, _, dst = line.partition(sep)
+        src, dst = src.strip(), dst.strip()
+        if src and dst:
+            remap[src] = dst
+    return remap
 
 
 def _coerce_valeur(raw: str, target_type):

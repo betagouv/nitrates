@@ -889,6 +889,19 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
                 f"[reference] regle '{obj.get('id')}' : note '{note}' "
                 f"inconnue dans referentiels.yaml"
             )
+
+    # Patch de prescription sur les branches renvoi_vers : les valeurs source
+    # ET cible du remap code_prescription doivent etre des PC connus.
+    for branche in _walk_branches(arbre):
+        patch = branche.get("patch") if isinstance(branche, dict) else None
+        remap = (patch or {}).get("code_prescription") or {}
+        for src, dst in remap.items():
+            for pc in (src, dst):
+                if pc not in codes_pc:
+                    errors.append(
+                        f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
+                        f" : code_prescription '{pc}' inconnu dans referentiels.yaml"
+                    )
     return errors
 
 

@@ -214,6 +214,20 @@ BRANCHE_SCHEMA = {
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
+        # Patch applique sur la feuille atteinte via renvoi_vers : remappe des
+        # codes de prescription (ex {code_prescription: {pc12: pc14}}). Permet
+        # de reutiliser un sous-arbre identique en changeant juste les PC, sans
+        # tout reecrire (cf. CINE detruit avant 31/12 : PC12 -> PC14 en ZAR).
+        "patch": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "code_prescription": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
         # Renvoi explicite vers un autre arbre de la cascade (region|national).
         "renvoi_arbre": {"type": "string"},
         # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.

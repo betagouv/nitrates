@@ -285,8 +285,16 @@ def _descendre_branche(
             "catalogue",
             "catalogue_parametre",
         ):
-            return _descendre(cible, contexte, new_chemin, index_ids)
-        return _faire_resultat(cible, new_chemin)
+            res = _descendre(cible, contexte, new_chemin, index_ids)
+        else:
+            res = _faire_resultat(cible, new_chemin)
+        # Patch optionnel : remappe les codes de prescription sur la feuille
+        # atteinte (ex pc12 -> pc14). Permet de reutiliser un sous-arbre en ne
+        # changeant que les PC, sans dupliquer toutes les feuilles.
+        patch = branche.get("patch")
+        if patch and isinstance(res, Resultat):
+            _appliquer_patch(res, patch)
+        return res
     raise ParcoursError(
         f"branche sans noeud/regle/renvoi_vers/renvoi_arbre : {branche!r}"
     )
@@ -431,7 +439,16 @@ def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
     )
 
 
-# ─── Collecte des questions subsidiaires ────────────────────────────────────
+def _appliquer_patch(res: "Resultat", patch: dict) -> None:
+    """Applique un patch d'une branche renvoi_vers sur la feuille atteinte.
+
+    Aujourd'hui : remap des codes de prescription par valeur
+    (`patch['code_prescription'] = {pc12: pc14}`). On ne touche que si la
+    feuille porte un code present dans le mapping ; les autres restent intacts.
+    """
+    remap = (patch or {}).get("code_prescription") or {}
+    if res.code_prescription and res.code_prescription in remap:
+        res.code_prescription = remap[res.code_prescription]
 
 
 def _collecter_questions(
