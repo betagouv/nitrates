@@ -141,7 +141,13 @@ def update_node(
             del merged[k]
         else:
             merged[k] = v
-    res = validate_node_local(merged, kind, arbre=tree.contenu, own_path=path)
+    # On edite UNIQUEMENT les champs scalaires du noeud (id/champ/niveau...),
+    # jamais les branches. On valide donc le noeud SANS ses branches : sinon
+    # editer le `champ` d'un catalogue_parametre echouerait des qu'une branche
+    # a encore une expression vide (construction en cours) -- bug : la
+    # validation des expressions se fait branche par branche, pas ici.
+    a_valider = {k: v for k, v in merged.items() if k != "branches"}
+    res = validate_node_local(a_valider, kind, arbre=tree.contenu, own_path=path)
     if not res.ok:
         return EditResult.from_validation(res)
     return _commit_mutation(

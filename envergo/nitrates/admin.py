@@ -53,6 +53,7 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         return can_delete_tree(request.user, obj)
 
     list_display = (
+        "id",
         "name",
         "status_badge",
         "scope",

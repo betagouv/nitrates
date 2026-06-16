@@ -432,6 +432,11 @@ class EditNodeView(View):
         # Succes : renvoie la ligne re-rendue (juste le summary visible
         # dans le row, sans les enfants -- htmx swap outerHTML sur le row).
         tree.refresh_from_db()
+        # Si l'id a ete renomme, le path a change : on re-cible le noeud par son
+        # NOUVEAU path (sinon get_node_at renvoie None -> 500 silencieux, pas de
+        # swap, pas d'erreur -- bug renommage d'id).
+        if new_data.get("id") and new_data["id"] != path[-1]:
+            path = path[:-1] + (new_data["id"],)
         node = editor.get_node_at(tree.contenu, path)
         from envergo.nitrates.yaml_admin.preview import (
             build_preview_url,
@@ -851,26 +856,46 @@ def _render_branche_error(request, tree, branche, parent_path, valeur, field, ms
 # parent appartient a ce mapping, l'edition de ses branches enfants force la
 # selection de la valeur dans un dropdown ferme (les slugs canoniques du
 # referentiel). Source unique : envergo/nitrates/specs/referentiels.yaml.
+# Le niveau `sous_culture` de l'arbre correspond a une BrancheCulturale (ORM),
+# PAS a une Culture : on l'alimente depuis le modele BrancheCulturale (cf bug
+# #142, le dropdown listait a tort les Cultures). Les autres niveaux mappent
+# une cle de referentiels.yaml.
 _NIVEAU_TO_REFERENTIEL_KEY = {
     "type_fertilisant": "types_fertilisants",
-    "sous_culture": "sous_cultures",
 }
 
 
 def _branche_value_choices(arbre: dict, parent_path: tuple[str, ...]) -> list[dict]:
     """Liste fermee des valeurs canoniques pour les branches enfants d'un
-    parent dont le niveau est mappe a une cle de referentiels.yaml.
+    parent formulaire.
 
-    Retourne [] si le parent n'a pas de niveau mappe -> le template
-    retombera sur un <input> libre. Sinon retourne
-    [{value, libelle, description}] pour alimenter un <select> ferme.
+    - niveau `sous_culture` -> les BrancheCulturale (ORM).
+    - autres niveaux mappes -> une cle de referentiels.yaml.
+    Retourne [] si le parent n'a pas de source -> le template retombe sur un
+    <input> libre. Sinon [{value, libelle, description}] pour un <select> ferme.
     """
     parent = editor.get_node_at(arbre, parent_path)
     if not isinstance(parent, dict):
         return []
     if parent.get("type_noeud") != "formulaire":
         return []
-    ref_key = _NIVEAU_TO_REFERENTIEL_KEY.get(parent.get("niveau"))
+    niveau = parent.get("niveau")
+
+    if niveau == "sous_culture":
+        try:
+            from envergo.nitrates.models_referentiels import BrancheCulturale
+        except Exception:
+            return []
+        return [
+            {
+                "value": b.identifiant,
+                "libelle": b.libelle_court or b.identifiant,
+                "description": b.description or "",
+            }
+            for b in BrancheCulturale.objects.all().order_by("ordre_affichage")
+        ]
+
+    ref_key = _NIVEAU_TO_REFERENTIEL_KEY.get(niveau)
     if not ref_key:
         return []
     try:

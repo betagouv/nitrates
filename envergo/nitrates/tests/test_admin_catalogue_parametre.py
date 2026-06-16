@@ -485,3 +485,76 @@ def test_conversion_id_deja_n_inchange():
     editor._apply_convert_to_catalogue_parametre(contenu, ("n_root", "n_zone"))
     node = contenu["arbre"]["noeud"]["branches"][0]["noeud"]
     assert node["id"] == "n_zone"
+
+
+def test_update_node_champ_catalogue_parametre_branches_vides():
+    """Editer le `champ` d'un catalogue_parametre ne doit PAS etre bloque par
+    des branches a expression vide (construction en cours) : on ne valide que
+    le noeud, pas ses branches (bug edition silencieuse #142)."""
+    from envergo.nitrates.models import DecisionTree
+    from envergo.users.models import User
+
+    u = User.objects.create(email="ed@test.local", is_staff=True)
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "n_eff",
+                            "champ": "effluent",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "expression": "",
+                                    "regle": {"id": "r_a"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "expression": "",
+                                    "regle": {"id": "r_b"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    t = DecisionTree.objects.create(
+        name="t",
+        status="draft",
+        scope="zar",
+        region_code="44",
+        contenu=arbre,
+        contenu_yaml_brut="",
+    )
+    res = editor.update_node(
+        t, ("n_zvn", "n_eff"), {"id": "n_eff", "champ": "effluent_bis"}, u
+    )
+    assert res.ok, res.errors
+    t.refresh_from_db()
+    node = t.contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["champ"] == "effluent_bis"
+
+
+def test_edit_node_renommage_id_ne_crashe_pas(staff_client, draft):
+    """Renommer l'id d'un noeud via la vue : le re-render doit cibler le
+    NOUVEAU path (sinon get_node_at=None -> get_tags(None) -> 500 silencieux,
+    pas de swap, pas d'erreur). Bug #142."""
+    c, _ = staff_client
+    # draft a un n_origine (catalogue_parametre) sous n_zvn
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/noeud/?path=n_zvn/n_origine",
+        {"id": "n_origine_renomme", "champ": "effluent_peu_charge_elevage"},
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    assert editor.get_node_at(draft.contenu, ("n_zvn", "n_origine_renomme")) is not None
