@@ -148,6 +148,12 @@ _COULEUR_ZONE_PAR_TYPE = {
     "plafonnement": "orange",
 }
 
+# Verbe du tooltip de zone selon sa couleur (#134), aligne sur la legende.
+_VERBE_ZONE = {
+    "rouge": "Interdit",
+    "orange": "Autorisé sous conditions",
+}
+
 _LABEL_PAR_TYPE = {
     "interdiction": "Calendrier d'épandage",
     "autorisation_sous_condition": "Calendrier d'épandage",
@@ -162,10 +168,14 @@ _LABEL_PAR_TYPE = {
 # Annee agricole : on commence le 1er juillet pour que les periodes
 # d'interdiction hivernales (typiquement 15/12 -> 15/01) tombent au
 # centre de la barre. Cf. maquette designeuse.
+# Labels alignes EXACTEMENT sur le calendrier dynamique (calculatrice-
+# calendrier.js : MOIS_AGRICOLES) pour un rendu coherent entre les deux
+# calendriers (#134) : abreviations courtes "Aoû / Sept / Jui" plutot que
+# "Août / Sep / Juin".
 _MOIS_LABELS = [
     "Juil",
-    "Août",
-    "Sep",
+    "Aoû",
+    "Sept",
     "Oct",
     "Nov",
     "Déc",
@@ -174,7 +184,7 @@ _MOIS_LABELS = [
     "Mar",
     "Avr",
     "Mai",
-    "Juin",
+    "Jui",
 ]
 
 # Annee non bissextile : 365 jours. Cumul des jours au debut de chaque mois,
@@ -485,6 +495,17 @@ def calendrier_epandage(regle):
         is_flottant = bool(
             p.get("du") and not DATE_JJMM_RE.match(str(p["du"]))
         ) or bool(p.get("au") and not DATE_JJMM_RE.match(str(p["au"])))
+        # Tooltip au survol de la zone (#134) : meme registre que le calendrier
+        # dynamique ("Interdit du 15 dec. au 15 jan."). Le statique n'en avait
+        # aucun (seulement un aria-label generique "Zone rouge"). On reutilise
+        # periode_phrase pour la phrase de bornes, prefixee du verbe de regime.
+        verbe = _VERBE_ZONE.get(couleur, "")
+        phrase = periode_phrase(p)
+        tooltip = f"{verbe} {phrase}".strip() if verbe else phrase
+        # Borne flottante : on l'annote directement dans le tooltip cote Python
+        # (plutot que dans le template) pour garder le markup court.
+        if is_flottant:
+            tooltip = f"{tooltip} (dates flottantes)"
         if seg:
             for start, width in seg:
                 segments.append(
@@ -493,6 +514,7 @@ def calendrier_epandage(regle):
                         "width_pct": width,
                         "couleur": couleur,
                         "is_flottant": is_flottant,
+                        "tooltip": tooltip,
                     }
                 )
         else:

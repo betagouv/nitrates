@@ -32,12 +32,23 @@ Inputs (cf. templatetag calendrier_epandage) :
         <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}{% if seg.is_flottant %} calendrier-epandage__zone--flottant{% endif %}"
              style="left: {{ seg.start_pct|unlocalize }}%;
                     width: {{ seg.width_pct|unlocalize }}%"
-             aria-label="Zone {{ seg.couleur }}{% if seg.is_flottant %} (date flottante){% endif %}"></div>
+             {% if seg.tooltip %}title="{{ seg.tooltip }}"{% endif %}
+             aria-label="{{ seg.tooltip|default_if_none:'' }}{% if not seg.tooltip %}Zone {{ seg.couleur }}{% endif %}">
+        </div>
       {% endfor %}
 
       <div class="calendrier-epandage__today"
            style="left: {{ today_pct|unlocalize }}%"
            aria-label="Aujourd'hui"></div>
+
+      {% comment %}
+      Label "Aujourd'hui" ancre sur la BARRE (pas sur le point) pour qu'il
+      reste borne par les bords du calendrier et ne soit jamais croppe par
+      overflow:hidden de .__bar, meme quand le point tombe en juillet/juin
+      (#134). Cf. CSS .__today-label.
+      {% endcomment %}
+      <span class="calendrier-epandage__today-label"
+            style="--today-pct: {{ today_pct|unlocalize }}%">Aujourd'hui</span>
     </div>
 
     {% if bornes %}

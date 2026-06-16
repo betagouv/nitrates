@@ -542,14 +542,17 @@
       })
       .join("");
 
-    // Marqueur "aujourd'hui" : point noir DANS la barre (cf. CSS standard
-    // `.calendrier-epandage__today`). Pas de label add-on : le CSS standard
-    // le pose deja via ::after "Aujourd'hui" sous le point.
+    // Marqueur "aujourd'hui" : point noir DANS la barre + label distinct ancre
+    // sur la barre (cf. CSS `.calendrier-epandage__today` / `__today-label`).
+    // Le label est un element a part (plus le ::after) pour etre borne par les
+    // bords du calendrier et ne jamais etre croppe quand le point tombe pres
+    // d'un bord (#134) ; meme structure que le templatetag statique.
     const aujourdhui = aujourdhuiAgricole();
     const aujLeft = aujourdhui != null ? (aujourdhui / TOTAL_JOURS) * 100 : null;
     const aujourdhuiHtml =
       aujLeft != null
-        ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>`
+        ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>` +
+          `<span class="calendrier-epandage__today-label" style="--today-pct:${aujLeft.toFixed(3)}%">Aujourd'hui</span>`
         : "";
 
     // Bornes textuelles sous la barre. Source unique = les segments
