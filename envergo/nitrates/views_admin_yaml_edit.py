@@ -15,6 +15,8 @@ probable mais on est safe).
 
 from __future__ import annotations
 
+import re
+
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseForbidden
@@ -1585,6 +1587,134 @@ class CancelInsertParentView(View):
         return HttpResponse(f'<div id="insert-parent-zone-{slug}"></div>')
 
 
+# Kinds de contenu FEUILLE (pas de noeud enfant) entre lesquels on peut basculer
+# une branche feuille existante sans la supprimer/recreer.
+_CHANGE_CONTENT_KINDS = ("regle", "renvoi_vers", "renvoi_arbre", "feuille_vide")
+
+
+def _render_change_content_form(
+    request, tree, parent_path, valeur, kind, errors=None, form_data=None
+):
+    zone_id = (
+        f"change-content-zone-{slugify('/'.join(parent_path))}-{slugify(str(valeur))}"
+    )
+    return render(
+        request,
+        "nitrates_admin/yaml_tree/forms/_change_content_form.html",
+        {
+            "tree": tree,
+            "parent_path_str": "/".join(parent_path),
+            "valeur": valeur,
+            "zone_id": zone_id,
+            "allowed_kinds": list(_CHANGE_CONTENT_KINDS),
+            "selected_kind": kind,
+            "errors": errors or [],
+            "form_data": form_data or {},
+            "renvoi_targets": _list_renvoi_targets(tree.contenu),
+        },
+        status=422 if errors else 200,
+    )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class ChangeBranchContentView(View):
+    """Change le TYPE de contenu d'une branche feuille existante (renvoi_vers ->
+    feuille_vide, regle -> renvoi_vers, etc.) sans la supprimer/recreer.
+
+    Ne s'applique qu'aux branches feuilles (pas de noeud enfant) : changer le
+    type d'une branche qui porte un sous-arbre n'a pas de sens (on perdrait le
+    sous-arbre). `path` = noeud parent, `valeur` = branche.
+    """
+
+    def get(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur"))
+        branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
+        if branche is None:
+            return HttpResponseForbidden("Branche introuvable.")
+        if isinstance(branche.get("noeud"), dict):
+            return HttpResponseForbidden(
+                "Cette branche porte un sous-arbre : changer son type le "
+                "perdrait. Réservé aux branches feuilles."
+            )
+        # Kind courant (pour pre-selectionner le select).
+        kind = request.GET.get("kind") or _kind_courant_branche(branche)
+        if kind not in _CHANGE_CONTENT_KINDS:
+            kind = _CHANGE_CONTENT_KINDS[0]
+        form_data = {
+            k: v for k, v in request.GET.items() if k not in ("path", "kind", "valeur")
+        }
+        return _render_change_content_form(
+            request, tree, parent_path, valeur, kind, form_data=form_data
+        )
+
+    def post(self, request, tree_pk):
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
+        valeur = _parse_valeur(request.GET.get("valeur") or request.POST.get("valeur"))
+        kind = request.POST.get("kind", "").strip()
+        if kind not in _CHANGE_CONTENT_KINDS:
+            return _render_change_content_form(
+                request,
+                tree,
+                parent_path,
+                valeur,
+                _CHANGE_CONTENT_KINDS[0],
+                errors=[FieldError("kind", f"Type {kind!r} non autorisé ici.")],
+                form_data=request.POST,
+            )
+        content = _build_content_data(
+            kind, request.POST, parent_path, valeur, tree.contenu
+        )
+        result = editor.update_branch_content(
+            tree, parent_path, valeur, kind, content, request.user
+        )
+        if not result.ok:
+            return _render_change_content_form(
+                request,
+                tree,
+                parent_path,
+                valeur,
+                kind,
+                errors=result.errors,
+                form_data=request.POST,
+            )
+        return _render_partial_node_response(
+            request, tree, parent_path, f"Type de la branche {valeur!r} changé."
+        )
+
+
+def _kind_courant_branche(branche: dict) -> str:
+    """Kind feuille courant d'une branche (pour pre-selectionner le select)."""
+    for kind, key in (
+        ("renvoi_vers", "renvoi_vers"),
+        ("renvoi_arbre", "renvoi_arbre"),
+        ("feuille_vide", "feuille_vide"),
+        ("regle", "regle"),
+    ):
+        if key in branche:
+            return kind
+    return _CHANGE_CONTENT_KINDS[0]
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class CancelChangeBranchContentView(View):
+    """GET : ferme le form de changement de type (vide la zone d'accueil)."""
+
+    def get(self, request, tree_pk):
+        path = request.GET.get("path", "")
+        valeur = request.GET.get("valeur", "")
+        slug = f"{slugify(path)}-{slugify(valeur)}"
+        return HttpResponse(f'<div id="change-content-zone-{slug}"></div>')
+
+
 @method_decorator(staff_member_required, name="dispatch")
 class DeleteBrancheView(View):
     """POST : supprime une branche entiere (et tout son contenu).
@@ -1745,21 +1875,23 @@ class ValidateTreeView(View):
 
 
 def _humanize_error(arbre: dict, raw_error: str) -> dict:
-    """Transforme une erreur de validation en dict {label, message, raw}.
+    """Transforme une erreur de validation en dict {label, message, raw, kind}.
 
-    `label` : chemin metier lisible (ex: "Culture principale > Colza >
-    période #1").
-    `message` : la fin du message d'erreur, sans le chemin technique.
+    `label` : ID TECHNIQUE du noeud/regle/branche concerne (ex: 'r_colza',
+    'q_fertilisant'), pour reperer direct dans l'editeur -- PAS un chemin
+    metier (trop long/lent a lire, cf. retour Max 2026-06-17).
+    `message` : la fin du message d'erreur, sans prefixe technique.
     `raw` : message original, montre au survol pour debug.
     `kind` : "structure" / "renvoi_vers" / "niveau" / "ids" / "date" / ...
     """
     import re
 
-    # Erreur de structure (jsonschema) : "[structure] arbre/.../path : msg"
+    # Erreur de structure (jsonschema) : "[structure] arbre/.../path : msg".
+    # On extrait le dernier id technique du path (le plus proche de l'erreur).
     m = re.match(r"^\[structure\]\s*(?P<path>\S*)\s*:\s*(?P<msg>.*)$", raw_error)
     if m:
         return {
-            "label": _path_to_breadcrumb(arbre, m.group("path")),
+            "label": _dernier_id_technique(m.group("path")),
             "message": m.group("msg"),
             "raw": raw_error,
             "kind": "structure",
@@ -1774,98 +1906,78 @@ def _humanize_error(arbre: dict, raw_error: str) -> dict:
     if m:
         valeur = m.group("valeur").strip().strip("'\"")
         cible = m.group("cible")
-        label = _find_branch_breadcrumb(arbre, valeur, "renvoi_vers", cible)
+        # ID technique du noeud qui PORTE la branche en erreur (pour la trouver
+        # dans l'editeur), a defaut la valeur de branche.
+        owner = _find_branch_owner_id(arbre, valeur, "renvoi_vers", cible)
         return {
-            "label": label,
+            "label": owner or valeur,
             "message": f"renvoi vers '{cible}' inconnu",
             "raw": raw_error,
             "kind": "renvoi_vers",
         }
 
-    # Erreur niveau : "[niveau] noeud 'q_xxx' : msg"
+    # Erreur niveau : "[niveau] noeud 'q_xxx' : msg" -> id technique = q_xxx.
     m = re.match(
         r"^\[niveau\]\s*noeud\s*'(?P<nid>[^']+)'\s*:\s*(?P<msg>.*)$", raw_error
     )
     if m:
-        nid = m.group("nid")
-        label = _find_node_breadcrumb(arbre, nid)
         return {
-            "label": label,
+            "label": m.group("nid"),
             "message": m.group("msg"),
             "raw": raw_error,
             "kind": "niveau",
         }
 
-    # Fallback generique
+    # Cas generique : on tente d'extraire un id technique entre quotes du
+    # message (regle 'r_xxx', noeud 'q_xxx'...), sinon pas de label.
     m = re.match(r"^\[(?P<kind>\w+)\]\s*(?P<rest>.*)$", raw_error)
     if m:
+        rest = m.group("rest")
+        id_match = re.search(r"'([a-z][a-zA-Z0-9_]+)'", rest)
         return {
-            "label": "",
-            "message": m.group("rest"),
+            "label": id_match.group(1) if id_match else "",
+            "message": rest,
             "raw": raw_error,
             "kind": m.group("kind"),
         }
     return {"label": "", "message": raw_error, "raw": raw_error, "kind": ""}
 
 
-def _find_branch_breadcrumb(arbre: dict, valeur: str, key: str, value: str) -> str:
-    """Cherche la branche {valeur, key:value} dans l'arbre et renvoie son
-    chemin metier lisible."""
+def _dernier_id_technique(path: str) -> str:
+    """Dernier segment ressemblant a un id technique (q_/n_/r_...) d'un path
+    jsonschema 'arbre/noeud/branches/2/noeud/...'. Vide si rien."""
+    if not path:
+        return ""
+    segs = [
+        s for s in re.split(r"[/.]", path) if re.match(r"^[a-z]_?[a-zA-Z0-9_]*$", s)
+    ]
+    technique = [s for s in segs if "_" in s]
+    return technique[-1] if technique else (segs[-1] if segs else "")
+
+
+def _find_branch_owner_id(arbre: dict, valeur: str, key: str, value: str) -> str:
+    """ID du noeud qui porte la branche {valeur, key:value}. Vide si introuvable."""
     racine = (arbre or {}).get("arbre", {}).get("noeud")
     if not racine:
         return ""
-    found = _walk_for_branch(racine, valeur, key, value, [])
-    return " > ".join(found) if found else ""
+    return _walk_for_branch_owner(racine, valeur, key, value) or ""
 
 
-def _walk_for_branch(noeud, target_valeur, target_key, target_value, crumbs):
+def _walk_for_branch_owner(noeud, target_valeur, target_key, target_value):
     if not isinstance(noeud, dict):
         return None
-    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
-    next_crumbs = crumbs + ([str(label)] if label else [])
     for branche in noeud.get("branches") or []:
         if not isinstance(branche, dict):
             continue
-        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
-        b_crumbs = next_crumbs + ([b_label] if b_label else [])
         if str(branche.get("valeur")) == str(target_valeur) and str(
             branche.get(target_key)
         ) == str(target_value):
-            return b_crumbs
-        if isinstance(branche.get("noeud"), dict):
-            res = _walk_for_branch(
-                branche["noeud"], target_valeur, target_key, target_value, b_crumbs
-            )
-            if res is not None:
-                return res
-    return None
-
-
-def _find_node_breadcrumb(arbre: dict, target_id: str) -> str:
-    """Cherche un noeud par son id et renvoie son chemin metier lisible."""
-    racine = (arbre or {}).get("arbre", {}).get("noeud")
-    if not racine:
-        return ""
-    found = _walk_for_node(racine, target_id, [])
-    return " > ".join(found) if found else ""
-
-
-def _walk_for_node(noeud, target_id, crumbs):
-    if not isinstance(noeud, dict):
-        return None
-    label = noeud.get("texte") or noeud.get("champ") or noeud.get("id")
-    next_crumbs = crumbs + ([str(label)] if label else [])
-    if noeud.get("id") == target_id:
-        return next_crumbs
-    for branche in noeud.get("branches") or []:
-        if not isinstance(branche, dict):
-            continue
-        b_label = branche.get("libelle") or str(branche.get("valeur", ""))
-        b_crumbs = next_crumbs + ([b_label] if b_label else [])
-        if isinstance(branche.get("noeud"), dict):
-            res = _walk_for_node(branche["noeud"], target_id, b_crumbs)
-            if res is not None:
-                return res
+            return noeud.get("id")
+        res = _walk_for_branch_owner(
+            branche.get("noeud"), target_valeur, target_key, target_value
+        )
+        if res is not None:
+            return res
     return None
 
 
@@ -1947,69 +2059,6 @@ def _collect_targets_in_node(noeud, crumbs, out):
         # Sous-noeud
         if isinstance(branche.get("noeud"), dict):
             _collect_targets_in_node(branche["noeud"], b_crumbs, out)
-
-
-def _path_to_breadcrumb(arbre: dict, raw_path: str) -> str:
-    """Convertit un path JSON style "arbre/noeud/branches/1/noeud/branches/0"
-    en chemin lisible "Culture principale > Colza > ...".
-
-    On parcourt l'arbre et a chaque noeud on prend `texte` (ou `champ`),
-    a chaque branche on prend `libelle` (ou `valeur`).
-    """
-    if not raw_path:
-        return ""
-    parts = raw_path.split("/")
-    cursor = arbre
-    crumbs: list[str] = []
-    i = 0
-    while i < len(parts):
-        seg = parts[i]
-        if seg == "arbre":
-            cursor = cursor.get("arbre", {}) if isinstance(cursor, dict) else cursor
-            i += 1
-            continue
-        if seg == "noeud":
-            cursor = cursor.get("noeud", {}) if isinstance(cursor, dict) else cursor
-            if isinstance(cursor, dict):
-                label = cursor.get("texte") or cursor.get("champ") or cursor.get("id")
-                if label:
-                    crumbs.append(str(label))
-            i += 1
-            continue
-        if seg == "branches" and i + 1 < len(parts):
-            try:
-                idx = int(parts[i + 1])
-            except ValueError:
-                break
-            branches = cursor.get("branches") if isinstance(cursor, dict) else None
-            if not branches or idx >= len(branches):
-                break
-            cursor = branches[idx]
-            label = (
-                cursor.get("libelle") if isinstance(cursor, dict) else None
-            ) or str(cursor.get("valeur") if isinstance(cursor, dict) else "")
-            if label:
-                crumbs.append(label)
-            i += 2
-            continue
-        if seg == "regle":
-            cursor = cursor.get("regle", {}) if isinstance(cursor, dict) else cursor
-            i += 1
-            continue
-        if seg == "periodes" and i + 1 < len(parts):
-            try:
-                idx = int(parts[i + 1])
-            except ValueError:
-                break
-            crumbs.append(f"période #{idx + 1}")
-            periodes = cursor.get("periodes") if isinstance(cursor, dict) else None
-            if periodes and idx < len(periodes):
-                cursor = periodes[idx]
-            i += 2
-            continue
-        crumbs.append(seg)
-        i += 1
-    return " > ".join(crumbs) if crumbs else raw_path
 
 
 @method_decorator(staff_member_required, name="dispatch")

@@ -24,6 +24,19 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
                 hx-get="{% url 'nitrates_admin_yaml_edit_branche' tree_pk=tree.pk %}?path={{ parent_path }}&valeur={{ valeur }}"
                 hx-target="#branche-block-{{ parent_path|default_if_none:''|slugify }}-{{ valeur|slugify }}"
                 hx-swap="outerHTML">✎</button>
+        {% comment %}
+          Changer le type de contenu : uniquement sur une branche FEUILLE (pas
+          de sous-arbre a perdre). Permet renvoi_vers <-> feuille_vide <-> regle
+          <-> renvoi_arbre sans supprimer/recreer la branche.
+        {% endcomment %}
+        {% if not branche.noeud %}
+          <button type="button"
+                  class="yaml-tree__edit-btn yaml-tree__edit-btn--change"
+                  title="Changer le type de contenu de cette branche (renvoi / feuille vide / règle…)"
+                  hx-get="{% url 'nitrates_admin_yaml_change_content' tree_pk=tree.pk %}?path={{ parent_path }}&valeur={{ valeur }}"
+                  hx-target="#change-content-zone-{{ parent_path|default_if_none:''|slugify }}-{{ valeur|slugify }}"
+                  hx-swap="outerHTML">🔁</button>
+        {% endif %}
         <button type="button"
                 class="yaml-tree__edit-btn yaml-tree__edit-btn--danger"
                 title="Supprimer cette branche et tout son contenu (annulable via ↩ Annuler)"
@@ -33,6 +46,11 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
       </span>
     {% endif %}
   </div>
+
+  {% comment %}Zone d'accueil du form de changement de type (vide au repos).{% endcomment %}
+  {% if is_editing and not branche.noeud %}
+    <div id="change-content-zone-{{ parent_path|default_if_none:''|slugify }}-{{ valeur|slugify }}"></div>
+  {% endif %}
 
   {% if branche.renvoi_vers %}
     <div class="yaml-tree__renvoi">

@@ -22,12 +22,8 @@
             <span class="yaml-admin__validation-kind yaml-admin__validation-kind--{{ err.kind }}">{{ err.kind }}</span>
           {% endif %}
           {% if err.label %}
-            <span class="yaml-admin__validation-breadcrumb">
-              {% for crumb in err.label|split:" > " %}
-                {% if not forloop.first %}<span class="yaml-admin__validation-breadcrumb-sep">›</span>{% endif %}
-                <span class="yaml-admin__validation-breadcrumb-crumb">{{ crumb }}</span>
-              {% endfor %}
-            </span>
+            <code class="yaml-admin__validation-techid"
+                  title="Identifiant technique — recherchez-le dans l'éditeur">{{ err.label }}</code>
           {% endif %}
           <span class="yaml-admin__validation-msg">{{ err.message }}</span>
         </li>

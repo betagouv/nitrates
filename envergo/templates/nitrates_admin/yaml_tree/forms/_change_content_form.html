@@ -1,0 +1,64 @@
+{% load yaml_admin_extras %}
+
+{% comment %}
+Form de changement de TYPE de contenu d'une branche feuille (sans suppression).
+Bascule entre regle / renvoi_vers / renvoi_arbre / feuille_vide. Reutilise
+_add_form_kind_fields.html pour les champs propres au kind choisi.
+
+Succes -> _render_partial_node_response retargette le <li> du parent. Erreur
+(422) -> on re-render le form dans sa zone (hx-target = zone).
+
+Variables : tree, parent_path_str, valeur, zone_id, allowed_kinds,
+            selected_kind, errors, form_data, renvoi_targets.
+{% endcomment %}
+<div class="yaml-tree__add-form yaml-tree__add-form--change"
+     id="{{ zone_id }}">
+  <form class="yaml-tree__inline-form yaml-tree__inline-form--add"
+        hx-post="{% url 'nitrates_admin_yaml_change_content' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+        hx-target="#{{ zone_id }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    <p class="yaml-tree__add-form-title">
+      Changer le type de la branche <code>{{ valeur }}</code>
+    </p>
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>type de contenu</span>
+        <select name="kind"
+                hx-get="{% url 'nitrates_admin_yaml_change_content' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+                hx-trigger="change"
+                hx-target="#{{ zone_id }}"
+                hx-swap="outerHTML"
+                hx-include="[name='c_renvoi_vers'],[name='c_renvoi_arbre'],[name='c_type']">
+          {% for k in allowed_kinds %}
+            <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "kind" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% include "nitrates_admin/yaml_tree/forms/_add_form_kind_fields.html" with kind=selected_kind errors=errors form_data=form_data %}
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Changer</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_change_content_cancel' tree_pk=tree.pk %}?path={{ parent_path_str }}&valeur={{ valeur }}"
+              hx-target="#{{ zone_id }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>
