@@ -245,6 +245,15 @@
       : "nitrates-debug__badge-no";
     const zarText = data.en_zar ? "OUI" : "NON";
 
+    // Zones Est : affichees seulement en Grand Est (data.en_grand_est).
+    const badge = (v) =>
+      `<dd class="${v ? "nitrates-debug__badge-yes" : "nitrates-debug__badge-no"}">${v ? "OUI" : "NON"}</dd>`;
+    const grandEstHtml = data.en_grand_est
+      ? `<dt>En Grand Est</dt>${badge(true)}` +
+        `<dt>Zone Grand Est 1</dt>${badge(data.zone_grand_est_1)}` +
+        `<dt>Zone Grand Est 2</dt>${badge(data.zone_grand_est_2)}`
+      : "";
+
     const ci = communeInfo || {};
     const communeHtml = ci.nom
       ? `${ci.nom} (INSEE ${ci.code || "—"})`
@@ -269,6 +278,7 @@
         <dt>Parcelle cadastre</dt><dd>${parcelHtml}</dd>
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
         <dt>Zone d'action renforcée (ZAR)</dt><dd class="${zarClass}">${zarText}</dd>
+        ${grandEstHtml}
       </dl>
     `;
   }
@@ -404,15 +414,22 @@
         '<p class="nitrates-debug__placeholder">Chargement…</p>';
     }
 
-    const url = `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}`;
-    Promise.all([
-      fetch(url, { headers: { Accept: "application/json" } }).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      }),
-      fetchCommuneInfo(lat, lng),
-      fetchParcelInfo(lat, lng),
-    ])
+    // On resout d'abord la commune (code INSEE) puis on interroge l'endpoint
+    // debug AVEC ce code : les Zones Est (ZGE1/ZGE2) se resolvent par INSEE
+    // cote serveur, sinon elles ressortent toujours None dans le panneau.
+    Promise.all([fetchCommuneInfo(lat, lng), fetchParcelInfo(lat, lng)])
+      .then(([communeInfo, parcelInfo]) => {
+        const code = communeInfo.code || "";
+        const url =
+          `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}` +
+          (code ? `&code_insee=${encodeURIComponent(code)}` : "");
+        return fetch(url, { headers: { Accept: "application/json" } })
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+          })
+          .then((data) => [data, communeInfo, parcelInfo]);
+      })
       .then(([data, communeInfo, parcelInfo]) => {
         renderDebug(data, communeInfo, parcelInfo);
         updateLocalisationReadonly(data, communeInfo.nom);

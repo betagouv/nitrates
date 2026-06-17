@@ -17,6 +17,7 @@ from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
+from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 
 
 def _cache_in_prod(seconds):
@@ -245,6 +246,12 @@ class DebugView(View):
             geometry__intersects=point,
         ).exists()
 
+        # Zones Est (resolues par code INSEE) : on les expose pour le panneau
+        # debug gauche. code_insee n'est pas connu de cet endpoint (pas de
+        # geocodage commune ici), on passe le code recu du front s'il existe.
+        code_insee = request.GET.get("code_insee") or ""
+        en_grand_est = region_code == "44"
+
         return JsonResponse(
             {
                 "lng": lng,
@@ -255,6 +262,15 @@ class DebugView(View):
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
                 "en_zar": en_zar,
+                "en_grand_est": en_grand_est,
+                # ZGE1/ZGE2 : pertinents seulement en Grand Est (sinon None ->
+                # le front ne les affiche pas).
+                "zone_grand_est_1": (
+                    est_zone_grand_est_1(code_insee) if en_grand_est else None
+                ),
+                "zone_grand_est_2": (
+                    est_zone_grand_est_2(code_insee) if en_grand_est else None
+                ),
                 # Bornage géographique (carte #57) : le simulateur n'est ouvert
                 # que dans certaines régions/départements. Si fermé, le front
                 # affiche un message au lieu du formulaire. Allowlist : fermé
