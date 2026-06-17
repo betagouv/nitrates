@@ -1,4 +1,4 @@
-/* Éditeur de contenu riche DSFR dans l'admin (carte #131). */
+/* Éditeur de contenu riche DSFR dans l'admin (carte #131/#136). */
 
 .cr-editor-holder {
   border: 1px solid #ccc;
@@ -7,12 +7,139 @@
   background: #fff;
   max-width: 900px;
   min-height: 200px;
+
+  /* L'admin Django applique des styles (text-align, listes) sur les form-rows
+     qui débordent dans Editor.js -> puces centrées / sans marqueur. On rétablit
+     un contexte de lecture neutre, aligné à gauche, à l'intérieur du holder. */
+  text-align: left;
 }
 
-/* Editor.js centre son contenu par défaut sur de grands écrans ; on garde une
-   largeur de lecture confortable mais alignée à gauche dans l'admin. */
 .cr-editor-holder .codex-editor__redactor {
   padding-bottom: 100px !important;
+}
+
+/* Listes Editor.js (cdx-list) : l'admin Django (base/forms/widgets.css) impose
+   list-style:none + paddings sur les ul/li des formulaires -> les puces
+   disparaissent. Plutôt que lutter règle par règle, on dessine la puce nous-
+   mêmes via ::before (indépendant de list-style, robuste à tout reset admin).
+   Les items du plugin sont des .cdx-list__item (#136). */
+.cr-editor-holder .cdx-list,
+.cr-editor-holder ul,
+.cr-editor-holder ol {
+  text-align: left;
+  margin: 0.25rem 0;
+
+  /* Retrait de la liste par rapport au texte courant : les puces sont décalées
+     vers la droite (hiérarchie visuelle sous le sous-titre, cf. maquette #136).
+     2rem suffit pour que la puce soit clairement en retrait du bord gauche. */
+  padding-left: 2rem !important;
+  list-style: none !important;
+}
+
+.cr-editor-holder .cdx-list__item,
+.cr-editor-holder li {
+  text-align: left;
+  position: relative;
+  margin: 0.15rem 0;
+  padding-left: 0.2rem;
+  list-style: none;
+}
+
+/* Puce • pour les listes non ordonnées (et fallback <li> nu). */
+.cr-editor-holder .cdx-list--unordered .cdx-list__item::before,
+.cr-editor-holder ul li::before {
+  content: "•";
+  position: absolute;
+  left: -0.9rem;
+  color: #161616;
+  font-weight: 700;
+}
+
+/* Numérotation pour les listes ordonnées : compteur CSS (l'admin a viré le
+   list-style natif). */
+.cr-editor-holder .cdx-list--ordered {
+  counter-reset: cr-ol;
+}
+
+.cr-editor-holder .cdx-list--ordered .cdx-list__item {
+  counter-increment: cr-ol;
+}
+
+.cr-editor-holder .cdx-list--ordered .cdx-list__item::before {
+  content: counter(cr-ol) ".";
+  position: absolute;
+  left: -1.2rem;
+  color: #161616;
+}
+
+/* Titres + paragraphes alignés sur le MÊME bord gauche (le header était décalé
+   vs les paragraphes, cf. retour #136). On neutralise leurs marges/paddings
+   latéraux SANS toucher aux listes (qui, elles, doivent garder leur retrait de
+   puces -> sinon « tout à plat »). On ne cible donc PAS .cdx-block ici. */
+.cr-editor-holder .ce-paragraph,
+.cr-editor-holder .ce-header {
+  text-align: left;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  max-width: none;
+}
+
+/* Le conteneur de bloc (.ce-block__content) est aligné mais NE force pas le
+   padding à 0 (sinon il écrase le retrait des listes qu'il contient). */
+.cr-editor-holder .ce-block__content {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  max-width: none;
+}
+
+/* Le wrapper d'indentation (tune) ne doit pas casser cet alignement quand
+   indent=0 (marge appliquée seulement quand l'utilisateur indente). */
+.cr-editor-holder .cr-indent {
+  transition: margin-left 0.1s;
+}
+
+/* ── Titres : l'admin Django (base.css/forms.css) réduit les h1-h6 à ~8-14px
+   gris dans les formulaires -> les headers Editor.js deviennent illisibles.
+   On rétablit dans l'éditeur une échelle proche du rendu DSFR (h3 = titre PC,
+   h6 = sous-titre de section), en noir et gras, pour que l'édition ressemble
+   au rendu (#136). `!important` car l'admin style ces balises avec une forte
+   spécificité dans les form-rows. */
+.cr-editor-holder .ce-header {
+  color: #161616 !important;
+  font-weight: 700 !important;
+  margin: 0.4em 0 0.2em !important;
+  line-height: 1.3 !important;
+  font-family: inherit;
+}
+
+.cr-editor-holder h1.ce-header,
+.cr-editor-holder h2.ce-header,
+.cr-editor-holder h3.ce-header {
+  font-size: 1.6rem !important; /* titre principal PC */
+}
+
+.cr-editor-holder h4.ce-header {
+  font-size: 1.3rem !important;
+}
+
+.cr-editor-holder h5.ce-header,
+.cr-editor-holder h6.ce-header {
+  font-size: 1.1rem !important; /* sous-titre de section */
+}
+
+/* Paragraphes lisibles (l'admin réduit aussi la taille de base). */
+.cr-editor-holder .ce-paragraph,
+.cr-editor-holder .cdx-list__item {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  color: #161616;
+}
+
+/* Gras inline rendu visible dans l'éditeur. */
+.cr-editor-holder b,
+.cr-editor-holder strong {
+  font-weight: 700;
 }
 
 .cr-editor-hint {

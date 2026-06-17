@@ -139,9 +139,22 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
           avec un message regle qui dit deja la meme chose en plus contextuel.
           {% endcomment %}
+          {% comment %}
+          Prescription conditionnée (carte #136). RENDUE AU-DESSUS des règles
+          permanentes (cf. plus bas). Le contenu riche est porté par le champ
+          `blocs` de l'objet CodePrescription lui-même (pas un ContenuRichDSFR
+          séparé). Migration en 2 temps :
+            - si le PC a des `blocs` -> on les compile en HTML DSFR, ce qui
+              remplace ENTIÈREMENT l'ancien texte_court + accordéon
+              « texte réglementaire initial » ;
+            - sinon -> fallback sur l'ancien texte_court (rien n'est cassé tant
+              que le PC n'a pas de blocs).
+          {% endcomment %}
           {% if ev.regle.code_prescription and not ev.regle.message %}
             {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
-              {% if pc %}
+              {% if pc.blocs %}
+                <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs %}</div>
+              {% elif pc %}
                 <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
                 {% if pc.texte_court %}
                   <p>
@@ -210,23 +223,29 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           <div class="fr-accordions-group fr-mt-3w">
             {% contenu_rich "resultat.regles_permanentes" %}
 
-            {# Texte reglementaire initial du PC (cible des liens "voir plus") #}
+            {% comment %}
+            Texte réglementaire initial du PC (cible des liens « voir plus »).
+            UNIQUEMENT en fallback : si le PC a des blocs (#136), le foldable
+            « Précisions sur le suivi » des blocs remplace cet accordéon.
+            {% endcomment %}
             {% if ev.regle.code_prescription %}
               {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
-                {% if pc.texte_redaction_initiale %}
-                  <section class="fr-accordion">
-                    <h3 class="fr-accordion__title">
-                      <button class="fr-accordion__btn"
-                              aria-expanded="false"
-                              aria-controls="accordion-texte-init-{{ ev.regle.code_prescription }}">
-                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:ev.regle.code_prescription }})
-                      </button>
-                    </h3>
-                    <div class="fr-collapse"
-                         id="accordion-texte-init-{{ ev.regle.code_prescription }}">
-                      <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
-                    </div>
-                  </section>
+                {% if not pc.blocs %}
+                  {% if pc.texte_redaction_initiale %}
+                    <section class="fr-accordion">
+                      <h3 class="fr-accordion__title">
+                        <button class="fr-accordion__btn"
+                                aria-expanded="false"
+                                aria-controls="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                          Texte d'application réglementaire initial ({{ pc.mots_cles|default:ev.regle.code_prescription }})
+                        </button>
+                      </h3>
+                      <div class="fr-collapse"
+                           id="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                        <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
+                      </div>
+                    </section>
+                  {% endif %}
                 {% endif %}
               {% endwith %}
             {% endif %}

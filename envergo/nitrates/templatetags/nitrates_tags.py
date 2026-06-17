@@ -648,3 +648,18 @@ def contenu_rich(cle: str, niveau_base: int = 3):
     from envergo.nitrates.contenu_rich.loader import load_blocs
 
     return compile_dsfr(load_blocs(cle), niveau_base=niveau_base)
+
+
+@register.simple_tag
+def compile_blocs(blocs, niveau_base: int = 3):
+    """Compile des blocs DSFR fournis directement (carte #136).
+
+    Sert à rendre le champ `blocs` porté par un objet (ex CodePrescription.blocs)
+    sans passer par un ContenuRichDSFR. Accepte la liste de blocs OU l'enveloppe
+    {schema, blocs}. Vide -> chaîne vide.
+
+    Usage : {% compile_blocs pc.blocs %}
+    """
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+
+    return compile_dsfr(blocs or [], niveau_base=niveau_base)

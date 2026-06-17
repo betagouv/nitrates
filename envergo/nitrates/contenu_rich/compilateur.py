@@ -32,9 +32,45 @@ NIVEAU_TITRE_MAX = 6  # <h6> est le plus profond en HTML
 # page). On le passe en paramètre mutable pour rester sans état global.
 
 
+def _rich(valeur) -> str:
+    """Rend un texte riche -> HTML inline SAFE (carte #136, gras inline).
+
+    `valeur` peut être :
+      - une string : texte plat, simplement échappé (cas historique) ;
+      - une liste de segments {texte, gras} : chaque segment est échappé puis,
+        si `gras` est vrai, enveloppé dans <strong>. Le gras est donc porté par
+        une marque STRUCTURÉE, jamais par du HTML saisi -> impossible d'injecter
+        autre chose que <strong> (sécurité conservée : on échappe tout, on
+        ré-introduit nous-mêmes la seule balise autorisée).
+    Renvoie une chaîne safe (mark_safe).
+    """
+    if valeur is None:
+        return ""
+    if isinstance(valeur, str):
+        return format_html("{0}", valeur)
+    if isinstance(valeur, list):
+        morceaux = []
+        for seg in valeur:
+            if isinstance(seg, str):
+                morceaux.append(format_html("{0}", seg))
+                continue
+            if not isinstance(seg, dict):
+                continue
+            txt = seg.get("texte", "") or ""
+            if seg.get("gras"):
+                morceaux.append(format_html("<strong>{0}</strong>", txt))
+            else:
+                morceaux.append(format_html("{0}", txt))
+        return mark_safe("".join(morceaux))
+    # Type inattendu -> on le rend en texte échappé par sécurité.
+    return format_html("{0}", str(valeur))
+
+
 def _texte(data: dict) -> str:
-    """Récupère le texte d'un bloc, tolérant aux clés vides."""
-    return (data or {}).get("texte", "") or ""
+    """Texte riche d'un bloc (clé `texte`), tolérant aux clés vides.
+
+    Passe par `_rich` : accepte string OU liste de segments {texte, gras}."""
+    return _rich((data or {}).get("texte", ""))
 
 
 def _niveau(n: int) -> int:
@@ -47,9 +83,12 @@ def _compile_titre_principal(data, niveau, ctx):
 
 
 def _compile_titre_paragraphe(data, niveau, ctx):
-    # Sous-titre de section : gras, pas un vrai niveau de titre du document
-    # (évite de casser la hiérarchie a11y). DSFR : texte mis en avant en gras.
-    return format_html('<p class="fr-text--bold">{0}</p>', _texte(data))
+    # Sous-titre de section. Coralie (commentaires Notion #136) demande
+    # explicitement un H6 DSFR (Marianne 20px/700) pour ces sous-titres
+    # « Le principe », « Les conditions… », « La dose maximale »… On rend donc
+    # un vrai <h6 class="fr-h6"> (titre sémantique, meilleure a11y que le <p>
+    # gras précédent) plutôt qu'un paragraphe en gras.
+    return format_html('<h6 class="fr-h6">{0}</h6>', _texte(data))
 
 
 def _compile_paragraphe(data, niveau, ctx):
@@ -60,7 +99,7 @@ def _compile_items_liste(items) -> str:
     """Rend récursivement une liste d'items (puces + sous-puces)."""
     morceaux = []
     for item in items or []:
-        texte = (item or {}).get("texte", "") or ""
+        texte = _rich((item or {}).get("texte", ""))
         enfants = (item or {}).get("enfants") or []
         if enfants:
             morceaux.append(
@@ -132,6 +171,28 @@ _COMPILERS = {
 }
 
 
+# Pas de spacing négatif ni d'indentation délirante : on borne le niveau.
+_INDENT_MAX = 6
+_INDENT_REM = 1.5  # marge gauche par niveau d'indentation
+
+
+def _indenter(html: str, data: dict) -> str:
+    """Enveloppe le HTML d'un bloc dans une marge gauche si `data.indent` > 0
+    (carte #136). Indentation « façon Notion » : chaque niveau décale de 1.5rem.
+    Wrapper <div> neutre (n'altère pas le sens DSFR du bloc enveloppé)."""
+    try:
+        indent = int((data or {}).get("indent") or 0)
+    except (TypeError, ValueError):
+        indent = 0
+    indent = max(0, min(_INDENT_MAX, indent))
+    if indent == 0:
+        return html
+    marge = indent * _INDENT_REM
+    return format_html(
+        '<div style="margin-left:{}rem">{}</div>', marge, mark_safe(html)
+    )
+
+
 def _compile_blocs(blocs, niveau, ctx) -> str:
     morceaux = []
     for bloc in blocs or []:
@@ -140,7 +201,9 @@ def _compile_blocs(blocs, niveau, ctx) -> str:
         compiler = _COMPILERS.get(bloc.get("type"))
         if compiler is None:
             continue
-        morceaux.append(compiler(bloc.get("data") or {}, niveau, ctx))
+        data = bloc.get("data") or {}
+        html = compiler(data, niveau, ctx)
+        morceaux.append(_indenter(html, data))
     return mark_safe("".join(morceaux))
 
 
@@ -158,12 +221,13 @@ def compile_dsfr(blocs, niveau_base: int = NIVEAU_TITRE_BASE) -> str:
         blocs = blocs.get("blocs", [])
     ctx = {"accordion_seq": 0}
     contenu = _compile_blocs(blocs, niveau_base, ctx)
-    # On enveloppe les foldables éventuels dans un groupe DSFR si présents ;
-    # sinon le contenu est rendu tel quel. Le groupe accordéon DSFR attend
-    # fr-accordions-group autour des <section class="fr-accordion">. Pour
-    # rester simple et robuste au mélange (paragraphes + foldables), on ne
-    # force pas le wrapper ici : l'intégration template fournit le conteneur.
-    return contenu
+    if not contenu:
+        return contenu
+    # Conteneur `.contenu-rich` : porte le style de rendu (retrait des listes,
+    # espacement des titres) défini dans calendrier.css, chargé partout où le
+    # contenu rich s'affiche (résultat, simulateur, preview). Garantit un rendu
+    # public identique à l'éditeur admin (#136).
+    return format_html('<div class="contenu-rich">{0}</div>', mark_safe(contenu))
 
 
 __all__ = ["compile_dsfr", "NIVEAU_TITRE_BASE"]

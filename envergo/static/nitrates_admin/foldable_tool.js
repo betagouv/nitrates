@@ -76,6 +76,8 @@
     this.nested = new EditorJS({
       holder: holder,
       tools: tools,
+      // Tunes globaux aussi dans la section (indentation des blocs internes).
+      tunes: tools.indent ? ["indent"] : [],
       readOnly: this.readOnly,
       minHeight: 40,
       data: { blocks: blocks },

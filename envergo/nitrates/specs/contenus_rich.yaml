@@ -1,88 +1,63 @@
 # Contenus riches éditables en DB (carte #131).
-#
-# Source de SEED uniquement : une fois importé via `seed_contenus_rich`, la
-# source de vérité runtime est la table ContenuRichDSFR (éditée par les
-# juristes dans l'admin). Ce fichier sert au provisioning initial des envs.
-#
-# Chaque entrée = un objet ContenuRichDSFR (clé unique). `blocs` est la liste
-# de blocs typés compilée en HTML DSFR au rendu (cf. compile_dsfr). Format des
-# blocs : cf. spec §4 et le compilateur.
-#
-# Structure calée sur la maquette designeuse (Frame 35, carte #131) :
-# titre + intro + une liste de foldables (un par situation d'interdiction).
+# Source de SEED uniquement ; vérité runtime = table ContenuRichDSFR.
+# Réservé aux textes 'volants' (règles permanentes, etc.). Les PC ont
+# leur propre champ blocs sur CodePrescription (carte #136).
 
 contenus:
-  - cle: resultat.regles_permanentes
-    libelle_admin: "Résultat — Règles permanentes d'épandage"
-    schema: 1
-    blocs:
-      - type: titre_principal
-        data:
-          texte: "Règles permanentes d'épandage à respecter"
+- cle: resultat.regles_permanentes
+  libelle_admin: Résultat — Règles permanentes d'épandage
+  schema: 1
+  blocs:
+  - type: titre_principal
+    data:
+      texte: Règles permanentes d'épandage à respecter
+  - type: paragraphe
+    data:
+      texte: Ces règles s'appliquent à tous vos épandages de fertilisants azotés en zone vulnérable, quelle
+        que soit votre situation.
+  - type: foldable
+    data:
+      titre: Cours d'eau
+      blocs:
       - type: paragraphe
         data:
-          texte: >-
-            Ces règles s'appliquent à tous vos épandages de fertilisants
-            azotés en zone vulnérable, quelle que soit votre situation.
-      - type: foldable
+          texte: L'épandage des fertilisants azotés de type III est interdit en zone vulnérable à moins
+            de deux mètres des berges des cours d'eau et sur les bandes enherbées définies au 8o de l'article
+            R. 211-81. L'épandage des fertilisants azotés de types 0, I et II est interdit en zone vulnérable
+            à moins de 35 mètres des berges des cours d'eau ; cette limite est réduite à 10 mètres lorsqu'une
+            couverture végétale permanente de 10 mètres et ne recevant aucun intrant est implantée en
+            bordure du cours d'eau.
+  - type: foldable
+    data:
+      titre: Sols en forte pente
+      blocs:
+      - type: paragraphe
         data:
-          titre: "Cours d'eau"
-          blocs:
-            - type: paragraphe
-              data:
-                texte: >-
-                  L'épandage des fertilisants azotés de type III est interdit
-                  en zone vulnérable à moins de deux mètres des berges des cours
-                  d'eau et sur les bandes enherbées définies au 8o de l'article
-                  R. 211-81. L'épandage des fertilisants azotés de types 0, I et
-                  II est interdit en zone vulnérable à moins de 35 mètres des
-                  berges des cours d'eau ; cette limite est réduite à 10 mètres
-                  lorsqu'une couverture végétale permanente de 10 mètres et ne
-                  recevant aucun intrant est implantée en bordure du cours d'eau.
-      - type: foldable
+          texte: L'épandage est interdit en zone vulnérable dans les 100 premiers mètres à proximité des
+            cours d'eau pour des pentes supérieures à 10 % pour les fertilisants azotés liquides et à
+            15 % pour les autres fertilisants. Sans préjudice des dispositions prévue au 1o par rapport
+            aux cours d'eau, il est toutefois autorisé dès lors qu'une bande enherbée ou boisée, pérenne,
+            continue et non fertilisée d'au moins 5 mètres de large est présente en bordure de cours d'eau.
+  - type: foldable
+    data:
+      titre: Sols détrempés et inondés
+      blocs:
+      - type: paragraphe
         data:
-          titre: "Sols en forte pente"
-          blocs:
-            - type: paragraphe
-              data:
-                texte: >-
-                  L'épandage est interdit en zone vulnérable dans les 100
-                  premiers mètres à proximité des cours d'eau pour des pentes
-                  supérieures à 10 % pour les fertilisants azotés liquides et à
-                  15 % pour les autres fertilisants. Sans préjudice des
-                  dispositions prévue au 1o par rapport aux cours d'eau, il est
-                  toutefois autorisé dès lors qu'une bande enherbée ou boisée,
-                  pérenne, continue et non fertilisée d'au moins 5 mètres de
-                  large est présente en bordure de cours d'eau.
-      - type: foldable
+          texte: Un sol est détrempé dès lors qu'il est inaccessible du fait de l'humidité ; un sol est
+            inondé dès lors que de l'eau est largement présente en surface. L'épandage de tous les fertilisants
+            azotés est interdit en zone vulnérable sur les sols détrempés et inondés.
+  - type: foldable
+    data:
+      titre: Sols enneigés et gelés
+      blocs:
+      - type: paragraphe
         data:
-          titre: "Sols détrempés et inondés"
-          blocs:
-            - type: paragraphe
-              data:
-                texte: >-
-                  Un sol est détrempé dès lors qu'il est inaccessible du fait de
-                  l'humidité ; un sol est inondé dès lors que de l'eau est
-                  largement présente en surface. L'épandage de tous les
-                  fertilisants azotés est interdit en zone vulnérable sur les
-                  sols détrempés et inondés.
-      - type: foldable
+          texte: Un sol est enneigé dès lors qu'il est entièrement couvert de neige ; un sol est gelé
+            dès lors qu'il est pris en masse par le gel ou gelé en surface.
+      - type: paragraphe
         data:
-          titre: "Sols enneigés et gelés"
-          blocs:
-            - type: paragraphe
-              data:
-                texte: >-
-                  Un sol est enneigé dès lors qu'il est entièrement couvert de
-                  neige ; un sol est gelé dès lors qu'il est pris en masse par
-                  le gel ou gelé en surface.
-            - type: paragraphe
-              data:
-                texte: >-
-                  L'épandage de tous les fertilisants azotés est interdit en
-                  zone vulnérable sur les sols enneigés. L'épandage de tous les
-                  fertilisants azotés autres que les fumiers compacts non
-                  susceptibles d'écoulement, les composts d'effluents d'élevage
-                  et les autres produits organiques solides dont l'apport vise à
-                  prévenir l'érosion est interdit en zone vulnérable sur les sols
-                  gelés.
+          texte: L'épandage de tous les fertilisants azotés est interdit en zone vulnérable sur les sols
+            enneigés. L'épandage de tous les fertilisants azotés autres que les fumiers compacts non susceptibles
+            d'écoulement, les composts d'effluents d'élevage et les autres produits organiques solides
+            dont l'apport vise à prévenir l'érosion est interdit en zone vulnérable sur les sols gelés.

@@ -5,12 +5,15 @@ Note : `MoulinetteNitrates` n'est pas un model Django (il herite de
 pas ici.
 """
 
+import json
+
 from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from envergo.nitrates.models import DecisionTree, RpgCulture
 from envergo.nitrates.permissions import (
@@ -18,6 +21,50 @@ from envergo.nitrates.permissions import (
     can_delete_tree,
     can_edit_active,
 )
+
+# ─── Éditeur de contenu riche WYSIWYG (cartes #131/#136) ─────────────────────
+# Widget + helper partagés par ContenuRichDSFR (textes volants) ET
+# CodePrescription (champ blocs). Editor.js monté côté JS sur un <textarea>
+# masqué qui porte le JSON.
+
+
+class ContenuRichEditorWidget(forms.Textarea):
+    """Widget WYSIWYG (Editor.js) pour un champ `blocs` JSON.
+
+    Le <textarea> reste le champ réel du form (il porte le JSON), mais on le
+    masque et on monte Editor.js par-dessus (cf. contenu_rich_editor.js). Le
+    juriste n'édite jamais le JSON à la main."""
+
+    def __init__(self, attrs=None):
+        default = {"data-contenu-rich-editor": "1", "rows": 12}
+        if attrs:
+            default.update(attrs)
+        super().__init__(default)
+
+    class Media:
+        js = (
+            "nitrates_admin/vendor/editorjs/editorjs.umd.min.js",
+            "nitrates_admin/vendor/editorjs/header.umd.min.js",
+            "nitrates_admin/vendor/editorjs/list.umd.min.js",
+            "nitrates_admin/vendor/editorjs/quote.umd.min.js",
+            "nitrates_admin/foldable_tool.js",
+            "nitrates_admin/indent_tune.js",
+            "nitrates_admin/contenu_rich_editor.js",
+        )
+        css = {"all": ("nitrates_admin/contenu_rich_editor.css",)}
+
+
+def _clean_blocs_json(valeur):
+    """Parse la valeur postée par le widget (JSON string) -> objet Python.
+    Vide -> enveloppe {schema, blocs:[]}. Lève ValidationError si illisible."""
+    if isinstance(valeur, (dict, list)):
+        return valeur
+    if not valeur:
+        return {"schema": 1, "blocs": []}
+    try:
+        return json.loads(valeur)
+    except (TypeError, ValueError):
+        raise forms.ValidationError(_("Contenu invalide (JSON illisible)."))
 
 
 @admin.register(RpgCulture)
@@ -382,11 +429,26 @@ class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     ordering = ("ordre_affichage", "identifiant")
 
 
+class CodePrescriptionForm(forms.ModelForm):
+    """Form admin du PC : le champ `blocs` est édité via l'éditeur WYSIWYG
+    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot."""
+
+    class Meta:
+        model = CodePrescription
+        fields = "__all__"
+        widgets = {"blocs": ContenuRichEditorWidget}
+
+    def clean_blocs(self):
+        return _clean_blocs_json(self.cleaned_data.get("blocs"))
+
+
 @admin.register(CodePrescription)
 class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+    form = CodePrescriptionForm
     list_display = (
         "identifiant",
         "mots_cles",
+        "a_du_contenu_riche",
         "toujours_affiche",
         "note_reglementaire",
         "ordre_affichage",
@@ -394,6 +456,29 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     search_fields = ("identifiant", "mots_cles", "texte_court")
     autocomplete_fields = ("note_reglementaire",)
     ordering = ("ordre_affichage", "identifiant")
+    readonly_fields = ("apercu_rendu",)
+
+    @admin.display(description="Contenu riche", boolean=True)
+    def a_du_contenu_riche(self, obj):
+        """Indique en liste si le PC a un contenu riche (champ `blocs`) saisi,
+        sinon il retombe sur le texte legacy (carte #136)."""
+        b = obj.blocs
+        if isinstance(b, dict):
+            return bool(b.get("blocs"))
+        return bool(b)
+
+    @admin.display(description="Aperçu du rendu")
+    def apercu_rendu(self, obj):
+        """Lien (nouvel onglet) vers la prévisualisation du rendu HTML DSFR de
+        ce PC (carte #136)."""
+        if not obj or not obj.pk:
+            return "— (enregistrer d'abord)"
+        url = reverse("nitrates_admin_contenu_rich_preview") + f"?type=pc&id={obj.pk}"
+        return format_html(
+            '<a class="button" href="{}" target="_blank" rel="noopener">'
+            "🔎 Prévisualiser le rendu</a>",
+            url,
+        )
 
 
 @admin.register(EvenementPhenologique)
@@ -433,39 +518,9 @@ class DepartementOuvertureAdmin(admin.ModelAdmin):
         self.message_user(request, f"{n} département(s) fermé(s).")
 
 
-# ─── Contenu riche éditable (carte #131) ─────────────────────────────────────
-
-import json  # noqa: E402
-
-from django.utils.translation import gettext_lazy as _cr_  # noqa: E402
+# ─── Contenu riche éditable « textes volants » (carte #131) ──────────────────
 
 from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
-
-
-class ContenuRichEditorWidget(forms.Textarea):
-    """Widget WYSIWYG (Editor.js) pour le champ `blocs`.
-
-    Le <textarea> reste le champ réel du form (il porte le JSON), mais on le
-    masque et on monte Editor.js par-dessus (cf. contenu_rich_editor.js). Le
-    juriste n'édite jamais le JSON à la main.
-    """
-
-    def __init__(self, attrs=None):
-        default = {"data-contenu-rich-editor": "1", "rows": 12}
-        if attrs:
-            default.update(attrs)
-        super().__init__(default)
-
-    class Media:
-        js = (
-            "nitrates_admin/vendor/editorjs/editorjs.umd.min.js",
-            "nitrates_admin/vendor/editorjs/header.umd.min.js",
-            "nitrates_admin/vendor/editorjs/list.umd.min.js",
-            "nitrates_admin/vendor/editorjs/quote.umd.min.js",
-            "nitrates_admin/foldable_tool.js",
-            "nitrates_admin/contenu_rich_editor.js",
-        )
-        css = {"all": ("nitrates_admin/contenu_rich_editor.css",)}
 
 
 class ContenuRichDSFRForm(forms.ModelForm):
@@ -475,17 +530,7 @@ class ContenuRichDSFRForm(forms.ModelForm):
         widgets = {"blocs": ContenuRichEditorWidget}
 
     def clean_blocs(self):
-        # Le widget poste du JSON (string) ; on le parse en objet Python pour
-        # le JSONField. Vide -> enveloppe vide standard.
-        valeur = self.cleaned_data.get("blocs")
-        if isinstance(valeur, (dict, list)):
-            return valeur
-        if not valeur:
-            return {"schema": 1, "blocs": []}
-        try:
-            return json.loads(valeur)
-        except (TypeError, ValueError):
-            raise forms.ValidationError(_cr_("Contenu invalide (JSON illisible)."))
+        return _clean_blocs_json(self.cleaned_data.get("blocs"))
 
 
 @admin.register(ContenuRichDSFR)
@@ -493,4 +538,17 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
     form = ContenuRichDSFRForm
     list_display = ("cle", "libelle_admin", "updated_at")
     search_fields = ("cle", "libelle_admin")
-    readonly_fields = ("updated_at",)
+    readonly_fields = ("updated_at", "apercu_rendu")
+
+    @admin.display(description="Aperçu du rendu")
+    def apercu_rendu(self, obj):
+        """Lien (nouvel onglet) vers la prévisualisation du rendu HTML DSFR de
+        ce contenu (carte #136)."""
+        if not obj or not obj.pk:
+            return "— (enregistrer d'abord)"
+        url = reverse("nitrates_admin_contenu_rich_preview") + f"?type=rich&id={obj.pk}"
+        return format_html(
+            '<a class="button" href="{}" target="_blank" rel="noopener">'
+            "🔎 Prévisualiser le rendu</a>",
+            url,
+        )
