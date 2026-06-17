@@ -265,6 +265,16 @@
       });
       document.addEventListener('htmx:responseError', _hideBusy);
       document.addEventListener('htmx:sendError', _hideBusy);
+      // FILET DE SECURITE : quand la reponse retargette + swappe (outerHTML)
+      // le <li> qui CONTIENT l'element declencheur (ex: conversion en catalogue
+      // parametre -> HX-Retarget #node-<nouvel_id>), le trigger est detruit par
+      // le swap et `htmx:afterRequest` ne remonte pas toujours jusqu'a document
+      // -> l'overlay "Sauvegarde…" reste affiche a l'infini alors que la
+      // mutation a reussi. `htmx:afterSettle` est emis sur la cible APRES le
+      // swap (et bulle depuis un element bien present dans le DOM), donc il
+      // ferme l'overlay de maniere fiable. On l'ecoute sur body (capture des
+      // events des elements swappes).
+      document.body.addEventListener('htmx:afterSettle', _hideBusy);
 
       // Pour les formulaires NATIFS (POST sans htmx, ex: "💾 Sauvegarder"
       // qui sort de l'edition), on montre aussi l'overlay au submit. La
