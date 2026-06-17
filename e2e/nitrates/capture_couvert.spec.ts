@@ -157,7 +157,15 @@ test.describe('Capture couvert', () => {
       await page.waitForLoadState('networkidle');
       const ok = await atteindreResultat(page, f.qc);
       if (ok) {
-        const cal = page.locator('.calendrier-epandage').first();
+        // Capture LARGE : conteneur .calc-cal = titre « Calendrier des
+        // périodes d'épandage » + texte explicatif + champs date + frise +
+        // légende + listes à puces. EXCLUT les prescriptions conditionnées
+        // (qui sont dans .resultat-panel au-dessus). Fallback sur la frise
+        // seule si .calc-cal absent (cas non-calculatrice).
+        const large = page.locator('.calc-cal').first();
+        const cal = (await large.count())
+          ? large
+          : page.locator('.calendrier-epandage').first();
         await cal.scrollIntoViewIfNeeded();
         await cal.screenshot({
           path: path.join(OUT_DIR, `${f.pk}_calendrier.png`),

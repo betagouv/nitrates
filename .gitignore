@@ -328,3 +328,9 @@ envergo/nitrates/specs/snapshot_miro/arbre_complet/*/crops_named/*.png
 envergo/nitrates/specs/snapshot_miro/arbre_complet/*/feuilles_couvert_textes.json
 # Export SVG brut du board Miro (lourd, trituré par les hooks) — garder widgets.json
 envergo/nitrates/specs/snapshot_miro/arbre_complet/*/board.svg
+
+# Scripts Playwright de debug/inspection ponctuels (worktree #140) — non versionnés
+/inspect*.mjs
+/shot_*.mjs
+/check_*.mjs
+/test_*.mjs

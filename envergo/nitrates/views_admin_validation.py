@@ -35,9 +35,49 @@ def validation_index(request):
     actions_qs = BrancheValidationAction.objects.order_by("created_at").select_related(
         "user"
     )
-    branches = BrancheValidation.objects.prefetch_related(
+    base = BrancheValidation.objects.prefetch_related(
         Prefetch("actions", queryset=actions_qs)
     )
+
+    # Filtres rapides en haut du tableau. Le PAN est long, on le coupe en
+    # « couvert » vs « culture principale » (par le chemin YAML). PAR / ZAR
+    # Grand Est filtrent sur le scope (rempli quand ces arbres sont
+    # provisionnés ; vides pour l'instant). Cf. carte #140.
+    COUVERT = "q_couvert_sous_culture"
+    FILTRES = [
+        ("pan", "PAN", lambda qs: qs.filter(scope=BrancheValidation.SCOPE_NATIONAL)),
+        (
+            "pan_couvert",
+            "PAN · couvert",
+            lambda qs: qs.filter(
+                scope=BrancheValidation.SCOPE_NATIONAL, chemin_yaml__contains=COUVERT
+            ),
+        ),
+        (
+            "pan_cp",
+            "PAN · culture principale",
+            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_NATIONAL).exclude(
+                chemin_yaml__contains=COUVERT
+            ),
+        ),
+        (
+            "par_ge",
+            "PAR Grand Est",
+            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_PAR_GRAND_EST),
+        ),
+        (
+            "zar_ge",
+            "ZAR Grand Est",
+            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_ZAR_GRAND_EST),
+        ),
+    ]
+    filtre_actif = request.GET.get("filtre", "")
+    fn = dict((k, f) for k, _, f in FILTRES).get(filtre_actif)
+    branches = fn(base) if fn else base
+
+    # Compteurs par filtre (pour afficher le nombre sur chaque bouton).
+    compteurs = {k: f(base).count() for k, _, f in FILTRES}
+
     stats = {
         "total": branches.count(),
         "valide": branches.filter(statut=BrancheValidation.STATUT_VALIDE).count(),
@@ -52,6 +92,8 @@ def validation_index(request):
     ctx = {
         "branches": branches,
         "stats": stats,
+        "filtres": [(k, label, compteurs[k]) for k, label, _ in FILTRES],
+        "filtre_actif": filtre_actif,
     }
     return render(request, "nitrates_admin/validation/index.html", ctx)
 

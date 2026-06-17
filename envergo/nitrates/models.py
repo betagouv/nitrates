@@ -654,6 +654,25 @@ class BrancheValidation(models.Model):
         (STATUT_A_CORRIGER, "À corriger"),
     ]
 
+    # Scope reglementaire de la feuille : a quel arbre elle appartient.
+    # Permet de filtrer le dashboard par PAN / PAR Grand Est / ZAR Grand Est
+    # quand on provisionnera les arbres regionaux (carte #140 / skill cloud).
+    # Defaut national : toutes les feuilles existantes sont du PAN.
+    SCOPE_NATIONAL = "national"
+    SCOPE_PAR_GRAND_EST = "par_grand_est"
+    SCOPE_ZAR_GRAND_EST = "zar_grand_est"
+    SCOPE_CHOICES = [
+        (SCOPE_NATIONAL, "PAN (national)"),
+        (SCOPE_PAR_GRAND_EST, "PAR Grand Est"),
+        (SCOPE_ZAR_GRAND_EST, "ZAR Grand Est"),
+    ]
+    scope = models.CharField(
+        max_length=20,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_NATIONAL,
+        db_index=True,
+    )
+
     # Cle naturelle : path d'ids YAML separes par "/".
     chemin_yaml = models.CharField(
         max_length=1000,

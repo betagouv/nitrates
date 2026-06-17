@@ -32,6 +32,17 @@
       {% endif %}
     </div>
 
+    <div class="vc-filtres">
+      <a href="?"
+         class="vc-filtre{% if not filtre_actif %} vc-filtre--on{% endif %}">Tout</a>
+      {% for cle, label, n in filtres %}
+        <a href="?filtre={{ cle }}"
+           class="vc-filtre{% if filtre_actif == cle %} vc-filtre--on{% endif %}">
+          {{ label }} <span class="vc-filtre__n">{{ n }}</span>
+        </a>
+      {% endfor %}
+    </div>
+
     <table class="vc-table">
       <thead>
         <tr>
@@ -133,6 +144,48 @@
       display: flex;
       gap: 1rem;
       margin: 1rem 0;
+    }
+
+    .vc-filtres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.5rem 0 1.25rem;
+    }
+
+    .vc-filtre {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 16px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #1f4789 !important;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .vc-filtre:hover {
+      border-color: #1f4789;
+    }
+
+    .vc-filtre--on {
+      background: #1f4789;
+      color: #fff !important;
+      border-color: #1f4789;
+    }
+
+    .vc-filtre__n {
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      padding: 0 7px;
+      font-size: 0.75rem;
+    }
+
+    .vc-filtre--on .vc-filtre__n {
+      background: rgba(255, 255, 255, 0.25);
     }
 
     .vc-pill {
