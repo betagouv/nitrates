@@ -1,0 +1,69 @@
+/* Éditeur de contenu riche DSFR dans l'admin (carte #131). */
+
+.cr-editor-holder {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  background: #fff;
+  max-width: 900px;
+  min-height: 200px;
+}
+
+/* Editor.js centre son contenu par défaut sur de grands écrans ; on garde une
+   largeur de lecture confortable mais alignée à gauche dans l'admin. */
+.cr-editor-holder .codex-editor__redactor {
+  padding-bottom: 100px !important;
+}
+
+.cr-editor-hint {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 0.85em;
+}
+
+/* ── Bloc "Section dépliable" (foldable DSFR) ──────────────────────────── */
+.cr-foldable {
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+/* Bandeau titre, évoque l'accordéon DSFR (chevron + fond clair). */
+.cr-foldable__titre {
+  padding: 0.6rem 0.9rem 0.6rem 1.8rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  background: #eef1f6;
+  border-bottom: 1px solid #d0d0d0;
+  position: relative;
+  outline: none;
+}
+
+.cr-foldable__titre::before {
+  content: "▾";
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+/* Placeholder quand le titre est vide. */
+.cr-foldable__titre:empty::after {
+  content: attr(data-placeholder);
+  color: #999;
+  font-weight: 400;
+}
+
+/* Zone de contenu = nested editor. */
+.cr-foldable__corps {
+  padding: 0.25rem 0.9rem;
+  background: #fff;
+}
+
+/* Le nested editor ne doit pas réserver l'énorme padding-bottom du redactor. */
+.cr-foldable__corps .codex-editor__redactor {
+  padding-bottom: 0 !important;
+}

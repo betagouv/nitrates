@@ -43,3 +43,19 @@ class NitratesConfig(AppConfig):
                 sender=modele,
                 dispatch_uid=f"invalider_ref_{modele.__name__}_delete",
             )
+
+        # Meme mecanisme pour les contenus riches editables (carte #131) :
+        # invalider le cache des qu'un ContenuRichDSFR est edite dans l'admin.
+        from envergo.nitrates.contenu_rich.loader import invalider_cache_contenu_rich
+        from envergo.nitrates.models_contenu_rich import ContenuRichDSFR
+
+        post_save.connect(
+            invalider_cache_contenu_rich,
+            sender=ContenuRichDSFR,
+            dispatch_uid="invalider_contenu_rich_save",
+        )
+        post_delete.connect(
+            invalider_cache_contenu_rich,
+            sender=ContenuRichDSFR,
+            dispatch_uid="invalider_contenu_rich_delete",
+        )

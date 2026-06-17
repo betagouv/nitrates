@@ -200,34 +200,15 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% endwith %}
           {% endif %}
 
-          {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
+          {% comment %}
+          Regles permanentes : contenu riche editable en DB (carte #131),
+          recompile en HTML DSFR depuis le JSON `resultat.regles_permanentes`.
+          Remplace l'ancien accordeon hardcode (intro + 6 puces). Edite par les
+          juristes dans l'admin, sans toucher au code. Rendu sous les
+          prescriptions conditionnees.
+          {% endcomment %}
           <div class="fr-accordions-group fr-mt-3w">
-            <section class="fr-accordion">
-              <h3 class="fr-accordion__title">
-                <button class="fr-accordion__btn"
-                        aria-expanded="false"
-                        aria-controls="accordion-prescriptions-permanentes">
-                  Prescriptions générales d'interdiction permanente
-                </button>
-              </h3>
-              <div class="fr-collapse" id="accordion-prescriptions-permanentes">
-                <p>
-                  Indépendamment des périodes d'interdiction saisonnières,
-                  certaines situations rendent l'épandage interdit en toutes
-                  circonstances. Ces interdictions permanentes s'appliquent
-                  quelle que soit la période de l'année et le type de
-                  fertilisant utilisé.
-                </p>
-                <ul class="fr-mb-0">
-                  <li>Épandage sur sols enneigés ou couverts de neige.</li>
-                  <li>Épandage sur sols pris en masse par le gel.</li>
-                  <li>Épandage sur sols détrempés ou inondés.</li>
-                  <li>Épandage à moins de 35 m des berges (2 m si bande enherbée).</li>
-                  <li>Épandage sur sols à forte pente (selon les conditions du PAR).</li>
-                  <li>Épandage par aspersion à moins de 10 m des cours d'eau.</li>
-                </ul>
-              </div>
-            </section>
+            {% contenu_rich "resultat.regles_permanentes" %}
 
             {# Texte reglementaire initial du PC (cible des liens "voir plus") #}
             {% if ev.regle.code_prescription %}

@@ -431,3 +431,66 @@ class DepartementOuvertureAdmin(admin.ModelAdmin):
     def fermer_selection(self, request, queryset):
         n = queryset.update(est_ouvert=False)
         self.message_user(request, f"{n} département(s) fermé(s).")
+
+
+# ─── Contenu riche éditable (carte #131) ─────────────────────────────────────
+
+import json  # noqa: E402
+
+from django.utils.translation import gettext_lazy as _cr_  # noqa: E402
+
+from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
+
+
+class ContenuRichEditorWidget(forms.Textarea):
+    """Widget WYSIWYG (Editor.js) pour le champ `blocs`.
+
+    Le <textarea> reste le champ réel du form (il porte le JSON), mais on le
+    masque et on monte Editor.js par-dessus (cf. contenu_rich_editor.js). Le
+    juriste n'édite jamais le JSON à la main.
+    """
+
+    def __init__(self, attrs=None):
+        default = {"data-contenu-rich-editor": "1", "rows": 12}
+        if attrs:
+            default.update(attrs)
+        super().__init__(default)
+
+    class Media:
+        js = (
+            "nitrates_admin/vendor/editorjs/editorjs.umd.min.js",
+            "nitrates_admin/vendor/editorjs/header.umd.min.js",
+            "nitrates_admin/vendor/editorjs/list.umd.min.js",
+            "nitrates_admin/vendor/editorjs/quote.umd.min.js",
+            "nitrates_admin/foldable_tool.js",
+            "nitrates_admin/contenu_rich_editor.js",
+        )
+        css = {"all": ("nitrates_admin/contenu_rich_editor.css",)}
+
+
+class ContenuRichDSFRForm(forms.ModelForm):
+    class Meta:
+        model = ContenuRichDSFR
+        fields = "__all__"
+        widgets = {"blocs": ContenuRichEditorWidget}
+
+    def clean_blocs(self):
+        # Le widget poste du JSON (string) ; on le parse en objet Python pour
+        # le JSONField. Vide -> enveloppe vide standard.
+        valeur = self.cleaned_data.get("blocs")
+        if isinstance(valeur, (dict, list)):
+            return valeur
+        if not valeur:
+            return {"schema": 1, "blocs": []}
+        try:
+            return json.loads(valeur)
+        except (TypeError, ValueError):
+            raise forms.ValidationError(_cr_("Contenu invalide (JSON illisible)."))
+
+
+@admin.register(ContenuRichDSFR)
+class ContenuRichDSFRAdmin(admin.ModelAdmin):
+    form = ContenuRichDSFRForm
+    list_display = ("cle", "libelle_admin", "updated_at")
+    search_fields = ("cle", "libelle_admin")
+    readonly_fields = ("updated_at",)
