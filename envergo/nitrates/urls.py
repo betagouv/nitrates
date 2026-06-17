@@ -59,6 +59,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     UndoLastView,
     ValidateTreeView,
 )
+from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
     YamlBrowserListView,
@@ -95,6 +96,11 @@ urlpatterns = [
         "api/arbre/",
         DecisionTreeView.as_view(),
         name="nitrates_arbre",
+    ),
+    path(
+        "admin/nitrates/contenu-rich/preview/",
+        ContenuRichPreviewView.as_view(),
+        name="nitrates_admin_contenu_rich_preview",
     ),
     path(
         "admin/nitrates/arbre-decision/",

@@ -767,3 +767,35 @@
 /* Texte d'aide / mentions grises du recap : le DSFR les passe deja en clair
    via --text-mention-grey, rien a forcer. La barre "libre" (fond vert pastel)
    et les zones gardent leurs fills clairs : OK sur sombre. */
+
+/* ─── Contenu riche éditable (cartes #131/#136) ──────────────────────────────
+   Rendu public des blocs compilés par compile_dsfr (PC, règles permanentes…).
+   On reproduit ici la hiérarchie visuelle de l'éditeur admin : listes en
+   retrait sous leur section, et un peu d'air entre les sous-titres et le texte.
+   Chargé via calendrier.css (présent sur result/simulateur/preview). */
+.contenu-rich ul,
+.contenu-rich ol {
+  padding-left: 2rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.contenu-rich ul {
+  list-style: disc outside;
+}
+
+.contenu-rich ol {
+  list-style: decimal outside;
+}
+
+.contenu-rich li {
+  margin: 0.15rem 0;
+}
+
+/* Sous-titres (h6) : un peu d'espace au-dessus pour aérer les sections. */
+.contenu-rich h6 {
+  margin: 1rem 0 0.25rem;
+}
+
+.contenu-rich p {
+  margin: 0 0 0.5rem;
+}

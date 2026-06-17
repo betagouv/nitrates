@@ -147,6 +147,14 @@ def _build_referentiels() -> dict:
             "texte_court": pc.texte_court,
             "texte_redaction_initiale": pc.texte_redaction_initiale,
         }
+        # Contenu riche (#136) : exposé au template pour rendu DSFR. On ne met
+        # la clé que si non vide -> `pc.blocs` est falsy dans le template tant
+        # qu'aucun contenu riche n'a été saisi (fallback texte_court).
+        blocs = pc.blocs
+        if isinstance(blocs, dict):
+            blocs = blocs.get("blocs", []) or []
+        if blocs:
+            entry["blocs"] = blocs
         if pc.note_reglementaire_id:
             entry["note_reglementaire"] = pc.note_reglementaire.identifiant
         if pc.toujours_affiche:

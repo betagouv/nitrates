@@ -631,3 +631,35 @@ def calendrier_epandage(regle):
         "regle_type": regle_type,
         "legende": legende,
     }
+
+
+@register.simple_tag
+def contenu_rich(cle: str, niveau_base: int = 3):
+    """Rend une zone de contenu riche éditable (carte #131).
+
+    Charge les blocs du `ContenuRichDSFR` de clé `cle` (cache process-local),
+    les compile en HTML DSFR safe et renvoie le résultat. Zone absente ou vide
+    -> chaîne vide (pas de 500 côté public). `niveau_base` = niveau du 1er
+    titre HTML (3 = <h3>, sous les prescriptions du panneau résultat).
+
+    Usage : {% contenu_rich "resultat.regles_permanentes" %}
+    """
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+    from envergo.nitrates.contenu_rich.loader import load_blocs
+
+    return compile_dsfr(load_blocs(cle), niveau_base=niveau_base)
+
+
+@register.simple_tag
+def compile_blocs(blocs, niveau_base: int = 3):
+    """Compile des blocs DSFR fournis directement (carte #136).
+
+    Sert à rendre le champ `blocs` porté par un objet (ex CodePrescription.blocs)
+    sans passer par un ContenuRichDSFR. Accepte la liste de blocs OU l'enveloppe
+    {schema, blocs}. Vide -> chaîne vide.
+
+    Usage : {% compile_blocs pc.blocs %}
+    """
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+
+    return compile_dsfr(blocs or [], niveau_base=niveau_base)

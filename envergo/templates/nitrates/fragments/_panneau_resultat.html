@@ -94,13 +94,12 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% calendrier_epandage ev.regle %}
           {% endif %}
 
-          {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
-          {% if ev.regle.texte_condition %}
-            <div class="fr-callout fr-callout--blue-ecume fr-mt-3w">
-              <h4 class="fr-callout__title">Condition d'autorisation</h4>
-              <p>{{ ev.regle.texte_condition }}</p>
-            </div>
-          {% endif %}
+          {% comment %}
+          Ancien callout "Condition d'autorisation" (texte_condition, #28)
+          retire : redondant avec les prescriptions conditionnees riches qui
+          portent desormais tout le detail. Le texte_condition reste exploite
+          par le calendrier / les puces de periodes, pas en bloc separe.
+          {% endcomment %}
 
           {% comment %}
           Liste UNIQUE des periodes datees, en puces (#85), ordre (du plus au
@@ -140,13 +139,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           avec un message regle qui dit deja la meme chose en plus contextuel.
           {% endcomment %}
           {% comment %}
-            Prescription(s) conditionnee(s) : une regle peut en porter
-            plusieurs (#multi-PC). On itere sur ev.regle.codes_prescription.
+            Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
+            (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
+            PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
+            DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
           {% endcomment %}
           {% if ev.regle.codes_prescription and not ev.regle.message %}
             {% for cp in ev.regle.codes_prescription %}
               {% with pc=codes_prescription|get_item:cp %}
-                {% if pc %}
+                {% if pc.blocs %}
+                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs %}</div>
+                {% elif pc %}
                   <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
                   {% if pc.texte_court %}
                     <p>
@@ -206,42 +209,25 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% endwith %}
           {% endif %}
 
-          {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
+          {% comment %}
+          Regles permanentes : contenu riche editable en DB (carte #131),
+          recompile en HTML DSFR depuis le JSON `resultat.regles_permanentes`.
+          Remplace l'ancien accordeon hardcode (intro + 6 puces). Edite par les
+          juristes dans l'admin, sans toucher au code. Rendu sous les
+          prescriptions conditionnees.
+          {% endcomment %}
           <div class="fr-accordions-group fr-mt-3w">
-            <section class="fr-accordion">
-              <h3 class="fr-accordion__title">
-                <button class="fr-accordion__btn"
-                        aria-expanded="false"
-                        aria-controls="accordion-prescriptions-permanentes">
-                  Prescriptions générales d'interdiction permanente
-                </button>
-              </h3>
-              <div class="fr-collapse" id="accordion-prescriptions-permanentes">
-                <p>
-                  Indépendamment des périodes d'interdiction saisonnières,
-                  certaines situations rendent l'épandage interdit en toutes
-                  circonstances. Ces interdictions permanentes s'appliquent
-                  quelle que soit la période de l'année et le type de
-                  fertilisant utilisé.
-                </p>
-                <ul class="fr-mb-0">
-                  <li>Épandage sur sols enneigés ou couverts de neige.</li>
-                  <li>Épandage sur sols pris en masse par le gel.</li>
-                  <li>Épandage sur sols détrempés ou inondés.</li>
-                  <li>Épandage à moins de 35 m des berges (2 m si bande enherbée).</li>
-                  <li>Épandage sur sols à forte pente (selon les conditions du PAR).</li>
-                  <li>Épandage par aspersion à moins de 10 m des cours d'eau.</li>
-                </ul>
-              </div>
-            </section>
+            {% contenu_rich "resultat.regles_permanentes" %}
 
             {% comment %}
               Texte reglementaire initial de chaque PC (cible des liens "voir
-              plus"). Un accordeon par prescription conditionnee (#multi-PC).
+              plus") : un accordeon par PC (#multi-PC). UNIQUEMENT en fallback —
+              si le PC a des blocs (#136), son contenu riche remplace deja cet
+              accordeon (rendu plus haut), on ne le redouble pas ici.
             {% endcomment %}
             {% for cp in ev.regle.codes_prescription %}
               {% with pc=codes_prescription|get_item:cp %}
-                {% if pc.texte_redaction_initiale %}
+                {% if not pc.blocs and pc.texte_redaction_initiale %}
                   <section class="fr-accordion">
                     <h3 class="fr-accordion__title">
                       <button class="fr-accordion__btn"

@@ -267,6 +267,19 @@ class CodePrescription(models.Model):
         blank=True,
         help_text="Rédaction juridique brute de l'arrêté.",
     )
+    # Contenu riche éditable (carte #136). Source unique du rendu DSFR du PC
+    # quand non vide : compilé en HTML au rendu (cf. compile_dsfr), édité via
+    # l'éditeur WYSIWYG dans l'admin. Les champs texte ci-dessus restent en
+    # place (fallback tant que `blocs` est vide ; pas de casse pour les autres
+    # consommateurs de la table).
+    blocs = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Contenu riche (format {schema, blocs:[...]}). Édité via l'éditeur, "
+            "jamais à la main. Si vide, on retombe sur texte_court."
+        ),
+    )
     toujours_affiche = models.BooleanField(
         default=False,
         help_text=(
