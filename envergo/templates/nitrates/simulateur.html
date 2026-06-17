@@ -40,6 +40,10 @@
       en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
       bassin: "{{ moulinette.catalog.bassin|default:'' }}",
       bassin_label: "{{ moulinette.catalog.bassin_label|default:'' }}",
+      en_zar: {% if moulinette.catalog.en_zar %}true{% else %}false{% endif %},
+      en_grand_est: {% if moulinette.catalog.region_code == "44" %}true{% else %}false{% endif %},
+      zone_grand_est_1: {% if moulinette.catalog.zone_grand_est_1 %}true{% else %}false{% endif %},
+      zone_grand_est_2: {% if moulinette.catalog.zone_grand_est_2 %}true{% else %}false{% endif %},
     };
     {% endif %}
   </script>

@@ -383,6 +383,13 @@
             zv_info: cat.en_zone_vulnerable
               ? { nom: cat.bassin_label, bassin: cat.bassin }
               : null,
+            // Champs ZAR / Zones Est : sans eux le panneau affichait ZAR=NON
+            // au chargement par URL (ex bouton preview admin), alors que le
+            // catalog serveur les connait.
+            en_zar: cat.en_zar,
+            en_grand_est: cat.en_grand_est,
+            zone_grand_est_1: cat.zone_grand_est_1,
+            zone_grand_est_2: cat.zone_grand_est_2,
           },
           communeInfo,
           parcelInfo
