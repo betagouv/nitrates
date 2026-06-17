@@ -378,8 +378,37 @@ def test_editer_branche_persiste_expression(staff_client):
     assert r.status_code == 200
     draft.refresh_from_db()
     node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
-    btrue = [b for b in node["branches"] if b["valeur"] is True][0]
+    # Sous un catalogue_parametre, la valeur de branche n'est PAS coercee en
+    # bool : "true" reste la string "true" (c'est une etiquette, le routage est
+    # porte par l'expression). On retrouve donc la branche par sa string.
+    btrue = [b for b in node["branches"] if b["valeur"] == "true"][0]
     assert btrue["expression"] == "sous_fertilisant == 'effluents_peu_charges_elevage'"
+
+
+def test_renommer_branche_catalogue_parametre_ne_coerce_pas(staff_client):
+    """Regression : renommer une branche de catalogue_parametre 'true' -> 'oui'
+    doit persister 'oui' (string), pas la recoercer en bool True (sinon
+    l'edition rend 200 mais sans effet visible)."""
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="rename_cp", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    expr = "sous_fertilisant == 'effluents_peu_charges_elevage'"
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
+        f"?path=n_zvn/n_effluent&valeur=true",
+        {"valeur_new": "oui", "expression": expr, "libelle": "Oui"},
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
+    valeurs = [b["valeur"] for b in node["branches"]]
+    assert "oui" in valeurs, f"renommage non persiste : {valeurs}"
+    assert True not in valeurs, f"valeur recoercee en bool : {valeurs}"
 
 
 def test_editer_branche_expression_vide_rejetee(staff_client):
