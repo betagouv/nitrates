@@ -327,64 +327,60 @@ def update_branch_content(
 
 def insert_parent(
     tree: DecisionTree,
-    parent_path: tuple[str, ...],
-    branche_valeur,
+    node_path: tuple[str, ...],
     content_kind: str,
     content_data: dict,
     user,
 ) -> EditResult:
-    """Intercale un NOUVEAU noeud sur une branche existante.
+    """Intercale un NOUVEAU noeud N juste AU-DESSUS du noeud cible A.
 
-    Avant :  A --[X]--> C        (C = contenu actuel de la branche X de A)
-    Apres :  A --[X]--> N --[X]--> C
+    Avant :  P --[X]--> A --[branches de A]
+    Apres :  P --[X]--> N --[a_definir]--> A --[branches de A inchangees]
 
-    Le nouveau noeud N (formulaire / catalogue / catalogue_parametre) prend la
-    place du contenu de la branche X ; l'ancien contenu C est replace tel quel
-    sous UNE branche de N qui REPREND la valeur X (modifiable ensuite).
+    N prend la place de A dans la branche X du parent P ; A devient le contenu
+    d'une unique branche placeholder 'a_definir' de N (a renommer ensuite). A et
+    tout son sous-arbre restent intacts.
 
-    Seuls les noeuds peuvent etre intercales (un noeud a des branches pour
-    heberger l'enfant ; une regle/renvoi/feuille_vide est une feuille).
+    Declenche depuis la barre d'actions du noeud A (icone ⤴). La racine ne peut
+    pas etre intercalee (elle resout en_zone_vulnerable, contrat fige).
     """
-    branche = get_branche_at(tree.contenu, parent_path, branche_valeur)
-    if branche is None:
-        return EditResult.fail([FieldError("", "Branche introuvable.")])
-
-    # Le contenu actuel de la branche (C) : exactement une des cles de contenu.
-    # Le detachement/replacement reel est fait par _apply_insert_parent ; ici
-    # on verifie juste qu'il y a bien un contenu a encapsuler.
-    cle_actuelle = next(
+    if not node_path:
+        return EditResult.fail(
+            [FieldError("", "On ne peut pas intercaler au-dessus de la racine.")]
+        )
+    node = get_node_at(tree.contenu, node_path)
+    if node is None:
+        return EditResult.fail([FieldError("", "Nœud cible introuvable.")])
+    # Le parent P de A et la branche de P qui porte A.
+    parent_path = node_path[:-1]
+    parent = get_node_at(tree.contenu, parent_path)
+    if parent is None:
+        return EditResult.fail([FieldError("", "Nœud parent introuvable.")])
+    branche_porteuse = next(
         (
-            k
-            for k in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide")
-            if k in branche
+            b
+            for b in (parent.get("branches") or [])
+            if isinstance(b, dict)
+            and isinstance(b.get("noeud"), dict)
+            and b["noeud"].get("id") == node_path[-1]
         ),
         None,
     )
-    if cle_actuelle is None:
+    if branche_porteuse is None:
         return EditResult.fail(
-            [
-                FieldError(
-                    "",
-                    "Cette branche n'a pas de contenu à encapsuler : ajoutez "
-                    "d'abord un contenu, ou intercalez sur une branche peuplée.",
-                )
-            ]
+            [FieldError("", "Branche porteuse du nœud introuvable.")]
         )
-
-    # Seul un noeud peut etre intercale (il faut des branches pour heberger C).
     if not content_kind.startswith("noeud_"):
         return EditResult.fail(
             [
                 FieldError(
-                    "",
-                    "Seul un nœud (formulaire / catalogue) peut être intercalé : "
-                    "une règle ou un renvoi est une feuille, sans branche pour "
-                    "accueillir le contenu existant.",
+                    "", "Seul un nœud (formulaire / catalogue) peut être intercalé."
                 )
             ]
         )
 
-    # Validation du nouveau noeud (sans ses branches : on les fabrique ici).
+    # Validation du nouveau noeud (sans ses branches : on fabrique l'unique
+    # branche placeholder ici).
     grammar_kind = _kind_from_node(content_data) or _grammar_kind_from_content_kind(
         content_kind
     )
@@ -398,14 +394,12 @@ def insert_parent(
         tree=tree,
         user=user,
         action=DecisionTreeRevision.ACTION_ADD,
-        target_path=f"{'/'.join(parent_path)}#{branche_valeur}",
+        target_path="/".join(node_path),
         description=(
-            f"Intercalation du nœud {new_id!r} sur la branche {branche_valeur!r}"
+            f"Intercalation du nœud {new_id!r} au-dessus de {node.get('id', '')}"
         ),
-        mutate=lambda contenu: _apply_insert_parent(
-            contenu, parent_path, branche_valeur, content_data
-        ),
-        summary=f"Nœud {new_id!r} intercalé sur la branche {branche_valeur!r}",
+        mutate=lambda contenu: _apply_insert_parent(contenu, node_path, content_data),
+        summary=f"Nœud {new_id!r} intercalé au-dessus de {node.get('id', '')}",
         new_id=new_id,
     )
 
@@ -743,38 +737,36 @@ def _apply_set_branch_content(
 
 def _apply_insert_parent(
     contenu: dict,
-    parent_path: tuple[str, ...],
-    branche_valeur,
+    node_path: tuple[str, ...],
     nouveau_noeud: dict,
 ) -> None:
-    """Encapsule le contenu de la branche dans `nouveau_noeud`.
+    """Intercale `nouveau_noeud` (N) juste au-dessus du noeud A (node_path).
 
-    branche X de A : {valeur: X, noeud: C}
-      -> {valeur: X, noeud: N} avec N.branches = [{valeur: X, noeud: C}]
+    P --[X]--> A   ->   P --[X]--> N --[a_definir]--> A
 
-    On detache la cle de contenu courante (noeud/regle/renvoi.../feuille_vide)
-    et on la repose telle quelle sous une branche de N qui reprend la valeur X.
+    On remplace, dans la branche de P qui portait A, le noeud A par N ; N recoit
+    une unique branche placeholder 'a_definir' qui pointe vers A inchange.
     """
-    branche = get_branche_at(contenu, parent_path, branche_valeur)
+    node = get_node_at(contenu, node_path)
+    if node is None:
+        return
+    parent = get_node_at(contenu, node_path[:-1])
+    if parent is None:
+        return
+    branche = next(
+        (
+            b
+            for b in (parent.get("branches") or [])
+            if isinstance(b, dict)
+            and isinstance(b.get("noeud"), dict)
+            and b["noeud"].get("id") == node_path[-1]
+        ),
+        None,
+    )
     if branche is None:
         return
-    cle_actuelle = None
-    contenu_actuel = None
-    for key in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide"):
-        if key in branche:
-            cle_actuelle = key
-            contenu_actuel = branche[key]
-            break
-    if cle_actuelle is None:
-        return
-    # Branche de N qui reprend le contenu existant, sous la meme valeur.
-    branche_reprise = {"valeur": branche_valeur, cle_actuelle: contenu_actuel}
-    if branche.get("libelle"):
-        branche_reprise["libelle"] = branche["libelle"]
     nouveau = dict(nouveau_noeud)
-    nouveau["branches"] = [branche_reprise]
-    # On remplace le contenu de la branche X par le nouveau noeud.
-    del branche[cle_actuelle]
+    nouveau["branches"] = [{"valeur": "a_definir", "noeud": branche["noeud"]}]
     branche["noeud"] = nouveau
 
 

@@ -1444,30 +1444,29 @@ class CancelAddChildView(View):
         return HttpResponse(f'<div id="add-zone-{slug}"></div>')
 
 
-def _insert_parent_kinds(arbre: dict, parent_path: tuple[str, ...]) -> list[str]:
-    """Kinds proposables pour une INTERCALATION : seuls les noeuds (ils ont des
-    branches pour heberger le contenu existant). On filtre la liste d'ajout
-    standard sur les 'noeud_*'."""
+def _insert_parent_kinds(arbre: dict, node_path: tuple[str, ...]) -> list[str]:
+    """Kinds proposables pour intercaler AU-DESSUS du noeud A (node_path).
+
+    Le nouveau noeud N prend la place de A dans la branche du parent P : les
+    kinds autorises sont donc ceux valides comme enfant de P. Seuls des noeuds
+    (N doit avoir une branche pour heberger A)."""
+    parent_path = node_path[:-1]
     return [
         k for k in get_allowed_child_kinds(arbre, parent_path) if k.startswith("noeud_")
     ]
 
 
 def _render_insert_parent_form(
-    request, tree, parent_path, valeur, allowed, kind, errors=None, form_data=None
+    request, tree, node_path, allowed, kind, errors=None, form_data=None
 ):
-    parent = editor.get_node_at(tree.contenu, parent_path)
+    node = editor.get_node_at(tree.contenu, node_path)
     return render(
         request,
         "nitrates_admin/yaml_tree/forms/_insert_parent_form.html",
         {
             "tree": tree,
-            "parent_path_str": "/".join(parent_path),
-            "valeur": valeur,
-            "parent_niveau": parent.get("niveau") if isinstance(parent, dict) else None,
-            "parent_type_noeud": (
-                parent.get("type_noeud") if isinstance(parent, dict) else None
-            ),
+            "node_path_str": "/".join(node_path),
+            "node_id": node.get("id") if isinstance(node, dict) else "",
             "allowed_kinds": allowed,
             "selected_kind": kind,
             "errors": errors or [],
@@ -1482,15 +1481,14 @@ def _render_insert_parent_form(
 
 @method_decorator(staff_member_required, name="dispatch")
 class InsertParentView(View):
-    """Intercale un nouveau noeud sur une branche existante.
+    """Intercale un nouveau noeud N juste AU-DESSUS d'un noeud A.
 
-    Avant :  A --[X]--> C    Apres :  A --[X]--> N --[X]--> C
+    Avant :  P --[X]--> A    Apres :  P --[X]--> N --[a_definir]--> A
 
-    Le contenu C de la branche X devient le contenu d'une branche de N (qui
-    reprend la valeur X). Le formulaire est celui d'ajout d'un noeud, sans le
-    champ 'valeur de branche' (la valeur est celle de la branche cliquee).
+    A (et tout son sous-arbre) descend sous une branche placeholder de N.
+    Declenche depuis la barre d'actions du noeud A (icone ⤴) : `path` = A.
 
-    GET  ?path=<parent_path>&valeur=<valeur>[&kind=...] : formulaire.
+    GET  ?path=<node_path>[&kind=...] : formulaire.
     POST idem : applique l'intercalation.
     """
 
@@ -1499,21 +1497,21 @@ class InsertParentView(View):
         err = _check_editable(tree, request.user)
         if err:
             return HttpResponseForbidden(err)
-        parent_path = _parse_path(request.GET.get("path"))
-        valeur = _parse_valeur(request.GET.get("valeur"))
-        if editor.get_branche_at(tree.contenu, parent_path, valeur) is None:
-            return HttpResponseForbidden("Branche introuvable.")
-        allowed = _insert_parent_kinds(tree.contenu, parent_path)
+        node_path = _parse_path(request.GET.get("path"))
+        if not node_path:
+            return HttpResponseForbidden("La racine ne peut pas être intercalée.")
+        node = editor.get_node_at(tree.contenu, node_path)
+        if node is None:
+            return HttpResponseForbidden("Nœud introuvable.")
+        allowed = _insert_parent_kinds(tree.contenu, node_path)
         if not allowed:
             return HttpResponseForbidden("Aucun nœud intercalable ici.")
         kind = request.GET.get("kind") or allowed[0]
         if kind not in allowed:
             kind = allowed[0]
-        form_data = {
-            k: v for k, v in request.GET.items() if k not in ("path", "kind", "valeur")
-        }
+        form_data = {k: v for k, v in request.GET.items() if k not in ("path", "kind")}
         return _render_insert_parent_form(
-            request, tree, parent_path, valeur, allowed, kind, form_data=form_data
+            request, tree, node_path, allowed, kind, form_data=form_data
         )
 
     def post(self, request, tree_pk):
@@ -1521,54 +1519,55 @@ class InsertParentView(View):
         err = _check_editable(tree, request.user)
         if err:
             return HttpResponseForbidden(err)
-        parent_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
-        valeur = _parse_valeur(request.GET.get("valeur") or request.POST.get("valeur"))
-        allowed = _insert_parent_kinds(tree.contenu, parent_path)
+        node_path = _parse_path(request.GET.get("path") or request.POST.get("path"))
+        allowed = _insert_parent_kinds(tree.contenu, node_path)
         kind = request.POST.get("kind", "").strip()
         if kind not in allowed:
             return _render_insert_parent_form(
                 request,
                 tree,
-                parent_path,
-                valeur,
+                node_path,
                 allowed,
                 kind or (allowed[0] if allowed else ""),
                 errors=[FieldError("kind", f"Type {kind!r} non intercalable ici.")],
                 form_data=request.POST,
             )
-        # Le contenu du nouveau noeud : on reutilise le builder d'ajout. La
-        # 'valeur' passee sert juste a l'auto-id ; le noeud n'a pas de branche
-        # ici (le mutator pose la branche de reprise).
+        # Contenu du nouveau noeud (builder d'ajout). Le mutator lui greffe
+        # l'unique branche placeholder vers A ; valeur d'auto-id neutre.
         content = _build_content_data(
-            kind, request.POST, parent_path, valeur, tree.contenu
+            kind, request.POST, node_path, "intercale", tree.contenu
         )
-        result = editor.insert_parent(
-            tree, parent_path, valeur, kind, content, request.user
-        )
+        result = editor.insert_parent(tree, node_path, kind, content, request.user)
         if not result.ok:
             return _render_insert_parent_form(
                 request,
                 tree,
-                parent_path,
-                valeur,
+                node_path,
                 allowed,
                 kind,
                 errors=result.errors,
                 form_data=request.POST,
             )
+        # Le sous-arbre re-render est celui du PARENT de A (c'est lui qui porte
+        # desormais N a la place de A).
         return _render_partial_node_response(
-            request, tree, parent_path, f"Nœud intercalé sur la branche {valeur!r}."
+            request, tree, node_path[:-1], "Nœud parent intercalé."
         )
 
 
 @method_decorator(staff_member_required, name="dispatch")
 class CancelInsertParentView(View):
-    """GET : ferme le formulaire d'intercalation (re-render de la branche)."""
+    """GET : ferme le formulaire d'intercalation en vidant sa zone d'accueil.
+
+    Meme principe que CancelAddChildView : on renvoie le <div> vide reinitialise
+    (pas une chaine vide, sinon le swap outerHTML supprime la cible et le
+    prochain clic sur ⤴ genere un htmx:targetError).
+    """
 
     def get(self, request, tree_pk):
-        tree = get_object_or_404(DecisionTree, pk=tree_pk)
-        parent_path = _parse_path(request.GET.get("path"))
-        return _render_partial_node_response(request, tree, parent_path, "")
+        path = request.GET.get("path", "")
+        slug = slugify(path)
+        return HttpResponse(f'<div id="insert-parent-zone-{slug}"></div>')
 
 
 @method_decorator(staff_member_required, name="dispatch")
