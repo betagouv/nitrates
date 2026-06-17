@@ -184,139 +184,19 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
     {% endfor %}
   </div>
 
-  <fieldset class="yaml-tree__form-fieldset">
-    <legend>Période(s) (interdiction/plafonnement)</legend>
-    <p class="yaml-tree__form-hint">
-      Optionnel pour les règles libres / non applicables. Format
-      <code>JJ/MM</code> (ex: <code>15/12</code>) ou nom d'évènement
-      phénologique. Le régime est optionnel (ex: <code>autorise</code>).
-    </p>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>du</span>
-        <input type="text" name="c_periodes-0-du" placeholder="ex: 15/12">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>au</span>
-        <input type="text" name="c_periodes-0-au" placeholder="ex: 15/01">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>regime</span>
-        <select name="c_periodes-0-regime">
-          <option value="">— régime hérité du type ci-dessus —</option>
-          {% for r in "interdiction,autorisation_sous_condition,plafonnement,libre,non_applicable"|split:"," %}
-            <option value="{{ r }}">{{ r }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    </div>
-  </fieldset>
-
-  <fieldset class="yaml-tree__form-fieldset">
-    <legend>Calculatrice (si type=calculatrice)</legend>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>composant</span>
-        <input type="text"
-               name="c_composant"
-               value="{{ form_data.c_composant|default_if_none:'' }}"
-               placeholder="ex: fenetre_fertirrigation">
-      </label>
-    </div>
-    <div class="yaml-tree__form-row">
-      <label class="yaml-tree__form-label">
-        <span>inputs_requis</span>
-        <input type="text"
-               name="c_inputs_requis"
-               value="{{ form_data.c_inputs_requis|default_if_none:'' }}"
-               placeholder="liste, ex: culture, parcelle_communique">
-      </label>
-    </div>
-  </fieldset>
-
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>plafond N (kg/ha)</span>
-      <input type="text"
-             name="c_plafond_azote_kg_n_ha"
-             value="{{ form_data.c_plafond_azote_kg_n_ha|default_if_none:'' }}"
-             placeholder="ex: 50 (uniquement pour type=plafonnement)">
-    </label>
-  </div>
-
+  {% comment %}
+    Formulaire d'AJOUT volontairement minimal : on ne saisit que le type (et le
+    flag "a completer"). Tout le detail de la regle (periodes, calculatrice,
+    plafond, verdict, code prescription, source juridique, note) s'edite APRES
+    insertion via le formulaire d'edition, qui est complet. Cela evite un
+    formulaire d'ajout geant et incomplet selon les types.
+  {% endcomment %}
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label yaml-tree__form-label--inline">
       <input type="checkbox"
              name="c_a_completer"
              {% if form_data.c_a_completer %}checked{% endif %}>
       <span>marquer "à compléter" (laisse le type vide pour l'instant)</span>
-    </label>
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label"
-           title="Verdict court rendu à l'utilisateur (ex: « Apport interdit toute l'année »).">
-      <span>verdict</span>
-      <input type="text"
-             name="c_message"
-             value="{{ form_data.c_message|default_if_none:'' }}"
-             placeholder="Phrase courte (ex: Apport interdit toute l'année)">
-    </label>
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>code prescription</span>
-      {% if regle_choices.code_prescription %}
-        <select name="c_code_prescription">
-          <option value="">— (aucun)</option>
-          {% for c in regle_choices.code_prescription %}
-            <option value="{{ c.value }}"
-                    {% if c.value == form_data.c_code_prescription %}selected{% endif %}
-                    {% if c.description %}title="{{ c.description }}"{% endif %}>
-              {{ c.value }}
-              {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-            </option>
-          {% endfor %}
-        </select>
-      {% else %}
-        <input type="text"
-               name="c_code_prescription"
-               value="{{ form_data.c_code_prescription|default_if_none:'' }}"
-               placeholder="ex: PC1, PC4">
-      {% endif %}
-    </label>
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>source juridique</span>
-      <input type="text"
-             name="c_source_juridique"
-             value="{{ form_data.c_source_juridique|default_if_none:'' }}">
-    </label>
-  </div>
-  <div class="yaml-tree__form-row">
-    <label class="yaml-tree__form-label">
-      <span>note (optionnel)</span>
-      {% if regle_choices.note %}
-        <select name="c_note">
-          <option value="">— (aucune)</option>
-          {% for c in regle_choices.note %}
-            <option value="{{ c.value }}"
-                    {% if c.value == form_data.c_note %}selected{% endif %}
-                    {% if c.description %}title="{{ c.description }}"{% endif %}>
-              {{ c.value }}
-              {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-            </option>
-          {% endfor %}
-        </select>
-      {% else %}
-        <input type="text"
-               name="c_note"
-               value="{{ form_data.c_note|default_if_none:'' }}">
-      {% endif %}
     </label>
   </div>
   <details class="yaml-tree__form-advanced">
