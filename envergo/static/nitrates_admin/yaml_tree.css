@@ -182,7 +182,19 @@
 
 .yaml-tree__edit-actions {
   display: inline-flex;
-  gap: 0.15rem;
+  gap: 0.25rem;
+
+  /* Les boutons d'action ne doivent JAMAIS se casser sur plusieurs lignes,
+     meme quand le libelle du noeud est long et fait wrapper la row. On force
+     donc le groupe a rester d'un bloc (nowrap) -- seul le contenu texte de la
+     row wrappe, les actions restent alignees a droite sur une ligne. */
+  flex-wrap: nowrap;
+  white-space: nowrap;
+
+  /* Petit liseret a gauche pour detacher visuellement les actions du contenu
+     et eviter qu'elles paraissent "collees" au texte quand la row est dense. */
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--tree-border, #e0e0e0);
 
   /* Pousse les actions tout a droite meme quand la ligne flex-wrap.
      Avec margin-left:auto en flex container, le span occupe l'espace
@@ -240,13 +252,21 @@
   background: #fff3e0;
 }
 
-/* Bouton preview en mode lecture (hors .yaml-tree__edit-actions) : on le
-   pousse a droite manuellement pour qu'il s'aligne comme les autres
-   boutons d'edition. */
+/* Bouton preview (↗) : hors .yaml-tree__edit-actions dans le DOM. On le pousse
+   a droite (margin-left:auto) pour qu'il colle au groupe d'actions plutot que
+   de flotter au milieu de la row. Quand .yaml-tree__edit-actions suit (mode
+   edition), son propre margin-left:auto n'a plus d'effet (l'espace est deja
+   absorbe ici) -> preview + actions forment un bloc aligne a droite. */
 .yaml-tree__preview-standalone {
-  margin-left: 0.25rem;
+  margin-left: auto;
   flex-shrink: 0;
   align-self: center;
+}
+
+/* Quand les actions d'edition suivent le preview, elles se collent a lui
+   (le margin-left:auto du preview a deja pousse l'ensemble a droite). */
+.yaml-tree__preview-standalone + .yaml-tree__edit-actions {
+  margin-left: 0.25rem;
 }
 
 /* Edit -- bleu */
@@ -277,6 +297,36 @@
 
 .yaml-tree__edit-btn--danger:hover {
   background: #ffebee;
+}
+
+/* Intercaler un noeud parent (⤴) -- violet */
+
+.yaml-tree__edit-btn--insert {
+  color: #6a1b9a;
+}
+
+.yaml-tree__edit-btn--insert:hover {
+  background: #f3e5f5;
+}
+
+/* Changer le type d'une branche feuille (🔁) -- teal */
+
+.yaml-tree__edit-btn--change {
+  color: #00796b;
+}
+
+.yaml-tree__edit-btn--change:hover {
+  background: #e0f2f1;
+}
+
+/* Convertir en catalogue parametre (🧮) -- indigo */
+
+.yaml-tree__edit-btn--convert {
+  color: #3949ab;
+}
+
+.yaml-tree__edit-btn--convert:hover {
+  background: #e8eaf6;
 }
 
 /* Overlay full-page affiche pendant les requetes htmx mutatives globales.
