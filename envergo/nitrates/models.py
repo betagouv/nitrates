@@ -32,6 +32,7 @@ from envergo.nitrates.zonage_montagne import (
     zonage_montagne_pour_commune,
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
+from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 
 EPSG_WGS84 = 4326
 
@@ -635,6 +636,11 @@ class MoulinetteNitrates(Moulinette):
                 code_insee
             )
             catalog["zone_note_5"] = zone_note_5_pour_commune(code_insee)
+            # Zones Est Grand Est (resolues par code INSEE / departement, cf.
+            # zonage_zones_est). Exposees pour le debug : aident a comprendre
+            # pourquoi un arbre PAR Grand Est route vers tel sous-cas.
+            catalog["zone_grand_est_1"] = est_zone_grand_est_1(code_insee)
+            catalog["zone_grand_est_2"] = est_zone_grand_est_2(code_insee)
 
         return catalog
 

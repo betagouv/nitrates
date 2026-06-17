@@ -213,6 +213,11 @@
     )
     .addTo(map);
 
+  // Affiche la couche ZAR par défaut (debug) : un overlay présent sur la carte
+  // a sa tickbox cochée d'office dans le L.control.layers. L'évènement "add"
+  // déclenche le chargement paresseux du GeoJSON.
+  zarLayer.addTo(map);
+
   let marker = null;
 
   function cultureLabel(parcel) {
