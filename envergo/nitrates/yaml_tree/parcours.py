@@ -40,7 +40,12 @@ class Resultat:
     texte: str | None = None
     texte_condition: str | None = None
     periodes: list[dict] | None = None
-    code_prescription: str | None = None
+    # Code(s) de prescription conditionnee. Le YAML accepte un scalaire (1 PC)
+    # ou une liste (plusieurs PC) ; en interne on normalise TOUJOURS en liste
+    # (`codes_prescription`). `code_prescription` est conserve pour la compat
+    # (= le 1er code, ou None) -- les call-sites historiques continuent de
+    # marcher, les nouveaux (templates, patch) iterent sur la liste.
+    codes_prescription: list[str] = field(default_factory=list)
     note: str | None = None
     source_juridique: str | None = None
     plafond_azote_kg_n_ha: float | None = None
@@ -53,6 +58,12 @@ class Resultat:
     inputs_requis: list | None = None
     parametres: dict | None = None
     a_completer: bool = False
+
+    @property
+    def code_prescription(self) -> str | None:
+        """Compat : 1er code de prescription (ou None). Les nouveaux call-sites
+        utilisent `codes_prescription` (liste complete)."""
+        return self.codes_prescription[0] if self.codes_prescription else None
 
     @property
     def has_borne_flottante(self) -> bool:
@@ -109,7 +120,8 @@ class Resultat:
             "periodes": self.periodes or [],
             "texte_condition": self.texte_condition,
             "message": self.message,
-            "code_prescription": self.code_prescription,
+            "code_prescription": self.code_prescription,  # compat : 1er PC
+            "codes_prescription": self.codes_prescription,
             # Champs calculatrice (None si type != calculatrice).
             "composant": self.composant,
             "inputs_requis": self.inputs_requis or [],
@@ -416,7 +428,6 @@ _REGLE_FIELDS = (
     "texte",
     "texte_condition",
     "periodes",
-    "code_prescription",
     "note",
     "source_juridique",
     "plafond_azote_kg_n_ha",
@@ -427,6 +438,19 @@ _REGLE_FIELDS = (
 )
 
 
+def normaliser_codes_prescription(valeur) -> list[str]:
+    """Normalise le champ `code_prescription` d'une regle (YAML) en list[str].
+
+    Accepte : None -> [] ; scalaire 'pc4' -> ['pc4'] ; liste -> telle quelle
+    (vide ignoree). Source unique de verite pour passer du polymorphisme YAML
+    (scalaire OU liste) a la representation interne (toujours liste)."""
+    if valeur is None:
+        return []
+    if isinstance(valeur, (list, tuple)):
+        return [str(c) for c in valeur if c]
+    return [str(valeur)]
+
+
 def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
     """Convertit une regle YAML en dataclass Resultat. Les regles `a_completer`
     (stub brouillon) peuvent ne pas avoir de champ `type` -- on tolere."""
@@ -435,6 +459,9 @@ def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
         type=regle.get("type", "a_completer"),
         chemin=chemin + [regle["id"]],
         a_completer=bool(regle.get("a_completer", False)),
+        codes_prescription=normaliser_codes_prescription(
+            regle.get("code_prescription")
+        ),
         **{k: regle.get(k) for k in _REGLE_FIELDS},
     )
 
@@ -447,8 +474,8 @@ def _appliquer_patch(res: "Resultat", patch: dict) -> None:
     feuille porte un code present dans le mapping ; les autres restent intacts.
     """
     remap = (patch or {}).get("code_prescription") or {}
-    if res.code_prescription and res.code_prescription in remap:
-        res.code_prescription = remap[res.code_prescription]
+    if remap and res.codes_prescription:
+        res.codes_prescription = [remap.get(cp, cp) for cp in res.codes_prescription]
 
 
 def _collecter_questions(

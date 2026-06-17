@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator
 
 from envergo.nitrates.yaml_tree.condition import validate_condition
 from envergo.nitrates.yaml_tree.expression import valider_expression
+from envergo.nitrates.yaml_tree.parcours import normaliser_codes_prescription
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -877,12 +878,23 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
     for obj in _walk_objects(arbre):
         if not isinstance(obj, dict):
             continue
-        cp = obj.get("code_prescription")
-        if cp and cp not in codes_pc:
-            errors.append(
-                f"[reference] regle '{obj.get('id')}' : code_prescription "
-                f"'{cp}' inconnu dans le référentiel (DB)"
-            )
+        # code_prescription : scalaire OU liste -> on normalise pour valider
+        # chaque code et detecter les doublons.
+        cps = normaliser_codes_prescription(obj.get("code_prescription"))
+        vus: set[str] = set()
+        for cp in cps:
+            if cp not in codes_pc:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' inconnu dans le référentiel (DB)"
+                )
+            if cp in vus:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' en doublon (une prescription ne peut etre listee "
+                    f"qu'une fois)"
+                )
+            vus.add(cp)
         note = obj.get("note")
         if note and note not in notes:
             errors.append(

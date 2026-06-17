@@ -29,6 +29,17 @@ import re
 
 from django import forms
 
+
+def _normalise_pc_code(token) -> str:
+    """Normalise un code de prescription saisi vers le slug 'pcN'.
+    'pc13' / 'PC13' / 'Pc 13' / '13' -> 'pc13'. Vide -> ''. (Les PC sont
+    stockes en DB sous la forme 'pcN'.)"""
+    t = (str(token) if token is not None else "").strip().lower().replace(" ", "")
+    if not t:
+        return ""
+    return f"pc{t}" if t.isdigit() else t
+
+
 # Choix synchronisés avec le schema YAML (cf. yaml_tree/schema.py).
 REGLE_TYPES = (
     "interdiction",
@@ -175,6 +186,27 @@ class RegleForm(_BaseYamlForm):
         self._periodes_seen = False
         self._inputs_requis: list = []
         self._inputs_requis_seen = False
+
+    def codes_prescription(self) -> list[str]:
+        """Code(s) de prescription saisis. Le form rend N champs <select>/<input>
+        nommes tous `code_prescription` (widget repetable) -> on lit toutes les
+        valeurs (getlist), on normalise en 'pcN', on dedoublonne en gardant
+        l'ordre. Le champ Django `code_prescription` (CharField) ne voit que la
+        1re valeur ; cette methode est la source de verite pour le multi-PC."""
+        if not self.is_bound:
+            return []
+        getlist = getattr(self.data, "getlist", None)
+        raw = (
+            getlist("code_prescription")
+            if getlist
+            else [self.data.get("code_prescription", "")]
+        )
+        out: list[str] = []
+        for tok in raw:
+            code = _normalise_pc_code(tok)
+            if code and code not in out:
+                out.append(code)
+        return out
 
     def _parse_periodes(self) -> list[dict]:
         """Lit periodes-0-du, periodes-0-au, periodes-0-regime,
@@ -348,7 +380,6 @@ class RegleForm(_BaseYamlForm):
         # la cle absente = on garde l'ancienne valeur, l'utilisateur ne peut
         # plus vider un champ).
         for key in (
-            "code_prescription",
             "note",
             "source_juridique",
             "message",
@@ -358,6 +389,15 @@ class RegleForm(_BaseYamlForm):
         ):
             val = (cd.get(key) or "").strip()
             new_data[key] = val if val else None
+        # code_prescription : multi-PC. Scalaire si 1 (YAML compact), liste si
+        # 2+, None si 0 (suppression). cf. RegleForm.codes_prescription().
+        codes = self.codes_prescription()
+        if not codes:
+            new_data["code_prescription"] = None
+        elif len(codes) == 1:
+            new_data["code_prescription"] = codes[0]
+        else:
+            new_data["code_prescription"] = codes
         plafond = cd.get("plafond_azote_kg_n_ha")
         if plafond is not None:
             new_data["plafond_azote_kg_n_ha"] = float(plafond)

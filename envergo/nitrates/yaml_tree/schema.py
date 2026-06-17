@@ -74,7 +74,16 @@ REGLE_SCHEMA = {
                 },
             },
         },
-        "code_prescription": {"type": "string"},
+        # Code(s) de prescription conditionnee. Accepte un scalaire (1 PC) OU
+        # une liste (plusieurs PC sur la meme regle). Forme historique scalaire
+        # conservee pour ne pas reecrire les arbres existants. La validation
+        # metier (PC connu, pas de doublon) est dans le validateur.
+        "code_prescription": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            ]
+        },
         "note": {"type": "string"},
         "source_juridique": {"type": "string"},
         "message": {"type": "string"},

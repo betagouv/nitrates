@@ -426,27 +426,70 @@
           </div>
         </fieldset>
 
+        {% comment %}
+          Prescription(s) conditionnee(s) : une regle peut en porter plusieurs.
+          On rend un <select> (ou <input>) par PC deja posee, tous nommes
+          `code_prescription` -> cote serveur RegleForm.codes_prescription()
+          lit la liste (getlist). Le bouton "+ ajouter" clone la 1re ligne
+          (JS, pas d'aller-retour serveur) ; chaque ligne a un bouton retirer.
+        {% endcomment %}
         <div class="yaml-tree__form-row">
           <label class="yaml-tree__form-label">
-            <span>code_prescription</span>
-            {% if regle_choices.code_prescription %}
-              <select name="code_prescription">
-                <option value="">— (aucun)</option>
-                {% for c in regle_choices.code_prescription %}
-                  <option value="{{ c.value }}"
-                          {% if c.value == regle.code_prescription %}selected{% endif %}
-                          {% if c.description %}title="{{ c.description }}"{% endif %}>
-                    {{ c.value }}
-                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-                  </option>
+            <span>code(s) prescription</span>
+            <div data-pc-group>
+              {% with regle.codes_prescription|default_if_none:"" as codes %}
+                {% for cp in codes %}
+                  <div class="yaml-tree__pc-row" data-pc-row>
+                    {% if regle_choices.code_prescription %}
+                      <select name="code_prescription" data-pc-select>
+                        <option value="">— (aucun)</option>
+                        {% for c in regle_choices.code_prescription %}
+                          <option value="{{ c.value }}"
+                                  {% if c.value == cp %}selected{% endif %}
+                                  {% if c.description %}title="{{ c.description }}"{% endif %}>
+                            {{ c.value }}
+                            {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <input type="text"
+                             name="code_prescription"
+                             value="{{ cp }}"
+                             placeholder="ex: pc4">
+                    {% endif %}
+                    <button type="button"
+                            class="yaml-admin__btn yaml-admin__btn--sm"
+                            data-pc-remove
+                            title="Retirer">✕</button>
+                  </div>
                 {% endfor %}
-              </select>
-            {% else %}
-              <input type="text"
-                     name="code_prescription"
-                     value="{{ regle.code_prescription|default_if_none:'' }}"
-                     placeholder="ex: pc4">
-            {% endif %}
+                {% comment %}Ligne vide initiale si la regle n'a aucune PC.{% endcomment %}
+                {% if not codes %}
+                  <div class="yaml-tree__pc-row" data-pc-row>
+                    {% if regle_choices.code_prescription %}
+                      <select name="code_prescription" data-pc-select>
+                        <option value="">— (aucun)</option>
+                        {% for c in regle_choices.code_prescription %}
+                          <option value="{{ c.value }}"
+                                  {% if c.description %}title="{{ c.description }}"{% endif %}>
+                            {{ c.value }}
+                            {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <input type="text" name="code_prescription" value="" placeholder="ex: pc4">
+                    {% endif %}
+                    <button type="button"
+                            class="yaml-admin__btn yaml-admin__btn--sm"
+                            data-pc-remove
+                            title="Retirer">✕</button>
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </div>
+            <button type="button" class="yaml-admin__btn yaml-admin__btn--sm" data-pc-add>+ ajouter une prescription</button>
           </label>
         </div>
         <div class="yaml-tree__form-row">
@@ -771,6 +814,42 @@
           if (!btn) return;
           const row = btn.closest('[data-input-requis-row]');
           if (row) row.remove();
+        });
+      })();
+
+      // ─── Multi-PC : ajout / suppression de lignes code_prescription ───────
+      (function () {
+        const form = document.currentScript.closest('form');
+        if (!form) return;
+        const group = form.querySelector('[data-pc-group]');
+        const addBtn = form.querySelector('[data-pc-add]');
+        if (!group || !addBtn) return;
+        addBtn.addEventListener('click', () => {
+          const rows = group.querySelectorAll('[data-pc-row]');
+          const src = rows[rows.length - 1] || rows[0];
+          if (!src) return;
+          const clone = src.cloneNode(true);
+          // Reset la valeur du champ clone (select -> option vide, input -> '').
+          const field = clone.querySelector('select, input');
+          if (field) field.value = '';
+          group.appendChild(clone);
+          if (field) field.focus();
+        });
+        // Suppression par delegation : on garde toujours au moins une ligne.
+        group.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-pc-remove]');
+          if (!btn) return;
+          const rows = group.querySelectorAll('[data-pc-row]');
+          const row = btn.closest('[data-pc-row]');
+          if (!row) return;
+          if (rows.length > 1) {
+            row.remove();
+          } else {
+            // Derniere ligne : on la vide au lieu de la supprimer (sinon plus
+            // moyen d'ajouter une PC ensuite).
+            const field = row.querySelector('select, input');
+            if (field) field.value = '';
+          }
         });
       })();
         </script>
