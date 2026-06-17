@@ -948,10 +948,25 @@ def _branche_value_choices(arbre: dict, parent_path: tuple[str, ...]) -> list[di
     return out
 
 
+def _normalise_pc(token: str) -> str:
+    """Normalise un code de prescription saisi vers le slug canonique 'pcN'.
+
+    Tolere : 'pc13', 'PC13', 'Pc 13', '13' -> 'pc13'. Les PC sont stockes en DB
+    sous la forme 'pcN' ; sans cette normalisation un numero nu ('13') est
+    rejete par le validateur ('code_prescription 13 inconnu')."""
+    t = (token or "").strip().lower().replace(" ", "")
+    if not t:
+        return t
+    if t.isdigit():
+        return f"pc{t}"
+    return t
+
+
 def _parse_patch_pc(raw: str) -> dict:
     """Parse le textarea du patch : une regle par ligne 'pcX -> pcY'.
-    Retourne {src: dst}. Ignore les lignes vides / mal formees. Accepte '->'
-    ou ':' comme separateur, espaces tolerants."""
+    Retourne {src: dst} avec les codes normalises en 'pcN' (cf. _normalise_pc :
+    un numero nu '13' devient 'pc13'). Ignore les lignes vides / mal formees.
+    Accepte '->' ou ':' comme separateur, espaces tolerants."""
     remap: dict = {}
     for line in (raw or "").splitlines():
         line = line.strip()
@@ -961,7 +976,7 @@ def _parse_patch_pc(raw: str) -> dict:
         if not sep:
             continue
         src, _, dst = line.partition(sep)
-        src, dst = src.strip(), dst.strip()
+        src, dst = _normalise_pc(src), _normalise_pc(dst)
         if src and dst:
             remap[src] = dst
     return remap

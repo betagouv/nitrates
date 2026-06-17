@@ -881,13 +881,13 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
         if cp and cp not in codes_pc:
             errors.append(
                 f"[reference] regle '{obj.get('id')}' : code_prescription "
-                f"'{cp}' inconnu dans referentiels.yaml"
+                f"'{cp}' inconnu dans le référentiel (DB)"
             )
         note = obj.get("note")
         if note and note not in notes:
             errors.append(
                 f"[reference] regle '{obj.get('id')}' : note '{note}' "
-                f"inconnue dans referentiels.yaml"
+                f"inconnue dans le référentiel (DB)"
             )
 
     # Patch de prescription sur les branches renvoi_vers : les valeurs source
@@ -900,7 +900,7 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
                 if pc not in codes_pc:
                     errors.append(
                         f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
-                        f" : code_prescription '{pc}' inconnu dans referentiels.yaml"
+                        f" : code_prescription '{pc}' inconnu dans le référentiel (DB)"
                     )
     return errors
 

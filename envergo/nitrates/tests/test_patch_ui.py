@@ -22,6 +22,11 @@ def test_parse_patch_pc():
     assert _parse_patch_pc("pc13:pc14") == {"pc13": "pc14"}
     assert _parse_patch_pc("\n  \n") == {}
     assert _parse_patch_pc("ligne sans separateur") == {}
+    # Normalisation : numero nu / casse / espaces -> slug 'pcN' (sinon le
+    # validateur rejette '13' comme code_prescription inconnu).
+    assert _parse_patch_pc("13 -> 14") == {"pc13": "pc14"}
+    assert _parse_patch_pc("PC13 -> 14") == {"pc13": "pc14"}
+    assert _parse_patch_pc("Pc 13 : Pc 14") == {"pc13": "pc14"}
 
 
 @pytest.fixture
