@@ -26,6 +26,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% endif %}
   </div>
 
+  {% comment %}
+  Zone d'action renforcée : ligne affichee UNIQUEMENT si la parcelle est en ZAR
+  (catalog.en_zar). Meme style que la ligne Zone vulnerable.
+  {% endcomment %}
+  {% if moulinette.catalog.en_zar %}
+    <div class="resultat-row">
+      <span class="resultat-row__label">Zone d'action renforcée (ZAR)</span>
+      <span class="resultat-badge resultat-badge--concerne">CONCERNÉ</span>
+    </div>
+  {% endif %}
+
   {% if not moulinette.catalog.en_zone_vulnerable %}
     <div class="fr-alert fr-alert--info fr-mt-3w">
       <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
@@ -92,6 +103,16 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
           {% else %}
             {% calendrier_epandage ev.regle %}
+          {% endif %}
+
+          {% comment %}
+          Panel debug "parcours" : INSERE entre le calendrier et les conditions
+          a respecter (cf. retour Max). Seulement en mode developpeur
+          (NITRATES_FORM_DEBUG_PANELS / force_debug) -> absent sur la route
+          publique /result/. Foldé par defaut (cf. _debug_parcours.html).
+          {% endcomment %}
+          {% if debug %}
+            {% include "nitrates/fragments/_debug_parcours.html" %}
           {% endif %}
 
           {% comment %}
@@ -263,11 +284,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               source : {{ ev.catalogue_manquant.source }})
             </p>
           </div>
-        {% endif %}
-
-        {# Panel debug : seulement en mode developpeur (NITRATES_FORM_DEBUG_PANELS). #}
-        {% if debug %}
-          {% include "nitrates/fragments/_debug_parcours.html" %}
         {% endif %}
 
       {% endwith %}

@@ -10,7 +10,7 @@ Inputs : ev (evaluator courant, avec result_code / regle / chemin / contexte),
 moulinette, request (pour draft_tree_id).
 {% endcomment %}
 
-<details class="fr-mt-3w nitrates-debug-panel" open>
+<details class="fr-mt-3w nitrates-debug-panel">
   <summary>Debug parcours</summary>
 
   <div class="nitrates-debug-panel__section">
@@ -115,14 +115,30 @@ moulinette, request (pour draft_tree_id).
         <dd>
           <code>{{ moulinette.catalog.en_zar }}</code>
         </dd>
-        <dt>zone_grand_est_1</dt>
+        {% comment %}
+        Zones Est (ZGE1/ZGE2) : pertinentes uniquement en Grand Est (region 44).
+        Hors Grand Est on n'affiche pas ces lignes (toujours False, bruit).
+        {% endcomment %}
+        <dt>en Grand Est</dt>
         <dd>
-          <code>{{ moulinette.catalog.zone_grand_est_1 }}</code>
+          <code>
+            {% if moulinette.catalog.region_code == "44" %}
+              True
+            {% else %}
+              False
+            {% endif %}
+          </code>
         </dd>
-        <dt>zone_grand_est_2</dt>
-        <dd>
-          <code>{{ moulinette.catalog.zone_grand_est_2 }}</code>
-        </dd>
+        {% if moulinette.catalog.region_code == "44" %}
+          <dt>zone_grand_est_1</dt>
+          <dd>
+            <code>{{ moulinette.catalog.zone_grand_est_1 }}</code>
+          </dd>
+          <dt>zone_grand_est_2</dt>
+          <dd>
+            <code>{{ moulinette.catalog.zone_grand_est_2 }}</code>
+          </dd>
+        {% endif %}
         <dt>zone_montagne_d113_14</dt>
         <dd>
           <code>{{ moulinette.catalog.zone_montagne_d113_14 }}</code>
