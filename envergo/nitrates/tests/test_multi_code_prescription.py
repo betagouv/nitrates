@@ -178,3 +178,85 @@ def test_form_normalise_et_dedoublonne():
         "pc13",
         "pc14",
     ]
+
+
+# ─── Patch remap sur liste (exhaustif) ───────────────────────────────────────
+
+
+def _arbre_patch(code_prescription, patch):
+    cible = {
+        "type_noeud": "formulaire",
+        "id": "n_cible",
+        "champ": "tf",
+        "niveau": "type_fertilisant",
+        "texte": "?",
+        "branches": [
+            {
+                "valeur": "a",
+                "regle": {
+                    "id": "r",
+                    "type": "plafonnement",
+                    "code_prescription": code_prescription,
+                },
+            }
+        ],
+    }
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q",
+                            "champ": "occ",
+                            "niveau": "culture",
+                            "texte": "?",
+                            "branches": [
+                                {"valeur": "src", "noeud": cible},
+                                {
+                                    "valeur": "via",
+                                    "renvoi_vers": "n_cible",
+                                    "patch": patch,
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+
+
+def _run_patch(cp, patch):
+    a = _arbre_patch(cp, patch)
+    return parcours(
+        a, {"en_zone_vulnerable": True, "occ": "via", "tf": "a"}
+    ).codes_prescription
+
+
+def test_patch_remap_multiple_sur_liste():
+    assert _run_patch(
+        ["pc12", "pc13"], {"code_prescription": {"pc12": "pc14", "pc13": "pc16"}}
+    ) == ["pc14", "pc16"]
+
+
+def test_patch_remap_partiel_preserve_ordre():
+    assert _run_patch(
+        ["pc12", "pc13", "pc5"], {"code_prescription": {"pc12": "pc14"}}
+    ) == ["pc14", "pc13", "pc5"]
+
+
+def test_patch_remap_origine_scalaire():
+    assert _run_patch("pc12", {"code_prescription": {"pc12": "pc14"}}) == ["pc14"]
+
+
+def test_patch_sans_match_inchange():
+    assert _run_patch(["pc4", "pc11"], {"code_prescription": {"pc99": "pc1"}}) == [
+        "pc4",
+        "pc11",
+    ]

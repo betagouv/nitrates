@@ -437,7 +437,7 @@
           <label class="yaml-tree__form-label">
             <span>code(s) prescription</span>
             <div data-pc-group>
-              {% with regle.codes_prescription|default_if_none:"" as codes %}
+              {% with codes_prescription_existants|default_if_none:"" as codes %}
                 {% for cp in codes %}
                   <div class="yaml-tree__pc-row" data-pc-row>
                     {% if regle_choices.code_prescription %}

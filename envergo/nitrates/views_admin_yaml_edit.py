@@ -524,12 +524,20 @@ class EditRegleView(View):
         branche = editor.get_branche_at(tree.contenu, parent_path, valeur)
         if branche is None or "regle" not in branche:
             return HttpResponseForbidden("Règle introuvable.")
+        from envergo.nitrates.yaml_tree.parcours import normaliser_codes_prescription
+
         return render(
             request,
             "nitrates_admin/yaml_tree/forms/_regle_form.html",
             {
                 "tree": tree,
                 "regle": branche["regle"],
+                # code_prescription du YAML peut etre scalaire OU liste : on
+                # normalise en liste pour le widget multi-PC (sinon une PC
+                # scalaire historique ne s'affiche pas -- regression compat).
+                "codes_prescription_existants": normaliser_codes_prescription(
+                    branche["regle"].get("code_prescription")
+                ),
                 "parent_path_str": "/".join(parent_path),
                 "valeur": valeur,
                 "errors": [],
