@@ -96,12 +96,24 @@ def get_node_at(arbre: dict, path: tuple[str, ...]) -> dict | None:
 
 
 def get_branche_at(arbre: dict, parent_path: tuple[str, ...], valeur) -> dict | None:
-    """Retourne la branche d'un noeud parent identifiee par sa valeur."""
+    """Retourne la branche d'un noeud parent identifiee par sa valeur.
+
+    Tolerant au type : la valeur arrive de la query string et peut etre
+    coercee differemment du YAML (ex: branche d'un catalogue_parametre avec
+    valeur string 'False', mais la vue passe le bool False ; ou un int 2
+    stocke en string '2'). On tente un match exact puis un match par
+    comparaison string.
+    """
     parent = get_node_at(arbre, parent_path)
     if parent is None:
         return None
-    for branche in parent.get("branches") or []:
-        if isinstance(branche, dict) and branche.get("valeur") == valeur:
+    branches = [b for b in (parent.get("branches") or []) if isinstance(b, dict)]
+    for branche in branches:
+        if branche.get("valeur") == valeur:
+            return branche
+    # Fallback tolerant au type (str <-> bool/int).
+    for branche in branches:
+        if str(branche.get("valeur")) == str(valeur):
             return branche
     return None
 
@@ -310,6 +322,91 @@ def update_branch_content(
             contenu, parent_path, branche_valeur, storage_key, content_data
         ),
         summary=f"{content_kind} ajouté dans la branche {branche_valeur!r}",
+    )
+
+
+def insert_parent(
+    tree: DecisionTree,
+    parent_path: tuple[str, ...],
+    branche_valeur,
+    content_kind: str,
+    content_data: dict,
+    user,
+) -> EditResult:
+    """Intercale un NOUVEAU noeud sur une branche existante.
+
+    Avant :  A --[X]--> C        (C = contenu actuel de la branche X de A)
+    Apres :  A --[X]--> N --[X]--> C
+
+    Le nouveau noeud N (formulaire / catalogue / catalogue_parametre) prend la
+    place du contenu de la branche X ; l'ancien contenu C est replace tel quel
+    sous UNE branche de N qui REPREND la valeur X (modifiable ensuite).
+
+    Seuls les noeuds peuvent etre intercales (un noeud a des branches pour
+    heberger l'enfant ; une regle/renvoi/feuille_vide est une feuille).
+    """
+    branche = get_branche_at(tree.contenu, parent_path, branche_valeur)
+    if branche is None:
+        return EditResult.fail([FieldError("", "Branche introuvable.")])
+
+    # Le contenu actuel de la branche (C) : exactement une des cles de contenu.
+    # Le detachement/replacement reel est fait par _apply_insert_parent ; ici
+    # on verifie juste qu'il y a bien un contenu a encapsuler.
+    cle_actuelle = next(
+        (
+            k
+            for k in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide")
+            if k in branche
+        ),
+        None,
+    )
+    if cle_actuelle is None:
+        return EditResult.fail(
+            [
+                FieldError(
+                    "",
+                    "Cette branche n'a pas de contenu à encapsuler : ajoutez "
+                    "d'abord un contenu, ou intercalez sur une branche peuplée.",
+                )
+            ]
+        )
+
+    # Seul un noeud peut etre intercale (il faut des branches pour heberger C).
+    if not content_kind.startswith("noeud_"):
+        return EditResult.fail(
+            [
+                FieldError(
+                    "",
+                    "Seul un nœud (formulaire / catalogue) peut être intercalé : "
+                    "une règle ou un renvoi est une feuille, sans branche pour "
+                    "accueillir le contenu existant.",
+                )
+            ]
+        )
+
+    # Validation du nouveau noeud (sans ses branches : on les fabrique ici).
+    grammar_kind = _kind_from_node(content_data) or _grammar_kind_from_content_kind(
+        content_kind
+    )
+    a_valider = {k: v for k, v in content_data.items() if k != "branches"}
+    res = validate_node_local(a_valider, grammar_kind, arbre=tree.contenu)
+    if not res.ok:
+        return EditResult.from_validation(res)
+
+    new_id = content_data.get("id")
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_ADD,
+        target_path=f"{'/'.join(parent_path)}#{branche_valeur}",
+        description=(
+            f"Intercalation du nœud {new_id!r} sur la branche {branche_valeur!r}"
+        ),
+        mutate=lambda contenu: _apply_insert_parent(
+            contenu, parent_path, branche_valeur, content_data
+        ),
+        summary=f"Nœud {new_id!r} intercalé sur la branche {branche_valeur!r}",
+        new_id=new_id,
     )
 
 
@@ -642,6 +739,43 @@ def _apply_set_branch_content(
         branche[storage_key] = content_data.get(storage_key)
     else:
         branche[storage_key] = content_data
+
+
+def _apply_insert_parent(
+    contenu: dict,
+    parent_path: tuple[str, ...],
+    branche_valeur,
+    nouveau_noeud: dict,
+) -> None:
+    """Encapsule le contenu de la branche dans `nouveau_noeud`.
+
+    branche X de A : {valeur: X, noeud: C}
+      -> {valeur: X, noeud: N} avec N.branches = [{valeur: X, noeud: C}]
+
+    On detache la cle de contenu courante (noeud/regle/renvoi.../feuille_vide)
+    et on la repose telle quelle sous une branche de N qui reprend la valeur X.
+    """
+    branche = get_branche_at(contenu, parent_path, branche_valeur)
+    if branche is None:
+        return
+    cle_actuelle = None
+    contenu_actuel = None
+    for key in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide"):
+        if key in branche:
+            cle_actuelle = key
+            contenu_actuel = branche[key]
+            break
+    if cle_actuelle is None:
+        return
+    # Branche de N qui reprend le contenu existant, sous la meme valeur.
+    branche_reprise = {"valeur": branche_valeur, cle_actuelle: contenu_actuel}
+    if branche.get("libelle"):
+        branche_reprise["libelle"] = branche["libelle"]
+    nouveau = dict(nouveau_noeud)
+    nouveau["branches"] = [branche_reprise]
+    # On remplace le contenu de la branche X par le nouveau noeud.
+    del branche[cle_actuelle]
+    branche["noeud"] = nouveau
 
 
 def _apply_delete_branch(
