@@ -39,12 +39,13 @@ from envergo.nitrates.yaml_admin.catalogue_refs import (
     get_resolver,
 )
 from envergo.nitrates.yaml_tree import (
+    ArbreCandidat,
     BesoinCatalogue,
     ParcoursError,
     QuestionsSubsidiaires,
     RenvoiArbre,
     Resultat,
-    load_tree_by_id,
+    candidat_by_id,
     parcours,
     select_active_trees,
 )
@@ -258,8 +259,8 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
 
     # ─── Construction du contexte ──────────────────────────────────────────
 
-    def _load_decision_trees(self) -> list[tuple[str, dict]]:
-        """Liste ORDONNEE (poids decroissant) de (scope, contenu) a tenter en
+    def _load_decision_trees(self) -> list[ArbreCandidat]:
+        """Liste ORDONNEE (poids decroissant) d'ArbreCandidat a tenter en
         cascade.
 
         Cas preview admin : si `draft_tree_id` est dans le QS, on previsualise
@@ -275,9 +276,10 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         draft_id = raw_data.get("draft_tree_id")
         if draft_id:
             try:
-                # Preview d'un draft : un seul arbre, scope ignore (pas de
-                # cascade en preview).
-                return [("draft", load_tree_by_id(int(draft_id)))]
+                # Preview d'un draft : un seul arbre (pas de cascade en
+                # preview), mais sous forme d'ArbreCandidat comme le reste de
+                # la cascade (la boucle evaluate() lit .scope/.contenu/.pk).
+                return [candidat_by_id(int(draft_id))]
             except (DecisionTree.DoesNotExist, ValueError, TypeError):
                 # Draft inexistant : fallback silencieux sur la cascade active.
                 pass

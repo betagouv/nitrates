@@ -133,6 +133,22 @@ def load_tree_by_id(tree_pk: int) -> dict:
     return DecisionTree.objects.get(pk=tree_pk).contenu
 
 
+def candidat_by_id(tree_pk: int) -> "ArbreCandidat":
+    """Renvoie un ArbreCandidat construit a partir d'un tree par son pk.
+
+    Pour le mode preview d'un brouillon : la cascade attend des ArbreCandidat
+    (avec .scope/.contenu/.pk...), pas le seul contenu. Leve
+    `DecisionTree.DoesNotExist` si l'id n'existe pas.
+
+    Securite : pas de check d'autorisation ici, c'est a l'appelant de valider
+    que l'utilisateur a le droit de voir ce tree.
+    """
+    t = DecisionTree.objects.get(pk=tree_pk)
+    return ArbreCandidat(
+        pk=t.pk, name=t.name, scope=t.scope, weight=t.weight, contenu=t.contenu
+    )
+
+
 def load_active_tree_raw() -> str:
     """Renvoie le YAML brut (round-trip ruamel) de l'arbre PAN actif.
 
