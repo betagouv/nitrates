@@ -106,17 +106,33 @@ def reset_link(querystring_base):
 
 
 def _activation_point(tree_pk):
-    """Point reel dans la couche SIG d'activation de l'arbre `tree_pk` (ex ZAR),
-    pour que la preview tombe DANS la zone. None si l'arbre n'a pas de couche
-    (PAN/PAR region) -> la preview retombe sur le resolveur SIG par defaut."""
+    """Point par defaut du SCOPE de l'arbre `tree_pk`, pour que la preview tombe
+    dans une zone ou l'arbre s'active quand le chemin ne porte pas lui-meme de
+    contrainte SIG specifique.
+
+      - scope ZAR        -> point dans la couche ZAR Grand Est (en_zar)
+      - scope region 44  -> point PAR Grand Est (ZV + region 44, hors ZAR)
+      - sinon (PAN, ...) -> None (la preview retombe sur le resolveur SIG du
+                            chemin : ZV national par defaut)
+
+    Le point retourne porte son code_insee quand la zone se resout par commune
+    (indispensable pour les Zones Est). Cf. compute_simulator_params : ce point
+    n'est applique que si le chemin n'impose pas deja un point specifique."""
     from envergo.nitrates.models import DecisionTree
-    from envergo.nitrates.yaml_admin.preview import point_for_activation_map
+    from envergo.nitrates.yaml_admin.preview import (
+        point_for_activation_map,
+        point_par_defaut_scope,
+    )
 
     try:
         tree = DecisionTree.objects.select_related("activation_map").get(pk=tree_pk)
     except (DecisionTree.DoesNotExist, ValueError, TypeError):
         return None
-    return point_for_activation_map(tree.activation_map)
+    # Priorite au point par scope (connait les Zones Est avec code_insee) ;
+    # a defaut, centroide de la couche d'activation (generique).
+    return point_par_defaut_scope(
+        tree.scope, tree.region_code
+    ) or point_for_activation_map(tree.activation_map)
 
 
 @register.simple_tag
