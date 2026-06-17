@@ -939,6 +939,9 @@ categories_fertilisants:
       - "digestat_brut_methanisation"
       - "fraction_liquide_digestat_methanisation"
       - "compost_fractions_solides_digestats"
+      - "digestat_autre_type_Ia"
+      - "digestat_autre_type_Ib"
+      - "digestat_autre_type_II"
 
   engrais_mineral:
     libelle_public: "Engrais minéral"
@@ -1023,6 +1026,24 @@ sous_fertilisants:
     libelle_public: "Digestats bruts de méthanisation"
   fraction_liquide_digestat_methanisation:
     libelle_public: "Fractions liquides des digestats de méthanisation"
+  digestat_autre_type_Ia:
+    libelle_public: "Autre digestat de type Ia"
+    description: |
+      Carte Miro "Types de fertilisants" : option "Autre de type Ia" sous la
+      catégorie Digestats. Permet de saisir un digestat non listé en déclarant
+      directement son type réglementaire.
+  digestat_autre_type_Ib:
+    libelle_public: "Autre digestat de type Ib"
+    description: |
+      Carte Miro "Types de fertilisants" : option "Autre de type Ib" sous la
+      catégorie Digestats. Permet de saisir un digestat non listé en déclarant
+      directement son type réglementaire.
+  digestat_autre_type_II:
+    libelle_public: "Autre digestat de type II"
+    description: |
+      Carte Miro "Types de fertilisants" : option "Autre de type II" sous la
+      catégorie Digestats. Permet de saisir un digestat non listé en déclarant
+      directement son type réglementaire.
 
   # ── Engrais minéral ────────────────────────────────────────────────────────
   engrais_azote_mineral:
@@ -1122,6 +1143,9 @@ mapping_sous_fertilisant_vers_type:
   # ── Digestats ──────────────────────────────────────────────────────────────
   digestat_brut_methanisation: "type_II"
   fraction_liquide_digestat_methanisation: "type_II"
+  digestat_autre_type_Ia: "type_Ia"
+  digestat_autre_type_Ib: "type_Ib"
+  digestat_autre_type_II: "type_II"
   # NB : compost_fractions_solides_digestats apparaît AUSSI dans la catégorie
   # "digestats" dans le Miro (typé Type Ia) — déjà mappé ci-dessus, pas de
   # duplication nécessaire (clé YAML unique).

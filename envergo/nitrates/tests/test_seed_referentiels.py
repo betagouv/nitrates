@@ -58,9 +58,10 @@ def test_seed_produit_volumes_attendus():
     assert GroupeCultureUI.objects.count() == 7
     assert BrancheCulturale.objects.count() == 12
     assert Culture.objects.count() == 19
-    # 30 depuis la carte #98 : l'ancien effluents_peu_charges_autre (1) est
-    # remplacé par effluents_peu_charges_elevage + _non_elevage (2).
-    assert Fertilisant.objects.count() == 30
+    # 33 : 30 (carte #98) + 3 options "Autre digestat de type Ia/Ib/II"
+    # ajoutées sous la catégorie Digestats depuis l'export Miro "Types de
+    # fertilisants" (options "Autre de type X" de la colonne Digestats).
+    assert Fertilisant.objects.count() == 33
     assert NoteReglementaire.objects.count() == 13
     assert CodePrescription.objects.count() == 16
     # 7 dans le YAML mais on retire brunissement_soies (doublon).
