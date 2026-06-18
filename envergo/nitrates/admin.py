@@ -5,12 +5,15 @@ Note : `MoulinetteNitrates` n'est pas un model Django (il herite de
 pas ici.
 """
 
+import json
+
 from django import forms
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from envergo.nitrates.models import DecisionTree, RpgCulture
 from envergo.nitrates.permissions import (
@@ -18,6 +21,50 @@ from envergo.nitrates.permissions import (
     can_delete_tree,
     can_edit_active,
 )
+
+# ─── Éditeur de contenu riche WYSIWYG (cartes #131/#136) ─────────────────────
+# Widget + helper partagés par ContenuRichDSFR (textes volants) ET
+# CodePrescription (champ blocs). Editor.js monté côté JS sur un <textarea>
+# masqué qui porte le JSON.
+
+
+class ContenuRichEditorWidget(forms.Textarea):
+    """Widget WYSIWYG (Editor.js) pour un champ `blocs` JSON.
+
+    Le <textarea> reste le champ réel du form (il porte le JSON), mais on le
+    masque et on monte Editor.js par-dessus (cf. contenu_rich_editor.js). Le
+    juriste n'édite jamais le JSON à la main."""
+
+    def __init__(self, attrs=None):
+        default = {"data-contenu-rich-editor": "1", "rows": 12}
+        if attrs:
+            default.update(attrs)
+        super().__init__(default)
+
+    class Media:
+        js = (
+            "nitrates_admin/vendor/editorjs/editorjs.umd.min.js",
+            "nitrates_admin/vendor/editorjs/header.umd.min.js",
+            "nitrates_admin/vendor/editorjs/list.umd.min.js",
+            "nitrates_admin/vendor/editorjs/quote.umd.min.js",
+            "nitrates_admin/foldable_tool.js",
+            "nitrates_admin/indent_tune.js",
+            "nitrates_admin/contenu_rich_editor.js",
+        )
+        css = {"all": ("nitrates_admin/contenu_rich_editor.css",)}
+
+
+def _clean_blocs_json(valeur):
+    """Parse la valeur postée par le widget (JSON string) -> objet Python.
+    Vide -> enveloppe {schema, blocs:[]}. Lève ValidationError si illisible."""
+    if isinstance(valeur, (dict, list)):
+        return valeur
+    if not valeur:
+        return {"schema": 1, "blocs": []}
+    try:
+        return json.loads(valeur)
+    except (TypeError, ValueError):
+        raise forms.ValidationError(_("Contenu invalide (JSON illisible)."))
 
 
 @admin.register(RpgCulture)
@@ -53,20 +100,53 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         return can_delete_tree(request.user, obj)
 
     list_display = (
+        "id",
         "name",
         "status_badge",
-        "activated_at",
+        "scope",
+        "region_col",
+        "activation_map",
+        "weight_col",
         "updated_at",
-        "created_at",
         "created_by",
         "actions_links",
     )
-    list_filter = ("status",)
-    search_fields = ("name",)
-    ordering = ("-activated_at", "-created_at")
-    # `created_by` est affiche dans list_display : sans select_related,
-    # 1 query par ligne pour resoudre le User. Avec, 1 JOIN unique.
-    list_select_related = ("created_by",)
+    list_filter = ("status", "scope", "region_code")
+    search_fields = ("name", "region_code")
+
+    def get_queryset(self, request):
+        """Tri par defaut : actifs d'abord, puis par scope (national -> region
+        -> zar), puis le plus recent. Les valeurs texte de status/scope ne
+        s'ordonnent pas dans le bon ordre metier -> on annote un rang puis on
+        ordonne dessus. Un clic sur un en-tete de colonne ecrase ce tri
+        (comportement admin standard) ; c'est juste l'ordre au chargement.
+
+        On pose l'annotation + l'order_by ICI (pas via l'attribut `ordering`)
+        car ModelAdmin applique `ordering` avant l'annotation, ce qui ferait
+        echouer la resolution des champs annotes."""
+        from django.db.models import Case, IntegerField, Value, When
+
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _statut_rang=Case(
+                When(status=DecisionTree.STATUS_ACTIVE, then=Value(0)),
+                When(status=DecisionTree.STATUS_DRAFT, then=Value(1)),
+                When(status=DecisionTree.STATUS_ARCHIVE, then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            ),
+            _scope_rang=Case(
+                When(scope=DecisionTree.SCOPE_NATIONAL, then=Value(0)),
+                When(scope=DecisionTree.SCOPE_REGION, then=Value(1)),
+                When(scope=DecisionTree.SCOPE_ZAR, then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            ),
+        ).order_by("_statut_rang", "_scope_rang", "-activated_at", "-created_at")
+
+    # `created_by` + `activation_map` sont affiches dans list_display : sans
+    # select_related, 1 query par ligne pour les resoudre. Avec, des JOIN.
+    list_select_related = ("created_by", "activation_map")
     readonly_fields = (
         "yaml_preview",
         "edit_link",
@@ -77,6 +157,18 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (None, {"fields": ("name", "status", "parent", "edit_link")}),
+        (
+            "Zone d'activation (sélection dynamique PAN / PAR / ZAR)",
+            {
+                "fields": ("scope", "region_code", "activation_map", "weight"),
+                "description": (
+                    "PAN = national (ni région ni couche). PAR régional = "
+                    "scope « region » + code région. ZAR = scope « zar » + "
+                    "couche d'activation SIG. Le poids départage les "
+                    "superpositions (le plus élevé gagne)."
+                ),
+            },
+        ),
         (
             "Contenu YAML (lecture seule — utiliser l'éditeur pour modifier)",
             {"fields": ("yaml_preview",)},
@@ -142,7 +234,11 @@ class DecisionTreeAdmin(admin.ModelAdmin):
                 edit_url,
             )
         if obj.status == DecisionTree.STATUS_ACTIVE:
-            edit_active_url = reverse("nitrates_admin_yaml_edit_active")
+            # On passe tree_id pour que l'edition cible l'actif de CETTE zone
+            # (PAN/PAR/ZAR), pas le PAN par defaut.
+            edit_active_url = (
+                reverse("nitrates_admin_yaml_edit_active") + f"?tree_id={obj.pk}"
+            )
             return format_html(
                 '<a class="button" href="{}">Voir</a> '
                 '<a class="button" style="background:#1f4789;color:#fff;" href="{}">'
@@ -158,6 +254,16 @@ class DecisionTreeAdmin(admin.ModelAdmin):
             view_url,
             clone_url,
         )
+
+    @admin.display(description="Rég.", ordering="region_code")
+    def region_col(self, obj):
+        # En-tete court : la valeur fait 2 chiffres, inutile d'imposer la
+        # largeur de "Code region" a la colonne.
+        return obj.region_code or "—"
+
+    @admin.display(description="Poids", ordering="weight")
+    def weight_col(self, obj):
+        return obj.weight
 
     @admin.display(description="Statut", ordering="status")
     def status_badge(self, obj):
@@ -189,7 +295,10 @@ class DecisionTreeAdmin(admin.ModelAdmin):
         view_url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={obj.pk}"
         edit_url = view_url + "&mode=edition"
         clone_url = reverse("nitrates_admin_yaml_clone_confirm", kwargs={"pk": obj.pk})
-        edit_active_url = reverse("nitrates_admin_yaml_edit_active")
+        # tree_id pour cibler l'actif de CETTE zone (PAN/PAR/ZAR), pas le PAN.
+        edit_active_url = (
+            reverse("nitrates_admin_yaml_edit_active") + f"?tree_id={obj.pk}"
+        )
         if obj.status == DecisionTree.STATUS_DRAFT:
             # Draft : Voir + Éditer + Cloner (utile aux external_observator
             # pour cloner un draft d'autrui en faire le leur).
@@ -350,11 +459,26 @@ class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     ordering = ("ordre_affichage", "identifiant")
 
 
+class CodePrescriptionForm(forms.ModelForm):
+    """Form admin du PC : le champ `blocs` est édité via l'éditeur WYSIWYG
+    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot."""
+
+    class Meta:
+        model = CodePrescription
+        fields = "__all__"
+        widgets = {"blocs": ContenuRichEditorWidget}
+
+    def clean_blocs(self):
+        return _clean_blocs_json(self.cleaned_data.get("blocs"))
+
+
 @admin.register(CodePrescription)
 class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+    form = CodePrescriptionForm
     list_display = (
         "identifiant",
         "mots_cles",
+        "a_du_contenu_riche",
         "toujours_affiche",
         "note_reglementaire",
         "ordre_affichage",
@@ -362,6 +486,29 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     search_fields = ("identifiant", "mots_cles", "texte_court")
     autocomplete_fields = ("note_reglementaire",)
     ordering = ("ordre_affichage", "identifiant")
+    readonly_fields = ("apercu_rendu",)
+
+    @admin.display(description="Contenu riche", boolean=True)
+    def a_du_contenu_riche(self, obj):
+        """Indique en liste si le PC a un contenu riche (champ `blocs`) saisi,
+        sinon il retombe sur le texte legacy (carte #136)."""
+        b = obj.blocs
+        if isinstance(b, dict):
+            return bool(b.get("blocs"))
+        return bool(b)
+
+    @admin.display(description="Aperçu du rendu")
+    def apercu_rendu(self, obj):
+        """Lien (nouvel onglet) vers la prévisualisation du rendu HTML DSFR de
+        ce PC (carte #136)."""
+        if not obj or not obj.pk:
+            return "— (enregistrer d'abord)"
+        url = reverse("nitrates_admin_contenu_rich_preview") + f"?type=pc&id={obj.pk}"
+        return format_html(
+            '<a class="button" href="{}" target="_blank" rel="noopener">'
+            "🔎 Prévisualiser le rendu</a>",
+            url,
+        )
 
 
 @admin.register(EvenementPhenologique)
@@ -369,3 +516,69 @@ class EvenementPhenologiqueAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_public", "date_calendrier")
     search_fields = ("identifiant", "libelle_public")
     ordering = ("identifiant",)
+
+
+from envergo.nitrates.models import DepartementOuverture  # noqa: E402
+
+
+@admin.register(DepartementOuverture)
+class DepartementOuvertureAdmin(admin.ModelAdmin):
+    """Ouverture géographique du simulateur (carte #57).
+
+    Le pilotage visuel se fait sur la page dédiée « Ouverture géographique »
+    (drag&drop). Cet admin ORM offre une vue tabulaire + actions bulk en
+    secours (filtre par région, ouvrir/fermer une sélection).
+    """
+
+    list_display = ("code", "nom", "region_label", "est_ouvert")
+    list_filter = ("est_ouvert", "region_label")
+    search_fields = ("code", "nom", "region_label", "region_code")
+    list_editable = ("est_ouvert",)
+    ordering = ("region_label", "ordre_affichage", "code")
+    actions = ("ouvrir_selection", "fermer_selection")
+
+    @admin.action(description="Ouvrir le simulateur pour les départements sélectionnés")
+    def ouvrir_selection(self, request, queryset):
+        n = queryset.update(est_ouvert=True)
+        self.message_user(request, f"{n} département(s) ouvert(s).")
+
+    @admin.action(description="Fermer le simulateur pour les départements sélectionnés")
+    def fermer_selection(self, request, queryset):
+        n = queryset.update(est_ouvert=False)
+        self.message_user(request, f"{n} département(s) fermé(s).")
+
+
+# ─── Contenu riche éditable « textes volants » (carte #131) ──────────────────
+
+from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
+
+
+class ContenuRichDSFRForm(forms.ModelForm):
+    class Meta:
+        model = ContenuRichDSFR
+        fields = "__all__"
+        widgets = {"blocs": ContenuRichEditorWidget}
+
+    def clean_blocs(self):
+        return _clean_blocs_json(self.cleaned_data.get("blocs"))
+
+
+@admin.register(ContenuRichDSFR)
+class ContenuRichDSFRAdmin(admin.ModelAdmin):
+    form = ContenuRichDSFRForm
+    list_display = ("cle", "libelle_admin", "updated_at")
+    search_fields = ("cle", "libelle_admin")
+    readonly_fields = ("updated_at", "apercu_rendu")
+
+    @admin.display(description="Aperçu du rendu")
+    def apercu_rendu(self, obj):
+        """Lien (nouvel onglet) vers la prévisualisation du rendu HTML DSFR de
+        ce contenu (carte #136)."""
+        if not obj or not obj.pk:
+            return "— (enregistrer d'abord)"
+        url = reverse("nitrates_admin_contenu_rich_preview") + f"?type=rich&id={obj.pk}"
+        return format_html(
+            '<a class="button" href="{}" target="_blank" rel="noopener">'
+            "🔎 Prévisualiser le rendu</a>",
+            url,
+        )

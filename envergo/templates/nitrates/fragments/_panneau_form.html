@@ -101,6 +101,23 @@ remplis au clic carte (cf. simulator.js).
     </div>
   {% endif %}
 
+  {% comment %}
+    Carte #57 — bornage géographique. Masqué par défaut ; révélé par
+    simulator.js (afficherMessageFerme) quand la parcelle cliquée est dans
+    un département où le simulateur n'est pas encore ouvert.
+  {% endcomment %}
+  <section id="form-region-fermee"
+           class="form-region-fermee"
+           role="status"
+           hidden>
+    <p class="form-region-fermee__titre">
+      <span class="form-region-fermee__cadenas" aria-hidden="true">🔒</span>
+      Le simulateur n'est pas encore ouvert dans
+      <strong id="form-region-fermee-lieu">votre secteur</strong>.
+    </p>
+    <p class="form-region-fermee__texte">Revenez bientôt&nbsp;: votre secteur sera prochainement pris en charge.</p>
+  </section>
+
   <div id="form-after-localisation"
        {% if not data.lat or not data.lng %}hidden{% endif %}>
 

@@ -666,3 +666,56 @@ body {
 [data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-btn:hover {
   background-color: #d6d6fd;
 }
+
+/* ─── Section "région pas encore ouverte" (carte #57) ────────────────── */
+.form-region-fermee {
+  margin-top: 24px;
+  padding: 28px 32px;
+  background: #f5f7fb;
+  border: 1px solid #dde3ee;
+  border-radius: 12px;
+  color: #2a2f3a;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 6%);
+}
+
+/* Titre + sous-texte alignés sur la même colonne de gauche : le cadenas est
+   posé en marqueur de liste (hors flux du texte) pour que les deux lignes
+   commencent au même point. */
+.form-region-fermee__titre {
+  margin: 0 0 10px;
+  padding-left: 2rem;
+  position: relative;
+  font-weight: 600;
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: #1d1d1d;
+}
+
+.form-region-fermee__cadenas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 1.3rem;
+}
+
+.form-region-fermee__texte {
+  margin: 0;
+  padding-left: 2rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #45474d;
+}
+
+/* Plafond d'azote : encart DSFR avec la valeur chiffree mise en avant
+   (cf. retour Max 2026-06-18 : le plafond etait plaque en texte brut). */
+.nitrates-plafond__valeur {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nitrates-plafond__unite {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}

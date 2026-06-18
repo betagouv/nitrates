@@ -8,7 +8,13 @@ from envergo.nitrates.views import (
     HomeView,
     MoulinetteView,
     ReferentielsView,
+    ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
+)
+from envergo.nitrates.views_admin_ouverture import (
+    ouverture_index,
+    ouverture_toggle,
+    ouverture_toggle_region,
 )
 from envergo.nitrates.views_admin_validation import (
     validation_create,
@@ -34,9 +40,12 @@ from envergo.nitrates.views_admin_yaml_edit import (
     ActivateTreeView,
     AddChildView,
     CancelAddChildView,
+    CancelChangeBranchContentView,
     CancelEditBrancheView,
     CancelEditNodeView,
     CancelEditRegleView,
+    CancelInsertParentView,
+    ChangeBranchContentView,
     ConvertNodeView,
     DeleteBrancheView,
     DeleteNodeView,
@@ -44,11 +53,13 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditNodeView,
     EditRawYamlView,
     EditRegleView,
+    InsertParentView,
     ReorderBranchesView,
     RestoreRevisionView,
     UndoLastView,
     ValidateTreeView,
 )
+from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
     YamlBrowserListView,
@@ -72,6 +83,11 @@ urlpatterns = [
         name="nitrates_zv_geojson",
     ),
     path(
+        "geojson/zar/",
+        ZoneActionRenforceeGeoJSONView.as_view(),
+        name="nitrates_zar_geojson",
+    ),
+    path(
         "api/referentiels/",
         ReferentielsView.as_view(),
         name="nitrates_referentiels",
@@ -80,6 +96,11 @@ urlpatterns = [
         "api/arbre/",
         DecisionTreeView.as_view(),
         name="nitrates_arbre",
+    ),
+    path(
+        "admin/nitrates/contenu-rich/preview/",
+        ContenuRichPreviewView.as_view(),
+        name="nitrates_admin_contenu_rich_preview",
     ),
     path(
         "admin/nitrates/arbre-decision/",
@@ -156,6 +177,26 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-branche/",
         DeleteBrancheView.as_view(),
         name="nitrates_admin_yaml_delete_branche",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/insert-parent/",
+        InsertParentView.as_view(),
+        name="nitrates_admin_yaml_insert_parent",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/insert-parent/cancel/",
+        CancelInsertParentView.as_view(),
+        name="nitrates_admin_yaml_insert_parent_cancel",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/change-content/",
+        ChangeBranchContentView.as_view(),
+        name="nitrates_admin_yaml_change_content",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/change-content/cancel/",
+        CancelChangeBranchContentView.as_view(),
+        name="nitrates_admin_yaml_change_content_cancel",
     ),
     path(
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/delete-noeud/",
@@ -264,5 +305,21 @@ urlpatterns = [
         "admin/nitrates/validation/<int:pk>/edit-meta/",
         validation_edit_meta,
         name="nitrates_admin_validation_edit_meta",
+    ),
+    # Bornage géographique du simulateur (carte #57).
+    path(
+        "admin/nitrates/ouverture-geographique/",
+        ouverture_index,
+        name="nitrates_admin_ouverture_index",
+    ),
+    path(
+        "admin/nitrates/ouverture-geographique/toggle/",
+        ouverture_toggle,
+        name="nitrates_admin_ouverture_toggle",
+    ),
+    path(
+        "admin/nitrates/ouverture-geographique/toggle-region/",
+        ouverture_toggle_region,
+        name="nitrates_admin_ouverture_toggle_region",
     ),
 ]

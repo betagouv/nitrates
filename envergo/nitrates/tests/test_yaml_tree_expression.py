@@ -94,6 +94,14 @@ def test_syntaxe_invalide_est_fausse():
     assert evaluer_expression("1 +", CTX) is False
 
 
+def test_compile_echoue_apres_parse_est_faux():
+    # Cas limite : `await x` est accepte par ast.parse(mode='eval') (donc passe
+    # le garde-fou dunder sans erreur) mais rejete par compile(mode='eval')
+    # ('await' outside function). On doit alors retomber sur False via le
+    # except SyntaxError du compile, sans propager.
+    assert evaluer_expression("await sous_fertilisant", CTX) is False
+
+
 def test_appel_fonction_inexistante_est_faux():
     # `foo` n'est ni une variable ni un helper -> None -> None() => TypeError
     # -> False.

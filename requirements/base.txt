@@ -106,6 +106,8 @@ django-ratelimit==4.1.0
     # via -r base.in
 django-redis==6.0.0
     # via -r base.in
+et-xmlfile==2.0.0
+    # via openpyxl
 faker==37.5.3
     # via -r base.in
 fiona==1.10.1
@@ -137,6 +139,8 @@ numpy==2.3.2
     # via
     #   scipy
     #   shapely
+openpyxl==3.1.5
+    # via -r base.in
 packaging==25.0
     # via
     #   build

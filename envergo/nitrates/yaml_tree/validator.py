@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator
 
 from envergo.nitrates.yaml_tree.condition import validate_condition
 from envergo.nitrates.yaml_tree.expression import valider_expression
+from envergo.nitrates.yaml_tree.parcours import normaliser_codes_prescription
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -39,6 +40,7 @@ def validate_arbre(
     arbre: dict,
     referentiels: dict | None = None,
     references_sig_supportees: set[str] | None = None,
+    scope: str = "national",
 ) -> None:
     """Lance toute la chaine de validation. Leve ValidationError si KO.
 
@@ -56,6 +58,12 @@ def validate_arbre(
     reference n'est pas couverte par le backend (= dataset SIG manquant).
     Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
     que les datasets -- mais on les liste pour traque.
+
+    scope : type d'arbre ('national' = PAN, 'region'/'zar' = PAR). Le PAN doit
+    etre COUVRANT (toutes les valeurs booleennes couvertes, cf. exhaustivite).
+    Les PAR/ZAR sont des OVERRIDES PARTIELS : un cas non couvert retombe sur
+    l'arbre de poids inferieur (no-match -> cascade). On ne leur applique donc
+    PAS le check d'exhaustivite booleenne.
     """
     errors: list[str] = []
 
@@ -77,7 +85,13 @@ def validate_arbre(
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
     errors.extend(_check_catalogue_parametre(arbre))
-    errors.extend(_check_branches_booleennes_exhaustives(arbre))
+    # Exhaustivite booleenne : seulement pour le PAN (couvrant). Les PAR/ZAR
+    # sont des overrides partiels -> les trous sont legitimes (fallback cascade).
+    if scope == "national":
+        errors.extend(_check_branches_booleennes_exhaustives(arbre))
+        # Feuille vide interdite pour le PAN (il doit produire une regle
+        # partout, pas de reponse sans incidence). Autorisee pour PAR/ZAR.
+        errors.extend(_check_pas_de_feuille_vide(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -220,6 +234,19 @@ def _check_renvois_vers(arbre: dict, ids: dict[str, list[str]]) -> list[str]:
             errors.append(
                 f"[renvoi_vers] '{cible}' (depuis branche valeur="
                 f"{branche.get('valeur')!r}) ne pointe vers aucun id existant"
+            )
+    return errors
+
+
+def _check_pas_de_feuille_vide(arbre: dict) -> list[str]:
+    """Le PAN ne doit contenir aucune feuille_vide : il est couvrant et doit
+    produire une regle sur chaque chemin. (Les PAR/ZAR, eux, les autorisent.)"""
+    errors: list[str] = []
+    for branche in _walk_branches(arbre):
+        if branche.get("feuille_vide"):
+            errors.append(
+                "[feuille_vide] une feuille vide n'est pas autorisee dans le "
+                "PAN national (l'arbre doit etre couvrant). Reservee aux PAR/ZAR."
             )
     return errors
 
@@ -851,18 +878,42 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
     for obj in _walk_objects(arbre):
         if not isinstance(obj, dict):
             continue
-        cp = obj.get("code_prescription")
-        if cp and cp not in codes_pc:
-            errors.append(
-                f"[reference] regle '{obj.get('id')}' : code_prescription "
-                f"'{cp}' inconnu dans referentiels.yaml"
-            )
+        # code_prescription : scalaire OU liste -> on normalise pour valider
+        # chaque code et detecter les doublons.
+        cps = normaliser_codes_prescription(obj.get("code_prescription"))
+        vus: set[str] = set()
+        for cp in cps:
+            if cp not in codes_pc:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' inconnu dans le référentiel (DB)"
+                )
+            if cp in vus:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' en doublon (une prescription ne peut etre listee "
+                    f"qu'une fois)"
+                )
+            vus.add(cp)
         note = obj.get("note")
         if note and note not in notes:
             errors.append(
                 f"[reference] regle '{obj.get('id')}' : note '{note}' "
-                f"inconnue dans referentiels.yaml"
+                f"inconnue dans le référentiel (DB)"
             )
+
+    # Patch de prescription sur les branches renvoi_vers : les valeurs source
+    # ET cible du remap code_prescription doivent etre des PC connus.
+    for branche in _walk_branches(arbre):
+        patch = branche.get("patch") if isinstance(branche, dict) else None
+        remap = (patch or {}).get("code_prescription") or {}
+        for src, dst in remap.items():
+            for pc in (src, dst):
+                if pc not in codes_pc:
+                    errors.append(
+                        f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
+                        f" : code_prescription '{pc}' inconnu dans le référentiel (DB)"
+                    )
     return errors
 
 

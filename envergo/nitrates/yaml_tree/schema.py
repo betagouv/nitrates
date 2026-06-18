@@ -74,7 +74,16 @@ REGLE_SCHEMA = {
                 },
             },
         },
-        "code_prescription": {"type": "string"},
+        # Code(s) de prescription conditionnee. Accepte un scalaire (1 PC) OU
+        # une liste (plusieurs PC sur la meme regle). Forme historique scalaire
+        # conservee pour ne pas reecrire les arbres existants. La validation
+        # metier (PC connu, pas de doublon) est dans le validateur.
+        "code_prescription": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            ]
+        },
         "note": {"type": "string"},
         "source_juridique": {"type": "string"},
         "message": {"type": "string"},
@@ -214,6 +223,25 @@ BRANCHE_SCHEMA = {
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
+        # Patch applique sur la feuille atteinte via renvoi_vers : remappe des
+        # codes de prescription (ex {code_prescription: {pc12: pc14}}). Permet
+        # de reutiliser un sous-arbre identique en changeant juste les PC, sans
+        # tout reecrire (cf. CINE detruit avant 31/12 : PC12 -> PC14 en ZAR).
+        "patch": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "code_prescription": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        # Renvoi explicite vers un autre arbre de la cascade (region|national).
+        "renvoi_arbre": {"type": "string"},
+        # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.
+        # validator). Rend la branche cliquable ; au runtime = no-match/fallback.
+        "feuille_vide": {"type": "boolean"},
     },
     "allOf": [
         # Exactement un mecanisme de selection parmi {valeur, valeurs, expression}.
@@ -240,12 +268,14 @@ BRANCHE_SCHEMA = {
                 },
             ]
         },
-        # Exactement un de {noeud, regle, renvoi_vers} :
+        # Exactement un de {noeud, regle, renvoi_vers, renvoi_arbre, feuille_vide} :
         {
             "oneOf": [
                 {"required": ["noeud"]},
                 {"required": ["regle"]},
                 {"required": ["renvoi_vers"]},
+                {"required": ["renvoi_arbre"]},
+                {"required": ["feuille_vide"]},
             ]
         },
     ],

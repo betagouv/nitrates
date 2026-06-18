@@ -18,6 +18,12 @@ REGIONS = {
     "84": "Auvergne-Rhône-Alpes",
     "93": "Provence-Alpes-Côte d'Azur",
     "94": "Corse",
+    # DROM (régions mono-départementales). Codes région INSEE officiels.
+    "01": "Guadeloupe",
+    "02": "Martinique",
+    "03": "Guyane",
+    "04": "La Réunion",
+    "06": "Mayotte",
 }
 
 DEPARTMENT_TO_REGION = {
@@ -130,6 +136,12 @@ DEPARTMENT_TO_REGION = {
     # Corse
     "2A": "94",
     "2B": "94",
+    # DROM (chaque département est sa propre région).
+    "971": "01",  # Guadeloupe
+    "972": "02",  # Martinique
+    "973": "03",  # Guyane
+    "974": "04",  # La Réunion
+    "976": "06",  # Mayotte
 }
 
 

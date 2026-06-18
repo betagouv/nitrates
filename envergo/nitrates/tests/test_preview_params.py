@@ -634,3 +634,41 @@ def test_preview_branche_non_effluent_injecte_sous_fertilisant_non_effluent(
     # Sans leaf_branch précis, au moins une expression est satisfaite et le
     # sous_fertilisant est cohérent (type_II).
     assert p.get("type_fertilisant") == "type_II"
+
+
+# ─── Point preview selon la couche d'activation (ZAR) ───────────────────────
+
+
+def test_point_for_activation_map_centroide_dans_couche(db):
+    """point_for_activation_map renvoie un point a l'interieur de la couche."""
+    from django.contrib.gis.geos import MultiPolygon, Point, Polygon
+
+    from envergo.geodata.models import MAP_TYPES, Map, Zone
+    from envergo.nitrates.yaml_admin.preview import point_for_activation_map
+
+    m = Map.objects.create(
+        name="zar_test", map_type=MAP_TYPES.zone_action_renforcee, description="t"
+    )
+    Zone.objects.create(
+        map=m, geometry=MultiPolygon(Polygon.from_bbox((3.5, 48.7, 5.0, 49.7)))
+    )
+    pt = point_for_activation_map(m)
+    assert pt is not None
+    p = Point(float(pt["lng"]), float(pt["lat"]), srid=4326)
+    assert Zone.objects.filter(map=m, geometry__intersects=p).exists()
+
+
+def test_point_for_activation_map_none_si_pas_de_map(db):
+    from envergo.nitrates.yaml_admin.preview import point_for_activation_map
+
+    assert point_for_activation_map(None) is None
+
+
+def test_point_override_prime_sur_resolveur_sig(arbre_minimal):
+    """point_override impose le point (couche ZAR) au lieu du resolveur SIG."""
+    override = {"lat": "49.5", "lng": "4.2"}
+    params = compute_simulator_params(
+        arbre_minimal, ("n_zvn",), point_override=override
+    )
+    assert params["lat"] == "49.5"
+    assert params["lng"] == "4.2"

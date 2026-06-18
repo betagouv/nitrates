@@ -86,6 +86,8 @@ _KIND_LABELS = {
     "noeud_catalogue": "📋 Catalogue (SIG / référentiel / calcul / expression)",
     "regle": "⚖️ Règle (interdiction, plafond, calculatrice…)",
     "renvoi_vers": "↪️ Renvoi vers une règle existante",
+    "renvoi_arbre": "🔀 Renvoi vers un autre arbre (région / national)",
+    "feuille_vide": "∅ Feuille vide (réponse sans règle — PAR/ZAR)",
 }
 
 
@@ -101,6 +103,36 @@ def reset_link(querystring_base):
     if querystring_base:
         return "?" + querystring_base
     return "?"
+
+
+def _activation_point(tree_pk):
+    """Point par defaut du SCOPE de l'arbre `tree_pk`, pour que la preview tombe
+    dans une zone ou l'arbre s'active quand le chemin ne porte pas lui-meme de
+    contrainte SIG specifique.
+
+      - scope ZAR        -> point dans la couche ZAR Grand Est (en_zar)
+      - scope region 44  -> point PAR Grand Est (ZV + region 44, hors ZAR)
+      - sinon (PAN, ...) -> None (la preview retombe sur le resolveur SIG du
+                            chemin : ZV national par defaut)
+
+    Le point retourne porte son code_insee quand la zone se resout par commune
+    (indispensable pour les Zones Est). Cf. compute_simulator_params : ce point
+    n'est applique que si le chemin n'impose pas deja un point specifique."""
+    from envergo.nitrates.models import DecisionTree
+    from envergo.nitrates.yaml_admin.preview import (
+        point_for_activation_map,
+        point_par_defaut_scope,
+    )
+
+    try:
+        tree = DecisionTree.objects.select_related("activation_map").get(pk=tree_pk)
+    except (DecisionTree.DoesNotExist, ValueError, TypeError):
+        return None
+    # Priorite au point par scope (connait les Zones Est avec code_insee) ;
+    # a defaut, centroide de la couche d'activation (generique).
+    return point_par_defaut_scope(
+        tree.scope, tree.region_code
+    ) or point_for_activation_map(tree.activation_map)
 
 
 @register.simple_tag
@@ -132,7 +164,12 @@ def preview_url_regle(arbre, parent_path_str, valeur, tree_pk, tree_status="draf
         champ = parent.get("champ")
         if champ and valeur is not None:
             leaf_branch = (champ, _coerce_valeur_for_constraint(valeur))
-    params = compute_simulator_params(arbre, parent_path, leaf_branch=leaf_branch)
+    params = compute_simulator_params(
+        arbre,
+        parent_path,
+        leaf_branch=leaf_branch,
+        point_override=_activation_point(tree_pk),
+    )
     use_draft_id = tree_status != "active"
     return build_preview_url(tree_pk if use_draft_id else None, params)
 
@@ -174,7 +211,9 @@ def preview_url(arbre, path_str, tree_pk, tree_status="draft"):
         path: tuple = ()
     else:
         path = tuple(p for p in path_str.split("/") if p)
-    params = compute_simulator_params(arbre, path)
+    params = compute_simulator_params(
+        arbre, path, point_override=_activation_point(tree_pk)
+    )
     # Si on previsualise un draft (statut != active), on injecte draft_tree_id.
     # Sur l'arbre actif, l'URL n'a pas besoin de ce param (le simulateur le
     # charge par defaut) -- ca evite une URL avec un id qui pointe sur l'actif.
@@ -183,7 +222,7 @@ def preview_url(arbre, path_str, tree_pk, tree_status="draft"):
 
 
 @register.simple_tag(takes_context=True)
-def admin_url_for_resultat(context, chemin, draft_tree_id=None):
+def admin_url_for_resultat(context, chemin, draft_tree_id=None, tree_pk=None):
     """Lien retour depuis le simulateur (panneau debug "Chemin parcouru")
     vers l'admin YAML, ciblé sur le dernier nœud du chemin de résolution.
 
@@ -191,7 +230,9 @@ def admin_url_for_resultat(context, chemin, draft_tree_id=None):
 
     - Si `draft_tree_id` est fourni, on cible ce tree (perm verifiee via
       can_preview_tree).
-    - Sinon on cible l'arbre actif courant.
+    - Sinon si `tree_pk` est fourni (= l'arbre qui a EMIS la regle dans la
+      cascade, PAN/PAR/ZAR), on cible CET arbre.
+    - Sinon, fallback sur le PAN national.
     - Visible uniquement pour staff (= acces admin YAML).
     Retourne "" si l'utilisateur ne peut pas / n'a rien a voir.
     """
@@ -216,8 +257,19 @@ def admin_url_for_resultat(context, chemin, draft_tree_id=None):
         if tree is None or not can_preview_tree(user, tree):
             return ""
         is_draft = tree.status == DecisionTree.STATUS_DRAFT
+    elif tree_pk:
+        # Arbre qui a reellement emis la regle (cascade PAN/PAR/ZAR).
+        try:
+            tree = DecisionTree.objects.filter(pk=int(tree_pk)).first()
+        except (TypeError, ValueError):
+            tree = None
+        if tree is None:
+            return ""
+        is_draft = tree.status == DecisionTree.STATUS_DRAFT
     else:
-        tree = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
+        tree = DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+        ).first()
         if tree is None:
             return ""
 

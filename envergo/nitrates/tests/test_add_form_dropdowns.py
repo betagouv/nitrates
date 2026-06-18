@@ -1,10 +1,9 @@
 """Dropdowns dans le formulaire d'ajout d'une branche (AddChildView).
 
-Tu as au format dropdown a l'insertion exactement les memes choix que pour
-l'edition d'une branche/regle existante :
 - valeur de branche : select si parent niveau=type_fertilisant/sous_culture
-- code_prescription : select avec slugs canoniques
-- note : select avec slugs canoniques
+- le formulaire d'ajout d'une regle est minimal (type + flag "a completer") ;
+  tout le detail (code_prescription, note, periodes, plafond...) ne s'edite
+  qu'APRES insertion via le formulaire d'edition.
 """
 
 import textwrap
@@ -85,10 +84,12 @@ def test_add_form_valeur_is_select_for_type_fertilisant_parent(
     assert found >= 2, f"select doit lister >=2 slugs du referentiel, {found}"
 
 
-def test_add_form_code_prescription_is_select(
-    client, staff_user, draft_with_type_fert_parent
-):
-    """Le champ code_prescription du kind=regle doit etre un <select> ferme."""
+def test_add_form_regle_est_minimal(client, staff_user, draft_with_type_fert_parent):
+    """Le formulaire d'AJOUT d'une regle est volontairement minimal : type +
+    flag "a completer". Le detail (periodes, plafond, verdict, code
+    prescription, source juridique, note...) ne s'edite qu'APRES insertion,
+    via le formulaire d'edition. On verifie ici l'absence de ces champs a
+    l'ajout."""
     client.force_login(staff_user)
     url = (
         reverse(
@@ -98,28 +99,20 @@ def test_add_form_code_prescription_is_select(
         + "?path=q_fert&kind=regle"
     )
     body = client.get(url).content.decode()
-    assert '<select name="c_code_prescription"' in body
-    # Slugs canoniques pc1..pcN doivent etre la
-    pc_count = sum(1 for s in ("pc1", "pc2", "pc3") if f'value="{s}"' in body)
-    assert pc_count >= 2, f"pcN doivent etre la, {pc_count}"
-
-
-def test_add_form_note_is_select(client, staff_user, draft_with_type_fert_parent):
-    """Le champ note du kind=regle doit etre un <select> ferme."""
-    client.force_login(staff_user)
-    url = (
-        reverse(
-            "nitrates_admin_yaml_add_child",
-            kwargs={"tree_pk": draft_with_type_fert_parent.pk},
-        )
-        + "?path=q_fert&kind=regle"
-    )
-    body = client.get(url).content.decode()
-    assert '<select name="c_note"' in body
-    note_count = sum(
-        1 for s in ("note_1", "note_2", "note_3") if f'value="{s}"' in body
-    )
-    assert note_count >= 2
+    # Garde : le type et le flag "a completer".
+    assert 'name="c_type"' in body
+    assert 'name="c_a_completer"' in body
+    # Retire de l'ajout (edition uniquement).
+    for absent in (
+        "c_code_prescription",
+        "c_note",
+        "c_message",
+        "c_source_juridique",
+        "c_periodes-0-du",
+        "c_composant",
+        "c_plafond_azote_kg_n_ha",
+    ):
+        assert absent not in body, f"{absent} ne doit plus etre dans l'ajout"
 
 
 def test_add_form_culture_parent_keeps_free_input(client, staff_user, make_active_tree):

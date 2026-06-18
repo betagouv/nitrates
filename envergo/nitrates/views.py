@@ -14,8 +14,10 @@ from envergo.nitrates.bassins import (
     bassin_label_from_attributes,
 )
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
+from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
+from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 
 
 def _cache_in_prod(seconds):
@@ -134,6 +136,63 @@ class ZoneVulnerableGeoJSONView(View):
         return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
+@method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
+class ZoneActionRenforceeGeoJSONView(View):
+    """Renvoie les polygones ZAR (Zone d'Action Renforcée) en GeoJSON.
+
+    Couvre TOUTES les Map de type zone_action_renforcee (potentiellement
+    plusieurs régions ; pour l'instant le Grand Est seul). Affiché comme
+    overlay optionnel sur la carte du simulateur (tickbox), cf. carte #34.
+
+    Les ZAR sont des petites zones (aires d'alimentation de captage), donc
+    une tolérance de simplification faible suffit. Cache 24h (mêmes raisons
+    que la ZV : données quasi-statiques).
+
+    Format : FeatureCollection WGS84.
+    """
+
+    # ~0.0005° ≈ 50m : les ZAR sont petites, on garde plus de détail que la ZV.
+    SIMPLIFY_TOLERANCE = 0.0005
+
+    def get(self, request, *args, **kwargs):
+        from django.db import connection
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    ST_AsGeoJSON(
+                        ST_SimplifyPreserveTopology(
+                            z.geometry::geometry, %s
+                        )
+                    ),
+                    z.attributes
+                FROM geodata_zone z
+                JOIN geodata_map m ON z.map_id = m.id
+                WHERE m.map_type = %s
+                """,
+                [self.SIMPLIFY_TOLERANCE, MAP_TYPES.zone_action_renforcee],
+            )
+            features = []
+            for geom_json, attributes in cur.fetchall():
+                attrs = attributes or {}
+                if isinstance(attrs, str):
+                    attrs = json.loads(attrs)
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(geom_json),
+                        "properties": {
+                            "nom": attrs.get("NOMZAR"),
+                            "nom_complet": attrs.get("NOMCOMPL"),
+                            "type": attrs.get("TYPABRG"),
+                            "departement": attrs.get("CDDEPT"),
+                        },
+                    }
+                )
+        return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
 class DebugView(View):
     """Renvoie les infos géographiques pour un point (lng, lat) cliqué.
 
@@ -182,6 +241,17 @@ class DebugView(View):
                 "bassin": bassin_code_from_attributes(attrs),
             }
 
+        en_zar = Zone.objects.filter(
+            map__map_type=MAP_TYPES.zone_action_renforcee,
+            geometry__intersects=point,
+        ).exists()
+
+        # Zones Est (resolues par code INSEE) : on les expose pour le panneau
+        # debug gauche. code_insee n'est pas connu de cet endpoint (pas de
+        # geocodage commune ici), on passe le code recu du front s'il existe.
+        code_insee = request.GET.get("code_insee") or ""
+        en_grand_est = region_code == "44"
+
         return JsonResponse(
             {
                 "lng": lng,
@@ -191,6 +261,21 @@ class DebugView(View):
                 "region_label": region_label,
                 "en_zone_vulnerable": zv_zone is not None,
                 "zv_info": zv_info,
+                "en_zar": en_zar,
+                "en_grand_est": en_grand_est,
+                # ZGE1/ZGE2 : pertinents seulement en Grand Est (sinon None ->
+                # le front ne les affiche pas).
+                "zone_grand_est_1": (
+                    est_zone_grand_est_1(code_insee) if en_grand_est else None
+                ),
+                "zone_grand_est_2": (
+                    est_zone_grand_est_2(code_insee) if en_grand_est else None
+                ),
+                # Bornage géographique (carte #57) : le simulateur n'est ouvert
+                # que dans certaines régions/départements. Si fermé, le front
+                # affiche un message au lieu du formulaire. Allowlist : fermé
+                # par défaut.
+                "simulateur_ouvert": departement_est_ouvert(department_code),
             }
         )
 
@@ -366,15 +451,25 @@ class MoulinetteView(View):
             load_tree_by_id,
         )
 
-        # Si on est en preview d'un draft, on collecte les QC du draft.
-        draft_id = request.GET.get("draft_tree_id")
-        if draft_id:
-            try:
-                arbre_actif = load_tree_by_id(int(draft_id))
-            except (DecisionTree.DoesNotExist, ValueError, TypeError):
+        # On collecte les QC sur l'arbre REELLEMENT evalue par la cascade
+        # (peut etre un PAR/ZAR, pas le PAN). Sinon le panel gauche ne
+        # retrouverait pas les QC du ZAR (le PAN ne les a pas).
+        arbre_actif = None
+        for e in regulations_evaluees:
+            ac = getattr(e["evaluator"], "arbre_courant", None)
+            if ac:
+                arbre_actif = ac
+                break
+        if arbre_actif is None:
+            # Fallback (pas d'eval arbre, ex preview draft ou hors ZV).
+            draft_id = request.GET.get("draft_tree_id")
+            if draft_id:
+                try:
+                    arbre_actif = load_tree_by_id(int(draft_id))
+                except (DecisionTree.DoesNotExist, ValueError, TypeError):
+                    arbre_actif = load_active_tree()
+            else:
                 arbre_actif = load_active_tree()
-        else:
-            arbre_actif = load_active_tree()
         contexte_courant = dict(request.GET.items())
         # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
         # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre

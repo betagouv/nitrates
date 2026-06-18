@@ -200,7 +200,11 @@
           const newHash = location.hash
             ? location.hash + '&edit=1'
             : '#edit=1';
-          const url = "{% url 'nitrates_admin_yaml_edit_active' %}" + newHash;
+          // tree_id pour editer l'actif de CETTE zone (PAN/PAR/ZAR), pas le PAN.
+          const treePk = {{ tree.pk|default:'null' }};
+          const treeQs = treePk ? ('?tree_id=' + treePk) : '';
+          const url =
+            "{% url 'nitrates_admin_yaml_edit_active' %}" + treeQs + newHash;
           location.replace(url);
           return;
         }

@@ -49,7 +49,7 @@ def _make_tree(**overrides) -> DecisionTree:
 
 def test_find_or_create_cree_un_draft_si_aucun(alice):
     active = _make_tree()
-    draft = DecisionTree.find_or_create_edit_draft(alice)
+    draft = DecisionTree.find_or_create_edit_draft(alice, active=active)
     assert draft is not None
     assert draft.status == DecisionTree.STATUS_DRAFT
     assert draft.parent_id == active.pk
@@ -57,26 +57,42 @@ def test_find_or_create_cree_un_draft_si_aucun(alice):
 
 
 def test_find_or_create_reutilise_draft_existant(alice):
-    _make_tree()
-    first = DecisionTree.find_or_create_edit_draft(alice)
-    second = DecisionTree.find_or_create_edit_draft(alice)
+    active = _make_tree()
+    first = DecisionTree.find_or_create_edit_draft(alice, active=active)
+    second = DecisionTree.find_or_create_edit_draft(alice, active=active)
     assert first.pk == second.pk
 
 
 def test_find_or_create_cree_nouveau_si_draft_locked_par_autre(alice, bob):
-    _make_tree()
+    active = _make_tree()
     # Bob cree un draft et le lock
-    bob_draft = DecisionTree.find_or_create_edit_draft(bob)
+    bob_draft = DecisionTree.find_or_create_edit_draft(bob, active=active)
     bob_draft.acquire_lock(bob)
     # Alice arrive : on lui cree un draft separe
-    alice_draft = DecisionTree.find_or_create_edit_draft(alice)
+    alice_draft = DecisionTree.find_or_create_edit_draft(alice, active=active)
     assert alice_draft.pk != bob_draft.pk
     assert alice_draft.created_by_id == alice.pk
 
 
+def test_find_or_create_lock_par_zone(alice):
+    """Le lock est par zone : un draft sur le PAR n'empeche pas d'editer le
+    draft du PAN (zones d'activation distinctes)."""
+    pan = _make_tree(name="pan")
+    par = _make_tree(
+        name="par_ge",
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+    draft_pan = DecisionTree.find_or_create_edit_draft(alice, active=pan)
+    draft_par = DecisionTree.find_or_create_edit_draft(alice, active=par)
+    assert draft_pan.pk != draft_par.pk
+    assert draft_pan.parent_id == pan.pk
+    assert draft_par.parent_id == par.pk
+
+
 def test_find_or_create_returns_none_sans_actif(alice):
-    """Aucun arbre actif en DB -> rien a editer."""
-    result = DecisionTree.find_or_create_edit_draft(alice)
+    """Aucun arbre actif passe -> rien a editer."""
+    result = DecisionTree.find_or_create_edit_draft(alice, active=None)
     assert result is None
 
 

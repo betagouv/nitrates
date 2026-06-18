@@ -18,7 +18,11 @@ from envergo.nitrates.yaml_tree.parcours import (
     BesoinCatalogue,
     ParcoursError,
     QuestionsSubsidiaires,
+    RenvoiArbre,
     Resultat,
+    _collecter_questions,
+    collecter_qc_du_chemin,
+    normaliser_codes_prescription,
     parcours,
 )
 
@@ -173,6 +177,80 @@ def test_renvoi_vers_resolu():
     assert res.type == "non_applicable"
     # Le chemin doit garder la trace du renvoi pour les juristes
     assert "renvoi_vers:r_hors" in res.chemin
+
+
+def test_renvoi_vers_noeud_reutilisable():
+    """renvoi_vers peut cibler un NOEUD (sous-arbre reutilisable, pattern
+    'include'), pas seulement une regle : on re-descend dedans avec le meme
+    contexte et on atteint la feuille sous-jacente. Cas luzerne/ICPE en prod
+    (q_prairie_plus6_type_0_icpe reutilise depuis plusieurs branches)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q_culture",
+                            "champ": "occupation_sol",
+                            "branches": [
+                                # Branche A : renvoie vers le sous-arbre partage.
+                                {"valeur": "a", "renvoi_vers": "q_sous_arbre"},
+                                # Branche B : le sous-arbre partage lui-meme.
+                                {
+                                    "valeur": "b",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "id": "q_sous_arbre",
+                                        "champ": "detail",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {
+                                                    "id": "r_partagee",
+                                                    "type": "interdiction",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    res = parcours(
+        arbre,
+        {"en_zone_vulnerable": True, "occupation_sol": "a", "detail": "x"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_partagee"
+    assert "renvoi_vers:q_sous_arbre" in res.chemin
+
+
+def test_renvoi_vers_id_inexistant_leve_parcours_error():
+    """renvoi_vers vers un id absent de l'arbre -> ParcoursError explicite
+    (garde-fou : pas de None silencieux qui crasherait plus loin)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {"valeur": True, "renvoi_vers": "r_nexiste_pas"},
+                ],
+            }
+        }
+    }
+    with pytest.raises(ParcoursError, match="ne pointe vers aucun id"):
+        parcours(arbre, {"en_zone_vulnerable": True})
 
 
 def test_a_completer_ne_crashe_pas():
@@ -442,6 +520,52 @@ def test_couvert_courte_renvoi_vers_regle_partagee(
     )
     assert isinstance(res, Resultat)
     assert res.regle_id == regle_attendue
+    # La regle partagee est une autorisation_sous_condition qui porte son
+    # plafond via `plafonnement_associe` (pas inline). Le parcours doit avoir
+    # resolu la reference et remonte le plafond + le code prescription sur le
+    # Resultat, sinon le panneau ne les affiche pas (cf. fix 2026-06-18).
+    assert res.type == "autorisation_sous_condition"
+    assert res.plafond_azote_kg_n_ha == 70
+    assert res.codes_prescription  # non vide (issu du plafonnement associe)
+
+
+def test_plafonnement_associe_ne_surcharge_pas_un_plafond_inline():
+    """Fusion plafonnement_associe : on ne complete que les champs ABSENTS.
+    Une feuille qui porte deja son plafond inline garde sa valeur (le
+    plafonnement associe ne l'ecrase pas)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "type_noeud": "catalogue",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "regle": {
+                            "id": "r_inline",
+                            "type": "autorisation_sous_condition",
+                            "plafond_azote_kg_n_ha": 120,
+                            "plafonnement_associe": "r_plaf",
+                        },
+                    }
+                ],
+            }
+        },
+        "plafonnements": [
+            {
+                "regle": {
+                    "id": "r_plaf",
+                    "type": "plafonnement",
+                    "plafond_azote_kg_n_ha": 70,
+                }
+            }
+        ],
+    }
+    res = parcours(arbre, {"en_zone_vulnerable": True})
+    assert isinstance(res, Resultat)
+    # Le plafond inline (120) prime sur celui du plafonnement associe (70).
+    assert res.plafond_azote_kg_n_ha == 120
 
 
 # ─── Cascade questions conditionnelles (#58.1) ─────────────────────────────
@@ -626,3 +750,966 @@ def test_branche_valeur_singulier_prime_si_specifique():
     )
     assert isinstance(res, Resultat)
     assert res.regle_id == "r_icpe_a"
+
+
+def test_valeur_inconnue_liste_les_valeurs_pluriel_disponibles():
+    """Le message d'erreur d'une valeur inconnue doit lister AUSSI les valeurs
+    des branches `valeurs:` (pluriel), pas seulement les `valeur:` (singulier),
+    pour aider le juriste a diagnostiquer (couvre la branche `extend`)."""
+    with pytest.raises(ParcoursError) as exc:
+        parcours(_arbre_avec_valeurs_regroupees(), {"plan_epandage": "inconnu"})
+    msg = str(exc.value)
+    # Valeurs singulier ET pluriel listees.
+    assert "icpe_a" in msg
+    assert "icpe_e" in msg
+    assert "icpe_d" in msg
+
+
+# ─── has_autorisation_sous_condition / has_interdiction ─────────────────────
+
+
+def test_has_autorisation_sous_condition_true_si_une_periode_asc():
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_autorisation_sous_condition is True
+
+
+def test_has_autorisation_sous_condition_false_si_aucune():
+    res = Resultat(
+        regle_id="r_test",
+        type="interdiction",
+        periodes=[{"du": "15/10", "au": "31/01", "regime": "interdiction"}],
+    )
+    assert res.has_autorisation_sous_condition is False
+
+
+def test_has_autorisation_sous_condition_false_si_pas_de_periodes():
+    assert (
+        Resultat(
+            regle_id="r", type="libre", periodes=None
+        ).has_autorisation_sous_condition
+        is False
+    )
+
+
+def test_has_interdiction_true_si_une_periode_interdiction():
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+        ],
+    )
+    assert res.has_interdiction is True
+
+
+def test_has_interdiction_false_si_aucune():
+    res = Resultat(
+        regle_id="r_test",
+        type="autorisation_sous_condition",
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"}
+        ],
+    )
+    assert res.has_interdiction is False
+
+
+def test_has_interdiction_false_si_pas_de_periodes():
+    assert Resultat(regle_id="r", type="libre", periodes=None).has_interdiction is False
+
+
+def test_has_borne_flottante_true_si_borne_sur_du():
+    """Symetrique du test sur `au` : une borne phenologique sur `du`
+    (pas une date JJ/MM) doit aussi rendre has_borne_flottante=True."""
+    res = Resultat(
+        regle_id="r_test",
+        type="mixte",
+        periodes=[{"du": "derniere_coupe_luzerne", "au": "15/02"}],
+    )
+    assert res.has_borne_flottante is True
+
+
+# ─── to_json_dict (serialisation front calculatrice) ────────────────────────
+
+
+def test_to_json_dict_serialise_les_champs_attendus():
+    res = Resultat(
+        regle_id="r_calc",
+        type="calculatrice",
+        periodes=[{"du": "15/07", "au": "15/02"}],
+        texte_condition="cond",
+        message="verdict",
+        codes_prescription=["pc12", "pc14"],
+        composant="calendrier_dynamique_couvert",
+        inputs_requis=[{"id": "date_semis", "label": "Date de semis", "type": "date"}],
+    )
+    d = res.to_json_dict()
+    assert d["regle_id"] == "r_calc"
+    assert d["type"] == "calculatrice"
+    assert d["periodes"] == [{"du": "15/07", "au": "15/02"}]
+    assert d["texte_condition"] == "cond"
+    assert d["message"] == "verdict"
+    # compat : 1er code en scalaire + liste complete
+    assert d["code_prescription"] == "pc12"
+    assert d["codes_prescription"] == ["pc12", "pc14"]
+    assert d["composant"] == "calendrier_dynamique_couvert"
+    assert d["inputs_requis"][0]["id"] == "date_semis"
+
+
+def test_to_json_dict_defauts_si_champs_absents():
+    """periodes/inputs_requis None -> listes vides cote JSON (le front itere
+    dessus sans garde)."""
+    d = Resultat(regle_id="r", type="libre").to_json_dict()
+    assert d["periodes"] == []
+    assert d["inputs_requis"] == []
+    assert d["codes_prescription"] == []
+    assert d["code_prescription"] is None
+
+
+# ─── Gardes d'erreur du parcours ────────────────────────────────────────────
+
+
+def test_arbre_sans_racine_leve_parcours_error():
+    with pytest.raises(ParcoursError, match="sans noeud racine"):
+        parcours({"arbre": {}}, {})
+
+
+def test_branche_sans_cible_leve_parcours_error():
+    """Une branche choisie qui n'a ni noeud, ni regle, ni renvoi_* est un
+    arbre malforme -> ParcoursError explicite (et non un None silencieux)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "c",
+                "branches": [{"valeur": "a"}],  # branche vide (ni regle ni noeud)
+            }
+        }
+    }
+    with pytest.raises(ParcoursError, match="sans noeud/regle"):
+        parcours(arbre, {"c": "a"})
+
+
+def test_feuille_vide_leve_parcours_error():
+    """Une `feuille_vide` (reponse cliquable sans regle, fallback cascade)
+    n'est pas parcourable directement : elle leve ParcoursError (l'evaluateur
+    le rattrape pour tomber sur l'arbre inferieur)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "c",
+                "branches": [{"valeur": "a", "feuille_vide": True}],
+            }
+        }
+    }
+    with pytest.raises(ParcoursError, match="feuille_vide"):
+        parcours(arbre, {"c": "a"})
+
+
+# ─── renvoi_arbre (cascade explicite ZAR -> PAR) ────────────────────────────
+
+
+def test_renvoi_arbre_retourne_renvoi_arbre():
+    """Une branche `renvoi_arbre` ne produit pas un Resultat mais un RenvoiArbre
+    que l'evaluateur resout en basculant sur l'arbre du scope cible."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "c",
+                "branches": [{"valeur": "a", "renvoi_arbre": "region"}],
+            }
+        }
+    }
+    res = parcours(arbre, {"c": "a"})
+    assert isinstance(res, RenvoiArbre)
+    assert res.scope_cible == "region"
+    assert "renvoi_arbre:region" in res.chemin_partiel
+
+
+# ─── _valeurs_egales : int YAML vs string numerique ─────────────────────────
+
+
+def _arbre_int_branche() -> dict:
+    """Noeud dont une branche porte une valeur INT (ex zonage numerote)."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zone",
+                "champ": "zone_num",
+                "branches": [
+                    {"valeur": 5, "regle": {"id": "r_z5", "type": "interdiction"}},
+                    {"valeur": 7, "regle": {"id": "r_z7", "type": "libre"}},
+                ],
+            }
+        }
+    }
+
+
+def test_int_yaml_matche_string_numerique():
+    """Une valeur de contexte string '5' (ex query string) matche une branche
+    `valeur: 5` (int YAML)."""
+    res = parcours(_arbre_int_branche(), {"zone_num": "5"})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_z5"
+
+
+def test_int_yaml_string_non_numerique_ne_matche_pas():
+    """Une string non convertible en int ne matche aucune branche int -> erreur."""
+    with pytest.raises(ParcoursError):
+        parcours(_arbre_int_branche(), {"zone_num": "abc"})
+
+
+# ─── Collecte de questions : 1re reponse deja dans l'URL ────────────────────
+
+
+def _arbre_cascade_3_niveaux() -> dict:
+    """Arbre formulaire a 3 niveaux : occupation_sol -> sous_culture ->
+    type_fertilisant, pour tester la collecte de questions en aval d'un
+    chemin deja amorce (`_collecter_aval_si_chemin_unique`)."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "Culture ?",
+                "branches": [
+                    {
+                        "valeur": "mais",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "sous_culture",
+                            "id": "q_sous",
+                            "champ": "sous_culture",
+                            "texte": "Sous-culture ?",
+                            "branches": [
+                                {
+                                    "valeur": "grain",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "type_fertilisant",
+                                        "id": "q_fert",
+                                        "champ": "type_fertilisant",
+                                        "texte": "Type ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "type_0",
+                                                "regle": {
+                                                    "id": "r_fin",
+                                                    "type": "libre",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+
+
+def _noeud_racine(arbre: dict) -> dict:
+    return arbre["arbre"]["noeud"]
+
+
+def test_collecte_descend_le_chemin_amorce_dans_l_url():
+    """Cas "1re question deja repondue dans l'URL" : on appelle directement
+    `_collecter_questions` sur le noeud bloquant avec sa valeur presente dans
+    le contexte. On doit recevoir la 1re question PLUS les questions en aval
+    du chemin choisi (`_collecter_aval_si_chemin_unique`)."""
+    noeud = _noeud_racine(_arbre_cascade_3_niveaux())
+    questions = _collecter_questions(noeud, {"occupation_sol": "mais"}, {})
+    champs = [q.champ for q in questions]
+    assert "occupation_sol" in champs
+    # La sous-question en aval du chemin choisi est collectee.
+    assert "sous_culture" in champs
+    # Pas de parent_champ : on suit le chemin unique, pas du conditionnel.
+    q_sous = next(q for q in questions if q.champ == "sous_culture")
+    assert q_sous.parent_champ is None
+
+
+def test_collecte_descend_deux_niveaux_quand_amorce():
+    """occupation_sol=mais ET sous_culture=grain repondus : on descend
+    jusqu'a la 3e question (type_fertilisant), encore bloquante."""
+    noeud = _noeud_racine(_arbre_cascade_3_niveaux())
+    questions = _collecter_questions(
+        noeud, {"occupation_sol": "mais", "sous_culture": "grain"}, {}
+    )
+    champs = [q.champ for q in questions]
+    assert "sous_culture" in champs
+    assert "type_fertilisant" in champs
+
+
+def test_collecte_s_arrete_si_valeur_url_inconnue_en_aval():
+    """occupation_sol=mais repondu mais sous_culture pointe une valeur
+    inexistante : la descente s'arrete sans planter (aucune branche ne
+    matche, pas de question en aval ajoutee)."""
+    noeud = _noeud_racine(_arbre_cascade_3_niveaux())
+    questions = _collecter_questions(
+        noeud, {"occupation_sol": "mais", "sous_culture": "inexistant"}, {}
+    )
+    champs = [q.champ for q in questions]
+    assert "sous_culture" in champs
+    # On n'a pas pu descendre plus loin (valeur inconnue) -> pas de type_fert.
+    assert "type_fertilisant" not in champs
+
+
+def _arbre_collecte_catalogue() -> dict:
+    """Arbre occupation_sol -> catalogue zone_note_5 -> QC detail, pour tester
+    la traversee d'un catalogue dans `_collecter_aval_si_chemin_unique`."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "colza",
+                        "noeud": {
+                            "type_noeud": "catalogue",
+                            "id": "n_zone",
+                            "champ": "zone_note_5",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "complement",
+                                        "id": "q_apres_cat",
+                                        "champ": "detail",
+                                        "texte": "Detail ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {
+                                                    "id": "r_fin",
+                                                    "type": "libre",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+
+
+def test_collecte_aval_traverse_catalogue_resolu():
+    """Un catalogue resolu dans le contexte est TRAVERSE (pas liste) pour
+    atteindre la question en aval (branche type_noeud == catalogue)."""
+    noeud = _noeud_racine(_arbre_collecte_catalogue())
+    questions = _collecter_questions(
+        noeud, {"occupation_sol": "colza", "zone_note_5": True}, {}
+    )
+    champs = [q.champ for q in questions]
+    # Le catalogue n'est PAS une question, mais la question en aval l'est.
+    assert "zone_note_5" not in champs
+    assert "detail" in champs
+
+
+def test_collecte_aval_s_arrete_si_catalogue_non_resolu():
+    """Si le catalogue en aval n'est pas resolu dans le contexte, on ne
+    descend pas plus loin (pas de question apres le catalogue)."""
+    noeud = _noeud_racine(_arbre_collecte_catalogue())
+    questions = _collecter_questions(noeud, {"occupation_sol": "colza"}, {})
+    champs = [q.champ for q in questions]
+    assert "detail" not in champs
+
+
+def test_collecte_aval_traverse_catalogue_parametre():
+    """Un catalogue_parametre en aval d'un chemin amorce est TRAVERSE par
+    evaluation d'expression (premiere vraie) pour atteindre la question en
+    aval (`_collecter_aval_si_chemin_unique`, branche catalogue_parametre)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "mais",
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "n_cp",
+                            "champ": "categorie",
+                            "branches": [
+                                {
+                                    "expression": "type_fertilisant == 'digestats'",
+                                    "valeur": "dig",
+                                    "regle": {"id": "r_dig", "type": "libre"},
+                                },
+                                {
+                                    "expression": "True",
+                                    "valeur": "autre",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "complement",
+                                        "id": "q_apres_cp",
+                                        "champ": "detail",
+                                        "texte": "Detail ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {
+                                                    "id": "r_fin",
+                                                    "type": "libre",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    noeud = _noeud_racine(arbre)
+    # type_fertilisant absent -> 1re expression fausse -> 2e (True) prise ->
+    # on traverse jusqu'a la question `detail`.
+    questions = _collecter_questions(noeud, {"occupation_sol": "mais"}, {})
+    champs = [q.champ for q in questions]
+    assert "detail" in champs
+
+
+# ─── collecter_qc_du_chemin ─────────────────────────────────────────────────
+
+
+def test_collecter_qc_arbre_sans_racine_retourne_vide():
+    assert collecter_qc_du_chemin({"arbre": {}}, {}) == []
+
+
+def test_collecter_qc_du_chemin_remonte_les_complements():
+    """collecter_qc_du_chemin remonte les questions de niveau `complement`
+    sur le chemin courant, qu'elles soient repondues ou pas, avec leurs choix
+    REELS issus de l'arbre (rendu panneau gauche)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "Culture ?",
+                "branches": [
+                    {
+                        "valeur": "mais",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_irr",
+                            "champ": "culture_irriguee",
+                            "texte": "Irriguee ?",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "regle": {"id": "r_irr", "type": "libre"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "regle": {"id": "r_non", "type": "libre"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    # occupation_sol repondu, culture_irriguee PAS encore : la QC complement
+    # est collectee avec ses choix, puis on s'arrete (valeur manquante).
+    qc = collecter_qc_du_chemin(arbre, {"occupation_sol": "mais"})
+    champs = [q.champ for q in qc]
+    assert "occupation_sol" not in champs  # pas une QC (niveau culture)
+    assert "culture_irriguee" in champs
+    q = next(q for q in qc if q.champ == "culture_irriguee")
+    valeurs = {c["valeur"] for c in q.choix}
+    assert valeurs == {True, False}
+
+
+def test_collecter_qc_traverse_catalogue_parametre():
+    """collecter_qc_du_chemin traverse un catalogue_parametre (pas une QC)
+    via l'expression vraie pour atteindre les QC en aval (lignes 760-775)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "categorie",
+                "branches": [
+                    {
+                        "expression": "type_fertilisant == 'digestats'",
+                        "valeur": "dig",
+                        "regle": {"id": "r_dig", "type": "libre"},
+                    },
+                    {
+                        "expression": "True",
+                        "valeur": "autre",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_qc",
+                            "champ": "detail",
+                            "texte": "Detail ?",
+                            "branches": [
+                                {"valeur": "x", "regle": {"id": "r", "type": "libre"}}
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {})
+    champs = [q.champ for q in qc]
+    assert "detail" in champs
+
+
+def test_collecter_qc_traverse_catalogue_parametre_via_renvoi_vers():
+    """Branche catalogue_parametre qui pointe en renvoi_vers vers un noeud
+    reutilisable : la collecte QC suit le renvoi (lignes 766-773)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "categorie",
+                "branches": [
+                    {"expression": "True", "renvoi_vers": "q_partagee"},
+                ],
+            },
+        },
+        "regles_partagees": [],
+    }
+    # On insere le noeud cible reutilisable comme branche d'un autre noeud
+    # pour qu'il soit indexe par _build_id_index.
+    arbre["arbre"]["noeud"]["branches"].append(
+        {
+            "expression": "False",
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_partagee",
+                "champ": "detail",
+                "texte": "Detail ?",
+                "branches": [{"valeur": "x", "regle": {"id": "r", "type": "libre"}}],
+            },
+        }
+    )
+    qc = collecter_qc_du_chemin(arbre, {})
+    champs = [q.champ for q in qc]
+    assert "detail" in champs
+
+
+def test_collecter_qc_suit_renvoi_vers_noeud():
+    """Hors catalogue_parametre : une branche renvoi_vers vers un noeud
+    formulaire/catalogue est suivie pour collecter les QC en aval
+    (lignes 794-797)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {"valeur": "a", "renvoi_vers": "q_partagee"},
+                    {
+                        "valeur": "b",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_partagee",
+                            "champ": "detail",
+                            "texte": "Detail ?",
+                            "branches": [
+                                {"valeur": "x", "regle": {"id": "r", "type": "libre"}}
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {"occupation_sol": "a"})
+    champs = [q.champ for q in qc]
+    assert "detail" in champs
+
+
+def test_collecter_qc_protege_contre_les_cycles():
+    """Garde-fou anti-boucle : un noeud deja visite n'est pas reparcouru
+    (set `visites`, ligne 749). On simule un cycle via renvoi_vers vers un
+    ancetre deja visite -> la collecte se termine sans recursion infinie."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_a",
+                "champ": "champ_a",
+                "texte": "A ?",
+                "branches": [
+                    {"valeur": "boucle", "renvoi_vers": "q_a"},
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {"champ_a": "boucle"})
+    # On a collecte q_a une fois, et le renvoi vers q_a (deja visite) coupe.
+    champs = [q.champ for q in qc]
+    assert champs.count("champ_a") == 1
+
+
+def test_collecter_qc_s_arrete_si_valeur_incoherente():
+    """Si le contexte porte une valeur qui ne matche aucune branche,
+    `_choisir_branche_safe` retourne None et la collecte s'arrete sans
+    lever (tolerance contexte incoherent, ligne 791)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_a",
+                "champ": "champ_a",
+                "texte": "A ?",
+                "branches": [
+                    {"valeur": "ok", "regle": {"id": "r", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    # champ_a = valeur inconnue -> _choisir_branche_safe None -> stop, pas
+    # d'exception. La QC elle-meme est quand meme collectee.
+    qc = collecter_qc_du_chemin(arbre, {"champ_a": "valeur_absente"})
+    champs = [q.champ for q in qc]
+    assert "champ_a" in champs
+
+
+def test_collecter_qc_choisir_branche_safe_fallback_type_I():
+    """_choisir_branche_safe applique le meme fallback type_Ia/Ib -> type_I
+    que le parcours, pour continuer la collecte QC sur ce chemin
+    (lignes 809-813)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "type_fertilisant",
+                "id": "q_fert",
+                "champ": "type_fertilisant",
+                "texte": "Type ?",
+                "branches": [
+                    {
+                        "valeur": "type_I",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_qc",
+                            "champ": "detail",
+                            "texte": "Detail ?",
+                            "branches": [
+                                {"valeur": "x", "regle": {"id": "r", "type": "libre"}}
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    # type_fertilisant=type_Ia doit retomber sur la branche type_I et
+    # continuer la descente jusqu'a la QC en aval.
+    qc = collecter_qc_du_chemin(arbre, {"type_fertilisant": "type_Ia"})
+    champs = [q.champ for q in qc]
+    assert "detail" in champs
+
+
+def test_collecter_qc_catalogue_parametre_sans_expression_vraie_n_ajoute_rien():
+    """Si aucune expression du catalogue_parametre n'est vraie, la collecte QC
+    ne plante pas et ne remonte rien (ligne 775, fallback `return`)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "categorie",
+                "branches": [
+                    {
+                        "expression": "type_fertilisant == 'digestats'",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_qc",
+                            "champ": "detail",
+                            "texte": "?",
+                            "branches": [
+                                {"valeur": "x", "regle": {"id": "r", "type": "libre"}}
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    # type_fertilisant absent -> expression fausse -> aucune branche prise.
+    qc = collecter_qc_du_chemin(arbre, {})
+    assert qc == []
+
+
+# ─── QuestionsSubsidiaires.champs_set ───────────────────────────────────────
+
+
+def test_questions_subsidiaires_champs_set():
+    """champs_set expose l'ensemble des champs des questions (utilise cote
+    template pour eviter de re-render ces champs en hidden input)."""
+    res = parcours(_arbre_jouet(), {"en_zone_vulnerable": True})
+    assert isinstance(res, QuestionsSubsidiaires)
+    assert res.champs_set == {q.champ for q in res.questions}
+    assert "occupation_sol" in res.champs_set
+
+
+# ─── catalogue_parametre via parcours() (issue #128) ────────────────────────
+
+
+def _arbre_catalogue_parametre() -> dict:
+    """Arbre dont la racine est un catalogue_parametre : le branchement se
+    fait par evaluation d'expression (premiere vraie l'emporte)."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "categorie_resolue",
+                "branches": [
+                    {
+                        "expression": "sous_fertilisant == 'digestats'",
+                        "valeur": "dig",
+                        "regle": {"id": "r_dig", "type": "interdiction"},
+                    },
+                    {
+                        "expression": "True",
+                        "valeur": "autre",
+                        "regle": {"id": "r_autre", "type": "libre"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_catalogue_parametre_premiere_expression_vraie():
+    """La premiere expression vraie l'emporte ; la valeur de la branche est
+    ecrite dans le contexte (trace) avant de descendre."""
+    contexte = {"sous_fertilisant": "digestats"}
+    res = parcours(_arbre_catalogue_parametre(), contexte)
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_dig"
+    # Trace : la valeur resolue est ecrite dans le contexte.
+    assert contexte["categorie_resolue"] == "dig"
+
+
+def test_catalogue_parametre_fallback_expression_true():
+    """Si la 1re expression est fausse, on tombe sur la branche `True`."""
+    res = parcours(_arbre_catalogue_parametre(), {"sous_fertilisant": "autre"})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_autre"
+
+
+def test_catalogue_parametre_aucune_expression_vraie_leve_erreur():
+    """Sans branche fallback `True`, si aucune expression n'est vraie, le
+    parcours leve ParcoursError (l'arbre doit couvrir tous les cas)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "categorie",
+                "branches": [
+                    {
+                        "expression": "sous_fertilisant == 'digestats'",
+                        "regle": {"id": "r_dig", "type": "libre"},
+                    },
+                ],
+            }
+        }
+    }
+    with pytest.raises(ParcoursError, match="aucune expression vraie"):
+        parcours(arbre, {"sous_fertilisant": "autre"})
+
+
+# ─── renvoi_vers avec patch (remap codes prescription) ──────────────────────
+
+
+def test_renvoi_vers_avec_patch_remappe_codes_prescription():
+    """Une branche renvoi_vers peut porter un `patch` qui remappe les codes de
+    prescription de la feuille atteinte (ex pc12 -> pc14), pour reutiliser un
+    sous-arbre en ne changeant que les PC (`_appliquer_patch`)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "c",
+                "branches": [
+                    {
+                        "valeur": "a",
+                        "renvoi_vers": "r_cible",
+                        "patch": {"code_prescription": {"pc12": "pc14"}},
+                    },
+                    {
+                        "valeur": "b",
+                        "regle": {
+                            "id": "r_cible",
+                            "type": "interdiction",
+                            "code_prescription": "pc12",
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    res = parcours(arbre, {"c": "a"})
+    assert isinstance(res, Resultat)
+    # Le patch a remappe pc12 -> pc14 sur la feuille atteinte par renvoi.
+    assert res.codes_prescription == ["pc14"]
+
+
+def test_renvoi_vers_patch_laisse_intacts_codes_non_mappes():
+    """Le patch ne touche que les codes presents dans le mapping ; les autres
+    restent inchanges."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "c",
+                "branches": [
+                    {
+                        "valeur": "a",
+                        "renvoi_vers": "r_cible",
+                        "patch": {"code_prescription": {"pc12": "pc14"}},
+                    },
+                    {
+                        "valeur": "b",
+                        "regle": {
+                            "id": "r_cible",
+                            "type": "interdiction",
+                            "code_prescription": ["pc12", "pc99"],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    res = parcours(arbre, {"c": "a"})
+    assert res.codes_prescription == ["pc14", "pc99"]
+
+
+# ─── _valeurs_egales : bool YAML vs string contexte ─────────────────────────
+
+
+def _arbre_bool_branche() -> dict:
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_b",
+                "champ": "flag",
+                "branches": [
+                    {"valeur": True, "regle": {"id": "r_vrai", "type": "libre"}},
+                    {
+                        "valeur": False,
+                        "regle": {"id": "r_faux", "type": "interdiction"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+@pytest.mark.parametrize("brut", ["true", "True", "oui", "1"])
+def test_bool_true_yaml_matche_strings_vraies(brut):
+    """Une branche `valeur: True` (bool YAML) matche les strings de contexte
+    'true'/'oui'/'1' (ex query string), insensible a la casse."""
+    res = parcours(_arbre_bool_branche(), {"flag": brut})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_vrai"
+
+
+@pytest.mark.parametrize("brut", ["false", "False", "non", "0"])
+def test_bool_false_yaml_matche_strings_fausses(brut):
+    res = parcours(_arbre_bool_branche(), {"flag": brut})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_faux"
+
+
+# ─── normaliser_codes_prescription ──────────────────────────────────────────
+
+
+def test_normaliser_codes_prescription_scalaire():
+    assert normaliser_codes_prescription("pc4") == ["pc4"]
+
+
+def test_normaliser_codes_prescription_none():
+    assert normaliser_codes_prescription(None) == []
+
+
+def test_normaliser_codes_prescription_liste_filtre_les_vides():
+    """Une liste est conservee, castee en str, et les entrees vides ignorees."""
+    assert normaliser_codes_prescription(["pc4", "", "pc5"]) == ["pc4", "pc5"]
+    assert normaliser_codes_prescription((4, 5)) == ["4", "5"]
+
+
+# ─── _collecter_aval_si_chemin_unique : branche sans noeud ──────────────────
+
+
+def test_collecte_aval_branche_terminale_sans_noeud_s_arrete():
+    """Quand la branche choisie en aval mene a une REGLE (pas un noeud), la
+    collecte s'arrete proprement (ligne 569, `if "noeud" not in branche`)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {"valeur": "mais", "regle": {"id": "r_fin", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    noeud = _noeud_racine(arbre)
+    # occupation_sol repondu, sa branche mene a une regle : pas de question
+    # en aval, seulement la 1re.
+    questions = _collecter_questions(noeud, {"occupation_sol": "mais"}, {})
+    champs = [q.champ for q in questions]
+    assert champs == ["occupation_sol"]

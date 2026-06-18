@@ -311,8 +311,24 @@ class Command(BaseCommand):
 
     # ─── 6. Codes prescription ───────────────────────────────────────────────
 
+    def _charger_pc_blocs(self) -> dict:
+        """Charge le contenu riche des PC (carte #136) depuis pc_blocs.yaml,
+        indexé par identifiant. Fichier optionnel : absent -> {} (pas de blocs
+        seedés, les PC gardent leur texte legacy)."""
+        from pathlib import Path
+
+        from django.conf import settings
+
+        chemin = Path(settings.NITRATES_SPECS_DIR) / "pc_blocs.yaml"
+        if not chemin.exists():
+            return {}
+        with chemin.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return data.get("codes_prescription_blocs", {}) or {}
+
     def _seed_codes_prescription(self, data: dict) -> tuple[int, int]:
         created = updated = 0
+        pc_blocs = self._charger_pc_blocs()
         for idx, (ident, meta) in enumerate(
             (data.get("codes_prescription") or {}).items()
         ):
@@ -342,6 +358,17 @@ class Command(BaseCommand):
                     "ordre_affichage": idx,
                 },
             )
+            # Contenu riche (#136) : on pose les blocs transcrits SEULEMENT si le
+            # PC n'en a pas déjà -> un re-seed n'écrase pas une édition juriste
+            # faite dans l'admin. Le champ texte legacy reste intact dans tous
+            # les cas (fallback).
+            blocs_source = pc_blocs.get(ident)
+            existant = (
+                obj.blocs.get("blocs") if isinstance(obj.blocs, dict) else obj.blocs
+            )
+            if blocs_source and not existant:
+                obj.blocs = blocs_source
+                obj.save(update_fields=["blocs"])
             if was_created:
                 created += 1
             else:

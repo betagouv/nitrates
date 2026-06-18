@@ -40,7 +40,12 @@ class Resultat:
     texte: str | None = None
     texte_condition: str | None = None
     periodes: list[dict] | None = None
-    code_prescription: str | None = None
+    # Code(s) de prescription conditionnee. Le YAML accepte un scalaire (1 PC)
+    # ou une liste (plusieurs PC) ; en interne on normalise TOUJOURS en liste
+    # (`codes_prescription`). `code_prescription` est conserve pour la compat
+    # (= le 1er code, ou None) -- les call-sites historiques continuent de
+    # marcher, les nouveaux (templates, patch) iterent sur la liste.
+    codes_prescription: list[str] = field(default_factory=list)
     note: str | None = None
     source_juridique: str | None = None
     plafond_azote_kg_n_ha: float | None = None
@@ -53,6 +58,12 @@ class Resultat:
     inputs_requis: list | None = None
     parametres: dict | None = None
     a_completer: bool = False
+
+    @property
+    def code_prescription(self) -> str | None:
+        """Compat : 1er code de prescription (ou None). Les nouveaux call-sites
+        utilisent `codes_prescription` (liste complete)."""
+        return self.codes_prescription[0] if self.codes_prescription else None
 
     @property
     def has_borne_flottante(self) -> bool:
@@ -109,7 +120,8 @@ class Resultat:
             "periodes": self.periodes or [],
             "texte_condition": self.texte_condition,
             "message": self.message,
-            "code_prescription": self.code_prescription,
+            "code_prescription": self.code_prescription,  # compat : 1er PC
+            "codes_prescription": self.codes_prescription,
             # Champs calculatrice (None si type != calculatrice).
             "composant": self.composant,
             "inputs_requis": self.inputs_requis or [],
@@ -166,6 +178,20 @@ class BesoinCatalogue:
     chemin_partiel: list[str] = field(default_factory=list)
 
 
+@dataclass
+class RenvoiArbre:
+    """Le parcours a atteint une feuille `renvoi_arbre` : renvoi EXPLICITE vers
+    un autre arbre de la cascade (ex une branche ZAR qui renvoie au PAR).
+
+    `scope_cible` designe l'arbre vise par son scope (region / national).
+    L'evaluateur, qui connait la liste des arbres actifs pour ce point, bascule
+    sur l'arbre candidat de ce scope et le re-parcourt depuis sa racine avec le
+    meme contexte cumulatif."""
+
+    scope_cible: str  # "region" | "national" | "zar"
+    chemin_partiel: list[str] = field(default_factory=list)
+
+
 class ParcoursError(Exception):
     """Levee quand l'arbre est dans un etat impossible a parcourir
     (ex : valeur du contexte ne correspond a aucune branche)."""
@@ -173,7 +199,7 @@ class ParcoursError(Exception):
 
 def parcours(
     arbre: dict, contexte: dict[str, Any]
-) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
+) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Point d'entree principal. Descend l'arbre depuis la racine."""
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
@@ -231,12 +257,29 @@ def _descendre_branche(
     contexte: dict[str, Any],
     chemin: list[str],
     index_ids: dict[str, dict],
-) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
+) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Une fois la branche choisie, on suit ce qu'elle pointe."""
+    if branche.get("feuille_vide"):
+        # Feuille vide : reponse explicite SANS regle (rend la branche
+        # cliquable dans le formulaire sans produire de resultat). Au runtime
+        # = no-match -> la cascade tombe sur l'arbre inferieur (PAR puis PAN).
+        # Reservee aux PAR/ZAR (le PAN doit etre couvrant, cf. validateur).
+        raise ParcoursError(
+            f"feuille_vide atteinte (chemin {'/'.join(chemin)}) : "
+            f"pas de regle ici, fallback vers l'arbre inferieur."
+        )
     if "noeud" in branche:
         return _descendre(branche["noeud"], contexte, chemin, index_ids)
     if "regle" in branche:
-        return _faire_resultat(branche["regle"], chemin)
+        return _faire_resultat(branche["regle"], chemin, index_ids)
+    if "renvoi_arbre" in branche:
+        # Renvoi explicite vers un autre arbre de la cascade (ex ZAR -> PAR).
+        # L'evaluateur resout le scope cible et re-parcourt cet arbre.
+        scope_cible = branche["renvoi_arbre"]
+        return RenvoiArbre(
+            scope_cible=scope_cible,
+            chemin_partiel=chemin + [f"renvoi_arbre:{scope_cible}"],
+        )
     if "renvoi_vers" in branche:
         cible_id = branche["renvoi_vers"]
         cible = index_ids.get(cible_id)
@@ -254,9 +297,19 @@ def _descendre_branche(
             "catalogue",
             "catalogue_parametre",
         ):
-            return _descendre(cible, contexte, new_chemin, index_ids)
-        return _faire_resultat(cible, new_chemin)
-    raise ParcoursError(f"branche sans noeud/regle/renvoi_vers : {branche!r}")
+            res = _descendre(cible, contexte, new_chemin, index_ids)
+        else:
+            res = _faire_resultat(cible, new_chemin, index_ids)
+        # Patch optionnel : remappe les codes de prescription sur la feuille
+        # atteinte (ex pc12 -> pc14). Permet de reutiliser un sous-arbre en ne
+        # changeant que les PC, sans dupliquer toutes les feuilles.
+        patch = branche.get("patch")
+        if patch and isinstance(res, Resultat):
+            _appliquer_patch(res, patch)
+        return res
+    raise ParcoursError(
+        f"branche sans noeud/regle/renvoi_vers/renvoi_arbre : {branche!r}"
+    )
 
 
 def _resoudre_catalogue_parametre(
@@ -375,7 +428,6 @@ _REGLE_FIELDS = (
     "texte",
     "texte_condition",
     "periodes",
-    "code_prescription",
     "note",
     "source_juridique",
     "plafond_azote_kg_n_ha",
@@ -386,19 +438,68 @@ _REGLE_FIELDS = (
 )
 
 
-def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
+def normaliser_codes_prescription(valeur) -> list[str]:
+    """Normalise le champ `code_prescription` d'une regle (YAML) en list[str].
+
+    Accepte : None -> [] ; scalaire 'pc4' -> ['pc4'] ; liste -> telle quelle
+    (vide ignoree). Source unique de verite pour passer du polymorphisme YAML
+    (scalaire OU liste) a la representation interne (toujours liste)."""
+    if valeur is None:
+        return []
+    if isinstance(valeur, (list, tuple)):
+        return [str(c) for c in valeur if c]
+    return [str(valeur)]
+
+
+def _faire_resultat(
+    regle: dict, chemin: list[str], index_ids: dict[str, dict] | None = None
+) -> Resultat:
     """Convertit une regle YAML en dataclass Resultat. Les regles `a_completer`
-    (stub brouillon) peuvent ne pas avoir de champ `type` -- on tolere."""
+    (stub brouillon) peuvent ne pas avoir de champ `type` -- on tolere.
+
+    Si la regle porte un `plafonnement_associe` (id d'une regle de la section
+    `plafonnements`), on resout cette reference et on COMPLETE les champs metier
+    absents de la feuille (plafond_azote_kg_n_ha, code_prescription) avec ceux
+    du plafonnement. Indispensable pour les regles partagees CIE/CINE courte :
+    elles ne portent pas le plafond inline, il vit dans la regle plafonnement
+    referencee. Sans ca le panneau resultat n'affiche ni plafond ni PC (cf.
+    retour Max 2026-06-18). On ne complete QUE les champs vides -> une feuille
+    qui a deja son propre plafond/PC inline (cas 99%) n'est pas touchee."""
+    valeurs = {k: regle.get(k) for k in _REGLE_FIELDS}
+    codes = normaliser_codes_prescription(regle.get("code_prescription"))
+
+    plaf_id = regle.get("plafonnement_associe")
+    if plaf_id and index_ids:
+        plaf = index_ids.get(plaf_id)
+        if isinstance(plaf, dict):
+            # Plafond chiffre : on le remonte si la feuille ne l'a pas deja.
+            if valeurs.get("plafond_azote_kg_n_ha") is None:
+                valeurs["plafond_azote_kg_n_ha"] = plaf.get("plafond_azote_kg_n_ha")
+            # Code(s) prescription du plafonnement : ajoutes si la feuille n'en
+            # a aucun (sinon on garde ceux de la feuille, plus specifiques).
+            if not codes:
+                codes = normaliser_codes_prescription(plaf.get("code_prescription"))
+
     return Resultat(
         regle_id=regle["id"],
         type=regle.get("type", "a_completer"),
         chemin=chemin + [regle["id"]],
         a_completer=bool(regle.get("a_completer", False)),
-        **{k: regle.get(k) for k in _REGLE_FIELDS},
+        codes_prescription=codes,
+        **valeurs,
     )
 
 
-# ─── Collecte des questions subsidiaires ────────────────────────────────────
+def _appliquer_patch(res: "Resultat", patch: dict) -> None:
+    """Applique un patch d'une branche renvoi_vers sur la feuille atteinte.
+
+    Aujourd'hui : remap des codes de prescription par valeur
+    (`patch['code_prescription'] = {pc12: pc14}`). On ne touche que si la
+    feuille porte un code present dans le mapping ; les autres restent intacts.
+    """
+    remap = (patch or {}).get("code_prescription") or {}
+    if remap and res.codes_prescription:
+        res.codes_prescription = [remap.get(cp, cp) for cp in res.codes_prescription]
 
 
 def _collecter_questions(
@@ -491,6 +592,18 @@ def _collecter_aval_si_chemin_unique(
             return
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
+                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                break
+        return
+
+    if type_noeud == "catalogue_parametre":
+        # Catalogue parametre : pas de question utilisateur, mais on doit le
+        # TRAVERSER pour atteindre les questions en aval (sinon le batch
+        # s'arrete net et le front rejoue un aller-retour). Le branchement se
+        # fait par expression (premiere vraie l'emporte), comme dans le
+        # parcours reel.
+        for sb in sous.get("branches", []):
+            if evaluer_expression(sb.get("expression"), contexte):
                 _collecter_aval_si_chemin_unique(sb, contexte, questions)
                 break
 

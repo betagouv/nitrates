@@ -194,3 +194,44 @@ def test_critere_inactif_hors_zv(zv_map):
         form_kwargs={"data": {"lng": LNG_OFFSHORE, "lat": LAT_OFFSHORE}}
     )
     assert list(moulinette.get_criteria()) == []
+
+
+# ─── Interpolation des zones Grand Est dans le catalog (cablage code_insee) ─
+
+
+def test_catalog_expose_zone_grand_est_1_depuis_code_insee(department_marne, zv_map):
+    """Cablage code_insee -> catalog["zone_grand_est_1/2"] (models.py).
+    Baalons (08041) est listee en zone Est 1 (Annexe 1 PAR7) ET dans le
+    dept 08 entier en Est 2 -> les zones se recouvrent (cf.
+    test_zonage_zones_est). On verifie surtout le cablage Est 1 = True
+    bout-a-bout (la commune poussee par le front se resout dans le catalog)."""
+    moulinette = MoulinetteNitrates(
+        form_kwargs={
+            "data": {"lng": LNG_REIMS, "lat": LAT_REIMS, "code_insee": "08041"}
+        }
+    )
+    assert moulinette.catalog["zone_grand_est_1"] is True
+    # 08 est aussi un departement entier en Est 2 -> recouvrement assume.
+    assert moulinette.catalog["zone_grand_est_2"] is True
+
+
+def test_catalog_expose_zone_grand_est_2_depuis_code_insee(department_marne, zv_map):
+    """Departement 10 (Aube) entier en zone Est 2, pas en Est 1."""
+    moulinette = MoulinetteNitrates(
+        form_kwargs={
+            "data": {"lng": LNG_REIMS, "lat": LAT_REIMS, "code_insee": "10001"}
+        }
+    )
+    assert moulinette.catalog["zone_grand_est_2"] is True
+    assert moulinette.catalog["zone_grand_est_1"] is False
+
+
+def test_catalog_zones_grand_est_false_hors_grand_est(department_marne, zv_map):
+    """Commune hors Grand Est (Paris 75056) : ni Est 1 ni Est 2."""
+    moulinette = MoulinetteNitrates(
+        form_kwargs={
+            "data": {"lng": LNG_REIMS, "lat": LAT_REIMS, "code_insee": "75056"}
+        }
+    )
+    assert moulinette.catalog["zone_grand_est_1"] is False
+    assert moulinette.catalog["zone_grand_est_2"] is False

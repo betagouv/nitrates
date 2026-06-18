@@ -77,6 +77,38 @@ _POINTS = {
         "lng": "5.56183",
         "code_insee": "38434",
     },
+    # ─── Points Grand Est (PAR / ZAR / Zones Est) ────────────────────────────
+    # Verifies via le catalog de la moulinette (cf. preview : ZV, region 44,
+    # en_zar, est_zone_grand_est_1/2). Les zones Est se resolvent par
+    # code_insee -> le code_insee est INDISPENSABLE dans l'URL preview.
+    "par_grand_est": {
+        # Beine-Nauroy (51046), Marne : ZV oui, region 44 (Grand Est), pas ZAR.
+        # Point PAR generique (region Grand Est, hors couche ZAR).
+        "lat": "49.22298",
+        "lng": "4.21806",
+        "code_insee": "51046",
+    },
+    "zar_grand_est": {
+        # AAC Baussieres (08), centroide d'une zone de la couche ZAR
+        # zar_par7_grand_est : ZV oui, region 44, en_zar oui.
+        "lat": "49.544282",
+        "lng": "4.248692",
+        "code_insee": "",
+    },
+    "zone_grand_est_1": {
+        # Mirecourt (88304), Vosges : ZV oui, region 44, Zone Est 1 oui
+        # (mais / prairies>6mois / luzerne), Zone Est 2 non.
+        "lat": "48.3017",
+        "lng": "6.1306",
+        "code_insee": "88304",
+    },
+    "zone_grand_est_2": {
+        # Beine-Nauroy (51046), Marne : ZV oui, region 44, Zone Est 2 oui
+        # (vigne, dept 51), Zone Est 1 non.
+        "lat": "49.22298",
+        "lng": "4.21806",
+        "code_insee": "51046",
+    },
 }
 
 
@@ -113,9 +145,30 @@ def _any_branch_value_ends_with(constraints, suffix):
     return False
 
 
+def _traverse_true_ou_defaut(constraints, champ):
+    """True si le chemin traverse le catalogue `champ` en le validant.
+
+    Ces catalogues SIG booleens (en_zar, zone_grand_est_1/2) representent une
+    CONDITION geographique : on previsualise le cas ou elle est remplie sauf si
+    la branche explicitement negative (False) a ete choisie. La branche positive
+    peut porter True OU un slug (id du sous-noeud) selon la modelisation -> on
+    accepte tout sauf False et l'absence."""
+    if champ not in constraints:
+        return False
+    return constraints[champ] is not False
+
+
 _SIG_RESOLVERS = [
     # 1. Hors ZV explicite (branche False de n_zvn)
     (lambda c: c.get("en_zone_vulnerable") is False, "hors_zv"),
+    # Zones Est Grand Est : un catalogue zone_grand_est_1 / _2 traverse impose
+    # un point (avec code_insee !) dans la bonne zone -- prioritaire car ces
+    # zones sont aussi en ZV / region 44 (les resolveurs generiques matcheraient
+    # sinon un point ZV quelconque hors zone Est).
+    (lambda c: _traverse_true_ou_defaut(c, "zone_grand_est_1"), "zone_grand_est_1"),
+    (lambda c: _traverse_true_ou_defaut(c, "zone_grand_est_2"), "zone_grand_est_2"),
+    # En ZAR (couche zar_par7_grand_est) traverse / choisi.
+    (lambda c: _traverse_true_ou_defaut(c, "en_zar"), "zar_grand_est"),
     # 2. Une branche traversee porte une valeur en *note_7 (ex: montagne_note_7,
     #    note_7) : peu importe le nom du catalogue (zonage_prairie_III,
     #    zonage_montagne_regional...).
@@ -144,6 +197,7 @@ def compute_simulator_params(
     arbre: dict,
     path: tuple[str, ...],
     leaf_branch: tuple[str, object] | None = None,
+    point_override: dict | None = None,
 ) -> dict:
     """Retourne le dict {champ: valeur} a passer en GET au simulateur pour
     atterrir sur ce noeud (au plus pres).
@@ -259,8 +313,20 @@ def compute_simulator_params(
             if isinstance(branche_choisie, dict) and branche_choisie.get("expression"):
                 expressions_a_satisfaire.append(branche_choisie["expression"])
 
-    # Choix d'un point de reference qui satisfait les contraintes SIG.
-    point = _select_point(sig_constraints)
+    # Choix d'un point de reference, par ordre de priorite :
+    #   1. Le CHEMIN porte une contrainte SIG specifique (ZGE1/2, ZAR, note_5/6/7,
+    #      hors_zv) -> ce point prime (il faut tomber dans CETTE zone, avec son
+    #      code_insee quand la zone se resout par commune comme les Zones Est).
+    #   2. Sinon, le point par defaut du SCOPE de l'arbre (`point_override` :
+    #      ZAR -> point ZAR, region 44 -> point PAR) pour que l'arbre s'active.
+    #   3. Sinon, fallback ZV national (Reims).
+    point_chemin, specifique = _select_point_specifique(sig_constraints)
+    if specifique:
+        point = point_chemin
+    elif point_override:
+        point = point_override
+    else:
+        point = point_chemin  # fallback ZV
     for k, v in point.items():
         if v:
             params.setdefault(k, v)
@@ -333,13 +399,63 @@ def _sous_fertilisant_satisfaisant(
 
 def _select_point(sig_constraints: dict) -> dict:
     """Itere sur _SIG_RESOLVERS, retourne le premier point qui matche."""
-    for predicat, point_name in _SIG_RESOLVERS:
+    point, _ = _select_point_specifique(sig_constraints)
+    return point
+
+
+def _select_point_specifique(sig_constraints: dict) -> tuple[dict, bool]:
+    """Comme _select_point mais retourne aussi si le match est SPECIFIQUE.
+
+    Specifique = un resolveur a matche sur une vraie contrainte SIG du chemin
+    (ZGE, ZAR, note_5/6/7, hors_zv...). Non specifique = on est retombe sur le
+    fallback ZV generique (aucune contrainte de chemin). Sert a arbitrer avec
+    le point par defaut du scope de l'arbre : le chemin prime quand il est
+    specifique, sinon on prefere le defaut du scope (ZAR/PAR)."""
+    for predicat, point_name in _SIG_RESOLVERS[:-1]:  # tous sauf le fallback ZV
         try:
             if predicat(sig_constraints):
-                return _POINTS[point_name]
+                return _POINTS[point_name], True
         except (TypeError, KeyError):
             continue
-    return _POINTS["reims_zv"]  # fallback ultime
+    return _POINTS["reims_zv"], False  # fallback ultime, non specifique
+
+
+def point_par_defaut_scope(scope: str, region_code: str = "") -> dict | None:
+    """Point par defaut selon le scope d'un arbre, avec code_insee quand la zone
+    se resout par commune (Zones Est). Sert de `point_override` (applique
+    seulement si le chemin n'impose pas deja un point specifique).
+
+      - scope 'zar'                     -> point dans la couche ZAR Grand Est
+      - scope 'region' + region 44 (GE) -> point PAR Grand Est (ZV + region 44)
+      - autres                          -> None (resolution par le chemin)
+    """
+    from envergo.nitrates.models import DecisionTree
+
+    if scope == DecisionTree.SCOPE_ZAR:
+        return dict(_POINTS["zar_grand_est"])
+    if scope == DecisionTree.SCOPE_REGION and (region_code or "") == "44":
+        return dict(_POINTS["par_grand_est"])
+    return None
+
+
+def point_for_activation_map(activation_map) -> dict | None:
+    """Point reel (lat/lng/code_insee) a l'interieur de la couche SIG d'un
+    arbre (ex ZAR), pour que la preview tombe DANS la zone d'activation.
+
+    Prend le centroide d'une zone de la Map. Generique : marche pour toute
+    couche d'activation, pas seulement la ZAR Grand Est. Retourne None si la
+    Map n'a pas de geometrie exploitable (-> on retombe sur le resolveur SIG).
+    """
+    if activation_map is None:
+        return None
+    zone = activation_map.zones.exclude(geometry__isnull=True).first()
+    if zone is None or zone.geometry is None:
+        return None
+    centroid = zone.geometry.centroid
+    # code_insee laisse vide : les arbres actives par couche SIG (ZAR) ne
+    # dependent pas du zonage commune ; le point geographique suffit a resoudre
+    # en_zar / region / ZV cote moulinette.
+    return {"lat": f"{centroid.y:.6f}", "lng": f"{centroid.x:.6f}"}
 
 
 # ─── Cascade form ──────────────────────────────────────────────────────────

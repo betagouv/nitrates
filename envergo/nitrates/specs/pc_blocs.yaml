@@ -1,0 +1,767 @@
+# Contenu riche des prescriptions conditionnées (carte #136).
+# Indexé par identifiant PC ; seedé dans CodePrescription.blocs par
+# seed_referentiels. Texte transcrit verbatim depuis le Notion.
+# Le gras inline (doses) est porté par des segments {texte, gras}.
+
+codes_prescription_blocs:
+  pc1:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période
+          d'interdiction d'épandage.
+    - type: titre_paragraphe
+      data:
+        texte: Les conditions cumulatives à remplir
+    - type: paragraphe
+      data:
+        texte: 'Cet épandage est possible si :'
+    - type: liste
+      data:
+        items:
+        - texte: il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+        - texte: l'étude démontre l'innocuité de la pratique
+        - texte: un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées
+            est mis en place
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale '
+        - texte: par hectare
+          gras: true
+        - texte: ', depuis la récolte de la culture précédente, peut être portée à '
+        - texte: 100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver
+          gras: true
+        - texte: .
+    - type: titre_paragraphe
+      data:
+        texte: Les règles sur le couvert d'interculture (CI)
+    - type: paragraphe
+      data:
+        texte: 'Le couvert végétal d''interculture doit être :'
+    - type: liste
+      data:
+        items:
+        - texte: implanté précocement
+        - texte: maintenu au minimum 14 semaines
+  pc2:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période
+          d'interdiction d'épandage.
+    - type: titre_paragraphe
+      data:
+        texte: Les conditions
+    - type: paragraphe
+      data:
+        texte: 'L''épandage est possible si :'
+    - type: liste
+      data:
+        items:
+        - texte: il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+        - texte: l'étude démontre l'innocuité de la pratique
+        - texte: un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées
+            est mis en place
+        - texte: un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous
+            le couvert installé et avant épandage, est mis en place.
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale peut être portée à '
+        - texte: 100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ', depuis la récolte de la culture précédente.'
+    - type: titre_paragraphe
+      data:
+        texte: Les règles sur le couvert d'interculture
+    - type: paragraphe
+      data:
+        texte: 'Le couvert végétal d''interculture doit être :'
+    - type: liste
+      data:
+        items:
+        - texte: implanté précocement
+        - texte: maintenu au minimum 14 semaines
+    - type: foldable
+      data:
+        titre: Précisions sur le suivi
+        blocs:
+        - type: titre_paragraphe
+          data:
+            texte: Un suivi d'indicateurs de risque de lixiviation
+        - type: paragraphe
+          data:
+            texte: Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs
+              de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration
+              en suivant les informations demandées par le programme d'actions régional, notamment le
+              précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions
+              régional.
+        - type: titre_paragraphe
+          data:
+            texte: L'indicateur à utiliser dépend de la nature de votre sol
+        - type: liste
+          data:
+            items:
+            - texte: 'Sols impropres à la réalisation de reliquats au début de la période de drainage
+                ou en post-récolte (définis par le programme d''actions régional) : indicateur = bilan
+                azoté post-récolte'
+            - texte: 'Autres sols : indicateur = reliquat azoté avant épandage'
+        - type: titre_paragraphe
+          data:
+            texte: Le protocole et le nombre d'analyses
+        - type: paragraphe
+          data:
+            texte: Le protocole à respecter est défini par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages.
+              Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction
+              du type de précédent cultural.
+        - type: paragraphe
+          data:
+            texte: 'Le nombre minimum d''analyses par exploitation suit la formule suivante :'
+        - type: citation
+          data:
+            texte: Surface concernée (ha) ÷ 20 = nombre d'analyses
+        - type: paragraphe
+          data:
+            texte: 'Avec une contrainte supplémentaire : au moins une analyse par famille de précédent
+              cultural présente sur la surface concernée. Les familles de précédent cultural sont :'
+        - type: liste
+          data:
+            items:
+            - texte: céréales et pseudo-céréales
+            - texte: oléagineux
+            - texte: protéagineux et légumineuses
+            - texte: légumes et fruits
+            - texte: autres
+  pc3:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage de certains fertilisants azotés issus d'activités agroalimentaires peut être
+          autorisé, le cas échéant, en période d'interdiction d'épandage.
+    - type: titre_paragraphe
+      data:
+        texte: Les conditions à remplir
+    - type: paragraphe
+      data:
+        texte: 'L''épandage est possible si :'
+    - type: liste
+      data:
+        items:
+        - texte: il s'inscrit dans un plan d'épandage soumis à déclaration ou enregistrement
+        - texte: un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre
+            d'épandage, sous le couvert installé et avant épandage.
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale peut être portée à '
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ', depuis la récolte du précédent.'
+    - type: titre_paragraphe
+      data:
+        texte: Les règles sur le couvert d'interculture
+    - type: paragraphe
+      data:
+        texte: 'Le couvert végétal d''interculture doit être :'
+    - type: liste
+      data:
+        items:
+        - texte: implanté précocement
+        - texte: maintenu au minimum 14 semaines
+        - texte: non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant
+            les 20 jours avant sa récolte ou sa destruction
+    - type: foldable
+      data:
+        titre: Précisions sur le suivi
+        blocs:
+        - type: titre_paragraphe
+          data:
+            texte: Un suivi d'indicateurs de risque de lixiviation
+        - type: paragraphe
+          data:
+            texte: Les îlots culturaux en interculture longue concernés font l'objet d'un suivi d'indicateurs
+              de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration
+              en suivant les informations demandées par le programme d'actions régional, notamment le
+              précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions
+              régional.
+        - type: titre_paragraphe
+          data:
+            texte: L'indicateur à utiliser dépend de la nature de votre sol
+        - type: liste
+          data:
+            items:
+            - texte: 'Sols impropres à la réalisation de reliquats au début de la période de drainage
+                ou en post-récolte (définis par le programme d''actions régional) : indicateur = bilan
+                azoté post-récolte'
+            - texte: 'Autres sols : indicateur = reliquat azoté avant épandage'
+        - type: titre_paragraphe
+          data:
+            texte: Le protocole et le nombre d'analyses
+        - type: paragraphe
+          data:
+            texte: Le protocole à respecter est défini par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages.
+              Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction
+              du type de précédent cultural.
+        - type: paragraphe
+          data:
+            texte: 'Le nombre minimum d''analyses par exploitation suit la formule suivante :'
+        - type: citation
+          data:
+            texte: Surface de l'exploitation concernée par ces épandages ÷ 20
+        - type: paragraphe
+          data:
+            texte: 'Avec une contrainte supplémentaire : au moins une analyse par famille de précédent
+              cultural présente sur la surface concernée. Les familles de précédent cultural sont :'
+        - type: liste
+          data:
+            items:
+            - texte: céréales et pseudo-céréales
+            - texte: oléagineux
+            - texte: protéagineux et légumineuses
+            - texte: légumes et fruits
+            - texte: autres
+  pc4:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage de certains fertilisants azotés issus d'activités agroalimentaires peut être
+          autorisé, le cas échéant, en période d'interdiction d'épandage.
+    - type: titre_paragraphe
+      data:
+        texte: Les conditions à remplir
+    - type: paragraphe
+      data:
+        texte: 'L''épandage est possible si :'
+    - type: liste
+      data:
+        items:
+        - texte: 'les conditions définies par le programme d''actions régional sont respectées, notamment
+            sur :'
+          enfants:
+          - texte: la durée et la période de présence du couvert
+          - texte: le plafonnement des apports à cette période
+        - texte: un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le
+            périmètre d'épandage
+    - type: foldable
+      data:
+        titre: Précisions sur le suivi
+        blocs:
+        - type: titre_paragraphe
+          data:
+            texte: Un suivi d'indicateurs de risque de lixiviation
+        - type: paragraphe
+          data:
+            texte: Les îlots culturaux en interculture longue concernés font l'objet d'un suivi d'indicateurs
+              de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration
+              en suivant les informations demandées par le programme d'actions régional, notamment le
+              précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions
+              régional.
+        - type: titre_paragraphe
+          data:
+            texte: L'indicateur à utiliser dépend de la nature de votre sol
+        - type: liste
+          data:
+            items:
+            - texte: 'Sols impropres à la réalisation de reliquats au début de la période de drainage
+                ou en post-récolte (définis par le programme d''actions régional) : indicateur = bilan
+                azoté post-récolte'
+            - texte: 'Autres sols : indicateur = reliquat azoté avant épandage'
+        - type: titre_paragraphe
+          data:
+            texte: Le protocole et le nombre d'analyses
+        - type: paragraphe
+          data:
+            texte: Le protocole à respecter est défini par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages.
+              Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction
+              du type de précédent cultural.
+        - type: paragraphe
+          data:
+            texte: 'Le nombre minimum d''analyses par exploitation suit la formule suivante :'
+        - type: citation
+          data:
+            texte: Surface de l'exploitation concernée par ces épandages ÷ 20
+        - type: paragraphe
+          data:
+            texte: 'Avec une contrainte supplémentaire : au moins une analyse par famille de précédent
+              cultural présente sur la surface concernée. Les familles de précédent cultural sont :'
+        - type: liste
+          data:
+            items:
+            - texte: céréales et pseudo-céréales
+            - texte: oléagineux
+            - texte: protéagineux et légumineuses
+            - texte: légumes et fruits
+            - texte: autres
+  pc6:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage d'effluents peu chargés est possible en période d'autorisation sous condition,
+          dans la limite d'une dose maximale.
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale est de '
+        - texte: 50 kg d'azote efficace en été par hectare
+          gras: true
+        - texte: ', à compter du 1er juillet.'
+    - type: titre_paragraphe
+      data:
+        texte: Comment calculer l'azote efficace en été
+    - type: paragraphe
+      data:
+        texte: 'L''azote efficace en été correspond, dans l''effluent peu chargé, à la somme :'
+    - type: liste
+      data:
+        items:
+        - texte: de l'azote présent sous forme minérale
+        - texte: et de l'azote présent sous forme organique minéralisable entre le 1er juillet et le 31
+            août
+  pc7:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage d'effluents peu chargés est possible en période d'autorisation sous condition,
+          dans la limite d'une dose maximale.
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale est de '
+        - texte: 20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ', à compter du 15 novembre.'
+    - type: titre_paragraphe
+      data:
+        texte: Comment calculer l'azote potentiellement libéré jusqu'en sortie d'hiver
+    - type: paragraphe
+      data:
+        texte: 'L''azote potentiellement libéré jusqu''en sortie d''hiver correspond, dans l''effluent
+          peu chargé, à la somme :'
+    - type: liste
+      data:
+        items:
+        - texte: de l'azote présent sous forme minérale
+        - texte: et de l'azote présent sous forme organique minéralisable entre le 15 novembre et le 15
+            janvier
+  pc8:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage d'effluents peu chargés issus d'élevage est possible en période d'autorisation
+          sous condition, dans la limite d'une dose maximale.
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale est de '
+        - texte: 20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ', à compter du 15 novembre.'
+    - type: titre_paragraphe
+      data:
+        texte: Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture
+    - type: paragraphe
+      data:
+        texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total.
+    - type: paragraphe
+      data:
+        texte: Les apports réalisés entre le 15 octobre et le 15 novembre comptent dans ce plafonnement
+          cumulé.
+  pc9:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: La dose maximale
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 'La dose maximale est de '
+        - texte: 20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ', à compter du 15 novembre.'
+    - type: titre_paragraphe
+      data:
+        texte: Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture
+    - type: paragraphe
+      data:
+        texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total.
+    - type: paragraphe
+      data:
+        texte: Les apports réalisés pendant la période autorisée comptent dans ce plafonnement cumulé.
+  pc10:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: L'épandage de fertilisants azotés issus du traitement et de la transformation des matières
+          premières destinées à la fabrication de produits alimentaires ou d'aliments pour animaux peut
+          être autorisé sur luzerne, après la dernière coupe de l'année.
+    - type: titre_paragraphe
+      data:
+        texte: Les conditions à remplir
+    - type: paragraphe
+      data:
+        texte: 'Cet épandage est possible si :'
+    - type: liste
+      data:
+        items:
+        - texte: il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+        - texte: l'étude démontre l'innocuité de la pratique
+        - texte: un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre
+            d'épandage, avant l'épandage
+    - type: foldable
+      data:
+        titre: Le dispositif de surveillance
+        blocs:
+        - type: paragraphe
+          data:
+            texte: Les modalités du dispositif sont précisées par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: Les îlots culturaux concernés font l'objet d'un suivi d'indicateurs de risque de lixiviation
+              des composés azotés. Vous transmettez les résultats à l'administration selon les informations
+              demandées par le programme d'actions régional, et vous tenez à disposition les justificatifs
+              prévus, le cas échéant.
+        - type: titre_paragraphe
+          data:
+            texte: L'indicateur de risque de lixiviation à utiliser
+        - type: paragraphe
+          data:
+            texte: Il dépend de la nature de votre sol.
+        - type: liste
+          data:
+            items:
+            - texte: Sols impropres à la réalisation de reliquats
+        - type: paragraphe
+          data:
+            texte: 'Au début de la période de drainage ou en post-récolte (définis par le programme d''actions
+              régional) :'
+        - type: citation
+          data:
+            texte: Indicateur = bilan azoté post-récolte.
+        - type: paragraphe
+          data:
+            texte: '• Autres sols :'
+        - type: citation
+          data:
+            texte: Indicateur = reliquat azoté avant épandage.
+        - type: titre_paragraphe
+          data:
+            texte: Le protocole et le nombre d'analyses
+        - type: paragraphe
+          data:
+            texte: Le protocole à respecter est défini par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: Une analyse est réalisée pour chaque îlot cultural représentatif. Les îlots culturaux
+              et les îlots représentatifs sont définis par le programme d'actions régional.
+        - type: paragraphe
+          data:
+            texte: 'Le nombre minimum d''analyses par exploitation suit la formule suivante :'
+        - type: citation
+          data:
+            texte: Surface de l’exploitation concernée par les épandages ÷ 20
+  pc11:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Conditions à respecter pour épandre en période d'autorisation sous condition
+    - type: titre_paragraphe
+      data:
+        texte: Le principe
+    - type: paragraphe
+      data:
+        texte: Vous pouvez réaliser un apport supplémentaire de fertilisants azotés sous forme minérale
+          sur votre colza en végétation, dans les conditions ci-dessous.
+    - type: titre_paragraphe
+      data:
+        texte: La dose et la période
+    - type: liste
+      data:
+        items:
+        - texte: 'Dose maximale : 30 unités d''azote sous forme minérale'
+        - texte: 'Quand : à partir du stade "4 feuilles"'
+    - type: titre_paragraphe
+      data:
+        texte: Les situations où cet apport est possible
+    - type: paragraphe
+      data:
+        texte: 'Cet apport est possible dans les situations où la disponibilité en azote du sol pendant
+          l''automne est limitée, c''est-à-dire dans les cas où :'
+    - type: liste
+      data:
+        items:
+        - texte: vous n'avez pas réalisé d'apport de fertilisants azotés de types 0, I.a, I.b et II avant
+            le 1er septembre correspondant à plus de 30 unités d'azote efficaces,
+        - texte: et votre semis de colza est réalisé avant le 25 août,
+        - texte: 'et au moins une des conditions suivantes est respectée :'
+          enfants:
+          - texte: implantation du colza après un précédent de céréale à pailles avec résidus de culture
+              enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure
+              à une année sur trois,
+          - texte: ou sols à faible disponibilité en azote (précisés par le programme d'actions régional).
+  pc12:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Plafonnement annuel des apports azotés sur l'année d'implantation du couvert d'interculture
+    - type: titre_paragraphe
+      data:
+        texte: Le plafond
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ' au total.'
+    - type: titre_paragraphe
+      data:
+        texte: Période sur laquelle le plafond s'applique
+    - type: paragraphe
+      data:
+        texte: À compter de la récolte du précédent jusqu'à la destruction/récolte du couvert.
+    - type: titre_paragraphe
+      data:
+        texte: Ce qui compte dans le calcul du plafond
+    - type: paragraphe
+      data:
+        texte: 'Tous les apports des fertilisants suivants, cumulés sur la période :'
+    - type: liste
+      data:
+        items:
+        - texte: type 0
+        - texte: type I.a
+        - texte: type I.b
+        - texte: type II
+    - type: titre_paragraphe
+      data:
+        texte: 'Cas particulier : apport de type III en sortie d''hiver'
+    - type: paragraphe
+      data:
+        texte: Si votre couvert d'interculture est récolté suffisamment tard l'année suivante pour permettre
+          un apport de fertilisant de type III en sortie d'hiver, vos apports de type III rentrent également
+          dans le calcul du plafond.
+  pc13:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Plafonnement des apports azotés pour les couverts d'interculture
+    - type: titre_paragraphe
+      data:
+        texte: Le plafond
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ' au total.'
+    - type: titre_paragraphe
+      data:
+        texte: Période sur laquelle le plafond s'applique
+    - type: paragraphe
+      data:
+        texte: À compter de la récolte du précédent jusqu'à la destruction du couvert.
+    - type: titre_paragraphe
+      data:
+        texte: Ce qui compte dans le calcul du plafond
+    - type: paragraphe
+      data:
+        texte: 'Tous les apports des fertilisants suivants, cumulés sur la période :'
+    - type: liste
+      data:
+        items:
+        - texte: type 0
+        - texte: type I.a
+        - texte: type I.b
+        - texte: type II
+  pc14:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Plafonnement des apports azotés pour les couverts d'interculture
+    - type: titre_paragraphe
+      data:
+        texte: Le plafond
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ' au total.'
+    - type: titre_paragraphe
+      data:
+        texte: Période à laquelle s'applique le plafond
+    - type: paragraphe
+      data:
+        texte: À compter de la récolte du précédent jusqu'à la récolte/destruction du couvert.
+    - type: titre_paragraphe
+      data:
+        texte: Ce qui compte dans le calcul du plafond
+    - type: paragraphe
+      data:
+        texte: 'Tous les apports des fertilisants suivants, cumulés sur la période :'
+    - type: liste
+      data:
+        items:
+        - texte: type 0
+        - texte: type I.a
+        - texte: type I.b
+        - texte: type II
+        - texte: type III
+  pc15:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Plafonnement des apports azotés pour les couverts d'interculture
+    - type: titre_paragraphe
+      data:
+        texte: Le plafond
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ' au total.'
+    - type: titre_paragraphe
+      data:
+        texte: Période à laquelle s'applique le plafond
+    - type: paragraphe
+      data:
+        texte: À compter de la récolte du précédent jusqu'à la récolte/destruction du couvert.
+    - type: titre_paragraphe
+      data:
+        texte: Ce qui compte dans le calcul du plafond
+    - type: paragraphe
+      data:
+        texte: 'Tous les apports des fertilisants suivants, cumulés sur la période :'
+    - type: liste
+      data:
+        items:
+        - texte: type 0
+        - texte: type I.a
+        - texte: type I.b
+  pc16:
+    schema: 1
+    blocs:
+    - type: titre_principal
+      data:
+        texte: Plafonnement annuel des apports azotés sur prairies permanentes
+    - type: titre_paragraphe
+      data:
+        texte: Date d’application du plafond
+    - type: paragraphe
+      data:
+        texte: À compter du 1er septembre.
+    - type: titre_paragraphe
+      data:
+        texte: Le plafond
+    - type: paragraphe
+      data:
+        texte:
+        - texte: 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare
+          gras: true
+        - texte: ' au total.'
+    - type: titre_paragraphe
+      data:
+        texte: Ce qui compte dans le calcul du plafond
+    - type: paragraphe
+      data:
+        texte: 'Tous les apports des fertilisants suivants, cumulés sur la période :'
+    - type: liste
+      data:
+        items:
+        - texte: type 0
+        - texte: type I.a et I.b
+        - texte: type II
+        - texte: type III

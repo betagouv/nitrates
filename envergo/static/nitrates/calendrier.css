@@ -120,16 +120,15 @@
   z-index: 1;
 }
 
-/* Calendrier DYNAMIQUE (calculatrice, dans .calc-cal) uniquement : pas de
-   bordure laterale de zone. Chaque frontiere y est materialisee par un unique
-   tick (--big-tick) qui traverse la barre et deborde sous elle (cf. JS
-   renderBornes) -> un seul trait par frontiere, ligne continue parfaitement
-   alignee. On garde en revanche les bordures top/bottom (maquette #130) pour
-   encadrer la zone. Le calendrier STATIQUE (templatetag, regles
-   non-calculatrice) garde ses bordures laterales : il n'a pas de tic
-   plein-hauteur. */
-.calc-cal .calendrier-epandage__zone--rouge,
-.calc-cal .calendrier-epandage__zone--orange {
+/* Pas de bordure laterale de zone (dynamique ET statique, #132/#134). Chaque
+   frontiere est materialisee par l'unique tic de la borne, qui traverse toute
+   la barre (cf. .period-date::before plein-hauteur ci-dessous) -> un seul trait
+   par frontiere, ligne continue parfaitement alignee par construction. Avant,
+   le statique gardait ses bordures laterales + un tic court s'arretant sous la
+   barre : deux objets distincts, jamais pile alignes (decalage 1px visible).
+   On garde les bordures top/bottom (maquette #130) pour encadrer la zone. */
+.calendrier-epandage__zone--rouge,
+.calendrier-epandage__zone--orange {
   border-left: none;
   border-right: none;
 }
@@ -149,16 +148,32 @@
   pointer-events: none;
 }
 
-.calendrier-epandage__today::after {
-  content: "Aujourd'hui";
+/* Label "Aujourd'hui" : element distinct ancre sur la BARRE (.__bar), pas sur
+   le point. Il suit la position du point (left: today_pct%) mais translateX
+   le recentre, et on le borne par les bords de la barre avec une marge laterale
+   pour qu'il ne soit JAMAIS croppe par overflow:hidden de .__bar, meme quand le
+   point tombe debut juillet / fin juin (#134). Pose dans la moitie basse de la
+   barre (sous le point centre) ; sur le fond pastel clair (inchange en sombre)
+   -> reste noir dans les deux themes. */
+.calendrier-epandage__today-label {
   position: absolute;
-  top: 14px;
-  left: 50%;
+  top: 29px;
   transform: translateX(-50%);
+
+  /* Anti-crop par clamp() CSS pur : la position centree du label (--today-pct,
+     fournie en inline par le template) est bornee entre une demi-largeur+marge
+     a gauche et son symetrique a droite, pour que le mot (centre via
+     translateX(-50%)) reste TOUJOURS entierement dans la barre, jamais coupe
+     par overflow:hidden. "Aujourd'hui" ~62px -> demi ~31px, +6px de marge =
+     37px de garde a chaque bord (valeurs en px : independantes de la largeur
+     responsive de la barre, qui fait toujours plusieurs centaines de px). */
+  left: clamp(37px, var(--today-pct), calc(100% - 37px));
   font-size: 11px;
   line-height: 1.2;
   white-space: nowrap;
   color: #161616;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .calendrier-epandage__period {
@@ -282,6 +297,46 @@
 
 .calendrier-epandage__period-date--row4::before {
   height: 62px; /* 8 + 54 */
+}
+
+/* Calendrier STATIQUE (templatetag, hors .calc-cal) : le tic de chaque borne
+   TRAVERSE toute la barre (au lieu de s'arreter sous elle), exactement comme le
+   dynamique. C'est ce qui remplace l'ancienne bordure laterale de zone (retiree
+   ci-dessus) : un seul trait continu par frontiere, aligne par construction, et
+   le tic monte bien jusqu'en haut (corrige la borne phenologique luzerne en
+   row2 qui ne montait pas jusqu'au sommet). On ajoute la hauteur de barre (46px)
+   a la hauteur de base de chaque row. La couleur reste currentColor (teinte du
+   regime / noir phenologique), contrairement au --big-tick dynamique qui force
+   le noir. row0 = 8+46 ; row2 = 26+46. Selecteur :not(.calc-cal *) = uniquement
+   les calendriers qui ne sont PAS dans le composant calculatrice. */
+.calendrier-epandage:not(.calc-cal *)
+  .calendrier-epandage__period-date::before {
+  height: 54px; /* 8 + 46 */
+}
+
+.calendrier-epandage:not(.calc-cal *)
+  .calendrier-epandage__period-date--row2::before {
+  height: 72px; /* 26 + 46 */
+}
+
+.calendrier-epandage:not(.calc-cal *)
+  .calendrier-epandage__period-date--row3::before {
+  height: 90px; /* 44 + 46 */
+}
+
+.calendrier-epandage:not(.calc-cal *)
+  .calendrier-epandage__period-date--row4::before {
+  height: 108px; /* 62 + 46 */
+}
+
+/* Le tic statique passe derriere les zones par defaut (les zones ont z-index
+   0/1, le ::before vit dans .period peint apres mais un overlay peut creer un
+   contexte). On remonte le bloc .period au-dessus des fonds de zone pour que le
+   trait reste visible la ou il traverse une zone, sans masquer le hachure (le
+   tic fait 1px). Meme principe que .calc-cal .period (z-index:3). */
+.calendrier-epandage:not(.calc-cal *) .calendrier-epandage__period {
+  position: relative;
+  z-index: 3;
 }
 
 /* Tick des dates SAISIES (semis / destruction) : trait noir qui TRAVERSE
@@ -720,24 +775,23 @@
   color: var(--cal-gris-second-dark);
 }
 
-/* Point "aujourd'hui" + son label : noir -> blanc casse. */
-[data-fr-theme="dark"] .calendrier-epandage__today {
-  background: var(--cal-ink-neutre-dark);
-}
+/* Point "aujourd'hui" + son label : on les GARDE noirs en sombre (#134).
+   Depuis qu'ils tiennent ENTIEREMENT DANS la barre (cf. .__today plus haut),
+   leur fond est le pastel clair du calendrier, qui ne change PAS en sombre.
+   Un blanc casse y serait illisible -> on n'ajoute AUCUNE surcharge sombre,
+   ils heritent du #161616 de base, lisible sur le fond clair dans les 2 themes. */
 
-[data-fr-theme="dark"] .calendrier-epandage__today::after {
-  color: var(--cal-ink-neutre-dark);
-}
+/* Bornes phenologiques NOIRES uniquement (semis / destruction) : label ET tic
+   passent en blanc casse en sombre (#132/#134). IMPORTANT : on NE touche PAS
+   aux dates fixes colorees (31 juil., 12 oct., 31 jan.) qui portent
+   --phenologique MAIS aussi une classe couleur --rouge/--orange (cf. JS
+   renderBornes). Le :not() les exclut : elles gardent leur teinte de regime,
+   deja lisible sur sombre.
 
-/* Bornes phenologiques NOIRES uniquement (semis / destruction) : on les passe
-   en blanc casse. IMPORTANT : on NE touche PAS aux dates fixes colorees
-   (31 juil., 12 oct., 31 jan.) qui portent --phenologique MAIS aussi une classe
-   couleur --rouge/--orange (cf. JS renderBornes). Le :not() les exclut : elles
-   gardent leur teinte de regime, deja lisible sur sombre.
-
-   Une borne est "noire" = --phenologique sans classe couleur. On cible donc le
-   tic (::before), son label interne (calc-cal) et le color du parent (statique
-   sans label interne). */
+   Le tic (::before) part du label et monte traverser la barre ; sur le fond de
+   page sombre (sous la barre) un tic noir disparait -> blanc. On cible le tic,
+   le label interne (dynamique .calc-cal) et le color du parent (statique sans
+   label interne). */
 [data-fr-theme="dark"]
   .calendrier-epandage__period-date--phenologique:not(
     .calendrier-epandage__period-date--rouge,
@@ -767,3 +821,35 @@
 /* Texte d'aide / mentions grises du recap : le DSFR les passe deja en clair
    via --text-mention-grey, rien a forcer. La barre "libre" (fond vert pastel)
    et les zones gardent leurs fills clairs : OK sur sombre. */
+
+/* ─── Contenu riche éditable (cartes #131/#136) ──────────────────────────────
+   Rendu public des blocs compilés par compile_dsfr (PC, règles permanentes…).
+   On reproduit ici la hiérarchie visuelle de l'éditeur admin : listes en
+   retrait sous leur section, et un peu d'air entre les sous-titres et le texte.
+   Chargé via calendrier.css (présent sur result/simulateur/preview). */
+.contenu-rich ul,
+.contenu-rich ol {
+  padding-left: 2rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.contenu-rich ul {
+  list-style: disc outside;
+}
+
+.contenu-rich ol {
+  list-style: decimal outside;
+}
+
+.contenu-rich li {
+  margin: 0.15rem 0;
+}
+
+/* Sous-titres (h6) : un peu d'espace au-dessus pour aérer les sections. */
+.contenu-rich h6 {
+  margin: 1rem 0 0.25rem;
+}
+
+.contenu-rich p {
+  margin: 0 0 0.5rem;
+}

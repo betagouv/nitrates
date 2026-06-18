@@ -148,6 +148,12 @@ _COULEUR_ZONE_PAR_TYPE = {
     "plafonnement": "orange",
 }
 
+# Verbe du tooltip de zone selon sa couleur (#134), aligne sur la legende.
+_VERBE_ZONE = {
+    "rouge": "Interdit",
+    "orange": "Autorisé sous conditions",
+}
+
 _LABEL_PAR_TYPE = {
     "interdiction": "Calendrier d'épandage",
     "autorisation_sous_condition": "Calendrier d'épandage",
@@ -162,10 +168,14 @@ _LABEL_PAR_TYPE = {
 # Annee agricole : on commence le 1er juillet pour que les periodes
 # d'interdiction hivernales (typiquement 15/12 -> 15/01) tombent au
 # centre de la barre. Cf. maquette designeuse.
+# Labels alignes EXACTEMENT sur le calendrier dynamique (calculatrice-
+# calendrier.js : MOIS_AGRICOLES) pour un rendu coherent entre les deux
+# calendriers (#134) : abreviations courtes "Aoû / Sept / Jui" plutot que
+# "Août / Sep / Juin".
 _MOIS_LABELS = [
     "Juil",
-    "Août",
-    "Sep",
+    "Aoû",
+    "Sept",
     "Oct",
     "Nov",
     "Déc",
@@ -174,7 +184,7 @@ _MOIS_LABELS = [
     "Mar",
     "Avr",
     "Mai",
-    "Juin",
+    "Jui",
 ]
 
 # Annee non bissextile : 365 jours. Cumul des jours au debut de chaque mois,
@@ -463,6 +473,20 @@ def calendrier_epandage(regle):
     regle_type = getattr(regle, "type", None) or ""
     periodes = getattr(regle, "periodes", None) or []
 
+    # Regle "sous condition / plafond TOUTE L'ANNEE" : certaines feuilles
+    # (regles partagees CIE/CINE courte, type III, plafonnements) sont des
+    # autorisation_sous_condition / plafonnement SANS aucune periode -- le sens
+    # metier est "sous condition sur toute l'annee agricole", pas "autorise
+    # librement". Sans periode, la boucle ci-dessous ne produit aucun segment
+    # -> fond vert -> rendu trompeur "Autorise" (cf. retour Max 2026-06-18 sur
+    # les regles partagees). On synthetise donc une periode pleine annee
+    # (01/07 -> 30/06) dans le regime du type, pour que le calendrier peigne
+    # l'overlay (orange) et que la legende dise "Autorise sous condition".
+    # Le cas 99% (regles AVEC periodes explicites) n'est PAS touche : on ne
+    # synthetise que si `periodes` est vide.
+    if not periodes and regle_type in ("autorisation_sous_condition", "plafonnement"):
+        periodes = [{"du": "01/07", "au": "30/06", "regime": regle_type}]
+
     fond = _FOND_PAR_TYPE.get(regle_type, "gris")
     label = _LABEL_PAR_TYPE.get(regle_type, regle_type or "—")
 
@@ -485,6 +509,17 @@ def calendrier_epandage(regle):
         is_flottant = bool(
             p.get("du") and not DATE_JJMM_RE.match(str(p["du"]))
         ) or bool(p.get("au") and not DATE_JJMM_RE.match(str(p["au"])))
+        # Tooltip au survol de la zone (#134) : meme registre que le calendrier
+        # dynamique ("Interdit du 15 dec. au 15 jan."). Le statique n'en avait
+        # aucun (seulement un aria-label generique "Zone rouge"). On reutilise
+        # periode_phrase pour la phrase de bornes, prefixee du verbe de regime.
+        verbe = _VERBE_ZONE.get(couleur, "")
+        phrase = periode_phrase(p)
+        tooltip = f"{verbe} {phrase}".strip() if verbe else phrase
+        # Borne flottante : on l'annote directement dans le tooltip cote Python
+        # (plutot que dans le template) pour garder le markup court.
+        if is_flottant:
+            tooltip = f"{tooltip} (dates flottantes)"
         if seg:
             for start, width in seg:
                 segments.append(
@@ -493,6 +528,7 @@ def calendrier_epandage(regle):
                         "width_pct": width,
                         "couleur": couleur,
                         "is_flottant": is_flottant,
+                        "tooltip": tooltip,
                     }
                 )
         else:
@@ -631,3 +667,35 @@ def calendrier_epandage(regle):
         "regle_type": regle_type,
         "legende": legende,
     }
+
+
+@register.simple_tag
+def contenu_rich(cle: str, niveau_base: int = 3):
+    """Rend une zone de contenu riche éditable (carte #131).
+
+    Charge les blocs du `ContenuRichDSFR` de clé `cle` (cache process-local),
+    les compile en HTML DSFR safe et renvoie le résultat. Zone absente ou vide
+    -> chaîne vide (pas de 500 côté public). `niveau_base` = niveau du 1er
+    titre HTML (3 = <h3>, sous les prescriptions du panneau résultat).
+
+    Usage : {% contenu_rich "resultat.regles_permanentes" %}
+    """
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+    from envergo.nitrates.contenu_rich.loader import load_blocs
+
+    return compile_dsfr(load_blocs(cle), niveau_base=niveau_base)
+
+
+@register.simple_tag
+def compile_blocs(blocs, niveau_base: int = 3):
+    """Compile des blocs DSFR fournis directement (carte #136).
+
+    Sert à rendre le champ `blocs` porté par un objet (ex CodePrescription.blocs)
+    sans passer par un ContenuRichDSFR. Accepte la liste de blocs OU l'enveloppe
+    {schema, blocs}. Vide -> chaîne vide.
+
+    Usage : {% compile_blocs pc.blocs %}
+    """
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+
+    return compile_dsfr(blocs or [], niveau_base=niveau_base)

@@ -87,9 +87,10 @@
                       <strong>Plafond :</strong> {{ ev.regle.plafond_azote_kg_n_ha }} kg N/ha
                     </p>
                   {% endif %}
-                  {% if ev.regle.code_prescription %}
+                  {% if ev.regle.codes_prescription %}
                     <p>
-                      <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
+                      <strong>Code prescription :</strong>
+                      {{ ev.regle.codes_prescription|join:", " }}
                     </p>
                   {% endif %}
                   {% if ev.regle.note %}

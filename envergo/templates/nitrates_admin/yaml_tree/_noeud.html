@@ -58,6 +58,14 @@
                   hx-get="{% url 'nitrates_admin_yaml_add_child' tree_pk=tree.pk %}?path={{ path }}"
                   hx-target="#add-zone-{{ path|slugify }}"
                   hx-swap="outerHTML">+</button>
+          {% if ancestors_path %}
+            <button type="button"
+                    class="yaml-tree__edit-btn yaml-tree__edit-btn--insert"
+                    title="Intercaler un nœud parent : un nouveau nœud s'insère au-dessus de celui-ci, qui descend dessous (avec tout son sous-arbre)"
+                    hx-get="{% url 'nitrates_admin_yaml_insert_parent' tree_pk=tree.pk %}?path={{ path }}"
+                    hx-target="#insert-parent-zone-{{ path|slugify }}"
+                    hx-swap="outerHTML">⤴</button>
+          {% endif %}
           {% comment %}
             Conversion en catalogue paramétré : pertinente uniquement sur une
             question complémentaire (niveau=complement) ou un catalogue SIG.
@@ -92,7 +100,10 @@
       {% endif %}
     </summary>
 
-    {% if is_editing %}<div id="add-zone-{{ path|slugify }}"></div>{% endif %}
+    {% if is_editing %}
+      <div id="add-zone-{{ path|slugify }}"></div>
+      <div id="insert-parent-zone-{{ path|slugify }}"></div>
+    {% endif %}
 
     {% if noeud.branches %}
       <ul class="yaml-tree__branches"
