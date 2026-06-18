@@ -1,0 +1,694 @@
+arbre:
+  noeud:
+    id: n_en_zone_vulnerable
+    champ: en_zone_vulnerable
+    source: sig
+    branches:
+    - noeud:
+        id: q_occupation_sol
+        champ: occupation_sol
+        texte: Est-ce que la culture en place est une culture principale ou un couvert végétal d'interculture ?
+        niveau: culture
+        branches:
+        - noeud:
+            id: q_sous_culture
+            champ: sous_culture
+            texte: Quelle est la culture principale ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_culture_printemps
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_culture_printemps_type_II
+                    champ: effluents_peu_charges
+                    branches:
+                    - noeud:
+                        id: q_culture_printemps_type_II_effluent_peu_charge
+                        champ: semis_apres_1er_mars
+                        texte: Le semis de votre culture de printemps a-t-il lieu après le 1er mars ?
+                        niveau: complement
+                        branches:
+                        - noeud:
+                            id: q_culture_printemps_type_II_effluent_peu_charge_semis_apres_1mars
+                            champ: epandage_vinasse_betterave
+                            texte: Êtes-vous dans le cas d'un épandage de vinasse avant betterave ?
+                            niveau: complement
+                            branches:
+                            - noeud:
+                                id: q_culture_printemps_type_II_effluent_peu_charge_semis_apres_1mars_sans_vinasse
+                                champ: fertirrigation
+                                texte: Épandez-vous des effluents peu chargés en fertirrigation ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_culture_printemps_type_II_effluent_peu_charge_semis_apres_1mars_sans_vinasse_fertirrigation
+                                    type: calculatrice
+                                    periodes:
+                                    - au: 31/08
+                                      du: 01/07
+                                      regime: autorisation_sous_condition
+                                    - au: date_semis_couvert-3semaines
+                                      du: 31/08
+                                      regime: interdiction
+                                      condition: 31/08 < date_semis_couvert-3semaines
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    code_prescription: pc6
+                                  valeur: true
+                                  libelle: Oui
+                                - regle:
+                                    id: r_culture_printemps_type_II_effluent_peu_charge_semis_apres_1mars_sans_vinasse_sans_fertirrigation
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-3semaines
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-3semaines
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: false
+                              libelle: Non
+                            - valeur: true
+                              libelle: Oui
+                              feuille_vide: true
+                            type_noeud: formulaire
+                          valeur: true
+                          libelle: Oui
+                        - valeur: false
+                          libelle: Non
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: Effluent peu chargé
+                      expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                type_noeud: formulaire
+              valeur: culture_printemps
+            type_noeud: formulaire
+          valeur: culture_principale
+        - noeud:
+            id: q_couvert_interculture
+            champ: sous_culture
+            texte: Quel type de couvert d'interculture longue ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_couvert_interculture_cine_apres_0101
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_couvert_interculture_cine_apres_0101_type_Ia
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed_iaa
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                            code_prescription: pc12
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed_non_iaa
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                            code_prescription: pc12
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_couvert_interculture_cine_apres_0101_type_Ia_icpe_autre
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                        code_prescription: pc12
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ia
+                  libelle: Type Ia
+                - noeud:
+                    id: q_couvert_interculture_cine_apres_0101_type_Ib
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed_non_iaa
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                            code_prescription: pc12
+                          valeur: false
+                          libelle: Non
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_couvert_interculture_cine_apres_0101_type_Ib_icpe_autre
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 15/11
+                        code_prescription: pc12
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                  libelle: Type Ib
+                - noeud:
+                    id: q_couvert_interculture_cine_apres_0101_type_II
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: n_couvert_interculture_cine_apres_0101_type_II_icpe_ed
+                        champ: zone_note_5
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: n_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5
+                            champ: effluent_peu_charge_elevage
+                            branches:
+                            - noeud:
+                                id: n_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge
+                                champ: resolution_digestats_cine_apres0101_ii_ed_nn5
+                                branches:
+                                - regle:
+                                    id: r_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_digestats
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    code_prescription: pc12
+                                  valeur: Digestats
+                                  libelle: Le fertilisant est un digestat
+                                  expression: categorie_fertilisant == 'digestats'
+                                - noeud:
+                                    id: q_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_pas_digestats
+                                    champ: pas_un_digestats
+                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
+                                      ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                    niveau: complement
+                                    branches:
+                                    - regle:
+                                        id: r_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_pas_digestats_non_iaa
+                                        type: interdiction
+                                        periodes:
+                                        - au: 31/01
+                                          du: 15/10
+                                          regime: interdiction
+                                        code_prescription: pc12
+                                      valeur: false
+                                      libelle: Non
+                                    - valeur: true
+                                      libelle: 'True'
+                                      feuille_vide: true
+                                    type_noeud: formulaire
+                                  valeur: Pas digestats
+                                  libelle: Pas un digestats
+                                  expression: categorie_fertilisant != 'digestats'
+                                type_noeud: catalogue_parametre
+                              valeur: false
+                              libelle: non
+                              expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            type_noeud: catalogue_parametre
+                          valeur: false
+                          libelle: Pas concerné par la note 5
+                        reference: zone_note_5
+                        type_noeud: catalogue
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - noeud:
+                        id: n_couvert_interculture_cine_apres_0101_type_II_icpe_autre
+                        champ: zone_note_5
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: n_couvert_interculture_cine_apres_0101_type_II_icpe_autre_hors_note5
+                            champ: effluent_peu_charge_elevage
+                            branches:
+                            - noeud:
+                                id: n_couvert_interculture_cine_apres_0101_type_II_icpe_autre_hors_note5_pas_effluent_peu_charge
+                                champ: resolution_digestats_cine_apres0101_ii_nc_nn5
+                                branches:
+                                - regle:
+                                    id: r_couvert_interculture_cine_apres_0101_type_II_icpe_autre_hors_note5_pas_effluent_peu_charge_digestats
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    code_prescription: pc12
+                                  valeur: Digestats
+                                  libelle: Le fertilisant est un digestat
+                                  expression: categorie_fertilisant == 'digestats'
+                                - regle:
+                                    id: r_couvert_interculture_cine_apres_0101_type_II_icpe_autre_hors_note5_pas_effluent_peu_charge_pas_digestats
+                                    type: interdiction
+                                    periodes:
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    code_prescription: pc12
+                                  valeur: Pas Digestats
+                                  libelle: Pas Digestats
+                                  expression: categorie_fertilisant != 'digestats'
+                                type_noeud: catalogue_parametre
+                              valeur: false
+                              libelle: non
+                              expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            type_noeud: catalogue_parametre
+                          valeur: false
+                          libelle: Pas concerné par la note 5
+                        reference: zone_note_5
+                        type_noeud: catalogue
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: cine_apres_0101
+              libelle: CINE détruit après le 01/01 (dont cultures énergétiques CIVE)
+            - valeur: cie_apres_0101
+              libelle: CIE exporté après le 01/01 (dont cultures énergétiques CIVE)
+              renvoi_vers: q_couvert_interculture_cine_apres_0101
+            - noeud:
+                id: q_couvert_interculture_cine_avant_3112
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_couvert_interculture_cine_avant_3112_type_Ia
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed_non_iaa
+                            type: calculatrice
+                            periodes:
+                            - au: 15/01
+                              du: date_destruction_prevue-20jours
+                              regime: interdiction
+                              condition: date_destruction_prevue-20jours < 15/01
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_destruction_prevue
+                              max: 31/12
+                              type: date
+                              label: Date de destruction prévue
+                              label_court: destruction
+                              placeholder: 15/03
+                            code_prescription: pc13
+                          valeur: false
+                          libelle: Non
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_autre
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                          condition: 01/07 < date_semis_couvert-15jours
+                        - au: 15/01
+                          du: date_destruction_prevue-20jours
+                          regime: interdiction
+                          condition: date_destruction_prevue-20jours < 15/01
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_destruction_prevue
+                          max: 31/12
+                          type: date
+                          label: Date de destruction prévue
+                          label_court: destruction
+                          placeholder: 15/03
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        code_prescription: pc13
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ia
+                  libelle: Type Ia
+                - noeud:
+                    id: q_couvert_interculture_cine_avant_3112_type_Ib
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed_non_iaa
+                            type: calculatrice
+                            periodes:
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                              condition: 01/07 < date_semis_couvert-15jours
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                            - au: 15/01
+                              du: 15/11
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              max: 31/12
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc13
+                          valeur: false
+                          libelle: non
+                        - valeur: true
+                          libelle: oui
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_couvert_interculture_cine_avant_3112_type_Ib_icpe_autre
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                          condition: 01/07 < date_semis_couvert-15jours
+                        - au: 15/01
+                          du: date_destruction_prevue-20jours
+                          regime: interdiction
+                        - au: 15/01
+                          du: 15/11
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_destruction_prevue
+                          max: 31/12
+                          type: date
+                          label: Date de destruction prévue
+                          label_court: destruction
+                          placeholder: 15/03
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        code_prescription: pc13
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                  libelle: Type Ib
+                - noeud:
+                    id: q_couvert_interculture_cine_avant_3112_type_II
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: n_couvert_interculture_cine_avant_3112_type_II_icpe_ed
+                        champ: n_cine_avant3112_type_ii_icpe_ed
+                        branches:
+                        - noeud:
+                            id: n_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu
+                            champ: n_cine_avant3112_type_ii_icpe_ed_pas_effluent_peu_charge_issus_d_elevage
+                            branches:
+                            - regle:
+                                id: r_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: 30/06
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                - au: 30/06
+                                  du: 15/10
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  max: 31/12
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription: pc13
+                              valeur: Digestats
+                              libelle: Digestats
+                              expression: categorie_fertilisant=='digestats'
+                            - noeud:
+                                id: q_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_pas_digestats
+                                champ: pas_digestats
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
+                                  ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_pas_digestats_non_iaa
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: 31/01
+                                      du: date_destruction_couvert-20jours
+                                      regime: interdiction
+                                    - au: 31/01
+                                      du: 15/10
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      max: 31/12
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    code_prescription: pc13
+                                  valeur: false
+                                  libelle: Non
+                                type_noeud: formulaire
+                              valeur: Pas Digestats
+                              libelle: Pas Digestats
+                              expression: categorie_fertilisant != 'digestats'
+                            type_noeud: catalogue_parametre
+                          valeur: Pas un effluent peu chargé issus d'élevage
+                          libelle: N'est pas un effluent peu chargé issus d'élevage
+                          expression: sous_fertilisant !='effluents_peu_charges_elevage'
+                        type_noeud: catalogue_parametre
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - noeud:
+                        id: n_couvert_interculture_cine_avant_3112_type_II_icpe_autre
+                        champ: effluent_peu_charge_elevage
+                        branches:
+                        - noeud:
+                            id: n_couvert_interculture_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge
+                            champ: resolution_digestats_cine_avant3112_ii_nc
+                            branches:
+                            - regle:
+                                id: r_couvert_interculture_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: 30/06
+                                  du: date_destruction_prevue-20jours
+                                  regime: interdiction
+                                - au: 30/06
+                                  du: 15/10
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_destruction_prevue
+                                  type: date
+                                  label: Date de destruction prévue
+                                  label_court: destruction
+                                  placeholder: 15/03
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                code_prescription: pc13
+                              valeur: Digestats
+                              libelle: Le fertilisant est un digestat
+                              expression: categorie_fertilisant == 'digestats'
+                            - regle:
+                                id: r_couvert_interculture_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_pas_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: 31/01
+                                  du: date_destruction_prevue-20jours
+                                  regime: interdiction
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_destruction_prevue
+                                  type: date
+                                  label: Date de destruction prévue
+                                  label_court: destruction
+                                  placeholder: 15/03
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                code_prescription: pc13
+                              valeur: Pas Digestats
+                              libelle: Pas Digestats
+                              expression: categorie_fertilisant != 'digestats'
+                            type_noeud: catalogue_parametre
+                          valeur: 'False'
+                          expression: sous_fertilisant !='effluents_peu_charges_elevage'
+                        type_noeud: catalogue_parametre
+                      valeur: icpe_autre
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: cine_avant_3112
+              libelle: CINE détruit avant le 31/12
+            - patch:
+                code_prescription:
+                  pc13: pc14
+              valeur: cie_avant_3112
+              libelle: Cie_avant_3112
+              renvoi_vers: q_couvert_interculture_cine_avant_3112
+            type_noeud: formulaire
+          valeur: couvert_intercultures
+          libelle: Couvert végétal d'interculture
+        type_noeud: formulaire
+      valeur: true
+    reference: zone_vulnerable_nitrates
+    type_noeud: catalogue
