@@ -1185,3 +1185,631 @@ def test_catalogue_parametre_valeur_bool_n_exige_pas_exhaustivite():
     }
     # Ne leve pas (pas d'erreur d'exhaustivite reclamant la branche false).
     validate_arbre(_arbre_avec_catalogue_parametre(noeud))
+
+
+# ─── feuille_vide interdite dans le PAN national ────────────────────────────
+
+
+def test_feuille_vide_interdite_en_scope_national():
+    """Le PAN doit etre couvrant : une branche feuille_vide y est refusee.
+    (Autorisee en PAR/ZAR, cf. cascade.)"""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append({"valeur": True, "feuille_vide": True})
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a, scope="national")
+    assert any("feuille_vide" in e for e in exc.value.errors)
+
+
+def test_feuille_vide_autorisee_en_scope_region():
+    """La meme feuille_vide passe en PAR (override partiel)."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append({"valeur": True, "feuille_vide": True})
+    # Aucune erreur feuille_vide en region (les autres checks doivent passer).
+    try:
+        validate_arbre(a, scope="region")
+    except ValidationError as e:
+        assert not any("feuille_vide" in m for m in e.errors)
+
+
+# ─── collect_references_sig (utilitaire de localisation des refs SIG) ───────
+
+
+def test_collect_references_sig_liste_les_noeuds_sig():
+    """collect_references_sig remonte (id, reference) de chaque noeud
+    catalogue source=sig. Sert a savoir quels datasets importer."""
+    from envergo.nitrates.yaml_tree.validator import collect_references_sig
+
+    a = _arbre_minimal_valide()
+    refs = collect_references_sig(a)
+    assert ("n_zvn", "zone_vulnerable_nitrates") in refs
+
+
+def test_collect_references_sig_ignore_non_sig_et_non_catalogue():
+    """Un noeud non-catalogue ou un catalogue d'une autre source n'est pas
+    remonte. Couvre les `continue` de filtre + un noeud catalogue sans
+    reference."""
+    from envergo.nitrates.yaml_tree.validator import collect_references_sig
+
+    arbre = {
+        "metadata": {"version": "t"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",  # pas catalogue -> ignore
+                "id": "q_x",
+                "champ": "occupation_sol",
+                "niveau": "culture",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "a",
+                        "noeud": {
+                            "type_noeud": "catalogue",
+                            "id": "n_autre",
+                            "champ": "z",
+                            "source": "mapping_referentiel",  # source != sig
+                            "reference": "ref_non_sig",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "regle": {"id": "r_t", "type": "libre"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "regle": {"id": "r_f", "type": "libre"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        },
+    }
+    assert collect_references_sig(arbre) == []
+
+
+# ─── References SIG supportees par le backend (#) ──────────────────────────
+
+
+def test_reference_sig_non_supportee_signale():
+    """Si on passe un set de references supportees qui ne couvre pas la
+    reference du noeud catalogue sig, le validator la signale."""
+    a = _arbre_minimal_valide()
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a, references_sig_supportees={"une_autre_ref"})
+    assert any(
+        "[sig]" in e and "zone_vulnerable_nitrates" in e for e in exc.value.errors
+    )
+
+
+def test_reference_sig_supportee_passe():
+    """Reference couverte par le backend -> pas d'erreur [sig]."""
+    a = _arbre_minimal_valide()
+    validate_arbre(a, references_sig_supportees={"zone_vulnerable_nitrates"})
+
+
+# ─── _is_valid_date : robustesse aux entrees non conformes ──────────────────
+
+
+def test_is_valid_date_robuste_aux_entrees_non_str():
+    """_is_valid_date renvoie False sur None / chaine non parseable au lieu
+    de lever (branche except ValueError/AttributeError)."""
+    from envergo.nitrates.yaml_tree.validator import _is_valid_date
+
+    assert _is_valid_date(None) is False
+    assert _is_valid_date("pasunedate") is False
+
+
+# ─── _check_dates : borne absente ignoree ───────────────────────────────────
+
+
+def test_check_dates_ignore_borne_absente():
+    """Une periode sans `au` (borne a None) ne declenche pas d'erreur de date.
+    On appelle _check_dates directement car le schema impose du+au."""
+    from envergo.nitrates.yaml_tree.validator import _check_dates
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_x",
+                            "type": "interdiction",
+                            "periodes": [{"du": "15/12", "au": None}],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    assert _check_dates(arbre, None) == []
+
+
+# ─── _check_regimes_coherents : regime inconnu (schema-bypass) ──────────────
+
+
+def test_check_regimes_coherents_regime_inconnu():
+    """Un regime de periode hors enum est signale. Le JSON Schema l'attraperait
+    en amont via validate_arbre ; ici on teste la branche semantique en
+    appelant le check directement."""
+    from envergo.nitrates.yaml_tree.validator import _check_regimes_coherents
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_x",
+                            "type": "interdiction",
+                            "periodes": [
+                                {"du": "15/12", "au": "15/01", "regime": "zzz"}
+                            ],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_regimes_coherents(arbre)
+    assert any("inconnu" in e and "zzz" in e for e in errs)
+
+
+# ─── type=mixte : exigences (>=2 periodes, regime par periode, >=2 distincts) ─
+
+
+def _arbre_mixte(periodes):
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "regle": {"id": "r_mixte", "type": "mixte", "periodes": periodes},
+        }
+    )
+    return a
+
+
+def test_mixte_moins_de_deux_periodes_echoue():
+    """type=mixte avec une seule periode -> erreur (mixte exige >=2)."""
+    a = _arbre_mixte([{"du": "01/09", "au": "15/10", "regime": "interdiction"}])
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("mixte" in e and "2 periodes" in e for e in exc.value.errors)
+
+
+def test_mixte_periode_sans_regime_echoue():
+    """En mixte, chaque periode doit declarer son regime (pas d'heritage)."""
+    a = _arbre_mixte(
+        [
+            {"du": "01/09", "au": "15/10", "regime": "interdiction"},
+            {"du": "15/10", "au": "15/01"},  # pas de regime
+        ]
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("regime` obligatoire" in e for e in exc.value.errors)
+
+
+def test_mixte_regime_invalide_echoue():
+    """Regime de periode hors enum en mixte. Appel direct du check car le
+    schema bloquerait en amont."""
+    from envergo.nitrates.yaml_tree.validator import _check_regime_mixte
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_mixte",
+                            "type": "mixte",
+                            "periodes": [
+                                {
+                                    "du": "01/09",
+                                    "au": "15/10",
+                                    "regime": "interdiction",
+                                },
+                                {"du": "15/10", "au": "15/01", "regime": "zzz"},
+                            ],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_regime_mixte(arbre)
+    assert any("invalide" in e and "zzz" in e for e in errs)
+
+
+def test_mixte_un_seul_regime_distinct_echoue():
+    """type=mixte avec 2 periodes mais le meme regime -> mixte n'a pas de
+    sens, erreur (>=2 regimes distincts attendus)."""
+    a = _arbre_mixte(
+        [
+            {"du": "01/09", "au": "15/10", "regime": "interdiction"},
+            {"du": "15/10", "au": "15/01", "regime": "interdiction"},
+        ]
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any(">=2 regimes" in e for e in exc.value.errors)
+
+
+def test_mixte_valide_passe():
+    """2 periodes, 2 regimes distincts -> mixte valide."""
+    a = _arbre_mixte(
+        [
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "15/01", "regime": "interdiction"},
+        ]
+    )
+    validate_arbre(a)
+
+
+# ─── calculatrice : branches semantiques bypassant le schema ────────────────
+
+
+def test_calculatrice_composant_legacy_skip_grammaire():
+    """Un composant legacy (luzerne_post_coupe) saute la nouvelle grammaire
+    calculatrice : meme sans inputs_requis/periodes, pas d'erreur."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_legacy_calc",
+        "type": "calculatrice",
+        "composant": "luzerne_post_coupe",
+        "inputs_requis": ["date_coupe"],
+    }
+    validate_arbre(a)
+
+
+def test_calculatrice_input_non_dict_echoue():
+    """Un input qui n'est pas un objet (ex string melange a des objets) sur une
+    regle calculatrice -> erreur. Appel direct car le schema oneOf interdit le
+    melange mais le check protege quand meme la shape."""
+    from envergo.nitrates.yaml_tree.validator import _check_calculatrice
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_calc",
+                            "type": "calculatrice",
+                            "composant": "calendrier_dynamique_couvert",
+                            "inputs_requis": ["pas_un_objet"],
+                            "periodes": [
+                                {"du": "date_x", "au": "date_x+2jours"},
+                            ],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_calculatrice(arbre)
+    assert any("doit etre un" in e and "objet" in e for e in errs)
+
+
+def test_calculatrice_input_type_invalide_echoue():
+    """Un input dont le `type` n'est pas 'date' -> erreur semantique.
+    Appel direct (schema enum bloquerait via validate_arbre)."""
+    from envergo.nitrates.yaml_tree.validator import _check_calculatrice
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_calc",
+                            "type": "calculatrice",
+                            "composant": "calendrier_dynamique_couvert",
+                            "inputs_requis": [
+                                {
+                                    "id": "date_x",
+                                    "label": "X",
+                                    "type": "datetime",
+                                    "placeholder": "01/01",
+                                }
+                            ],
+                            "periodes": [{"du": "date_x", "au": "date_x+2jours"}],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_calculatrice(arbre)
+    assert any("`type` doit" in e for e in errs)
+
+
+def test_calculatrice_label_court_invalide_echoue():
+    """`label_court` present mais vide -> erreur."""
+    r = _calculatrice_regle_valide()
+    r["inputs_requis"][0]["label_court"] = "   "
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(_arbre_avec_calculatrice(r))
+    assert any("label_court" in e for e in exc.value.errors)
+
+
+def test_calculatrice_borne_absente_ignoree():
+    """Une borne (du/au) absente est ignoree par _check_calculatrice (continue).
+    Appel direct car le schema impose du+au."""
+    from envergo.nitrates.yaml_tree.validator import _check_calculatrice
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_calc",
+                            "type": "calculatrice",
+                            "composant": "calendrier_dynamique_couvert",
+                            "inputs_requis": [
+                                {"id": "date_x", "label": "X", "type": "date"}
+                            ],
+                            # 'au' absent : la borne None est sautee, mais 'du'
+                            # reference bien un event -> calculatrice valide.
+                            "periodes": [{"du": "date_x"}],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_calculatrice(arbre)
+    # Aucune erreur liee a la borne 'au' absente.
+    assert not any("au :" in e for e in errs)
+
+
+def test_calculatrice_regime_inconnu_appel_direct():
+    """Regime de periode calculatrice hors enum -> erreur. Appel direct
+    (schema enum bloquerait via validate_arbre)."""
+    from envergo.nitrates.yaml_tree.validator import _check_calculatrice
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_calc",
+                            "type": "calculatrice",
+                            "composant": "calendrier_dynamique_couvert",
+                            "inputs_requis": [
+                                {"id": "date_x", "label": "X", "type": "date"}
+                            ],
+                            "periodes": [
+                                {"du": "date_x", "au": "date_x+2jours", "regime": "zzz"}
+                            ],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_calculatrice(arbre)
+    assert any("regime" in e and "zzz" in e for e in errs)
+
+
+def test_calculatrice_composant_inconnu_appel_direct():
+    """Composant hors liste fermee -> erreur. Appel direct (schema enum
+    bloquerait via validate_arbre)."""
+    from envergo.nitrates.yaml_tree.validator import _check_calculatrice
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "branches": [
+                    {
+                        "regle": {
+                            "id": "r_calc",
+                            "type": "calculatrice",
+                            "composant": "composant_bidon",
+                            "inputs_requis": [
+                                {"id": "date_x", "label": "X", "type": "date"}
+                            ],
+                            "periodes": [{"du": "date_x", "au": "date_x+2jours"}],
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    errs = _check_calculatrice(arbre)
+    assert any("composant" in e and "composant_bidon" in e for e in errs)
+
+
+# ─── _check_catalogue_parametre : branches absentes / non dict ──────────────
+
+
+def test_catalogue_parametre_sans_branches_echoue():
+    """Un noeud catalogue_parametre sans branche -> erreur (au moins une
+    branche avec expression). Appel direct car le schema impose minItems=1."""
+    from envergo.nitrates.yaml_tree.validator import _check_catalogue_parametre
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "q_cp",
+                "champ": "origine",
+                "branches": [],
+            }
+        }
+    }
+    errs = _check_catalogue_parametre(arbre)
+    assert any("au moins une branche" in e for e in errs)
+
+
+def test_catalogue_parametre_racine_non_dict_pas_d_erreur():
+    """Si la racine n'est pas un dict, _check_catalogue_parametre ne plante
+    pas et ne remonte rien."""
+    from envergo.nitrates.yaml_tree.validator import _check_catalogue_parametre
+
+    assert _check_catalogue_parametre({"arbre": {"noeud": None}}) == []
+
+
+# ─── _check_niveaux_formulaire : niveau hors ordre connu ────────────────────
+
+
+def test_niveau_hors_ordre_connu_ignore():
+    """Un niveau formulaire non present dans NIVEAUX_FORMULAIRE_ORDRE est
+    ignore par le check d'ordre (deja attrape par le schema). Appel direct de
+    _check_niveau_ajout."""
+    from envergo.nitrates.yaml_tree.validator import _check_niveau_ajout
+
+    assert _check_niveau_ajout([], "niveau_exotique", "champ", "q_x") is None
+
+
+def test_niveau_retour_arriere_pur_echoue():
+    """sous_culture apres type_fertilisant (sans complement intermediaire) =
+    retour en arriere pur (idx_nouveau < idx_prec). Couvre la branche
+    distincte de la regle 'apres complement'."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "type_fertilisant",
+                "id": "q_tf",
+                "champ": "type_fertilisant",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "type_0",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "sous_culture",  # retour arriere
+                            "id": "q_sc",
+                            "champ": "sous_culture",
+                            "texte": "?",
+                            "branches": [
+                                {"valeur": "z", "regle": {"id": "r_z", "type": "libre"}}
+                            ],
+                        },
+                    }
+                ],
+            },
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("retour en arriere" in e for e in exc.value.errors)
+
+
+# ─── _check_references_referentiels : doublon + patch renvoi_vers ───────────
+
+
+def test_code_prescription_doublon_echoue():
+    """Lister deux fois le meme code_prescription sur une regle -> erreur de
+    doublon."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_dup_pc",
+        "type": "interdiction",
+        "periodes": [{"du": "15/12", "au": "15/01"}],
+        "code_prescription": ["pc1", "pc1"],
+    }
+    referentiels = {
+        "codes_prescription": {"pc1": {}},
+        "notes": {},
+        "evenements_phenologiques": {},
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a, referentiels)
+    assert any("doublon" in e for e in exc.value.errors)
+
+
+def test_patch_renvoi_vers_code_prescription_inconnu_echoue():
+    """Le remap code_prescription d'un patch sur branche renvoi_vers doit
+    pointer vers des PC connus (source ET cible)."""
+    a = _arbre_minimal_valide()
+    # Une regle cible existante pour le renvoi.
+    a["plafonnements"] = [{"regle": {"id": "r_cible", "type": "libre"}}]
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "renvoi_vers": "r_cible",
+            "patch": {"code_prescription": {"pc1": "pc_inconnu_dst"}},
+        }
+    )
+    referentiels = {
+        "codes_prescription": {"pc1": {}},
+        "notes": {},
+        "evenements_phenologiques": {},
+    }
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a, referentiels)
+    assert any("pc_inconnu_dst" in e for e in exc.value.errors)
+
+
+# ─── Robustesse : gardes defensives (entrees non conformes) ─────────────────
+
+
+def test_parse_borne_calculatrice_valeur_vide():
+    """Une borne vide est rejetee par _parse_borne_calculatrice."""
+    from envergo.nitrates.yaml_tree.validator import _parse_borne_calculatrice
+
+    is_event, err = _parse_borne_calculatrice("", set())
+    assert is_event is False
+    assert err == "valeur vide"
+
+
+def test_sig_supportees_ignore_formulaire_et_catalogue_non_sig():
+    """Un noeud formulaire (non catalogue) et un catalogue source!=sig ne sont
+    pas verifies par _check_references_sig_supportees (branches continue)."""
+    arbre = {
+        "metadata": {"version": "t"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_autre_source",
+                "champ": "z",
+                "source": "mapping_referentiel",  # source != sig -> ignore
+                "reference": "ref_non_sig",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",  # non catalogue -> ignore
+                            "id": "q_x",
+                            "champ": "occupation_sol",
+                            "niveau": "culture",
+                            "texte": "?",
+                            "branches": [
+                                {"valeur": "a", "regle": {"id": "r_a", "type": "libre"}}
+                            ],
+                        },
+                    },
+                    {
+                        "valeur": False,
+                        "regle": {"id": "r_f", "type": "libre"},
+                    },
+                ],
+            }
+        },
+    }
+    from envergo.nitrates.yaml_tree.validator import _check_references_sig_supportees
+
+    # Aucune reference sig a verifier -> liste vide, pas d'erreur.
+    assert _check_references_sig_supportees(arbre, set()) == []
+
+
+def test_checks_robustes_aux_noeuds_non_dict():
+    """Les checks qui parcourent l'arbre tolerent un noeud/objet non-dict
+    (garde defensive) sans planter. On passe une racine None / des branches
+    non-dict."""
+    from envergo.nitrates.yaml_tree.validator import (
+        _check_branches_booleennes_exhaustives,
+        _check_references_referentiels,
+    )
+
+    # Racine None -> pas d'exhaustivite.
+    assert _check_branches_booleennes_exhaustives({"arbre": {"noeud": None}}) == []
+    # Un walk avec un objet non-dict (plafonnement vide) ne plante pas.
+    arbre = {"arbre": {"noeud": None}, "plafonnements": []}
+    assert _check_references_referentiels(arbre, {}) == []

@@ -241,3 +241,199 @@ def test_parcours_error_swallowed_to_non_disponible(setup):
     )
     ev = _evaluator(mou)
     assert ev.result == RESULTS.non_disponible
+
+
+# ─── Catalogue non resolvable -> non_disponible + catalogue_manquant ───────
+
+
+def test_catalogue_source_non_sig_non_disponible(monkeypatch, setup):
+    """Un BesoinCatalogue avec une source autre que 'sig' (ex 'calcul') n'est
+    pas resolvable au MVP : _resoudre_catalogue renvoie la sentinelle et
+    l'evaluateur bascule en non_disponible en exposant catalogue_manquant."""
+    from envergo.nitrates.regulations import arbre_decision
+    from envergo.nitrates.yaml_tree import BesoinCatalogue
+
+    besoin = BesoinCatalogue(
+        noeud_id="n_calc",
+        champ="zone_calculee",
+        source="calcul",  # != sig -> non resolvable
+        reference="ref_x",
+        chemin_partiel=["n_zvn", "n_calc"],
+    )
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+
+    mou = _moulinette()
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.non_disponible
+    assert ev.catalogue_manquant is besoin
+    assert ev.chemin == ["n_zvn", "n_calc"]
+
+
+def test_catalogue_sig_sans_resolveur_non_disponible(monkeypatch, setup):
+    """Source 'sig' mais reference sans resolveur enregistre -> sentinelle ->
+    non_disponible (couvre la branche resolver is None)."""
+    from envergo.nitrates.regulations import arbre_decision
+    from envergo.nitrates.yaml_tree import BesoinCatalogue
+
+    besoin = BesoinCatalogue(
+        noeud_id="n_sig",
+        champ="zone_inexistante",
+        source="sig",
+        reference="reference_sans_resolveur",  # pas dans CATALOGUE_RESOLVERS
+    )
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+
+    mou = _moulinette()
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.non_disponible
+    assert ev.catalogue_manquant is besoin
+
+
+def test_resultat_inattendu_force_non_disponible(monkeypatch, setup):
+    """parcours() ne devrait retourner que ses dataclasses connues ; un objet
+    inattendu doit declencher le filet non_disponible (defense)."""
+    from envergo.nitrates.regulations import arbre_decision
+
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: object())
+
+    mou = _moulinette()
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.non_disponible
+
+
+def test_boucle_catalogue_garde_fou(monkeypatch, setup):
+    """Si parcours() retourne sans cesse un BesoinCatalogue resolvable, le
+    garde-fou MAX_ITERATIONS_CATALOGUE coupe la boucle -> non_disponible
+    (au lieu de tourner a l'infini)."""
+    from envergo.nitrates.regulations import arbre_decision
+    from envergo.nitrates.yaml_tree import BesoinCatalogue
+
+    besoin = BesoinCatalogue(
+        noeud_id="n_loop", champ="boucle", source="sig", reference="r"
+    )
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+    # Le catalogue se resout toujours (valeur arbitraire) -> la boucle ne
+    # s'arrete que sur le garde-fou d'iterations.
+    monkeypatch.setattr(
+        arbre_decision.ArbreDecisionEvaluator,
+        "_resoudre_catalogue",
+        lambda self, b: "valeur_resolue",
+    )
+
+    mou = _moulinette()
+    ev = _evaluator(mou)
+    assert ev.result == RESULTS.non_disponible
+
+
+# ─── _contexte_initial : valeurs vides ignorees ────────────────────────────
+
+
+def test_contexte_ignore_valeurs_vides_du_query_string(setup):
+    """Une valeur vide ('') dans le query string n'est pas poussee dans le
+    contexte de parcours (couvre le filtre des valeurs vides)."""
+    mou = _moulinette(occupation_sol="sol_non_cultive", champ_vide="")
+    ev = _evaluator(mou)
+    assert "champ_vide" not in ev.contexte
+
+
+# ─── get_form : pas de questions -> None ────────────────────────────────────
+
+
+def test_get_form_questions_subsidiaires_vide_retourne_none(setup):
+    """Si _questions_subsidiaires existe mais que sa liste de questions est
+    vide, get_form() retourne None (branche `if not questions`)."""
+    from envergo.nitrates.yaml_tree import QuestionsSubsidiaires
+
+    mou = _moulinette(occupation_sol="sol_non_cultive")
+    ev = _evaluator(mou)
+    # On force un QuestionsSubsidiaires sans question.
+    ev._questions_subsidiaires = QuestionsSubsidiaires(questions=[], chemin_partiel=[])
+    assert ev.get_form() is None
+
+
+# ─── Preview admin d'un brouillon via draft_tree_id ─────────────────────────
+
+
+def _arbre_zvn_court_circuit(rid):
+    """Arbre minimal : racine ZV -> branche True/False, feuille directe."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "regle": {"id": rid, "type": "interdiction", "message": "x"},
+                    },
+                    {
+                        "valeur": False,
+                        "regle": {"id": "r_hors", "type": "non_applicable"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_preview_draft_tree_id_charge_le_brouillon_seul(setup):
+    """Avec draft_tree_id dans le QS, l'evaluateur previsualise CE brouillon
+    seul (pas de cascade). Couvre _load_decision_trees branche draft."""
+    from envergo.nitrates.models import DecisionTree
+
+    draft = DecisionTree.objects.create(
+        name="brouillon_preview",
+        status=DecisionTree.STATUS_DRAFT,
+        weight=1,
+        contenu=_arbre_zvn_court_circuit("r_draft_preview"),
+    )
+    mou = _moulinette(draft_tree_id=str(draft.pk))
+    ev = _evaluator(mou)
+    assert ev.result_code == "r_draft_preview"
+    # Un seul candidat (le draft), pas la cascade active.
+    assert [c.pk for c in ev.candidats] == [draft.pk]
+    # Accesseurs debug exposes.
+    assert ev.arbre_courant is not None
+    assert isinstance(ev.cascade_trace, list)
+
+
+def test_preview_draft_tree_id_invalide_fallback_cascade(setup):
+    """Un draft_tree_id inexistant -> fallback silencieux sur la cascade
+    active (pas de crash)."""
+    mou = _moulinette(
+        draft_tree_id="999999",
+        occupation_sol="sol_non_cultive",
+    )
+    ev = _evaluator(mou)
+    # On retombe sur l'arbre actif packagé -> resultat normal.
+    assert ev.result_code == "r_sol_non_cultive"
+
+
+# ─── _appliquer_resultat : type=mixte resolu sur le regime le plus restrictif ─
+
+
+def test_mixte_resolu_sur_regime_le_plus_restrictif(monkeypatch, setup):
+    """Un Resultat type=mixte : le statut global prend le regime le plus
+    restrictif des periodes (interdiction > ... > libre)."""
+    from envergo.nitrates.regulations import arbre_decision
+    from envergo.nitrates.yaml_tree import Resultat
+
+    res = Resultat(
+        regle_id="r_mixte_eval",
+        type="mixte",
+        chemin=["n_zvn", "r_mixte_eval"],
+        periodes=[
+            {"du": "01/09", "au": "15/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "15/01", "regime": "interdiction"},
+        ],
+    )
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: res)
+
+    mou = _moulinette()
+    ev = _evaluator(mou)
+    # interdiction est le plus restrictif -> RESULTS.interdit.
+    assert ev.result == RESULTS.interdit
+    assert ev.result_code == "r_mixte_eval"
