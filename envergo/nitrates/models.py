@@ -777,6 +777,44 @@ class BrancheValidation(models.Model):
         (STATUT_A_CORRIGER, "À corriger"),
     ]
 
+    # Scope reglementaire de la feuille : a quel arbre elle appartient.
+    # Permet de filtrer le dashboard par PAN / PAR Grand Est / ZAR Grand Est
+    # quand on provisionnera les arbres regionaux (carte #140 / skill cloud).
+    # Defaut national : toutes les feuilles existantes sont du PAN.
+    SCOPE_NATIONAL = "national"
+    SCOPE_PAR_GRAND_EST = "par_grand_est"
+    SCOPE_ZAR_GRAND_EST = "zar_grand_est"
+    SCOPE_CHOICES = [
+        (SCOPE_NATIONAL, "PAN (national)"),
+        (SCOPE_PAR_GRAND_EST, "PAR Grand Est"),
+        (SCOPE_ZAR_GRAND_EST, "ZAR Grand Est"),
+    ]
+    scope = models.CharField(
+        max_length=20,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_NATIONAL,
+        db_index=True,
+    )
+
+    # Nature de la feuille, ORTHOGONALE au scope : une feuille couvert
+    # d'interculture existe aussi bien dans le PAN que dans un PAR/ZAR. On
+    # garde les deux axes separes (scope x nature) pour pouvoir croiser
+    # n'importe quelle combinaison dans le dashboard (ex: PAR x couvert).
+    # Pose au seed (le couvert seed -> couvert, le CP seed -> culture
+    # principale) et derive du chemin_yaml pour l'existant. Cf. carte #140.
+    NATURE_CULTURE_PRINCIPALE = "culture_principale"
+    NATURE_COUVERT = "couvert"
+    NATURE_CHOICES = [
+        (NATURE_CULTURE_PRINCIPALE, "Culture principale"),
+        (NATURE_COUVERT, "Couvert d'interculture"),
+    ]
+    nature = models.CharField(
+        max_length=20,
+        choices=NATURE_CHOICES,
+        default=NATURE_CULTURE_PRINCIPALE,
+        db_index=True,
+    )
+
     # Cle naturelle : path d'ids YAML separes par "/".
     chemin_yaml = models.CharField(
         max_length=1000,
@@ -815,7 +853,19 @@ class BrancheValidation(models.Model):
         blank=True,
         help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
     )
-    code_pc_miro = models.CharField(max_length=20, blank=True)
+    # Notes PC du board juriste, potentiellement plusieurs concaténées
+    # (ex `PC1 "ICPE A" · PC13 (plafond ...)`) -> large. Cf. carte #140.
+    code_pc_miro = models.CharField(max_length=300, blank=True)
+    # Id du widget Miro de la feuille-resultat sur le board juriste. Permet
+    # un deeplink cliquable `?moveToWidget=<id>` (Miro recentre la vue sur
+    # la box) — sans ambiguite, contrairement aux screenshots. Pose au seed
+    # par rapprochement SVG (cf. snapshot_miro/.../mapping_couvert.json),
+    # editable manuellement. Cf. carte #140.
+    miro_widget_id = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="data-widget-id du board Miro (pour deeplink moveToWidget)",
+    )
     screenshot_miro = models.ImageField(
         upload_to=_branche_screenshot_path,
         blank=True,
