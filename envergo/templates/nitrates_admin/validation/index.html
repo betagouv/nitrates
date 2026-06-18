@@ -2,6 +2,13 @@
 
 {% block title %}Validation arbre{% endblock %}
 
+{% comment %}
+Page de lecture/validation : pas de mutation htmx globale. On vide l'overlay
+"Action en cours…" de la base (sinon un form POST natif — changement de statut,
+suppression — le déclenche et il peut rester collé en haut de page).
+{% endcomment %}
+{% block global_overlay %}{% endblock %}
+
 {% block content %}
   <div class="fr-container-fluid fr-py-3w">
     <div class="vc-header">
@@ -67,6 +74,8 @@
         <tr>
           <th>Statut</th>
           <th class="vc-col-regle">Règle</th>
+          <th>Périmètre</th>
+          <th>Nature</th>
           <th>Branche Miro</th>
           <th>Type fert.</th>
           <th>Résultat Miro attendu</th>
@@ -98,6 +107,20 @@
             <td class="vc-col-regle">
               <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
               {% if branche.flag_verif %}<span class="vc-flag" title="{{ branche.note_verif }}">⚑ à vérifier</span>{% endif %}
+            </td>
+            <td>
+              {% if branche.scope %}
+                <span class="vc-tag vc-tag--scope-{{ branche.scope }}">{{ branche.get_scope_display }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if branche.nature %}
+                <span class="vc-tag vc-tag--nature-{{ branche.nature }}">{{ branche.get_nature_display }}</span>
+              {% else %}
+                —
+              {% endif %}
             </td>
             <td>{{ branche.branche_miro|default:"—" }}</td>
             <td>{{ branche.type_fertilisant_miro|default:"—" }}</td>
@@ -260,6 +283,42 @@
       font-size: 0.8rem;
       font-weight: 600;
       color: #6a6af4;
+    }
+
+    /* Tags Perimetre / Nature : couleur distincte par valeur pour reperer
+       d'un coup d'oeil le melange des regles (cf. retour Max #140). */
+    .vc-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .vc-tag--scope-national {
+      background: #e1ecff;
+      color: #1f4789;
+    }
+
+    .vc-tag--scope-par_grand_est {
+      background: #e7f3ec;
+      color: #18753c;
+    }
+
+    .vc-tag--scope-zar_grand_est {
+      background: #fde8e8;
+      color: #a3231f;
+    }
+
+    .vc-tag--nature-culture_principale {
+      background: #fff3e0;
+      color: #b35900;
+    }
+
+    .vc-tag--nature-couvert {
+      background: #f3eafc;
+      color: #6e2fb0;
     }
 
     .vc-table {

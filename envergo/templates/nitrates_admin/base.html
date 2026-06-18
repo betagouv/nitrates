@@ -102,9 +102,16 @@
        (Annuler, Restaurer, Sauvegarder, Activer, etc.). Active par body.yaml-admin--busy
        depuis les listeners htmx ci-dessous. Les forms d'edition inline ont leur
     propre spinner local (cf. .yaml-tree__inline-form.htmx-request).{% endcomment %}
-    <div class="yaml-admin__global-overlay" aria-hidden="true">
-      <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
-    </div>
+    {% comment %}
+    Les pages SANS mutation htmx globale (ex: dashboard de validation, lecture
+    seule) peuvent vider ce bloc pour ne pas embarquer l'overlay -- sinon un
+    form POST natif le declenche et il peut rester colle "Action en cours…".
+    {% endcomment %}
+    {% block global_overlay %}
+      <div class="yaml-admin__global-overlay" aria-hidden="true">
+        <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
+      </div>
+    {% endblock %}
 
     <main>
       {% block content %}{% endblock %}
