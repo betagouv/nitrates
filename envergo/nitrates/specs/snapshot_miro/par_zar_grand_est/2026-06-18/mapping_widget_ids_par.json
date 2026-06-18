@@ -1,0 +1,170 @@
+{
+  "r_culture_hiver_type_II_digestats_prairie_automne": {
+    "widget_id": "3458764675296926925",
+    "resultat": "Interdit du 15/11 au 31/01",
+    "code_pc": "PC 6 \"effluents peu chargés en fertirrigation\"",
+    "confiance": "moyenne"
+  },
+  "r_culture_hiver_type_II_digestats_hors_prairie_automne": {
+    "widget_id": "3458764671812279115",
+    "resultat": "Interdit avant 15 jours avant le semis puis du 01/10 au 01/02",
+    "code_pc": "",
+    "confiance": "moyenne"
+  },
+  "r_colza_type_II_digestats": {
+    "widget_id": "3458764671812279115",
+    "resultat": "Interdit avant 15 jours avant le semis puis du 01/10 au 01/02",
+    "code_pc": "",
+    "confiance": "moyenne"
+  },
+  "r_culture_printemps_prairie_moins_6_mois_printemps_type_II_digestats": {
+    "widget_id": "3458764675296926925",
+    "resultat": "Interdit du 15/11 au 31/01",
+    "code_pc": "PC 6 \"effluents peu chargés en fertirrigation\"",
+    "confiance": "moyenne"
+  },
+  "r_culture_printemps_mais_en_zone_grand_est_1_type_II_iaa": {
+    "widget_id": "3458764671816266919",
+    "resultat": "Interdit du 31/08 au 15/02 et autorisé sous condition entre le 01/07 et le 31/08",
+    "code_pc": "PC 6 \"effluents peu chargés en fertirrigation\"",
+    "confiance": "haute"
+  },
+  "r_culture_printemps_mais_en_zone_grand_est_1_type_II_non_iaa": {
+    "widget_id": "3458764671816386387",
+    "resultat": "Interdit du 01/07 au 15/02",
+    "code_pc": "PC 6 \"effluents peu chargés en fertirrigation\"",
+    "confiance": "haute"
+  },
+  "r_prairie_plus_6_mois_en_zone_grand_est_1_type_II_effluent_peu_charge": {
+    "widget_id": "3458764671808073833",
+    "resultat": "Autorisé sous condition entre le 15/11 et le 31/01",
+    "code_pc": "PC16 (plafond prairies) · PC7 \"effluent peu chargé\"",
+    "confiance": "moyenne"
+  },
+  "r_prairie_plus_6_mois_en_zone_grand_est_1_type_II_pas_effluent_peu_charge": {
+    "widget_id": "3458764671808073835",
+    "resultat": "Interdit du 15/11 au 31/01",
+    "code_pc": "PC16 (plafond prairies) · PC7 \"effluent peu chargé\"",
+    "confiance": "moyenne"
+  },
+  "r_luzerne_en_zone_grand_est_1_type_II_icpe_a_iaa": {
+    "widget_id": "3458764671808177198",
+    "resultat": "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/11 au 31/01.",
+    "code_pc": "PC10 \"IAA luzerne + ICPE A \"",
+    "confiance": "moyenne"
+  },
+  "r_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa_note_6": {
+    "widget_id": "3458764671808177347",
+    "resultat": "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 28/02",
+    "code_pc": "PC10 \"IAA luzerne + ICPE A \"",
+    "confiance": "haute"
+  },
+  "r_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa": {
+    "widget_id": "3458764671808177351",
+    "resultat": "Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 31/01",
+    "code_pc": "PC10 \"IAA luzerne + ICPE A \"",
+    "confiance": "haute"
+  },
+  "r_autres_cultures_en_zone_grand_est_2_vigne_type_II": {
+    "widget_id": "3458764671818475722",
+    "resultat": "Interdit du 01/07 au 15/01",
+    "code_pc": "",
+    "confiance": "moyenne"
+  },
+  "r_autres_cultures_en_zone_grand_est_2_vigne_type_III": {
+    "widget_id": "3458764671818475722",
+    "resultat": "Interdit du 01/07 au 15/01",
+    "code_pc": "",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_Ib_icpe_ed_non_iaa": {
+    "widget_id": "3458764672890200650",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/11 à 20 jours avant la récolte/destruction du couvert ( applicable si et seulement si destruction_couverts - 20 jours > 15/11 ) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01. Interdit du 15/12 jusqu'au 15/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_Ib_icpe_autre": {
+    "widget_id": "3458764672890200650",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/11 à 20 jours avant la récolte/destruction du couvert ( applicable si et seulement si destruction_couverts - 20 jours > 15/11 ) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01. Interdit du 15/12 jusqu'au 15/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_II_hors_note5_icpe_a_est_un_digestats": {
+    "widget_id": "3458764675280879990",
+    "resultat": "Interdit du 01/07 (date arbitraire) jusqu'à 15 jours avant le semis. Interdit du 15/10 au 31/01",
+    "code_pc": "PC12 (plafond CI post 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_digestats": {
+    "widget_id": "3458764675283021335",
+    "resultat": "Interdit du 01/07 (date arbitraire) jusqu'à 15 jours avant le semis. Autorisé sous conditions du 15/10 au 15/11. Interdit du 16/11 au 31/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC12 (plafond CI post 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_pas_digestats_non_iaa": {
+    "widget_id": "3458764672890200386",
+    "resultat": "Autorisé sous conditions du 15/10 au 15/11. Interdit du 16/11 au 31/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC12 (plafond CI post 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_II_hors_note5_icpe_autre_pas_effluent_peu_charge_digestats": {
+    "widget_id": "3458764675283021335",
+    "resultat": "Interdit du 01/07 (date arbitraire) jusqu'à 15 jours avant le semis. Autorisé sous conditions du 15/10 au 15/11. Interdit du 16/11 au 31/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC12 (plafond CI post 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_apres_0101_type_II_hors_note5_icpe_autre_pas_effluent_peu_charge_pas_digestats": {
+    "widget_id": "3458764672890200386",
+    "resultat": "Autorisé sous conditions du 15/10 au 15/11. Interdit du 16/11 au 31/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC12 (plafond CI post 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_Ib_icpe_ed_non_iaa": {
+    "widget_id": "3458764672890200650",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/11 à 20 jours avant la récolte/destruction du couvert ( applicable si et seulement si destruction_couverts - 20 jours > 15/11 ) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01. Interdit du 15/12 jusqu'au 15/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_Ib_pas_digestats": {
+    "widget_id": "3458764672890200650",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/11 à 20 jours avant la récolte/destruction du couvert ( applicable si et seulement si destruction_couverts - 20 jours > 15/11 ) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01. Interdit du 15/12 jusqu'au 15/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_II_icpe_a_digestats": {
+    "widget_id": "3458764675294053068",
+    "resultat": "Interdit du 01/07 (date arbitraire) jusqu'à 15 jours avant le semis. Interdit de 20 jours avant la récolte/destruction du couvert au 30/06. Interdit du 15/10 au 30/06.",
+    "code_pc": "PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_digestats": {
+    "widget_id": "3458764675294384597",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/10 à 20 jours avant la récolte/destruction du couvert (applicable si 15/10 < destruction_couvert-20jours). Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 30/06. Interdit du 16/11 jusqu'au 30/06.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_pas_digestats_non_iaa": {
+    "widget_id": "3458764672890200749",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/10 à 20 jours avant la récolte/destruction du couvert (applicable si 15/10 < destruction_couvert-20jours). Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 31/01. Interdit du 16/11 jusqu'au 31/01.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_digestats": {
+    "widget_id": "3458764675294384597",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/10 à 20 jours avant la récolte/destruction du couvert (applicable si 15/10 < destruction_couvert-20jours). Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 30/06. Interdit du 16/11 jusqu'au 30/06.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_pas_digestats": {
+    "widget_id": "3458764675294384597",
+    "resultat": "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/10 à 20 jours avant la récolte/destruction du couvert (applicable si 15/10 < destruction_couvert-20jours). Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 30/06. Interdit du 16/11 jusqu'au 30/06.",
+    "code_pc": "PC4 \" non ICPE A \" · PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  },
+  "r_cie_courte_exporte_ou_pas_type_II_digestats": {
+    "widget_id": "3458764675294053068",
+    "resultat": "Interdit du 01/07 (date arbitraire) jusqu'à 15 jours avant le semis. Interdit de 20 jours avant la récolte/destruction du couvert au 30/06. Interdit du 15/10 au 30/06.",
+    "code_pc": "PC13 (plafond CINE détruit avant 31/12)",
+    "confiance": "moyenne"
+  }
+}
