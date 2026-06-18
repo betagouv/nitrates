@@ -175,6 +175,80 @@ def test_renvoi_vers_resolu():
     assert "renvoi_vers:r_hors" in res.chemin
 
 
+def test_renvoi_vers_noeud_reutilisable():
+    """renvoi_vers peut cibler un NOEUD (sous-arbre reutilisable, pattern
+    'include'), pas seulement une regle : on re-descend dedans avec le meme
+    contexte et on atteint la feuille sous-jacente. Cas luzerne/ICPE en prod
+    (q_prairie_plus6_type_0_icpe reutilise depuis plusieurs branches)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q_culture",
+                            "champ": "occupation_sol",
+                            "branches": [
+                                # Branche A : renvoie vers le sous-arbre partage.
+                                {"valeur": "a", "renvoi_vers": "q_sous_arbre"},
+                                # Branche B : le sous-arbre partage lui-meme.
+                                {
+                                    "valeur": "b",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "id": "q_sous_arbre",
+                                        "champ": "detail",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {
+                                                    "id": "r_partagee",
+                                                    "type": "interdiction",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    res = parcours(
+        arbre,
+        {"en_zone_vulnerable": True, "occupation_sol": "a", "detail": "x"},
+    )
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_partagee"
+    assert "renvoi_vers:q_sous_arbre" in res.chemin
+
+
+def test_renvoi_vers_id_inexistant_leve_parcours_error():
+    """renvoi_vers vers un id absent de l'arbre -> ParcoursError explicite
+    (garde-fou : pas de None silencieux qui crasherait plus loin)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {"valeur": True, "renvoi_vers": "r_nexiste_pas"},
+                ],
+            }
+        }
+    }
+    with pytest.raises(ParcoursError, match="ne pointe vers aucun id"):
+        parcours(arbre, {"en_zone_vulnerable": True})
+
+
 def test_a_completer_ne_crashe_pas():
     res = parcours(
         _arbre_jouet(),
