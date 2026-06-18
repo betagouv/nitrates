@@ -72,6 +72,7 @@ suppression — le déclenche et il peut rester collé en haut de page).
     <table class="vc-table">
       <thead>
         <tr>
+          <th title="Ordre du board Miro (séquence d'insertion)">#</th>
           <th>Statut</th>
           <th class="vc-col-regle">Règle</th>
           <th>Périmètre</th>
@@ -88,6 +89,7 @@ suppression — le déclenche et il peut rester collé en haut de page).
       <tbody>
         {% for branche in branches %}
           <tr class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
+            <td class="vc-col-ordre">{{ branche.ordre }}</td>
             <td>
               {% if branche.statut == 'valide' %}
                 <span class="vc-pill vc-pill--ok">✅</span>
@@ -283,6 +285,15 @@ suppression — le déclenche et il peut rester collé en haut de page).
       font-size: 0.8rem;
       font-weight: 600;
       color: #6a6af4;
+    }
+
+    /* Colonne ordre Miro : discrete, sert juste de repere de sequence. */
+    .vc-col-ordre {
+      color: #999;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      width: 1%;
+      white-space: nowrap;
     }
 
     /* Tags Perimetre / Nature : couleur distincte par valeur pour reperer

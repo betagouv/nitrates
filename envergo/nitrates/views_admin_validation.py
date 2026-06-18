@@ -35,9 +35,14 @@ def validation_index(request):
     actions_qs = BrancheValidationAction.objects.order_by("created_at").select_related(
         "user"
     )
+    # Ordre = ordre d'insertion au seed = ordre du board Miro (champ `ordre`,
+    # cf. BrancheValidation.Meta.ordering). On le RÉAFFIRME explicitement ici
+    # pour que le filtre scope/nature préserve toujours la séquence Miro
+    # arbre par arbre (suivi côte à côte avec le board), même si un futur
+    # refactor du prefetch venait masquer le Meta.ordering.
     base = BrancheValidation.objects.prefetch_related(
         Prefetch("actions", queryset=actions_qs)
-    )
+    ).order_by("ordre", "chemin_yaml")
 
     # Deux axes de filtres ORTHOGONAUX et combinables (cf. carte #140) :
     #   - scope  : PAN / PAR Grand Est / ZAR Grand Est
