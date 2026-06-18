@@ -17,9 +17,16 @@ moulinette, request (pour draft_tree_id).
   <div class="nitrates-debug-panel__section">
     <h5 class="nitrates-debug-panel__title">Resultat</h5>
     <dl class="nitrates-debug-panel__dl">
-      <dt>result_code</dt>
+      {% comment %}
+      `result_code` retire : il vaut le regle_id de la feuille atteinte (cf.
+      ArbreDecisionEvaluator._result_code = res.regle_id) -> doublon avec la
+      ligne regle_id juste en dessous. On affiche a la place `result` (la
+      categorie standardisee Envergo : interdiction / autorisation_sous_condition
+      / non_disponible), qui n'est dupliquee nulle part.
+      {% endcomment %}
+      <dt>result (catégorie Envergo)</dt>
       <dd>
-        <code>{{ ev.result_code|default:"—" }}</code>
+        <code>{{ ev.result|default:"—" }}</code>
       </dd>
       <dt>regle_id</dt>
       <dd>
