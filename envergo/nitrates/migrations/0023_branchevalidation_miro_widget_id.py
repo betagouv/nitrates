@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0017_fertilisant_champs_prefill"),
+        ("nitrates", "0022_codeprescription_blocs"),
     ]
 
     operations = [

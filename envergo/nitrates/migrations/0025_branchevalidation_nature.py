@@ -16,7 +16,7 @@ def poser_nature(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0019_branchevalidation_scope"),
+        ("nitrates", "0024_branchevalidation_scope"),
     ]
 
     operations = [

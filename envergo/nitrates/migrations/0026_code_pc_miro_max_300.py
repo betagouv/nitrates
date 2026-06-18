@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0020_branchevalidation_nature"),
+        ("nitrates", "0025_branchevalidation_nature"),
     ]
 
     operations = [
