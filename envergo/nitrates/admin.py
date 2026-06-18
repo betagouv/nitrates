@@ -113,7 +113,37 @@ class DecisionTreeAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "scope", "region_code")
     search_fields = ("name", "region_code")
-    ordering = ("-activated_at", "-created_at")
+
+    def get_queryset(self, request):
+        """Tri par defaut : actifs d'abord, puis par scope (national -> region
+        -> zar), puis le plus recent. Les valeurs texte de status/scope ne
+        s'ordonnent pas dans le bon ordre metier -> on annote un rang puis on
+        ordonne dessus. Un clic sur un en-tete de colonne ecrase ce tri
+        (comportement admin standard) ; c'est juste l'ordre au chargement.
+
+        On pose l'annotation + l'order_by ICI (pas via l'attribut `ordering`)
+        car ModelAdmin applique `ordering` avant l'annotation, ce qui ferait
+        echouer la resolution des champs annotes."""
+        from django.db.models import Case, IntegerField, Value, When
+
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            _statut_rang=Case(
+                When(status=DecisionTree.STATUS_ACTIVE, then=Value(0)),
+                When(status=DecisionTree.STATUS_DRAFT, then=Value(1)),
+                When(status=DecisionTree.STATUS_ARCHIVE, then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            ),
+            _scope_rang=Case(
+                When(scope=DecisionTree.SCOPE_NATIONAL, then=Value(0)),
+                When(scope=DecisionTree.SCOPE_REGION, then=Value(1)),
+                When(scope=DecisionTree.SCOPE_ZAR, then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            ),
+        ).order_by("_statut_rang", "_scope_rang", "-activated_at", "-created_at")
+
     # `created_by` + `activation_map` sont affiches dans list_display : sans
     # select_related, 1 query par ligne pour les resoudre. Avec, des JOIN.
     list_select_related = ("created_by", "activation_map")
