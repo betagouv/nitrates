@@ -39,44 +39,44 @@ def validation_index(request):
         Prefetch("actions", queryset=actions_qs)
     )
 
-    # Filtres rapides en haut du tableau. Le PAN est long, on le coupe en
-    # « couvert » vs « culture principale » (par le chemin YAML). PAR / ZAR
-    # Grand Est filtrent sur le scope (rempli quand ces arbres sont
-    # provisionnés ; vides pour l'instant). Cf. carte #140.
-    COUVERT = "q_couvert_sous_culture"
-    FILTRES = [
-        ("pan", "PAN", lambda qs: qs.filter(scope=BrancheValidation.SCOPE_NATIONAL)),
-        (
-            "pan_couvert",
-            "PAN · couvert",
-            lambda qs: qs.filter(
-                scope=BrancheValidation.SCOPE_NATIONAL, chemin_yaml__contains=COUVERT
-            ),
-        ),
-        (
-            "pan_cp",
-            "PAN · culture principale",
-            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_NATIONAL).exclude(
-                chemin_yaml__contains=COUVERT
-            ),
-        ),
-        (
-            "par_ge",
-            "PAR Grand Est",
-            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_PAR_GRAND_EST),
-        ),
-        (
-            "zar_ge",
-            "ZAR Grand Est",
-            lambda qs: qs.filter(scope=BrancheValidation.SCOPE_ZAR_GRAND_EST),
-        ),
+    # Deux axes de filtres ORTHOGONAUX et combinables (cf. carte #140) :
+    #   - scope  : PAN / PAR Grand Est / ZAR Grand Est
+    #   - nature : couvert d'interculture / culture principale
+    # Chaque axe a un param GET (`?scope=`, `?nature=`) qu'on croise. Ca
+    # autorise n'importe quelle combinaison (ex: PAR x couvert), au lieu de
+    # filtres pre-combines qui ferment les associations possibles.
+    SCOPES = [
+        ("national", "PAN"),
+        ("par_grand_est", "PAR Grand Est"),
+        ("zar_grand_est", "ZAR Grand Est"),
     ]
-    filtre_actif = request.GET.get("filtre", "")
-    fn = dict((k, f) for k, _, f in FILTRES).get(filtre_actif)
-    branches = fn(base) if fn else base
+    NATURES = [
+        ("couvert", "Couvert"),
+        ("culture_principale", "Culture principale"),
+    ]
+    scope_actif = request.GET.get("scope", "")
+    nature_actif = request.GET.get("nature", "")
 
-    # Compteurs par filtre (pour afficher le nombre sur chaque bouton).
-    compteurs = {k: f(base).count() for k, _, f in FILTRES}
+    branches = base
+    if scope_actif in dict(SCOPES):
+        branches = branches.filter(scope=scope_actif)
+    if nature_actif in dict(NATURES):
+        branches = branches.filter(nature=nature_actif)
+
+    # Compteurs par valeur d'axe, en respectant le filtre de L'AUTRE axe
+    # (ainsi le badge « couvert » reflète bien le scope déjà sélectionné).
+    base_scope = (
+        base.filter(nature=nature_actif) if nature_actif in dict(NATURES) else base
+    )
+    base_nature = (
+        base.filter(scope=scope_actif) if scope_actif in dict(SCOPES) else base
+    )
+    scopes_ctx = [
+        (cle, label, base_scope.filter(scope=cle).count()) for cle, label in SCOPES
+    ]
+    natures_ctx = [
+        (cle, label, base_nature.filter(nature=cle).count()) for cle, label in NATURES
+    ]
 
     stats = {
         "total": branches.count(),
@@ -92,8 +92,11 @@ def validation_index(request):
     ctx = {
         "branches": branches,
         "stats": stats,
-        "filtres": [(k, label, compteurs[k]) for k, label, _ in FILTRES],
-        "filtre_actif": filtre_actif,
+        "scopes": scopes_ctx,
+        "natures": natures_ctx,
+        "scope_actif": scope_actif,
+        "nature_actif": nature_actif,
+        "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
     }
     return render(request, "nitrates_admin/validation/index.html", ctx)
 
@@ -140,7 +143,7 @@ def validation_create(request):
                     "type_fertilisant_miro", ""
                 ).strip()[:50],
                 resultat_miro=request.POST.get("resultat_miro", "").strip()[:500],
-                code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:20],
+                code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:300],
                 url_simulateur=request.POST.get("url_simulateur", "").strip()[:2000],
             )
         except IntegrityError:
@@ -274,7 +277,7 @@ def validation_edit_meta(request, pk):
         "url_simulateur": 2000,
         "yaml_snapshot": 50000,
         "resultat_miro": 500,
-        "code_pc_miro": 20,
+        "code_pc_miro": 300,
         "miro_widget_id": 40,
         "note_verif": 2000,
     }

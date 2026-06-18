@@ -32,22 +32,41 @@
       {% endif %}
     </div>
 
-    <div class="vc-filtres">
-      <a href="?"
-         class="vc-filtre{% if not filtre_actif %} vc-filtre--on{% endif %}">Tout</a>
-      {% for cle, label, n in filtres %}
-        <a href="?filtre={{ cle }}"
-           class="vc-filtre{% if filtre_actif == cle %} vc-filtre--on{% endif %}">
-          {{ label }} <span class="vc-filtre__n">{{ n }}</span>
-        </a>
-      {% endfor %}
+    {% comment %}
+      Deux axes orthogonaux et combinables : scope (PAN/PAR/ZAR) x nature
+      (couvert/culture principale). Chaque lien ne change QUE son axe et
+      préserve la valeur de l'autre via le param GET conservé.
+    {% endcomment %}
+    <div class="vc-filtres-bloc">
+      <div class="vc-filtres">
+        <span class="vc-filtres__lbl">Périmètre</span>
+        <a href="?{% if nature_actif %}nature={{ nature_actif }}{% endif %}"
+           class="vc-filtre{% if not scope_actif %} vc-filtre--on{% endif %}">Tous</a>
+        {% for cle, label, n in scopes %}
+          <a href="?scope={{ cle }}{% if nature_actif %}&nature={{ nature_actif }}{% endif %}"
+             class="vc-filtre{% if scope_actif == cle %} vc-filtre--on{% endif %}">
+            {{ label }} <span class="vc-filtre__n">{{ n }}</span>
+          </a>
+        {% endfor %}
+      </div>
+      <div class="vc-filtres">
+        <span class="vc-filtres__lbl">Nature</span>
+        <a href="?{% if scope_actif %}scope={{ scope_actif }}{% endif %}"
+           class="vc-filtre{% if not nature_actif %} vc-filtre--on{% endif %}">Toutes</a>
+        {% for cle, label, n in natures %}
+          <a href="?nature={{ cle }}{% if scope_actif %}&scope={{ scope_actif }}{% endif %}"
+             class="vc-filtre{% if nature_actif == cle %} vc-filtre--on{% endif %}">
+            {{ label }} <span class="vc-filtre__n">{{ n }}</span>
+          </a>
+        {% endfor %}
+      </div>
     </div>
 
     <table class="vc-table">
       <thead>
         <tr>
           <th>Statut</th>
-          <th>Règle</th>
+          <th class="vc-col-regle">Règle</th>
           <th>Branche Miro</th>
           <th>Type fert.</th>
           <th>Résultat Miro attendu</th>
@@ -76,7 +95,7 @@
                 {% endif %}
               {% endwith %}
             </td>
-            <td>
+            <td class="vc-col-regle">
               <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
               {% if branche.flag_verif %}<span class="vc-flag" title="{{ branche.note_verif }}">⚑ à vérifier</span>{% endif %}
             </td>
@@ -91,7 +110,13 @@
               {% endif %}
             </td>
             <td class="vc-row__media">
-              {% if branche.miro_widget_id %}<span class="vc-miro-link" title="Lien moveToWidget renseigné">🔗</span>{% endif %}
+              {% if branche.miro_widget_id %}
+                <a class="vc-miro-link"
+                   href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
+                   target="_blank"
+                   rel="noopener"
+                   title="Ouvrir la feuille dans le board Miro (moveToWidget)">🔗 Miro</a>
+              {% endif %}
               {% if branche.screenshot_miro %}
                 <img src="{{ branche.screenshot_miro.url }}"
                      alt="Miro"
@@ -146,11 +171,27 @@
       margin: 1rem 0;
     }
 
+    .vc-filtres-bloc {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin: 0.5rem 0 1.25rem;
+    }
+
     .vc-filtres {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 0.5rem;
-      margin: 0.5rem 0 1.25rem;
+    }
+
+    .vc-filtres__lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666;
+      min-width: 7ch;
     }
 
     .vc-filtre {
@@ -240,9 +281,21 @@
       font-weight: 600;
     }
 
+    /* Colonne Règle : bornée + wrap sur 2 lignes, pour rendre la largeur
+       aux colonnes d'images (captions plus grandes). */
+    .vc-col-regle {
+      max-width: 18ch;
+    }
+
     .vc-regle-id {
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       color: #555;
+      display: inline-block;
+      max-width: 18ch;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.15;
     }
 
     .vc-flag {
@@ -268,18 +321,36 @@
     }
 
     .vc-row__media {
-      width: 100px;
+      width: 220px;
     }
 
     .vc-thumb {
-      max-width: 90px;
-      max-height: 50px;
+      max-width: 210px;
+      max-height: 130px;
       border: 1px solid #ddd;
       border-radius: 3px;
+      display: block;
+      margin-top: 3px;
     }
 
     .vc-clickable {
       cursor: zoom-in;
+    }
+
+    .vc-miro-link {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #1f4789 !important;
+      background: #e1ecff;
+      border-radius: 10px;
+      padding: 1px 7px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .vc-miro-link:hover {
+      background: #c7dbff;
     }
 
     .vc-btn {

@@ -673,6 +673,25 @@ class BrancheValidation(models.Model):
         db_index=True,
     )
 
+    # Nature de la feuille, ORTHOGONALE au scope : une feuille couvert
+    # d'interculture existe aussi bien dans le PAN que dans un PAR/ZAR. On
+    # garde les deux axes separes (scope x nature) pour pouvoir croiser
+    # n'importe quelle combinaison dans le dashboard (ex: PAR x couvert).
+    # Pose au seed (le couvert seed -> couvert, le CP seed -> culture
+    # principale) et derive du chemin_yaml pour l'existant. Cf. carte #140.
+    NATURE_CULTURE_PRINCIPALE = "culture_principale"
+    NATURE_COUVERT = "couvert"
+    NATURE_CHOICES = [
+        (NATURE_CULTURE_PRINCIPALE, "Culture principale"),
+        (NATURE_COUVERT, "Couvert d'interculture"),
+    ]
+    nature = models.CharField(
+        max_length=20,
+        choices=NATURE_CHOICES,
+        default=NATURE_CULTURE_PRINCIPALE,
+        db_index=True,
+    )
+
     # Cle naturelle : path d'ids YAML separes par "/".
     chemin_yaml = models.CharField(
         max_length=1000,
@@ -711,7 +730,9 @@ class BrancheValidation(models.Model):
         blank=True,
         help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
     )
-    code_pc_miro = models.CharField(max_length=20, blank=True)
+    # Notes PC du board juriste, potentiellement plusieurs concaténées
+    # (ex `PC1 "ICPE A" · PC13 (plafond ...)`) -> large. Cf. carte #140.
+    code_pc_miro = models.CharField(max_length=300, blank=True)
     # Id du widget Miro de la feuille-resultat sur le board juriste. Permet
     # un deeplink cliquable `?moveToWidget=<id>` (Miro recentre la vue sur
     # la box) — sans ambiguite, contrairement aux screenshots. Pose au seed

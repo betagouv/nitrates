@@ -53,9 +53,33 @@ from envergo.nitrates.management.commands.seed_branches_validation import (
     TYPE_FERTILISANT_RESOLU_VERS_FORM,
     _yaml_snapshot,
 )
-from envergo.nitrates.models import BrancheValidation
+from envergo.nitrates.models import BrancheValidation, DecisionTree
 from envergo.nitrates.yaml_tree.feuilles import enumerer_feuilles_couvert_v2
 from envergo.nitrates.yaml_tree.loader_db import load_active_tree, load_active_tree_raw
+
+
+def _charger_arbre_national():
+    """Charge l'arbre NATIONAL (PAN), même quand plusieurs arbres sont
+    actifs en DB partagée (national + PAR + ZAR Grand Est). Le couvert que
+    ce seed provisionne est celui du PAN ; on cible donc explicitement
+    l'arbre national par son nom, au lieu de `load_active_tree()` qui fait
+    un `.get(status='active')` ambigu et lève MultipleObjectsReturned.
+
+    Retourne (contenu_json, yaml_brut). Fallback sur le loader standard
+    quand un seul arbre est actif (comportement historique inchangé).
+    """
+    actifs = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+    nat = actifs.filter(name__icontains="national").first()
+    if nat is not None:
+        return nat.contenu, (nat.contenu_yaml_brut or "")
+    # Un seul arbre actif (ou aucun « national ») : loader standard.
+    raw = ""
+    try:
+        raw = load_active_tree_raw()
+    except Exception:
+        pass
+    return load_active_tree(), raw
+
 
 # sous_culture (slug arbre) -> (categorie_culture UI, sous_culture_form UI).
 # Permet de pre-remplir la cascade du formulaire pour atterrir sur la
@@ -180,11 +204,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
-        arbre = load_active_tree()
+        arbre, raw = _charger_arbre_national()
         feuilles = enumerer_feuilles_couvert_v2(arbre)
 
         try:
-            raw = load_active_tree_raw()
             arbre_rt = yaml.safe_load(raw) if raw else arbre
         except Exception:
             arbre_rt = arbre
@@ -234,6 +257,7 @@ class Command(BaseCommand):
                 BrancheValidation.objects.create(
                     chemin_yaml=chemin_yaml,
                     regle_id=feuille["regle_id"] or "",
+                    nature=BrancheValidation.NATURE_COUVERT,
                     **derives,
                 )
                 crees += 1
@@ -244,8 +268,10 @@ class Command(BaseCommand):
                 for champ in CHAMPS_DERIVES:
                     setattr(obj, champ, derives[champ])
                 obj.regle_id = feuille["regle_id"] or ""
+                obj.nature = BrancheValidation.NATURE_COUVERT
                 obj.save(
-                    update_fields=list(CHAMPS_DERIVES) + ["regle_id", "updated_at"]
+                    update_fields=list(CHAMPS_DERIVES)
+                    + ["regle_id", "nature", "updated_at"]
                 )
                 mis_a_jour += 1
 

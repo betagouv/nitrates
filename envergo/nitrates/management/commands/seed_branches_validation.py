@@ -511,6 +511,7 @@ class Command(BaseCommand):
                 "branche_label": feuille["label"][:500],
                 "url_simulateur": url[:2000],
                 "yaml_snapshot": snapshot,
+                "nature": BrancheValidation.NATURE_CULTURE_PRINCIPALE,
                 # Sans match Miro : ordre 9999 (a la fin du tableau).
                 "ordre": 9999,
             }
@@ -522,7 +523,7 @@ class Command(BaseCommand):
                         "condition_miro": miro_match["condition"][:200],
                         "zonage_miro": miro_match["zonage"][:200],
                         "resultat_miro": miro_match["resultat"][:500],
-                        "code_pc_miro": miro_match["code_pc"][:20],
+                        "code_pc_miro": miro_match["code_pc"][:300],
                         "ordre": miro_match["ordre_miro"],
                     }
                 )

@@ -24,9 +24,11 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand
 
+from envergo.nitrates.management.commands.seed_branches_validation_couvert import (
+    _charger_arbre_national,
+)
 from envergo.nitrates.models import BrancheValidation
 from envergo.nitrates.yaml_tree.feuilles import enumerer_feuilles_couvert_v2
-from envergo.nitrates.yaml_tree.loader_db import load_active_tree
 
 # Champs du contexte feuille qui NE sont PAS des réponses de QC (résolus
 # côté serveur / déjà dans l'URL), à ne pas pousser comme réponses QC.
@@ -57,10 +59,19 @@ class Command(BaseCommand):
                 Path(".") / "e2e" / "nitrates" / "_capture_couvert_manifeste.json"
             ),
         )
+        parser.add_argument(
+            "--only-courte",
+            action="store_true",
+            help="Ne garde que les feuilles couvert COURTE (cie/cine courte).",
+        )
 
     def handle(self, *args, **opts):
-        arbre = load_active_tree()
+        arbre, _ = _charger_arbre_national()
         feuilles = enumerer_feuilles_couvert_v2(arbre)
+        if opts["only_courte"]:
+            feuilles = [
+                f for f in feuilles if "courte" in "/".join(f["chemin_ids"]).lower()
+            ]
         # index chemin_yaml -> pk
         pk_par_chemin = {
             b.chemin_yaml: b.pk
