@@ -98,8 +98,36 @@ jobs:
       - name: Build assets
         run: bash bin/build_assets.sh
 
+      # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+      # On lance la suite sous coverage.py (deja installe via requirements) au
+      # lieu de `pytest` seul, pour mesurer la couverture des apps Python
+      # (nitrates, moulinette...). La config vit dans setup.cfg [coverage:*].
+      # Pas de pytest-cov ni d'integration externe (Codecov) : coverage natif.
       - name: Run Django Tests
-        run: pytest
+        run: coverage run -m pytest
+
+      # Affiche le detail (lignes manquantes) dans les logs CI. `|| true` :
+      # un eventuel souci de reporting ne doit pas faire echouer le job.
+      - name: Coverage report
+        if: always()
+        run: coverage report --show-missing || true
+
+      # Genere coverage.xml (Cobertura) pour un upload futur eventuel.
+      - name: Coverage XML
+        if: always()
+        run: coverage xml || true
+
+      # Resume markdown lisible dans l'onglet Summary du run (sans dependance).
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Couverture de tests"
+            echo ""
+            echo '```'
+            coverage report || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
   # Le job e2e amenagement + GUH a ete supprime ici. Au remerge upstream,
