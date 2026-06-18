@@ -15,7 +15,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError
-from django.db.models import Max, Prefetch
+from django.db.models import Case, IntegerField, Max, Prefetch, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -35,14 +35,28 @@ def validation_index(request):
     actions_qs = BrancheValidationAction.objects.order_by("created_at").select_related(
         "user"
     )
-    # Ordre = ordre d'insertion au seed = ordre du board Miro (champ `ordre`,
-    # cf. BrancheValidation.Meta.ordering). On le RÉAFFIRME explicitement ici
-    # pour que le filtre scope/nature préserve toujours la séquence Miro
-    # arbre par arbre (suivi côte à côte avec le board), même si un futur
-    # refactor du prefetch venait masquer le Meta.ordering.
-    base = BrancheValidation.objects.prefetch_related(
-        Prefetch("actions", queryset=actions_qs)
-    ).order_by("ordre", "chemin_yaml")
+    # Ordre d'affichage : d'abord par ARBRE (PAN -> PAR -> ZAR), puis par
+    # `ordre` au sein de l'arbre (= séquence d'insertion au seed = ordre du
+    # board Miro). Ainsi la vue « Tous périmètres » enchaîne les 3 arbres dans
+    # l'ordre de la cascade, chacun déroulant sa propre séquence Miro ; et
+    # quand on filtre un scope, on ne voit que cet arbre, toujours dans l'ordre.
+    # On annote un rang de scope (les valeurs texte national/par/zar tomberaient
+    # par hasard dans le bon ordre alphabétique, mais on l'explicite).
+    base = (
+        BrancheValidation.objects.prefetch_related(
+            Prefetch("actions", queryset=actions_qs)
+        )
+        .annotate(
+            _scope_rang=Case(
+                When(scope="national", then=Value(0)),
+                When(scope="par_grand_est", then=Value(1)),
+                When(scope="zar_grand_est", then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("_scope_rang", "ordre", "chemin_yaml")
+    )
 
     # Deux axes de filtres ORTHOGONAUX et combinables (cf. carte #140) :
     #   - scope  : PAN / PAR Grand Est / ZAR Grand Est
