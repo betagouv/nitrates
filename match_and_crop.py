@@ -214,6 +214,31 @@ def pcs_near(yr, x_from, x_to):
 report = []
 ndone = 0
 conf_counts = {"haute": 0, "moyenne": 0, "basse": 0}
+# regle_id -> {widget_id, resultat, code_pc, confiance} pour l'ingestion DB
+# (deeplink moveToWidget + bloc texte résultat + notes PC). Cf. carte #140.
+enrich = {}
+
+
+def collect_pc(yr, x_from, x_to):
+    """Codes PC voisins du widget-résultat (texte des notes PC), de gauche à
+    droite, concaténés. Sert à remplir `code_pc_miro`."""
+    pcs = [
+        w
+        for w in ws
+        if (w.get("texte") or "").strip().startswith(("PC", "PR", "PG"))
+        and abs(w["y"] - yr) < 80
+        and x_from <= w["x"] <= x_to
+    ]
+    pcs.sort(key=lambda w: w["x"])
+    seen, out = set(), []
+    for w in pcs:
+        t = (w.get("texte") or "").strip()
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return " · ".join(out)
+
+
 for f in feuilles:
     rid = f["regle_id"]
     ctx = f["contexte"]
@@ -303,6 +328,12 @@ for f in feuilles:
         W = x_right - X
         H = 420
         Y = yr - 160
+        enrich[rid] = {
+            "widget_id": best["id"],
+            "resultat": (best.get("texte") or "").strip(),
+            "code_pc": collect_pc(yr, xr, x_right),
+            "confiance": "moyenne",
+        }
         out_png = os.path.join(OUT, f"{rid}.png")
         r = subprocess.run(
             [
@@ -376,6 +407,12 @@ for f in feuilles:
     if pcw:
         x_right = max(x_right, max(p["x"] + (p["w"] or 350) for p in pcw))
     x_right += 450  # margin for trailing icon/PC
+    enrich[rid] = {
+        "widget_id": best["id"],
+        "resultat": (best.get("texte") or "").strip(),
+        "code_pc": collect_pc(yr, xr, x_right),
+        "confiance": conf,
+    }
     # Left edge: include the Type/Q2 context at x=5040 when the result is not
     # too far right; otherwise (deep Type II branches) start nearer the result
     # so the crop stays readable instead of spanning the whole row.
@@ -432,4 +469,9 @@ with open(os.path.join(OUT, "_RAPPORT.md"), "w") as fh:
         note_clean = note.replace("|", "/")
         fh.write(f"| {rid} | {conf} | {note_clean} | {boxs} |\n")
 
-print("\nDONE", ndone, conf_counts)
+# write enrichment mapping (regle_id -> widget_id / resultat / code_pc) pour
+# l'ingestion DB du deeplink moveToWidget + texte résultat + notes PC.
+with open(os.path.join(BASE, "mapping_widget_ids.json"), "w") as fh:
+    json.dump(enrich, fh, ensure_ascii=False, indent=2)
+
+print("\nDONE", ndone, conf_counts, "| enrich:", len(enrich))

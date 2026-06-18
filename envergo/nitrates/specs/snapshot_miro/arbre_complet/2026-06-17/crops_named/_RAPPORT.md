@@ -65,38 +65,3 @@ Confiance: haute=29 moyenne=30 basse=0
 | r_cie_courte_type_III | moyenne | COURTE y=18197 x=7219 / Apports interdits sauf entre le semis du couvert e | 4450,18037,4654,420 |
 | r_cine_courte_types_0_I_II | moyenne | COURTE y=17403 x=5773 / go to CINE détruit avant le 31/12 Type 0 | 4450,17243,2980,420 |
 | r_cine_courte_type_III | moyenne | COURTE y=17760 x=6378 / Interdit du 01/07 (date arbitraire) au jour de l'i | 4450,17600,4145,420 |
-
-## Notes méthodologiques & feuilles incertaines
-
-**Méthode** : pour chaque feuille, le signal principal est le texte de résultat
-(dates + régime interdit/autorisé) dérivé du champ `texte` ou des `periodes`.
-Désambiguïsation par (a) bande verticale ancrée sur les labels « Type X » de la
-section (apres_0101 / avant_3112 / courte) et (b) proximité avec le label de
-branche du `plan_epandage` (« à autorisation » = icpe_a, « à enregistrement ou
-déclaration » = icpe_ed, « non concerné »). Fenêtre de crop : de la colonne
-contexte (x≈5040, ou x_result−2700 pour les branches Type II très à droite)
-jusqu'au PC le plus à droite + marge. pxPerUnit 0.7 (0.8 pour la section courte).
-
-**Section courte** : traitée par règles explicites (bloc bas du board,
-y≈17900–18200 pour les CIE courtes ; lignes « go to CINE détruit avant 31/12 »
-y≈17400–17700 pour les CINE courtes ; PC14/PC15).
-
-### Feuilles INCERTAINES (confiance moyenne, à revalider à la main)
-
-Les feuilles **Type II apres_0101** sont les plus ambiguës : le bloc Type II
-contient de nombreuses sous-branches quasi identiques (note5 vs autres,
-effluent_peu_chargé vs Q6/Mixte) avec des textes-résultats très proches
-(15/10→15/01, 15/10→31/01, 15/10→15/11). Le matching distingue correctement les
-dates mais le choix de la *ligne* exacte (effluent_true vs q6_true vs q6_false,
-note5 vs autres) repose sur la bande+branche et peut se tromper de ligne sœur.
-À revalider en priorité :
-
-- r_cine_apres_0101_type_II_icpe_a_* (note5/autres, effluent/q6)
-- r_cine_apres_0101_type_II_icpe_ed_* (idem)
-- r_cine_apres_0101_type_II_non_concerne_* (idem)
-- r_cine_apres_0101_type_Ib_* (deux résultats « 15/11-15/01 » identiques par type)
-- r_cine_avant_3112_type_Ib_* et type_II_* (résultats « Interdit 01/07… » très répétés)
-
-Pour ces feuilles, le crop reste exploitable (la bonne *zone* et le bon
-résultat-type sont à l'écran) mais l'instance exacte de la branche peut nécessiter
-une vérification visuelle. Aucune feuille n'est en échec total (0 basse, 0 manquante).
