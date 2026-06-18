@@ -61,6 +61,36 @@ CHAMPS_DERIVES = (
 )
 
 
+def _build_url_par(feuille: dict) -> str:
+    """URL deeplink simulateur pour une feuille PAR.
+
+    Part de `_build_url` national puis applique des overrides PAR :
+
+    - Feuilles « digestat » (type_II + digestat) : l'arbre PAR résout le
+      digestat via la catégorie de fertilisant, pas via une QC visible. Le
+      builder national mappe type_II vers un fumier représentatif, ce qui
+      atterrit sur la mauvaise branche. On force
+      `categorie_fertilisant=digestats` + un sous_fertilisant type_II pour
+      que la résolution serveur descende sur la branche digestat.
+
+    Heuristique : on détecte « digestat » dans le regle_id, en excluant les
+    issues `pas_digestats` (qui veulent au contraire un non-digestat).
+    """
+    from urllib.parse import parse_qsl, urlencode, urlparse
+
+    url = _build_url(feuille["contexte"])
+    rid = (feuille.get("regle_id") or "").lower()
+    est_digestat = "digestat" in rid and "pas_digestat" not in rid
+    if not est_digestat:
+        return url
+
+    parsed = urlparse(url)
+    params = dict(parse_qsl(parsed.query))
+    params["categorie_fertilisant"] = "digestats"
+    params["sous_fertilisant"] = "digestat_brut_methanisation"
+    return f"{parsed.path}?{urlencode(params)}"
+
+
 def _charger_arbre_par() -> tuple[dict, str]:
     """Charge l'arbre PAR Grand Est actif, même quand plusieurs arbres sont
     actifs en DB partagée (national + PAR + ZAR). On cible explicitement le
@@ -120,7 +150,7 @@ class Command(BaseCommand):
 
             derives = {
                 "branche_label": feuille["label"][:500],
-                "url_simulateur": _build_url(feuille["contexte"])[:2000],
+                "url_simulateur": _build_url_par(feuille)[:2000],
                 "yaml_snapshot": _yaml_snapshot(arbre_rt, feuille["regle_id"]),
                 "branche_miro": sous_culture[:200],
                 "type_fertilisant_miro": (
