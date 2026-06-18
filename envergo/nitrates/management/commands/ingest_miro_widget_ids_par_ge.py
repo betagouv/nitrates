@@ -9,7 +9,7 @@ principale que le couvert PAR.
 
 Le mapping est produit hors-app (parsing SVG du board juriste PAR), au format
 `{ regle_id: {widget_id, resultat?, code_pc?} }`. Cf.
-snapshot_miro/par_grand_est/<date>/mapping_widget_ids.json.
+snapshot_miro/par_zar_grand_est/<date>/mapping_widget_ids_par.json.
 
 Ce que la commande pose :
   - `miro_widget_id`  : TOUJOURS (donnée technique du deeplink moveToWidget).
@@ -44,12 +44,16 @@ class Command(BaseCommand):
     help = "Ingère widget_id / résultat / PC Miro PAR depuis mapping_widget_ids.json."
 
     def add_arguments(self, parser):
+        # Le board PAR vit dans le snapshot combiné par_zar_grand_est (l'arbre
+        # PAR occupe le haut du board PAR+ZAR), et le mapping est suffixé `_par`
+        # (cf. match_and_crop_par.py). L'ancien default pointait vers un dossier
+        # `par_grand_est/` inexistant -> corrigé (retour ops post-deploy).
         default_file = (
             Path(settings.NITRATES_SPECS_DIR)
             / "snapshot_miro"
-            / "par_grand_est"
+            / "par_zar_grand_est"
             / "2026-06-18"
-            / "mapping_widget_ids.json"
+            / "mapping_widget_ids_par.json"
         )
         parser.add_argument("--file", default=str(default_file))
         parser.add_argument(
