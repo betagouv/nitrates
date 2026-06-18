@@ -106,16 +106,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
-          Panel debug "parcours" : INSERE entre le calendrier et les conditions
-          a respecter (cf. retour Max). Seulement en mode developpeur
-          (NITRATES_FORM_DEBUG_PANELS / force_debug) -> absent sur la route
-          publique /result/. Foldé par defaut (cf. _debug_parcours.html).
-          {% endcomment %}
-          {% if debug %}
-            {% include "nitrates/fragments/_debug_parcours.html" %}
-          {% endif %}
-
-          {% comment %}
           Ancien callout "Condition d'autorisation" (texte_condition, #28)
           retire : redondant avec les prescriptions conditionnees riches qui
           portent desormais tout le detail. Le texte_condition reste exploite
@@ -145,11 +135,20 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% endif %}
           {% endif %}
 
-          {# Plafond (si applicable) #}
+          {% comment %}
+          Plafond d'azote (si applicable) : presente en encart DSFR plutot
+          qu'en texte plaque (cf. retour Max). Le chiffre est mis en avant
+          comme une valeur cle ; le contexte ("toutes formes et origines
+          confondues...") est porte par les prescriptions / regles permanentes.
+          {% endcomment %}
           {% if ev.regle.plafond_azote_kg_n_ha %}
-            <p>
-              <strong>Plafond :</strong> {{ ev.regle.plafond_azote_kg_n_ha }} kg N/ha
-            </p>
+            <div class="fr-callout fr-callout--blue-cumulus fr-mt-2w nitrates-plafond">
+              <p class="fr-callout__title fr-mb-1v">Plafond d'azote</p>
+              <p class="fr-callout__text">
+                <span class="nitrates-plafond__valeur">{{ ev.regle.plafond_azote_kg_n_ha }}</span>
+                <span class="nitrates-plafond__unite">kg N/ha</span>
+              </p>
+            </div>
           {% endif %}
 
           {% comment %}
@@ -265,6 +264,18 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               {% endwith %}
             {% endfor %}
           </div>
+
+          {% comment %}
+          Panel debug "parcours" : tout en bas du resultat, APRES les regles et
+          conditions d'application (cf. retour Max 2026-06-18 : il etait insere
+          entre le calendrier et les periodes, ce qui le coincait au-dessus de
+          la periode d'autorisation). Seulement en mode developpeur
+          (NITRATES_FORM_DEBUG_PANELS / force_debug) -> absent sur la route
+          publique /result/. Foldé par defaut (cf. _debug_parcours.html).
+          {% endcomment %}
+          {% if debug %}
+            {% include "nitrates/fragments/_debug_parcours.html" %}
+          {% endif %}
 
         {% endif %}
 

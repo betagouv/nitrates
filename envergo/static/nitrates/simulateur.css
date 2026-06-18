@@ -705,3 +705,17 @@ body {
   line-height: 1.55;
   color: #45474d;
 }
+
+/* Plafond d'azote : encart DSFR avec la valeur chiffree mise en avant
+   (cf. retour Max 2026-06-18 : le plafond etait plaque en texte brut). */
+.nitrates-plafond__valeur {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nitrates-plafond__unite {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
