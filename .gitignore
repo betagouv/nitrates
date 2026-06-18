@@ -321,13 +321,19 @@ PORTS.local.md
 # Artefacts générés de capture validation couvert (carte #140) — régénérables
 e2e/nitrates/_capture_couvert_manifeste.json
 e2e/nitrates/_captures_couvert/
+# idem pour la capture ZAR Grand Est (carte #140)
+e2e/nitrates/_capture_zar_manifeste.json
+e2e/nitrates/_captures_zar/
 
 # Crops PNG du board Miro (générés par match_and_crop.py, ~10M) — régénérables,
 # déjà ingérés dans le validateur. On versionne board.svg + scripts, pas les PNG.
 envergo/nitrates/specs/snapshot_miro/arbre_complet/*/crops_named/*.png
 envergo/nitrates/specs/snapshot_miro/arbre_complet/*/feuilles_couvert_textes.json
+# idem crops ZAR Grand Est (régénérables, déjà ingérés ; garder widgets.json + scripts)
+envergo/nitrates/specs/snapshot_miro/par_zar_grand_est/*/crops_named_zar/*.png
 # Export SVG brut du board Miro (lourd, trituré par les hooks) — garder widgets.json
 envergo/nitrates/specs/snapshot_miro/arbre_complet/*/board.svg
+envergo/nitrates/specs/snapshot_miro/par_zar_grand_est/*/board.svg
 
 # Scripts Playwright de debug/inspection ponctuels (worktree #140) — non versionnés
 /inspect*.mjs
