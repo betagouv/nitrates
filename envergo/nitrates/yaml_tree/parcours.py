@@ -271,7 +271,7 @@ def _descendre_branche(
     if "noeud" in branche:
         return _descendre(branche["noeud"], contexte, chemin, index_ids)
     if "regle" in branche:
-        return _faire_resultat(branche["regle"], chemin)
+        return _faire_resultat(branche["regle"], chemin, index_ids)
     if "renvoi_arbre" in branche:
         # Renvoi explicite vers un autre arbre de la cascade (ex ZAR -> PAR).
         # L'evaluateur resout le scope cible et re-parcourt cet arbre.
@@ -299,7 +299,7 @@ def _descendre_branche(
         ):
             res = _descendre(cible, contexte, new_chemin, index_ids)
         else:
-            res = _faire_resultat(cible, new_chemin)
+            res = _faire_resultat(cible, new_chemin, index_ids)
         # Patch optionnel : remappe les codes de prescription sur la feuille
         # atteinte (ex pc12 -> pc14). Permet de reutiliser un sous-arbre en ne
         # changeant que les PC, sans dupliquer toutes les feuilles.
@@ -451,18 +451,42 @@ def normaliser_codes_prescription(valeur) -> list[str]:
     return [str(valeur)]
 
 
-def _faire_resultat(regle: dict, chemin: list[str]) -> Resultat:
+def _faire_resultat(
+    regle: dict, chemin: list[str], index_ids: dict[str, dict] | None = None
+) -> Resultat:
     """Convertit une regle YAML en dataclass Resultat. Les regles `a_completer`
-    (stub brouillon) peuvent ne pas avoir de champ `type` -- on tolere."""
+    (stub brouillon) peuvent ne pas avoir de champ `type` -- on tolere.
+
+    Si la regle porte un `plafonnement_associe` (id d'une regle de la section
+    `plafonnements`), on resout cette reference et on COMPLETE les champs metier
+    absents de la feuille (plafond_azote_kg_n_ha, code_prescription) avec ceux
+    du plafonnement. Indispensable pour les regles partagees CIE/CINE courte :
+    elles ne portent pas le plafond inline, il vit dans la regle plafonnement
+    referencee. Sans ca le panneau resultat n'affiche ni plafond ni PC (cf.
+    retour Max 2026-06-18). On ne complete QUE les champs vides -> une feuille
+    qui a deja son propre plafond/PC inline (cas 99%) n'est pas touchee."""
+    valeurs = {k: regle.get(k) for k in _REGLE_FIELDS}
+    codes = normaliser_codes_prescription(regle.get("code_prescription"))
+
+    plaf_id = regle.get("plafonnement_associe")
+    if plaf_id and index_ids:
+        plaf = index_ids.get(plaf_id)
+        if isinstance(plaf, dict):
+            # Plafond chiffre : on le remonte si la feuille ne l'a pas deja.
+            if valeurs.get("plafond_azote_kg_n_ha") is None:
+                valeurs["plafond_azote_kg_n_ha"] = plaf.get("plafond_azote_kg_n_ha")
+            # Code(s) prescription du plafonnement : ajoutes si la feuille n'en
+            # a aucun (sinon on garde ceux de la feuille, plus specifiques).
+            if not codes:
+                codes = normaliser_codes_prescription(plaf.get("code_prescription"))
+
     return Resultat(
         regle_id=regle["id"],
         type=regle.get("type", "a_completer"),
         chemin=chemin + [regle["id"]],
         a_completer=bool(regle.get("a_completer", False)),
-        codes_prescription=normaliser_codes_prescription(
-            regle.get("code_prescription")
-        ),
-        **{k: regle.get(k) for k in _REGLE_FIELDS},
+        codes_prescription=codes,
+        **valeurs,
     )
 
 

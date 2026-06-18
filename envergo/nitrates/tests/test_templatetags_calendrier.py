@@ -312,3 +312,26 @@ def test_calendrier_borne_phenologique_label_resolu():
     labels = [b["label"] for b in ctx["bornes"]]
     assert "Dernière coupe de la luzerne" in labels
     assert "derniere_coupe_luzerne" not in labels
+
+
+def test_calendrier_asc_sans_periode_peint_toute_lannee():
+    """ASC sans aucune periode = "sous condition toute l'annee" (regles
+    partagees CIE/CINE courte, type III, plafonnements). Le calendrier doit
+    synthetiser une periode pleine annee -> overlay orange + legende "Autorise
+    sous condition", au lieu d'un fond vert trompeur "Autorise" (fix Max
+    2026-06-18)."""
+    ctx = calendrier_epandage(_regle(type="autorisation_sous_condition", periodes=None))
+    # Au moins un segment orange couvrant l'annee.
+    assert ctx["segments"], "aucun segment peint (fond vert trompeur)"
+    assert any(s["couleur"] == "orange" for s in ctx["segments"])
+    # Legende : "Autorise sous condition" present, pas seulement "Autorise".
+    labels = [item["label"] for item in ctx["legende"]]
+    assert any("sous condition" in label for label in labels)
+
+
+def test_calendrier_autorisation_simple_sans_periode_reste_verte():
+    """Garde-fou : une autorisation PURE (type "autorisation" ou "libre") sans
+    periode ne doit PAS etre repeinte en orange -- seuls ASC / plafonnement le
+    sont. Le cas 99% (autorise librement) reste vert."""
+    ctx = calendrier_epandage(_regle(type="libre", periodes=None))
+    assert all(s["couleur"] != "orange" for s in ctx["segments"])

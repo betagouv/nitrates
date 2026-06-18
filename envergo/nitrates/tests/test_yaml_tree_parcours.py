@@ -442,6 +442,52 @@ def test_couvert_courte_renvoi_vers_regle_partagee(
     )
     assert isinstance(res, Resultat)
     assert res.regle_id == regle_attendue
+    # La regle partagee est une autorisation_sous_condition qui porte son
+    # plafond via `plafonnement_associe` (pas inline). Le parcours doit avoir
+    # resolu la reference et remonte le plafond + le code prescription sur le
+    # Resultat, sinon le panneau ne les affiche pas (cf. fix 2026-06-18).
+    assert res.type == "autorisation_sous_condition"
+    assert res.plafond_azote_kg_n_ha == 70
+    assert res.codes_prescription  # non vide (issu du plafonnement associe)
+
+
+def test_plafonnement_associe_ne_surcharge_pas_un_plafond_inline():
+    """Fusion plafonnement_associe : on ne complete que les champs ABSENTS.
+    Une feuille qui porte deja son plafond inline garde sa valeur (le
+    plafonnement associe ne l'ecrase pas)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "type_noeud": "catalogue",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "regle": {
+                            "id": "r_inline",
+                            "type": "autorisation_sous_condition",
+                            "plafond_azote_kg_n_ha": 120,
+                            "plafonnement_associe": "r_plaf",
+                        },
+                    }
+                ],
+            }
+        },
+        "plafonnements": [
+            {
+                "regle": {
+                    "id": "r_plaf",
+                    "type": "plafonnement",
+                    "plafond_azote_kg_n_ha": 70,
+                }
+            }
+        ],
+    }
+    res = parcours(arbre, {"en_zone_vulnerable": True})
+    assert isinstance(res, Resultat)
+    # Le plafond inline (120) prime sur celui du plafonnement associe (70).
+    assert res.plafond_azote_kg_n_ha == 120
 
 
 # ─── Cascade questions conditionnelles (#58.1) ─────────────────────────────

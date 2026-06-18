@@ -473,6 +473,20 @@ def calendrier_epandage(regle):
     regle_type = getattr(regle, "type", None) or ""
     periodes = getattr(regle, "periodes", None) or []
 
+    # Regle "sous condition / plafond TOUTE L'ANNEE" : certaines feuilles
+    # (regles partagees CIE/CINE courte, type III, plafonnements) sont des
+    # autorisation_sous_condition / plafonnement SANS aucune periode -- le sens
+    # metier est "sous condition sur toute l'annee agricole", pas "autorise
+    # librement". Sans periode, la boucle ci-dessous ne produit aucun segment
+    # -> fond vert -> rendu trompeur "Autorise" (cf. retour Max 2026-06-18 sur
+    # les regles partagees). On synthetise donc une periode pleine annee
+    # (01/07 -> 30/06) dans le regime du type, pour que le calendrier peigne
+    # l'overlay (orange) et que la legende dise "Autorise sous condition".
+    # Le cas 99% (regles AVEC periodes explicites) n'est PAS touche : on ne
+    # synthetise que si `periodes` est vide.
+    if not periodes and regle_type in ("autorisation_sous_condition", "plafonnement"):
+        periodes = [{"du": "01/07", "au": "30/06", "regime": regle_type}]
+
     fond = _FOND_PAR_TYPE.get(regle_type, "gris")
     label = _LABEL_PAR_TYPE.get(regle_type, regle_type or "—")
 
