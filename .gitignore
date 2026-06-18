@@ -321,6 +321,8 @@ PORTS.local.md
 # Artefacts générés de capture validation couvert (carte #140) — régénérables
 e2e/nitrates/_capture_couvert_manifeste.json
 e2e/nitrates/_captures_couvert/
+e2e/nitrates/_capture_par_ge_manifeste.json
+e2e/nitrates/_captures_par_ge/
 
 # Crops PNG du board Miro (générés par match_and_crop.py, ~10M) — régénérables,
 # déjà ingérés dans le validateur. On versionne board.svg + scripts, pas les PNG.

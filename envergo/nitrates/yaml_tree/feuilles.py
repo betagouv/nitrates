@@ -20,6 +20,36 @@ def enumerer_feuilles_culture_principale(arbre: dict) -> list[tuple]:
     ]
 
 
+def _descendre_racine_zv(racine: dict, chemin_init: list[str]):
+    """Detecte un eventuel noeud d'entree « en zone vulnerable » et descend
+    dans sa branche True.
+
+    L'arbre national a un wrapper `n_zvn` (catalogue sur `en_zone_vulnerable`)
+    a la racine ; l'arbre PAR Grand Est a le sien (`n_en_zone_vulnerable`,
+    meme champ, id different). On detecte le wrapper par son CHAMP plutot que
+    par un id code en dur, pour couvrir les deux arbres (et toute variante
+    regionale future). Renvoie le sous-noeud (occupation_sol) ou None si le
+    wrapper est present mais mal forme. Si la racine n'est pas un wrapper ZV,
+    on la renvoie telle quelle (cas ou l'arbre demarre directement sur
+    occupation_sol).
+    """
+    est_wrapper_zv = (
+        racine.get("type_noeud") == "catalogue"
+        and racine.get("champ") == "en_zone_vulnerable"
+    )
+    if est_wrapper_zv:
+        if racine.get("id"):
+            chemin_init.append(racine["id"])
+        branche_oui = next(
+            (b for b in racine.get("branches", []) if b.get("valeur") is True),
+            None,
+        )
+        if not branche_oui or "noeud" not in branche_oui:
+            return None
+        return branche_oui["noeud"]
+    return racine
+
+
 def enumerer_feuilles_culture_principale_v2(arbre: dict) -> list[dict]:
     """Pour chaque feuille atteignable sous culture_principale, retourne un
     dict :
@@ -44,17 +74,9 @@ def enumerer_feuilles_culture_principale_v2(arbre: dict) -> list[dict]:
 
     contexte_base = {"en_zone_vulnerable": True}
     chemin_init: list[str] = []
-    if racine.get("type_noeud") == "catalogue" and racine.get("id") == "n_zvn":
-        chemin_init.append(racine["id"])
-        branche_oui = next(
-            (b for b in racine.get("branches", []) if b.get("valeur") is True),
-            None,
-        )
-        if not branche_oui or "noeud" not in branche_oui:
-            return []
-        sous = branche_oui["noeud"]
-    else:
-        sous = racine
+    sous = _descendre_racine_zv(racine, chemin_init)
+    if not sous:
+        return []
 
     if sous.get("champ") != "occupation_sol":
         return []
@@ -98,17 +120,9 @@ def enumerer_feuilles_couvert_v2(arbre: dict) -> list[dict]:
     index = _index_par_id(arbre)
     contexte_base = {"en_zone_vulnerable": True}
     chemin_init: list[str] = []
-    if racine.get("type_noeud") == "catalogue" and racine.get("id") == "n_zvn":
-        chemin_init.append(racine["id"])
-        branche_oui = next(
-            (b for b in racine.get("branches", []) if b.get("valeur") is True),
-            None,
-        )
-        if not branche_oui or "noeud" not in branche_oui:
-            return []
-        sous = branche_oui["noeud"]
-    else:
-        sous = racine
+    sous = _descendre_racine_zv(racine, chemin_init)
+    if not sous:
+        return []
 
     if sous.get("champ") != "occupation_sol":
         return []
