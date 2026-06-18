@@ -95,6 +95,30 @@ def test_calendrier_interdiction_genere_segments():
     assert "Calendrier" in ctx["label"]
 
 
+def test_calendrier_segment_porte_un_tooltip():
+    """Chaque segment expose un tooltip humain au survol (#134) : verbe de
+    regime + phrase de bornes, comme le calendrier dynamique."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    )
+    seg = ctx["segments"][0]
+    assert seg["tooltip"].startswith("Interdit")
+    assert "15" in seg["tooltip"]
+
+
+def test_calendrier_tooltip_orange_sous_condition():
+    """Zone orange -> tooltip 'Autorisé sous conditions ...'."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="autorisation_sous_condition",
+            periodes=[{"du": "15/12", "au": "15/01"}],
+        )
+    )
+    seg = ctx["segments"][0]
+    assert seg["couleur"] == "orange"
+    assert seg["tooltip"].startswith("Autorisé sous conditions")
+
+
 def test_calendrier_libre_pas_de_zone_overlay():
     """Une regle 'libre' n'a pas de periode interdite : pas de zone overlay."""
     ctx = calendrier_epandage(_regle(type="libre", periodes=[]))
@@ -189,8 +213,9 @@ def test_calendrier_12_mois_annee_agricole():
     """L'ordre des mois suit l'annee agricole (juil debut, juin fin)."""
     ctx = calendrier_epandage(_regle())
     assert len(ctx["mois"]) == 12
+    # Labels alignes sur le calendrier dynamique (#134) : "Jui" pour juin.
     assert ctx["mois"][0] == "Juil"
-    assert ctx["mois"][-1] == "Juin"
+    assert ctx["mois"][-1] == "Jui"
 
 
 def test_calendrier_regime_mixte_par_periode():
