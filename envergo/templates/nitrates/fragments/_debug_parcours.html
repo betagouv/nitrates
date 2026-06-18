@@ -1,4 +1,5 @@
 {% load yaml_admin_extras %}
+{% load nitrates_tags %}
 
 {% comment %}
 Panel "Debug parcours" (outil developpeur, gate par NITRATES_FORM_DEBUG_PANELS
@@ -23,6 +24,24 @@ moulinette, request (pour draft_tree_id).
       <dt>regle_id</dt>
       <dd>
         <code>{{ ev.regle.regle_id|default:"—" }}</code>
+      </dd>
+      {% comment %}
+      Note PC appliquée : le code seul (pc13 / pc14) ne suffit pas à savoir
+      lequel a matché — les textes se ressemblent. On affiche code + libellé
+      court (mots_cles du référentiel) pour lever l'ambiguïté d'un coup d'oeil.
+      Liste : une règle peut porter plusieurs PC (#multi-PC).
+      {% endcomment %}
+      <dt>code(s) prescription</dt>
+      <dd>
+        {% for cp in ev.regle.codes_prescription %}
+          {% with pc=codes_prescription|get_item:cp %}
+            <code>{{ cp }}</code>
+            {% if pc.mots_cles %}— {{ pc.mots_cles }}{% endif %}
+          {% endwith %}
+          {% if not forloop.last %}<br>{% endif %}
+        {% empty %}
+          <code>—</code>
+        {% endfor %}
       </dd>
       {% comment %}Texte libre du YAML (message / texte) : affiche ici (#85) -- il ne s'affiche plus au-dessus du calendrier.{% endcomment %}
       {% if ev.regle.message or ev.regle.texte %}

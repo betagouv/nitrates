@@ -115,6 +115,25 @@ def test_panneaux_debug_caches_sans_flag(
     assert b"Debug parcours" not in response.content
 
 
+def test_panel_debug_affiche_code_prescription_et_libelle(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Le panel debug affiche le(s) code(s) prescription appliqué(s) avec leur
+    libellé court (mots_cles du référentiel), pour distinguer d'un coup d'oeil
+    des PC au texte très proche (ex pc13 vs pc14). Colza type_III -> pc11."""
+    settings.NITRATES_FORM_DEBUG_PANELS = True
+    response = client.get(
+        "/simulateur/?lng=4.0345&lat=49.2583"
+        "&occupation_sol=culture_principale&sous_culture=colza"
+        "&type_fertilisant=type_III"
+    )
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "code(s) prescription" in html
+    # Code + libellé court côte à côte (pc11 = "colza" dans le référentiel).
+    assert "<code>pc11</code>" in html
+
+
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):
     """Point offshore : pas en ZV, message clair."""
     response = client.get("/simulateur/?lng=-30&lat=30")
