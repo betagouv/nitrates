@@ -164,7 +164,12 @@ suppression — le déclenche et il peut rester collé en haut de page).
               {% endif %}
             </td>
             <td class="vc-row__actions">
-              <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}"
+              {% comment %}
+              On propage scope/nature au détail pour qu'au retour (← Retour /
+              après validation) on retrouve le filtre courant, sans recliquer
+              (cf. retour Max : on valide feuille par feuille dans un périmètre).
+              {% endcomment %}
+              <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}?scope={{ scope_actif }}&nature={{ nature_actif }}"
                  class="vc-btn">Voir</a>
               <form method="post"
                     action="{% url 'nitrates_admin_validation_delete' pk=branche.pk %}"

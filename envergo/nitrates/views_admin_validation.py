@@ -17,6 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError
 from django.db.models import Case, IntegerField, Max, Prefetch, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -216,8 +217,32 @@ def validation_detail(request, pk):
         {
             "branche": branche,
             "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
+            # Filtres scope/nature transmis par l'index : on les réinjecte dans
+            # le lien retour + le form de statut pour que le tableau revienne
+            # filtré comme on l'a laissé (cf. retour Max : validation feuille à
+            # feuille dans un périmètre, sans re-cliquer les filtres au retour).
+            "scope_actif": request.GET.get("scope", ""),
+            "nature_actif": request.GET.get("nature", ""),
         },
     )
+
+
+def _index_url_avec_filtres(request):
+    """URL de l'index de validation en repropageant scope/nature lus dans la
+    requête courante (POST ou GET). Vide -> index nu. Centralise la
+    reconstruction pour les redirects qui doivent préserver le filtre."""
+    from urllib.parse import urlencode
+
+    base = reverse("nitrates_admin_validation_index")
+    params = {
+        k: v
+        for k, v in (
+            ("scope", request.POST.get("scope") or request.GET.get("scope") or ""),
+            ("nature", request.POST.get("nature") or request.GET.get("nature") or ""),
+        )
+        if v
+    }
+    return f"{base}?{urlencode(params)}" if params else base
 
 
 @require_POST
@@ -243,7 +268,9 @@ def validation_set_statut(request, pk):
     # Denormalise le statut sur la branche pour faciliter le filtrage SQL.
     branche.statut = statut
     branche.save(update_fields=["statut", "updated_at"])
-    return redirect("nitrates_admin_validation_index")
+    # Retour au tableau EN PRÉSERVANT le filtre scope/nature (transmis en hidden
+    # par le form de statut) -> on retombe sur la même sélection de feuilles.
+    return redirect(_index_url_avec_filtres(request))
 
 
 @require_POST
