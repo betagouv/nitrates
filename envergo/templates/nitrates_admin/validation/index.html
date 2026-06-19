@@ -90,6 +90,7 @@ suppression — le déclenche et il peut rester collé en haut de page).
         {% for branche in branches %}
           <tr id="row-{{ branche.pk }}"
               data-statut="{{ branche.statut }}"
+              data-touched="{% if branche.actions.all %}1{% else %}0{% endif %}"
               class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
             <td class="vc-col-ordre">{{ branche.ordre }}</td>
             <td>
@@ -501,18 +502,18 @@ suppression — le déclenche et il peut rester collé en haut de page).
   </style>
 
   {% comment %}
-  Auto-scroll vers la 1re feuille NON validée (statut != valide) au chargement.
-  Sert le flux de validation en série (cf. retour Max) : après avoir validé une
-  feuille on revient au tableau (filtré) et on est posé directement sur la
-  prochaine à traiter, sans scroller à la main. Si tout est validé -> pas de
-  scroll. On surligne brièvement la ligne ciblée pour la repérer.
+  Auto-scroll vers la 1re feuille JAMAIS TOUCHÉE (aucune action, data-touched=0)
+  au chargement. Sert le flux de validation en série (cf. retour Max) : on saute
+  les feuilles déjà traitées — y compris celles mises « à corriger », qu'on ne
+  veut PAS retraiter — pour atterrir sur la prochaine vierge. Si toutes ont été
+  touchées -> pas de scroll. La ligne ciblée est surlignée brièvement.
   {% endcomment %}
   <script>
     (function () {
-      function scrollFirstUnvalidated() {
+      function scrollFirstUntouched() {
         var rows = document.querySelectorAll(".vc-row");
         for (var i = 0; i < rows.length; i++) {
-          if (rows[i].getAttribute("data-statut") !== "valide") {
+          if (rows[i].getAttribute("data-touched") === "0") {
             rows[i].scrollIntoView({ block: "center", behavior: "smooth" });
             rows[i].classList.add("vc-row--cible");
             setTimeout(function (r) {
@@ -523,9 +524,9 @@ suppression — le déclenche et il peut rester collé en haut de page).
         }
       }
       if (document.readyState !== "loading") {
-        scrollFirstUnvalidated();
+        scrollFirstUntouched();
       } else {
-        document.addEventListener("DOMContentLoaded", scrollFirstUnvalidated);
+        document.addEventListener("DOMContentLoaded", scrollFirstUntouched);
       }
     })();
   </script>
