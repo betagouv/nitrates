@@ -263,6 +263,16 @@
   align-self: center;
 }
 
+/* Quand le deep-btn (▾▾) precede le preview, c'est LUI qui porte deja
+   margin-left:auto et pousse le groupe a droite. Le preview ne doit alors PAS
+   avoir son propre margin-left:auto, sinon les DEUX auto-margins se cumulent :
+   le ▾▾ se cale au milieu et le ↗ tout a droite, avec un trou entre les deux
+   (bug : le picto ▾▾ apparait "au milieu de la page"). On annule l'auto-margin
+   du preview pour qu'il se colle juste a droite du ▾▾, en un seul groupe. */
+.yaml-tree__deep-btn ~ .yaml-tree__preview-standalone {
+  margin-left: 0.25rem;
+}
+
 /* Quand les actions d'edition suivent le preview, elles se collent a lui
    (le margin-left:auto du preview a deja pousse l'ensemble a droite). */
 .yaml-tree__preview-standalone + .yaml-tree__edit-actions {
