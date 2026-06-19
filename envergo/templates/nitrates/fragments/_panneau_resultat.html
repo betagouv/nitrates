@@ -152,6 +152,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
+          Panel debug "parcours" : positionné SOUS toute la partie calendrier
+          (calendrier + périodes interdit/autorisé + plafond) et JUSTE AU-DESSUS
+          des prescriptions conditionnées / bloc riche (cf. retour Max). Mode
+          développeur uniquement (NITRATES_FORM_DEBUG_PANELS / force_debug) ->
+          absent sur la route publique /result/. Foldé par défaut.
+          {% endcomment %}
+          {% if debug %}
+            {% include "nitrates/fragments/_debug_parcours.html" %}
+          {% endif %}
+
+          {% comment %}
           Code prescription : libelle long resolu via referentiels.
           On ne l'affiche QUE si la regle n'a pas deja un `message` narratif :
           le `texte_court` du PC est volontairement minimaliste (ex pc5
@@ -264,18 +275,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               {% endwith %}
             {% endfor %}
           </div>
-
-          {% comment %}
-          Panel debug "parcours" : tout en bas du resultat, APRES les regles et
-          conditions d'application (cf. retour Max 2026-06-18 : il etait insere
-          entre le calendrier et les periodes, ce qui le coincait au-dessus de
-          la periode d'autorisation). Seulement en mode developpeur
-          (NITRATES_FORM_DEBUG_PANELS / force_debug) -> absent sur la route
-          publique /result/. Foldé par defaut (cf. _debug_parcours.html).
-          {% endcomment %}
-          {% if debug %}
-            {% include "nitrates/fragments/_debug_parcours.html" %}
-          {% endif %}
 
         {% endif %}
 
