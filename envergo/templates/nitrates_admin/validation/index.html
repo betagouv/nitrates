@@ -88,7 +88,9 @@ suppression — le déclenche et il peut rester collé en haut de page).
       </thead>
       <tbody>
         {% for branche in branches %}
-          <tr class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
+          <tr id="row-{{ branche.pk }}"
+              data-statut="{{ branche.statut }}"
+              class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
             <td class="vc-col-ordre">{{ branche.ordre }}</td>
             <td>
               {% if branche.statut == 'valide' %}
@@ -461,6 +463,26 @@ suppression — le déclenche et il peut rester collé en haut de page).
       background: #fffaf2;
     }
 
+    /* Surlignage temporaire de la 1re feuille non validée ciblée par
+       l'auto-scroll (cf. script en bas de page). S'estompe après ~2.5s. */
+    .vc-row--cible {
+      animation: vc-cible-pulse 2.5s ease-out;
+    }
+
+    @keyframes vc-cible-pulse {
+
+      0%,
+      30% {
+        background: #fff3a8;
+        box-shadow: inset 3px 0 0 #f5b400;
+      }
+
+      100% {
+        background: inherit;
+        box-shadow: none;
+      }
+    }
+
     .vc-validators {
       display: flex;
       flex-wrap: wrap;
@@ -477,4 +499,34 @@ suppression — le déclenche et il peut rester collé en haut de page).
       white-space: nowrap;
     }
   </style>
+
+  {% comment %}
+  Auto-scroll vers la 1re feuille NON validée (statut != valide) au chargement.
+  Sert le flux de validation en série (cf. retour Max) : après avoir validé une
+  feuille on revient au tableau (filtré) et on est posé directement sur la
+  prochaine à traiter, sans scroller à la main. Si tout est validé -> pas de
+  scroll. On surligne brièvement la ligne ciblée pour la repérer.
+  {% endcomment %}
+  <script>
+    (function () {
+      function scrollFirstUnvalidated() {
+        var rows = document.querySelectorAll(".vc-row");
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].getAttribute("data-statut") !== "valide") {
+            rows[i].scrollIntoView({ block: "center", behavior: "smooth" });
+            rows[i].classList.add("vc-row--cible");
+            setTimeout(function (r) {
+              return function () { r.classList.remove("vc-row--cible"); };
+            }(rows[i]), 2500);
+            return;
+          }
+        }
+      }
+      if (document.readyState !== "loading") {
+        scrollFirstUnvalidated();
+      } else {
+        document.addEventListener("DOMContentLoaded", scrollFirstUnvalidated);
+      }
+    })();
+  </script>
 {% endblock %}
