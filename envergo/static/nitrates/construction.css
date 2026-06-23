@@ -162,11 +162,14 @@
   transform: translateY(0);
 }
 
-/* reserve la hauteur de la barre quand elle est affichee
-   (min-height 1.25rem + padding 0.4rem haut/bas ~= 2.05rem) */
-body.nitrates-construction-scrolled {
-  padding-top: 2.1rem;
-}
+/* NB (#151) : on NE reserve PLUS la hauteur de la barre via un padding-top
+   sur <body>. Ce padding deplacait le header qui est lui-meme l'element
+   observe par l'IntersectionObserver -> boucle de retroaction : pile au
+   seuil de bascule, ajouter le padding repoussait le header dans le
+   viewport, l'observer rebasculait, etc. D'ou les sauts rapides de toute la
+   section header au scroll/zoom lent. La barre etant en position:fixed, elle
+   se contente de recouvrir le haut du contenu (deja scrolle a ce moment-la),
+   ce qui est acceptable pour un simple bandeau d'avertissement. */
 
 /* Respecte prefers-reduced-motion : pas de glissement, juste l'opacite. */
 @media (prefers-reduced-motion: reduce) {

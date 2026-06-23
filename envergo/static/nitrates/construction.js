@@ -13,9 +13,51 @@
     return;
   }
 
-  function setScrolled(on) {
+  // #151 : hysteresis anti-flicker. On ignore toute re-bascule survenant
+  // moins de MIN_TOGGLE_MS apres la precedente. Au scroll/zoom tres lent,
+  // le reflow peut faire osciller l'etat d'intersection pile au seuil ;
+  // ce verrou temporel empeche le va-et-vient rapide de la classe (et donc
+  // les sauts visuels de la section header).
+  var MIN_TOGGLE_MS = 150;
+  var currentOn = root.classList.contains("scrolled");
+  var lastToggleAt = 0;
+  var pending = null;
+
+  function applyScrolled(on) {
+    currentOn = on;
+    // Plus de classe sur <body> (#151) : le padding-top qu'elle posait
+    // deplacait le header observe -> boucle de retroaction. La barre est
+    // en position:fixed, elle n'a pas besoin de reserver d'espace dans le flux.
     root.classList.toggle("scrolled", on);
-    document.body.classList.toggle("nitrates-construction-scrolled", on);
+  }
+
+  function setScrolled(on) {
+    if (on === currentOn) {
+      return;
+    }
+    var now =
+      window.performance && window.performance.now
+        ? window.performance.now()
+        : Date.now();
+    var elapsed = now - lastToggleAt;
+    if (pending) {
+      clearTimeout(pending);
+      pending = null;
+    }
+    if (elapsed >= MIN_TOGGLE_MS) {
+      lastToggleAt = now;
+      applyScrolled(on);
+    } else {
+      // trop tot : on differe et on ne garde que la derniere intention
+      pending = setTimeout(function () {
+        pending = null;
+        lastToggleAt =
+          window.performance && window.performance.now
+            ? window.performance.now()
+            : Date.now();
+        applyScrolled(on);
+      }, MIN_TOGGLE_MS - elapsed);
+    }
   }
 
   // Le header legacy nitrates (banniere principale "Programme National
