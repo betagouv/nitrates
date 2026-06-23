@@ -626,7 +626,7 @@ def calendrier_epandage(regle):
             couleurs_simples.add(seg["couleur"])
     libelle_legende = {
         "rouge": "Interdit",
-        "orange": "Autorisé sous condition",
+        "orange": "Autorisé sous conditions",
         "violet": "Plafond",
     }
     libelle_legende_flottant = {
