@@ -466,17 +466,15 @@
   border-color: var(--cal-vert-ink);
 }
 
-/* Puce hachuree : meme couleur de fond que la version simple, plus un overlay
-   de bandes diagonales noires pour signaler la presence d'une borne flottante. */
-.calendrier-epandage__legende-puce--flottant {
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent 0,
-    transparent 2px,
-    rgb(22 22 22 / 35%) 2px,
-    rgb(22 22 22 / 35%) 3px
-  );
-}
+/* Borne phenologique (date flottante) cote LEGENDE : AUCUNE regle dediee, par
+   symetrie avec `.__zone--flottant` qui est volontairement inerte (cf.
+   commentaire pres de --zone--orange). Auparavant `.__legende-puce--flottant`
+   repeignait `background-image` avec des bandes noires : sur une puce orange
+   flottante (`--orange --flottant`, cas type III luzerne #158) ces bandes
+   ECRASAIENT les hachures orange et la puce paraissait rouge, alors que la zone
+   correspondante restait orange. La puce doit refleter la zone -> on ne touche
+   plus au fond en flottant. Le caractere "non fige" est porte par les libelles
+   de bornes en italique, pas par la couleur de la puce. */
 
 /* ─── Calendrier dynamique (calculatrice) ───────────────────────────────
    Composant calendrier_dynamique_couvert : reuse intégralement les classes
