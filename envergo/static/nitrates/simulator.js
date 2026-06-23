@@ -9,9 +9,6 @@
 
   const INITIAL_CENTER = [48.96, 4.36];
   const INITIAL_ZOOM = 8;
-  // Point pre-clique par defaut : dans la couche ZAR Grand Est (dev/debug),
-  // pour tomber direct sur un cas ZAR sans chercher un point a la main.
-  const DEFAULT_ZAR_POINT = { lat: 49.544282, lng: 4.248692 };
 
   const ZV_COLORS_BY_BASSIN = {
     FRA: "#e7a854",
@@ -460,15 +457,12 @@
       .catch((err) => renderError(err.message || String(err)));
   });
 
-  // Aucun lat/lng pre-rempli : on pre-clique un point ZAR par defaut (dev)
-  // pour atterrir direct sur un cas ZAR. Le fire() reutilise le handler
-  // ci-dessus (marker + debug + reveal form). Place APRES le on("click").
-  if (isNaN(initialLng) || isNaN(initialLat)) {
-    map.setView([DEFAULT_ZAR_POINT.lat, DEFAULT_ZAR_POINT.lng], 13);
-    map.fire("click", {
-      latlng: L.latLng(DEFAULT_ZAR_POINT.lat, DEFAULT_ZAR_POINT.lng),
-    });
-  }
+  // Aucun lat/lng pre-rempli (arrivee sur `/` ou `/simulateur/` sans
+  // parametres) : on NE pre-selectionne AUCUNE parcelle. La carte reste
+  // sur sa vue Grand Est par defaut et l'utilisateur est invite a cliquer.
+  // (Avant, un point ZAR etait pre-clique pour le confort dev, ce qui
+  // declenchait un auto-scroll vers les questions sans laisser lire la
+  // page d'accueil -- cf. #153.)
 
   // ─── Recherche commune BAN ─────────────────────────────────────────
   const searchInput = document.getElementById("map-search");
