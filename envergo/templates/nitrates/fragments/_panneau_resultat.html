@@ -179,7 +179,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% for cp in ev.regle.codes_prescription %}
               {% with pc=codes_prescription|get_item:cp %}
                 {% if pc.blocs %}
-                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs %}</div>
+                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
                 {% elif pc %}
                   <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
                   {% if pc.texte_court %}

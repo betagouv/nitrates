@@ -156,6 +156,23 @@ def test_id_accordion_uniques():
     assert "contenu-rich-accordion-2" in html
 
 
+def test_id_accordion_prefixe_par_zone():
+    # Le préfixe d'id distingue chaque zone -> deux zones rendues sur la même
+    # page ne partagent PAS les mêmes id d'accordéon (carte #157).
+    blocs = [{"type": "foldable", "data": {"titre": "Suivi", "blocs": []}}]
+    html_a = compile_dsfr(blocs, id_prefix="cr-zone-a")
+    html_b = compile_dsfr(blocs, id_prefix="cr-zone-b")
+    assert 'id="cr-zone-a-accordion-1"' in html_a
+    assert 'id="cr-zone-b-accordion-1"' in html_b
+    # Concaténées (comme sur la page résultat), aucun id n'est dupliqué.
+    page = html_a + html_b
+    assert page.count('id="cr-zone-a-accordion-1"') == 1
+    assert page.count('id="cr-zone-b-accordion-1"') == 1
+    # Le bouton de chaque zone pilote bien SON propre collapse.
+    assert 'aria-controls="cr-zone-a-accordion-1"' in html_a
+    assert 'aria-controls="cr-zone-b-accordion-1"' in html_b
+
+
 def test_echappement_html_anti_injection():
     html = compile_dsfr(
         [

@@ -137,9 +137,12 @@ def _compile_citation(data, niveau, ctx):
 
 def _compile_foldable(data, niveau, ctx):
     # Section dépliable DSFR (fr-accordion), titre colorisé. Contient d'autres
-    # blocs, rendus à un niveau de titre incrémenté. id unique via le compteur.
+    # blocs, rendus à un niveau de titre incrémenté. id unique via le compteur
+    # ET le préfixe de zone (cf. compile_dsfr) : plusieurs blocs riches peuvent
+    # coexister sur la même page, et `aria-controls`/`id` doivent rester uniques
+    # à l'échelle du document, pas seulement du bloc (carte #157).
     ctx["accordion_seq"] += 1
-    accordion_id = f"contenu-rich-accordion-{ctx['accordion_seq']}"
+    accordion_id = f"{ctx['id_prefix']}-accordion-{ctx['accordion_seq']}"
     titre = (data or {}).get("titre", "") or ""
     blocs_enfants = (data or {}).get("blocs") or []
     corps = _compile_blocs(blocs_enfants, niveau + 1, ctx)
@@ -207,19 +210,26 @@ def _compile_blocs(blocs, niveau, ctx) -> str:
     return mark_safe("".join(morceaux))
 
 
-def compile_dsfr(blocs, niveau_base: int = NIVEAU_TITRE_BASE) -> str:
+def compile_dsfr(
+    blocs, niveau_base: int = NIVEAU_TITRE_BASE, id_prefix: str = "contenu-rich"
+) -> str:
     """Compile une liste de blocs en HTML DSFR (chaîne safe).
 
     `blocs` : liste de blocs typés (cf. spec §4). Accepte aussi l'enveloppe
     {"schema": N, "blocs": [...]} pour tolérance.
     `niveau_base` : niveau de titre HTML de départ (3 = <h3>, sous les
     prescriptions). Incrémenté dans les foldables.
+    `id_prefix` : préfixe des `id`/`aria-controls` des accordéons. DOIT être
+    distinct pour chaque zone de contenu riche rendue sur une même page, sinon
+    deux blocs génèrent des `id` identiques (`...-accordion-1`) et un bouton
+    pilote le mauvais dépliant (carte #157). Les appelants (templatetags
+    `contenu_rich` / `compile_blocs`) dérivent un préfixe stable par zone.
 
     Renvoie une chaîne marquée safe. Le texte des blocs est échappé.
     """
     if isinstance(blocs, dict):
         blocs = blocs.get("blocs", [])
-    ctx = {"accordion_seq": 0}
+    ctx = {"accordion_seq": 0, "id_prefix": id_prefix or "contenu-rich"}
     contenu = _compile_blocs(blocs, niveau_base, ctx)
     if not contenu:
         return contenu

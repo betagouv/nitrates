@@ -680,22 +680,34 @@ def contenu_rich(cle: str, niveau_base: int = 3):
 
     Usage : {% contenu_rich "resultat.regles_permanentes" %}
     """
+    from django.utils.text import slugify
+
     from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
     from envergo.nitrates.contenu_rich.loader import load_blocs
 
-    return compile_dsfr(load_blocs(cle), niveau_base=niveau_base)
+    # La clé identifie la zone de façon unique sur la page -> sert de préfixe
+    # d'id pour les accordéons, pour éviter les collisions entre zones (#157).
+    id_prefix = f"cr-{slugify(cle)}"
+    return compile_dsfr(load_blocs(cle), niveau_base=niveau_base, id_prefix=id_prefix)
 
 
 @register.simple_tag
-def compile_blocs(blocs, niveau_base: int = 3):
+def compile_blocs(blocs, niveau_base: int = 3, id_prefix: str = "contenu-rich"):
     """Compile des blocs DSFR fournis directement (carte #136).
 
     Sert à rendre le champ `blocs` porté par un objet (ex CodePrescription.blocs)
     sans passer par un ContenuRichDSFR. Accepte la liste de blocs OU l'enveloppe
     {schema, blocs}. Vide -> chaîne vide.
 
-    Usage : {% compile_blocs pc.blocs %}
+    `id_prefix` : passer un identifiant stable et unique par appel sur la page
+    (ex. le code prescription `cp`) pour éviter que deux blocs riches rendus sur
+    la même page partagent les mêmes `id` d'accordéon (carte #157).
+
+    Usage : {% compile_blocs pc.blocs id_prefix=cp %}
     """
+    from django.utils.text import slugify
+
     from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
 
-    return compile_dsfr(blocs or [], niveau_base=niveau_base)
+    prefix = f"cr-{slugify(str(id_prefix))}" if id_prefix else "contenu-rich"
+    return compile_dsfr(blocs or [], niveau_base=niveau_base, id_prefix=prefix)
