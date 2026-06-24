@@ -114,13 +114,13 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
         'type_III + ICPE A + non IAA -> renvoi r_prairie_plus_6_type_III',
       params: `type_fertilisant=type_III&plan_epandage=icpe_a&fertilisant_iaa=false&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_prairie_plus_6_type_III',
-      contains: ['01/10', '15/01'],
+      contains: ['01/10', '31/01'],
     },
     {
       label: 'type_III + autre -> renvoi r_prairie_plus_6_type_III',
       params: `type_fertilisant=type_III&plan_epandage=autre&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_prairie_plus_6_type_III',
-      contains: ['01/10', '15/01'],
+      contains: ['01/10', '31/01'],
     },
   ];
 

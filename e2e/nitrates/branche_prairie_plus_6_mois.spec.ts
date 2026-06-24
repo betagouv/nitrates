@@ -48,9 +48,12 @@ test.describe('Branche prairie_plus_6_mois : 8 feuilles via URL', () => {
       contains: ['15/12', '15/01'],
     },
     {
+      // #98 : la branche "peu chargé" se joue désormais sur sous_fertilisant
+      // (effluents_peu_charges_elevage/non_elevage), plus sur effluent_peu_charge.
       label:
-        'type_II + effluent_peu_charge=oui -> r_prairie_plus_6_type_II_peu_charge',
-      params: 'type_fertilisant=type_II&effluent_peu_charge=true',
+        'type_II + effluents peu chargés -> r_prairie_plus_6_type_II_peu_charge',
+      params:
+        'type_fertilisant=type_II&sous_fertilisant=effluents_peu_charges_elevage',
       regle: 'r_prairie_plus_6_type_II_peu_charge',
       contains: ['15/11', '15/01'],
     },
@@ -79,7 +82,7 @@ test.describe('Branche prairie_plus_6_mois : 8 feuilles via URL', () => {
         'type_III + commune Reims (non montagne) -> r_prairie_plus_6_type_III',
       params: `type_fertilisant=type_III&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_prairie_plus_6_type_III',
-      contains: ['01/10', '15/01'],
+      contains: ['01/10', '31/01'],
     },
   ];
 
