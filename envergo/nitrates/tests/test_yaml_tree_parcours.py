@@ -1670,6 +1670,64 @@ def test_bool_false_yaml_matche_strings_fausses(brut):
     assert res.regle_id == "r_faux"
 
 
+# ─── _valeurs_egales : string YAML vs bool contexte (sens inverse) ──────────
+# Bug PAR Grand Est : un gate catalogue SIG renvoie un BOOLEEN (True/False),
+# mais la branche YAML a ete saisie en string ('True'/'False'/'en_zge2'...).
+# La comparaison doit tolerer string-booleenne vs bool, sinon no-match ->
+# fallback PAN.
+
+
+def _arbre_string_bool_branche() -> dict:
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_b",
+                "champ": "flag",
+                "branches": [
+                    {"valeur": "True", "regle": {"id": "r_vrai", "type": "libre"}},
+                    {
+                        "valeur": "False",
+                        "regle": {"id": "r_faux", "type": "interdiction"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_string_true_yaml_matche_bool_true_contexte():
+    """Branche `valeur: 'True'` (string) matche le bool True du resolveur."""
+    res = parcours(_arbre_string_bool_branche(), {"flag": True})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_vrai"
+
+
+def test_string_false_yaml_matche_bool_false_contexte():
+    res = parcours(_arbre_string_bool_branche(), {"flag": False})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_faux"
+
+
+def test_string_non_booleenne_ne_matche_pas_bool():
+    """Une branche string non booleenne ('en_zge2') ne matche PAS un bool :
+    c'est exactement ce qui cause le no-match d'origine -> fallback attendu."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_b",
+                "champ": "flag",
+                "branches": [
+                    {"valeur": "en_zge2", "regle": {"id": "r_x", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    with pytest.raises(ParcoursError):
+        parcours(arbre, {"flag": True})
+
+
 # ─── normaliser_codes_prescription ──────────────────────────────────────────
 
 

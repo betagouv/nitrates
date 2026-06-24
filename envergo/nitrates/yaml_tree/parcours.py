@@ -393,17 +393,32 @@ def _valeurs_egales(branche_val: Any, contexte_val: Any) -> bool:
 
     Cas particuliers :
       - bool YAML vs string ('True'/'true'/'False'/'false') : on tolere
+      - string YAML ('True'/'False'/...) vs bool contexte : on tolere aussi
+        (filet de securite : un gate catalogue booleen mal type via l'editeur
+        ne doit pas casser le routage runtime, cf. bug PAR Grand Est)
       - int YAML vs string numerique : on tolere
       - sinon comparaison stricte
     """
     if branche_val == contexte_val:
         return True
+    _VRAI = ("true", "oui", "1")
+    _FAUX = ("false", "non", "0")
     # Bool YAML <-> string contexte
     if isinstance(branche_val, bool) and isinstance(contexte_val, str):
         normalise = contexte_val.strip().lower()
-        if branche_val is True and normalise in ("true", "oui", "1"):
+        if branche_val is True and normalise in _VRAI:
             return True
-        if branche_val is False and normalise in ("false", "non", "0"):
+        if branche_val is False and normalise in _FAUX:
+            return True
+    # String YAML <-> bool contexte (sens inverse : la branche a ete saisie en
+    # string 'True'/'False' alors que le resolveur catalogue renvoie un bool).
+    # `bool` est une sous-classe de `int` : on teste bool AVANT tout traitement
+    # int pour ne pas confondre.
+    if isinstance(branche_val, str) and isinstance(contexte_val, bool):
+        normalise = branche_val.strip().lower()
+        if contexte_val is True and normalise in _VRAI:
+            return True
+        if contexte_val is False and normalise in _FAUX:
             return True
     # Int YAML <-> string numerique. (`bool` etant une sous-classe de `int`,
     # on l'exclut explicitement pour ne pas matcher 0/1 comme True/False

@@ -28,7 +28,7 @@ from django.views import View
 
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
-from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS
+from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS, get_resolver
 from envergo.nitrates.yaml_admin.forms import (
     BrancheForm,
     NoeudFormulaireForm,
@@ -759,6 +759,20 @@ class EditBrancheView(View):
         )
         if est_catalogue_parametre:
             new_valeur = new_valeur_raw
+        elif _est_catalogue_booleen(parent):
+            # Gate catalogue dont le resolveur SIG renvoie un BOOLEEN
+            # (valeurs_branches ("True","False")). La valeur de branche DOIT
+            # etre un vrai booleen pour matcher au runtime -- independamment du
+            # type de l'ancienne valeur. Sans ca, une ancienne valeur string
+            # ('en_zge2', etc.) enfermerait toute correction en string et le
+            # gate ne matcherait jamais (bug PAR Grand Est). Saisie non
+            # booleenne ambigue -> on retombe sur la coercion generique.
+            coerce = _coerce_valeur(new_valeur_raw, bool)
+            new_valeur = (
+                coerce
+                if isinstance(coerce, bool)
+                else _coerce_valeur(new_valeur_raw, type(valeur))
+            )
         else:
             new_valeur = _coerce_valeur(new_valeur_raw, type(valeur))
 
@@ -990,6 +1004,25 @@ def _parse_patch_pc(raw: str) -> dict:
         if src and dst:
             remap[src] = dst
     return remap
+
+
+def _est_catalogue_booleen(parent) -> bool:
+    """True si `parent` est un noeud catalogue (pas catalogue_parametre) dont
+    la reference resout sur un BOOLEEN (resolveur a valeurs_branches
+    ("True","False")).
+
+    Sert a forcer la coercion booleenne des branches de ces gates (zonage
+    SIG booleen : en_zone_vulnerable, zone_grand_est_1/2, zone_note_5,
+    zone_montagne_d113_14...). On NE touche PAS aux formulaires (valeurs de
+    reponse libres comme 'Non') ni aux catalogue_parametre (etiquettes)."""
+    if not isinstance(parent, dict):
+        return False
+    if parent.get("type_noeud") != "catalogue":
+        return False
+    resolver = get_resolver(parent.get("reference") or "")
+    if resolver is None:
+        return False
+    return tuple(resolver.valeurs_branches) == ("True", "False")
 
 
 def _coerce_valeur(raw: str, target_type):
