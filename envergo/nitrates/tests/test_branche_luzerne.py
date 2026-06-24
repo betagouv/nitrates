@@ -288,9 +288,7 @@ def test_luzerne_type_III_iaa_non_montagne(setup):
 
 def test_luzerne_type_III_icpe_a_sans_iaa_renvoi(setup):
     """Type III + ICPE A + non IAA : renvoi r_prairie_plus_6_type_III.
-    Cas non montagne : interdit 01/10 -> 31/01 (cf. test prairie+6).
-    Borne alignee sur l'arbre actif (ancienne assertion : 15/01). A
-    reconfirmer cote juriste (cf. release 0.3.0)."""
+    Cas non montagne : interdit 01/10 -> 31/01 (cf. test prairie+6)."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -309,8 +307,7 @@ def test_luzerne_type_III_icpe_a_sans_iaa_renvoi(setup):
 
 def test_luzerne_type_III_autre_renvoi(setup):
     """Type III + autre plan d'epandage : renvoi r_prairie_plus_6_type_III.
-    Borne 01/10 -> 31/01 alignee sur l'arbre actif (ancienne assertion :
-    15/01). A reconfirmer cote juriste (cf. release 0.3.0)."""
+    Cas non montagne : interdit 01/10 -> 31/01."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",

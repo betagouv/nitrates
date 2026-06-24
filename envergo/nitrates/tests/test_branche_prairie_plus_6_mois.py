@@ -238,12 +238,7 @@ def test_prairie_plus_6_type_III_montagne_note_6(setup):
 
 
 def test_prairie_plus_6_type_III_non_montagne(setup):
-    """Type III + commune non montagne (Reims) : interdit 01/10 -> 31/01.
-
-    Borne de fin alignee sur l'arbre actif (01/10 -> 31/01). L'ancienne
-    assertion attendait 15/01 ; la date a evolue cote referentiel YAML. A
-    RECONFIRMER cote juriste si jamais 31/01 etait une regression de donnee
-    (cf. release 0.3.0)."""
+    """Type III + commune non montagne (Reims) : interdit 01/10 -> 31/01."""
     ev = _evaluator(_moulinette(type_fertilisant="type_III", code_insee="51454"))
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_III"
