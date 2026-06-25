@@ -1,39 +1,79 @@
 {% comment %}
-Lightbox avec zoom : toute image avec [data-lightbox] s'agrandit en plein
-ecran avec zoom (clic / ctrl+scroll), pan (drag souris), fermeture (Esc /
-clic hors). Pas de dependance externe.
+Comparateur d'images empilées (haut / bas) pour le dashboard de validation.
+
+Cliquer une capture [data-lightbox] ouvre le comparateur : l'image va dans le
+panneau HAUT. Chaque panneau (haut ET bas) porte une barre de vignettes de
+TOUTES les captures de la feuille (Miro, YAML viewer/form, Playwright…) :
+on clique une vignette pour charger/changer l'image de CE panneau. On peut donc
+comparer n'importe quelle paire verticalement, sans avoir à cliquer la page
+derrière l'overlay (le backdrop la masque).
+
+Chaque panneau : croix (vide le panneau), zoom (clic / Ctrl+molette), pan
+(glisser quand zoomé), indépendants. Esc / clic backdrop ferme tout.
 {% endcomment %}
 
-<div id="vc-lightbox" class="vc-lightbox" hidden>
-  <div class="vc-lightbox__backdrop"></div>
-  <div class="vc-lightbox__viewport">
-    <img class="vc-lightbox__img" alt="">
+<div id="vc-cmp" class="vc-cmp" hidden>
+  <div class="vc-cmp__backdrop"></div>
+
+  <div class="vc-cmp__pane vc-cmp__pane--top" data-pane="top">
+    <div class="vc-cmp__viewport">
+      <img class="vc-cmp__img" alt="" hidden>
+    </div>
+    <div class="vc-cmp__empty">Choisissez une image ↓</div>
+    <div class="vc-cmp__gallery"></div>
+    <button class="vc-cmp__close" aria-label="Vider le haut" hidden>×</button>
+    <div class="vc-cmp__zoom" hidden>1×</div>
   </div>
-  <button class="vc-lightbox__close" aria-label="Fermer">×</button>
-  <div class="vc-lightbox__hint">
-    Clic pour zoomer · Ctrl + molette pour zoom progressif · Glisser pour déplacer · Esc pour fermer
+
+  <div class="vc-cmp__pane vc-cmp__pane--bottom" data-pane="bottom">
+    <div class="vc-cmp__viewport">
+      <img class="vc-cmp__img" alt="" hidden>
+    </div>
+    <div class="vc-cmp__empty">Choisissez une 2ᵉ image à comparer ↓</div>
+    <div class="vc-cmp__gallery"></div>
+    <button class="vc-cmp__close" aria-label="Vider le bas" hidden>×</button>
+    <div class="vc-cmp__zoom" hidden>1×</div>
   </div>
-  <div class="vc-lightbox__zoom-indicator">1×</div>
+
+  <button class="vc-cmp__quit" aria-label="Fermer le comparateur">× Fermer</button>
+  <div class="vc-cmp__hint">Clic : zoom · Ctrl + molette : zoom progressif · Glisser : déplacer · Esc : fermer</div>
 </div>
 
 <style>
-  .vc-lightbox {
+  .vc-cmp {
     position: fixed;
     inset: 0;
     z-index: 9999;
   }
 
-  .vc-lightbox[hidden] {
+  .vc-cmp[hidden] {
     display: none;
   }
 
-  .vc-lightbox__backdrop {
+  .vc-cmp__backdrop {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 90%);
+    background: rgb(0 0 0 / 92%);
   }
 
-  .vc-lightbox__viewport {
+  .vc-cmp__pane {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50vh;
+    overflow: hidden;
+  }
+
+  .vc-cmp__pane--top {
+    top: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 25%);
+  }
+
+  .vc-cmp__pane--bottom {
+    bottom: 0;
+  }
+
+  .vc-cmp__viewport {
     position: absolute;
     inset: 0;
     overflow: hidden;
@@ -43,17 +83,21 @@ clic hors). Pas de dependance externe.
     cursor: zoom-in;
   }
 
-  .vc-lightbox__viewport.is-zoomed {
+  .vc-cmp__viewport.is-zoomed {
     cursor: grab;
   }
 
-  .vc-lightbox__viewport.is-grabbing {
+  .vc-cmp__viewport.is-grabbing {
     cursor: grabbing;
   }
 
-  .vc-lightbox__img {
-    max-width: 95vw;
-    max-height: 95vh;
+  .vc-cmp__img[hidden] {
+    display: none;
+  }
+
+  .vc-cmp__img {
+    max-width: 96vw;
+    max-height: 42vh;
     box-shadow: 0 4px 24px rgb(0 0 0 / 50%);
     border-radius: 4px;
     user-select: none;
@@ -62,196 +106,302 @@ clic hors). Pas de dependance externe.
     transition: transform 0.15s ease-out;
   }
 
-  /* Quand on drag, on enleve la transition pour suivre la souris en live. */
-  .vc-lightbox__img.is-panning {
+  .vc-cmp__img.is-panning {
     transition: none;
   }
 
-  .vc-lightbox__close {
+  /* Message quand le panneau est vide (aucune image choisie). */
+  .vc-cmp__empty {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    width: 40px;
-    height: 40px;
+    top: 38%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgb(255 255 255 / 55%);
+    font-size: 0.95rem;
+    pointer-events: none;
+  }
+
+  .vc-cmp__pane.has-img .vc-cmp__empty {
+    display: none;
+  }
+
+  /* Barre de vignettes (toutes les captures de la feuille), en bas du panneau. */
+  .vc-cmp__gallery {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 8px;
+    background: rgb(0 0 0 / 45%);
+    z-index: 2;
+    flex-wrap: wrap;
+  }
+
+  .vc-cmp__thumb {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    padding: 2px;
+    background: rgb(255 255 255 / 8%);
+    cursor: pointer;
+  }
+
+  .vc-cmp__thumb:hover {
+    border-color: rgb(255 255 255 / 60%);
+  }
+
+  .vc-cmp__thumb.is-current {
+    border-color: #5b8eff;
+  }
+
+  .vc-cmp__thumb img {
+    height: 42px;
+    max-width: 90px;
+    object-fit: cover;
+    display: block;
+    border-radius: 2px;
+  }
+
+  .vc-cmp__thumb span {
+    color: #fff;
+    font-size: 0.65rem;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vc-cmp__close {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.8rem;
+    width: 36px;
+    height: 36px;
     border: none;
-    background: rgb(255 255 255 / 90%);
+    background: rgb(255 255 255 / 92%);
     color: #000;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     border-radius: 50%;
     cursor: pointer;
     line-height: 1;
-    z-index: 2;
+    z-index: 3;
   }
 
-  .vc-lightbox__hint {
+  .vc-cmp__close[hidden] {
+    display: none;
+  }
+
+  .vc-cmp__zoom {
     position: absolute;
-    bottom: 1rem;
+    top: 0.6rem;
+    left: 0.8rem;
+    background: rgb(0 0 0 / 70%);
+    color: #fff;
+    padding: 3px 9px;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .vc-cmp__zoom[hidden] {
+    display: none;
+  }
+
+  /* Bouton « Fermer » global, centré sur la ligne de séparation. */
+  .vc-cmp__quit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: none;
+    background: rgb(255 255 255 / 92%);
+    color: #000;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    z-index: 4;
+  }
+
+  .vc-cmp__hint {
+    position: absolute;
+    bottom: 0.4rem;
     left: 50%;
     transform: translateX(-50%);
     background: rgb(0 0 0 / 70%);
     color: #fff;
-    padding: 6px 14px;
+    padding: 4px 12px;
     border-radius: 20px;
-    font-size: 0.75rem;
-    z-index: 2;
-    pointer-events: none;
-  }
-
-  .vc-lightbox__zoom-indicator {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background: rgb(0 0 0 / 70%);
-    color: #fff;
-    padding: 4px 10px;
-    border-radius: 14px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    z-index: 2;
+    font-size: 0.7rem;
+    z-index: 4;
     pointer-events: none;
   }
 </style>
 
 <script>
   (function () {
-    const lb = document.getElementById("vc-lightbox");
-    if (!lb) return;
-    const viewport = lb.querySelector(".vc-lightbox__viewport");
-    const img = lb.querySelector(".vc-lightbox__img");
-    const indicator = lb.querySelector(".vc-lightbox__zoom-indicator");
+    const cmp = document.getElementById("vc-cmp");
+    if (!cmp) return;
+    const backdrop = cmp.querySelector(".vc-cmp__backdrop");
 
-    let scale = 1;
-    let tx = 0;
-    let ty = 0;
-    let isPanning = false;
-    let panStartX = 0;
-    let panStartY = 0;
-    let txStart = 0;
-    let tyStart = 0;
-
-    const MIN_SCALE = 0.5;
-    const MAX_SCALE = 8;
-
-    function apply() {
-      img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-      indicator.textContent = `${scale.toFixed(scale < 1 ? 1 : (scale < 10 ? 1 : 0))}×`;
-      viewport.classList.toggle("is-zoomed", scale > 1.01);
+    // Collecte toutes les captures de la page (images [data-lightbox]) :
+    // {src, label}. Recalculé à chaque ouverture (le DOM change avec htmx).
+    function collectCaptures() {
+      const seen = new Set();
+      const out = [];
+      document.querySelectorAll("[data-lightbox]").forEach((el) => {
+        const src = el.dataset.src || el.getAttribute("src");
+        if (!src || seen.has(src)) return;
+        seen.add(src);
+        out.push({ src, label: el.getAttribute("alt") || "capture" });
+      });
+      return out;
     }
 
-    function reset() {
-      scale = 1;
-      tx = 0;
-      ty = 0;
-      apply();
-    }
+    function makePane(paneEl) {
+      const viewport = paneEl.querySelector(".vc-cmp__viewport");
+      const img = paneEl.querySelector(".vc-cmp__img");
+      const zoomEl = paneEl.querySelector(".vc-cmp__zoom");
+      const closeBtn = paneEl.querySelector(".vc-cmp__close");
+      const gallery = paneEl.querySelector(".vc-cmp__gallery");
+      const MIN = 0.5, MAX = 8;
+      let scale = 1, tx = 0, ty = 0;
+      let panning = false, sx = 0, sy = 0, tx0 = 0, ty0 = 0;
+      let currentSrc = "";
 
-    function close() {
-      lb.hidden = true;
-      img.src = "";
-      reset();
-    }
-
-    function open(src) {
-      img.src = src;
-      reset();
-      lb.hidden = false;
-    }
-
-    // Zoom autour d'un point (x, y en coords client).
-    function zoomAt(newScale, clientX, clientY) {
-      newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
-      // On veut que le point (clientX, clientY) reste fixe pendant le zoom.
-      // tx/ty doivent etre ajustes pour compenser le changement d'echelle.
-      const rect = img.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = clientX - cx;
-      const dy = clientY - cy;
-      const ratio = newScale / scale;
-      tx -= dx * (ratio - 1);
-      ty -= dy * (ratio - 1);
-      scale = newScale;
-      apply();
-    }
-
-    // Clic sur le viewport : toggle zoom 1x <-> 2x (autour du curseur).
-    viewport.addEventListener("click", (e) => {
-      if (isPanning) return; // pan termine, pas un click
-      // Backdrop click = close.
-      if (e.target === viewport) {
-        close();
-        return;
+      function apply() {
+        img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        zoomEl.textContent = `${scale.toFixed(1)}×`;
+        viewport.classList.toggle("is-zoomed", scale > 1.01);
       }
-      // Click sur l'image -> toggle zoom
-      if (e.target === img) {
-        if (scale > 1.01) {
-          reset();
-        } else {
-          zoomAt(2, e.clientX, e.clientY);
+      function reset() { scale = 1; tx = 0; ty = 0; apply(); }
+      function zoomAt(ns, cx, cy) {
+        ns = Math.max(MIN, Math.min(MAX, ns));
+        const r = img.getBoundingClientRect();
+        const dx = cx - (r.left + r.width / 2);
+        const dy = cy - (r.top + r.height / 2);
+        const ratio = ns / scale;
+        tx -= dx * (ratio - 1); ty -= dy * (ratio - 1);
+        scale = ns; apply();
+      }
+
+      viewport.addEventListener("click", (e) => {
+        if (panning) return;
+        if (e.target === img) {
+          if (scale > 1.01) reset();
+          else zoomAt(2, e.clientX, e.clientY);
         }
-      }
-    });
-
-    // Ctrl + scroll : zoom progressif.
-    viewport.addEventListener(
-      "wheel",
-      (e) => {
+      });
+      viewport.addEventListener("wheel", (e) => {
         if (!e.ctrlKey && !e.metaKey) return;
         e.preventDefault();
-        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
-        zoomAt(scale * factor, e.clientX, e.clientY);
-      },
-      { passive: false }
-    );
+        zoomAt(scale * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY);
+      }, { passive: false });
+      img.addEventListener("pointerdown", (e) => {
+        if (scale <= 1.01) return;
+        panning = true; sx = e.clientX; sy = e.clientY; tx0 = tx; ty0 = ty;
+        img.classList.add("is-panning");
+        viewport.classList.add("is-grabbing");
+        img.setPointerCapture(e.pointerId);
+      });
+      img.addEventListener("pointermove", (e) => {
+        if (!panning) return;
+        tx = tx0 + (e.clientX - sx); ty = ty0 + (e.clientY - sy); apply();
+      });
+      img.addEventListener("pointerup", (e) => {
+        if (!panning) return;
+        img.classList.remove("is-panning");
+        viewport.classList.remove("is-grabbing");
+        img.releasePointerCapture(e.pointerId);
+        setTimeout(() => { panning = false; }, 50);
+      });
 
-    // Drag pour pan quand zoome.
-    img.addEventListener("pointerdown", (e) => {
-      if (scale <= 1.01) return;
-      isPanning = true;
-      panStartX = e.clientX;
-      panStartY = e.clientY;
-      txStart = tx;
-      tyStart = ty;
-      img.classList.add("is-panning");
-      viewport.classList.add("is-grabbing");
-      img.setPointerCapture(e.pointerId);
-    });
-    img.addEventListener("pointermove", (e) => {
-      if (!isPanning) return;
-      tx = txStart + (e.clientX - panStartX);
-      ty = tyStart + (e.clientY - panStartY);
-      apply();
-    });
-    img.addEventListener("pointerup", (e) => {
-      if (!isPanning) return;
-      img.classList.remove("is-panning");
-      viewport.classList.remove("is-grabbing");
-      img.releasePointerCapture(e.pointerId);
-      // Petit delay pour que le click handler ne se declenche pas apres pan.
-      setTimeout(() => { isPanning = false; }, 50);
-    });
+      function setSrc(src) {
+        currentSrc = src;
+        img.src = src;
+        img.hidden = false;
+        closeBtn.hidden = false;
+        zoomEl.hidden = false;
+        paneEl.classList.add("has-img");
+        reset();
+        markCurrentThumb();
+      }
+      function clear() {
+        currentSrc = "";
+        img.src = ""; img.hidden = true;
+        closeBtn.hidden = true; zoomEl.hidden = true;
+        paneEl.classList.remove("has-img");
+        reset();
+        markCurrentThumb();
+      }
+      function markCurrentThumb() {
+        gallery.querySelectorAll(".vc-cmp__thumb").forEach((t) => {
+          t.classList.toggle("is-current", t.dataset.src === currentSrc);
+        });
+      }
+      // (Re)construit la galerie de vignettes pour ce panneau.
+      function buildGallery(captures) {
+        gallery.innerHTML = "";
+        captures.forEach((c) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "vc-cmp__thumb";
+          b.dataset.src = c.src;
+          b.innerHTML =
+            `<img src="${c.src}" alt=""><span>${c.label}</span>`;
+          b.addEventListener("click", () => setSrc(c.src));
+          gallery.appendChild(b);
+        });
+        markCurrentThumb();
+      }
 
-    lb.querySelector(".vc-lightbox__backdrop").addEventListener("click", close);
-    lb.querySelector(".vc-lightbox__close").addEventListener("click", close);
+      closeBtn.addEventListener("click", clear);
+
+      return { setSrc, clear, buildGallery, get filled() { return !!currentSrc; } };
+    }
+
+    const top = makePane(cmp.querySelector('[data-pane="top"]'));
+    const bottom = makePane(cmp.querySelector('[data-pane="bottom"]'));
+
+    function openWith(src) {
+      const captures = collectCaptures();
+      top.buildGallery(captures);
+      bottom.buildGallery(captures);
+      cmp.hidden = false;
+      // L'image cliquée va en haut ; le bas attend un choix dans sa galerie.
+      top.setSrc(src);
+    }
+
+    function closeAll() {
+      top.clear();
+      bottom.clear();
+      cmp.hidden = true;
+    }
+
+    cmp.querySelector(".vc-cmp__quit").addEventListener("click", closeAll);
+    backdrop.addEventListener("click", closeAll);
     document.addEventListener("keydown", (e) => {
-      if (lb.hidden) return;
-      if (e.key === "Escape") close();
-      // + / - pour zoom au centre
-      if (e.key === "+" || e.key === "=") {
-        zoomAt(scale * 1.2, window.innerWidth / 2, window.innerHeight / 2);
-      }
-      if (e.key === "-") {
-        zoomAt(scale / 1.2, window.innerWidth / 2, window.innerHeight / 2);
-      }
-      if (e.key === "0") reset();
+      if (!cmp.hidden && e.key === "Escape") closeAll();
     });
 
+    // Clic sur une image [data-lightbox] de la page -> ouvre le comparateur.
     document.addEventListener("click", (e) => {
       const t = e.target.closest("[data-lightbox]");
       if (!t) return;
       e.preventDefault();
       const src = t.dataset.src || t.src;
-      if (src) open(src);
+      if (src) openWith(src);
     });
   })();
 </script>
