@@ -21,7 +21,45 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from envergo.nitrates.models import BrancheValidation, BrancheValidationAction
+from envergo.nitrates.models import (
+    BrancheValidation,
+    BrancheValidationAction,
+    DecisionTree,
+)
+
+# Mapping scope d'une feuille de validation -> zone d'activation de l'arbre
+# correspondant. Le viewer YAML (`?tree_id=`) a besoin du PK de CET arbre,
+# sinon il retombe sur le PAN et l'ancre #regle= d'une feuille PAR/ZAR est
+# introuvable (lien cassé). Cf. retour Max : les liens viewer PAR/ZAR
+# pointaient sur l'arbre principal (PAN).
+_SCOPE_VALIDATION_VERS_ARBRE = {
+    BrancheValidation.SCOPE_NATIONAL: {"scope": DecisionTree.SCOPE_NATIONAL},
+    BrancheValidation.SCOPE_PAR_GRAND_EST: {
+        "scope": DecisionTree.SCOPE_REGION,
+        "region_code": "44",
+    },
+    BrancheValidation.SCOPE_ZAR_GRAND_EST: {
+        "scope": DecisionTree.SCOPE_ZAR,
+        "region_code": "44",
+    },
+}
+
+
+def _arbre_actif_pour_branche(branche):
+    """L'arbre ACTIF dont relève cette feuille de validation (selon son scope).
+
+    Sert à construire le lien viewer `?tree_id=<pk>` : sans lui le viewer
+    ouvre le PAN par défaut et l'ancre de la feuille PAR/ZAR est cassée.
+    Retourne None si l'arbre attendu n'est pas (ou plus) actif.
+    """
+    criteres = _SCOPE_VALIDATION_VERS_ARBRE.get(branche.scope)
+    if not criteres:
+        return None
+    return (
+        DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE, **criteres)
+        .only("pk")
+        .first()
+    )
 
 
 @staff_member_required
@@ -211,11 +249,15 @@ def validation_detail(request, pk):
         )
     )
     branche = get_object_or_404(qs, pk=pk)
+    arbre = _arbre_actif_pour_branche(branche)
     return render(
         request,
         "nitrates_admin/validation/detail.html",
         {
             "branche": branche,
+            # PK de l'arbre de CETTE feuille, pour le lien viewer `?tree_id=`
+            # (sinon le viewer ouvre le PAN et casse l'ancre PAR/ZAR).
+            "arbre_tree_id": arbre.pk if arbre else None,
             "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
             # Filtres scope/nature transmis par l'index : on les réinjecte dans
             # le lien retour + le form de statut pour que le tableau revienne

@@ -157,7 +157,13 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
           <p style="color:#999">Pas de capture admin viewer.</p>
         {% endif %}
         <p style="font-size:0.8rem;">
-          <a href="{% url 'nitrates_admin_yaml_tree' %}#regle={{ branche.regle_id }}"
+          {% comment %}
+            Le viewer doit ouvrir l'arbre de CETTE feuille (?tree_id=), sinon il
+            retombe sur le PAN et l'ancre #regle= d'une feuille PAR/ZAR est
+            introuvable (lien cassé). arbre_tree_id est résolu par la vue selon
+            le scope de la branche.
+          {% endcomment %}
+          <a href="{% url 'nitrates_admin_yaml_tree' %}{% if arbre_tree_id %}?tree_id={{ arbre_tree_id }}{% endif %}#regle={{ branche.regle_id }}"
              target="_blank">Ouvrir le viewer ↗</a>
         </p>
         <form method="post"
