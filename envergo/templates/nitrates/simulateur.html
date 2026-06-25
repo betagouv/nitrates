@@ -22,6 +22,10 @@
     window.NITRATES_ZAR_GEOJSON_URL = "{% url 'nitrates_zar_geojson' %}";
     window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
     window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    // Ouverture geographique appliquee sur cette page ? True sur `/` (public),
+    // False sur `/simulateur` (interne). Pilote l'envoi du flag geo a l'appel
+    // debug (cf. simulator.js) -> bypass de l'allowlist departement en interne.
+    window.NITRATES_GEO_APPLIQUEE = {% if geo_appliquee %}true{% else %}false{% endif %};
     window.NITRATES_INITIAL_DATA = {
       categorie_culture: "{{ data.categorie_culture|default:'' }}",
       sous_culture_form: "{{ data.sous_culture_form|default:'' }}",

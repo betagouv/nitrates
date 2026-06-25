@@ -426,7 +426,11 @@
         const code = communeInfo.code || "";
         const url =
           `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}` +
-          (code ? `&code_insee=${encodeURIComponent(code)}` : "");
+          (code ? `&code_insee=${encodeURIComponent(code)}` : "") +
+          // Sur le root public (/), on demande l'application de l'ouverture
+          // geographique (allowlist departement). Sur /simulateur (interne),
+          // le flag reste false -> tout departement est accessible.
+          (window.NITRATES_GEO_APPLIQUEE ? "&geo=1" : "");
         return fetch(url, { headers: { Accept: "application/json" } })
           .then((r) => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);

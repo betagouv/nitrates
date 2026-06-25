@@ -103,6 +103,32 @@ def test_simulateur_pas_de_bandeau_ni_building(client, settings, nitrates_site):
     assert "data-nitrates-construction" not in resp.content.decode()
 
 
+# --- Ouverture geographique : appliquee sur / public, pas sur /simulateur ----
+
+
+def test_root_applique_ouverture_geographique(client, settings, nitrates_site):
+    """`/` (public) -> geo_appliquee True, injecte geo=1 cote front."""
+    settings.LOCKDOWN_BEHIND_LOGIN = False
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get("/")
+
+    assert resp.status_code == 200
+    assert resp.context["geo_appliquee"] is True
+    assert "window.NITRATES_GEO_APPLIQUEE = true" in resp.content.decode()
+
+
+def test_simulateur_bypass_ouverture_geographique(client, settings, nitrates_site):
+    """`/simulateur/` (interne) -> geo_appliquee False, pas de restriction."""
+    settings.LOCKDOWN_BEHIND_LOGIN = False
+
+    resp = client.get("/simulateur/")
+
+    assert resp.status_code == 200
+    assert resp.context["geo_appliquee"] is False
+    assert "window.NITRATES_GEO_APPLIQUEE = false" in resp.content.decode()
+
+
 def test_simulateur_debug_suit_le_flag(client, settings, nitrates_site):
     settings.LOCKDOWN_BEHIND_LOGIN = False
     settings.NITRATES_FORM_DEBUG_PANELS = True

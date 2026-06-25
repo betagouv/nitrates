@@ -77,6 +77,7 @@ class HomeView(View):
         view = MoulinetteView()
         view.force_debug = False  # jamais de panneaux debug sur le root public
         view.is_building = True  # bandeau "site en construction"
+        view.geo_appliquee = True  # root public : on borne au perimetre ouvert
         return view.get(request, *args, **kwargs)
 
 
@@ -252,6 +253,16 @@ class DebugView(View):
         code_insee = request.GET.get("code_insee") or ""
         en_grand_est = region_code == "44"
 
+        # Ouverture geographique : appliquee uniquement quand la page appelante
+        # le demande (root public `/` -> geo=1). Sur `/simulateur` (interne), le
+        # front n'envoie pas le flag -> tout departement est considere ouvert.
+        # Le flag vient du contexte serveur de la page (window.NITRATES_GEO_
+        # APPLIQUEE), cf. MoulinetteView.geo_appliquee / HomeView.
+        geo_appliquee = request.GET.get("geo") == "1"
+        simulateur_ouvert = (
+            departement_est_ouvert(department_code) if geo_appliquee else True
+        )
+
         return JsonResponse(
             {
                 "lng": lng,
@@ -274,8 +285,8 @@ class DebugView(View):
                 # Bornage géographique (carte #57) : le simulateur n'est ouvert
                 # que dans certaines régions/départements. Si fermé, le front
                 # affiche un message au lieu du formulaire. Allowlist : fermé
-                # par défaut.
-                "simulateur_ouvert": departement_est_ouvert(department_code),
+                # par défaut. Non applique sur `/simulateur` interne (geo!=1).
+                "simulateur_ouvert": simulateur_ouvert,
             }
         )
 
@@ -343,6 +354,14 @@ class MoulinetteView(View):
     force_debug = None
     is_building = False
 
+    # Ouverture geographique (allowlist departements, cf. DebugView /
+    # departement_est_ouvert). Sur `/simulateur` (interne, derriere ProConnect),
+    # on NE l'applique PAS : tout departement est accessible. Sur `/` (root
+    # public, HomeView) on la REapplique pour borner l'acces public au
+    # perimetre ouvert. La valeur est injectee dans la page (window.
+    # NITRATES_GEO_APPLIQUEE) et le DebugView en tient compte.
+    geo_appliquee = False
+
     def get(self, request, *args, **kwargs):
         from django.conf import settings
 
@@ -395,6 +414,10 @@ class MoulinetteView(View):
             ),
             # Bandeau "site en construction" (mode alpha-testeur, root public).
             "is_building": self.is_building,
+            # Ouverture geographique appliquee ? (False sur /simulateur interne,
+            # True sur / public). Injecte dans la page pour que l'appel debug
+            # cote front transmette le contexte, et que DebugView decide.
+            "geo_appliquee": self.geo_appliquee,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
             "qc_repondues_champs": [],
