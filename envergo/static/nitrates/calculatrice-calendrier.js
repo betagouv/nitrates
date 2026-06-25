@@ -424,6 +424,31 @@
     return;
   }
 
+  // Texte d'intro adapté aux dates réellement demandées : on ne mentionne
+  // « la date de semis » / « la date de destruction » que si l'input
+  // correspondant est présent (détection par mot-clé dans l'id, robuste aux
+  // variantes date_semis_couvert / date_semis_colza / date_destruction_*).
+  const aSemis = inputs.some((i) => i.id.includes("semis"));
+  const aDestruction = inputs.some((i) => i.id.includes("destruction"));
+  const intro = root.querySelector(".calc-cal__intro");
+  if (intro) {
+    let dates;
+    if (aSemis && aDestruction) {
+      dates = "des dates de semis et de destruction du couvert";
+    } else if (aDestruction) {
+      dates = "de la date de destruction du couvert";
+    } else if (aSemis) {
+      dates = "de la date de semis du couvert";
+    } else {
+      dates = "des dates saisies";
+    }
+    intro.textContent =
+      "Pour ce type d'interculture, la réglementation définit la période " +
+      `d'épandage autorisée en fonction ${dates}. Saisissez ` +
+      (inputs.length > 1 ? "ces dates" : "cette date") +
+      " pour voir le calendrier.";
+  }
+
   // Valeurs initiales : placeholder par defaut, MAIS si un query param porte
   // le meme id que l'input et contient un JJ/MM valide, il prend le dessus.
   // Permet des URLs integralement descriptives (ex ?date_semis_couvert=15/08
