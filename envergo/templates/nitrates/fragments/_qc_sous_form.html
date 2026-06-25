@@ -40,10 +40,9 @@ form="form-simulateur" (form_attr=""). subsidiaires_cascade.js opere sur
       {% endif %}
     {% endfor %}
   {% endif %}
-
-  <div style="margin-top: 24px;">
-    <button type="submit" class="fr-btn">Relancer la simulation</button>
-  </div>
+  {% comment %}Pas de bouton ici : le bouton principal du formulaire (cf.
+  _panneau_form) sert de « Relancer la simulation » quand une QC est en
+  attente.{% endcomment %}
 </div>
 
 {% comment %}

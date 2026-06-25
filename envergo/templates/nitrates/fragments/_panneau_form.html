@@ -210,7 +210,16 @@ remplis au clic carte (cf. simulator.js).
     {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
 
     <div style="margin-top: 32px;">
-      <button type="submit" class="fr-btn">Lancer la simulation</button>
+      {% comment %}S'il y a une QC en attente, ce bouton fait office de
+      « relance » (le bouton doublon du bloc QC est supprimé) -> on adapte
+      juste son libellé.{% endcomment %}
+      <button type="submit" class="fr-btn">
+        {% if qc_en_attente %}
+          Relancer la simulation
+        {% else %}
+          Lancer la simulation
+        {% endif %}
+      </button>
     </div>
 
   </div>
