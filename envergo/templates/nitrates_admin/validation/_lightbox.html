@@ -12,7 +12,10 @@ Chaque panneau : croix (vide le panneau), zoom (clic / Ctrl+molette), pan
 (glisser quand zoomé), indépendants. Esc / clic backdrop ferme tout.
 {% endcomment %}
 
-<div id="vc-cmp" class="vc-cmp" hidden>
+<div id="vc-cmp"
+     class="vc-cmp vc-cmp--{{ mode|default:'compare' }}"
+     data-mode="{{ mode|default:'compare' }}"
+     hidden>
   <div class="vc-cmp__backdrop"></div>
 
   <div class="vc-cmp__pane vc-cmp__pane--top" data-pane="top">
@@ -247,6 +250,24 @@ Chaque panneau : croix (vide le panneau), zoom (clic / Ctrl+molette), pan
     z-index: 4;
     pointer-events: none;
   }
+
+  /* Mode SIMPLE (vue liste) : plein écran d'UNE image, sans split ni galerie.
+     Le panneau haut prend toute la hauteur, le bas et les galeries disparaissent. */
+  .vc-cmp--simple .vc-cmp__pane--top {
+    height: 100vh;
+    border-bottom: none;
+  }
+
+  .vc-cmp--simple .vc-cmp__pane--bottom,
+  .vc-cmp--simple .vc-cmp__gallery,
+  .vc-cmp--simple .vc-cmp__empty,
+  .vc-cmp--simple .vc-cmp__quit {
+    display: none;
+  }
+
+  .vc-cmp--simple .vc-cmp__img {
+    max-height: 92vh;
+  }
 </style>
 
 <script>
@@ -374,12 +395,21 @@ Chaque panneau : croix (vide le panneau), zoom (clic / Ctrl+molette), pan
     const top = makePane(cmp.querySelector('[data-pane="top"]'));
     const bottom = makePane(cmp.querySelector('[data-pane="bottom"]'));
 
+    // mode="simple" (vue liste) : un simple plein écran d'UNE image, pas de
+    // split ni de galerie (la liste a des dizaines de captures -> une galerie
+    // de toutes n'aurait aucun sens). mode="compare" (vue détail) : split +
+    // galeries pour comparer 2 captures de LA feuille courante.
+    const SIMPLE = cmp.dataset.mode === "simple";
+
     function openWith(src) {
-      const captures = collectCaptures();
-      top.buildGallery(captures);
-      bottom.buildGallery(captures);
+      if (!SIMPLE) {
+        const captures = collectCaptures();
+        top.buildGallery(captures);
+        bottom.buildGallery(captures);
+      }
       cmp.hidden = false;
-      // L'image cliquée va en haut ; le bas attend un choix dans sa galerie.
+      // L'image cliquée va en haut (plein écran en mode simple, panneau haut
+      // en mode compare ; le bas attend alors un choix dans sa galerie).
       top.setSrc(src);
     }
 
