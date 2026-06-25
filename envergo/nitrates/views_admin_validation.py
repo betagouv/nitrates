@@ -287,6 +287,30 @@ def _index_url_avec_filtres(request):
     return f"{base}?{urlencode(params)}" if params else base
 
 
+def _detail_url_avec_filtres(request, pk):
+    """URL de la page DÉTAIL d'une feuille en repropageant scope/nature lus dans
+    la requête (POST ou GET).
+
+    Les forms d'override (upload Miro/YAML/Playwright, edit meta…) redirigent
+    vers le détail. Sans repropager scope/nature, on revenait sur le détail avec
+    une URL nue -> `scope_actif`/`nature_actif` vidés -> les hidden du form de
+    validation devenaient vides -> au clic « valider » on retombait sur la liste
+    SANS filtre. On garde donc le filtre à travers les overrides (cf. retour Max
+    2026-06-25 : un override texte/image faisait perdre Périmètre + Nature)."""
+    from urllib.parse import urlencode
+
+    base = reverse("nitrates_admin_validation_detail", kwargs={"pk": pk})
+    params = {
+        k: v
+        for k, v in (
+            ("scope", request.POST.get("scope") or request.GET.get("scope") or ""),
+            ("nature", request.POST.get("nature") or request.GET.get("nature") or ""),
+        )
+        if v
+    }
+    return f"{base}?{urlencode(params)}" if params else base
+
+
 @require_POST
 @staff_member_required
 def validation_set_statut(request, pk):
@@ -299,7 +323,7 @@ def validation_set_statut(request, pk):
     branche = get_object_or_404(BrancheValidation, pk=pk)
     statut = request.POST.get("statut", "").strip()
     if statut not in dict(BrancheValidation.STATUT_CHOICES):
-        return redirect("nitrates_admin_validation_detail", pk=pk)
+        return redirect(_detail_url_avec_filtres(request, pk))
     commentaire = request.POST.get("commentaire", "").strip()
     BrancheValidationAction.objects.create(
         branche=branche,
@@ -324,7 +348,7 @@ def validation_upload_miro(request, pk):
     if f:
         branche.screenshot_miro = f
         branche.save(update_fields=["screenshot_miro", "updated_at"])
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect(_detail_url_avec_filtres(request, pk))
 
 
 @require_POST
@@ -336,7 +360,7 @@ def validation_upload_yaml_viewer(request, pk):
     if f:
         branche.screenshot_yaml_viewer = f
         branche.save(update_fields=["screenshot_yaml_viewer", "updated_at"])
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect(_detail_url_avec_filtres(request, pk))
 
 
 @require_POST
@@ -348,7 +372,7 @@ def validation_upload_yaml_form(request, pk):
     if f:
         branche.screenshot_yaml_form = f
         branche.save(update_fields=["screenshot_yaml_form", "updated_at"])
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect(_detail_url_avec_filtres(request, pk))
 
 
 @require_POST
@@ -384,7 +408,7 @@ def validation_edit_meta(request, pk):
     if updated:
         updated.append("updated_at")
         branche.save(update_fields=updated)
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect(_detail_url_avec_filtres(request, pk))
 
 
 @require_POST
@@ -403,4 +427,4 @@ def validation_upload_playwright(request, pk):
                 "updated_at",
             ]
         )
-    return redirect("nitrates_admin_validation_detail", pk=pk)
+    return redirect(_detail_url_avec_filtres(request, pk))

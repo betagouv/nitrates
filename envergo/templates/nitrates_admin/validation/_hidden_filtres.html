@@ -1,0 +1,8 @@
+{% comment %}
+Hidden scope/nature à inclure dans CHAQUE form d'override du détail (upload
+Miro/YAML/Playwright, edit meta…). Sans ça, le POST d'override redirige vers le
+détail SANS scope/nature -> filtres perdus -> au clic « valider » on retombe sur
+la liste non filtrée. cf. _detail_url_avec_filtres (retour Max 2026-06-25).
+{% endcomment %}
+<input type="hidden" name="scope" value="{{ scope_actif }}">
+<input type="hidden" name="nature" value="{{ nature_actif }}">

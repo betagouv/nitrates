@@ -28,6 +28,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
               class="vd-form vd-form--edit">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <label class="vd-edit-label">
             Note de vérification (éditable — vidée = flag levé)
             <textarea name="note_verif" rows="2" class="vd-edit-input">{{ branche.note_verif }}</textarea>
@@ -99,6 +100,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
               class="vd-form vd-form--edit">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <label class="vd-edit-label">
             Résultat attendu (texte juriste)
             <textarea name="resultat_miro" rows="2" class="vd-edit-input">{{ branche.resultat_miro }}</textarea>
@@ -127,6 +129,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               enctype="multipart/form-data"
               class="vd-form">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <input type="file" name="screenshot_miro" accept="image/*">
           <button type="submit" class="vc-btn">Override Miro</button>
         </form>
@@ -139,6 +142,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
               class="vd-form vd-form--edit">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <textarea name="yaml_snapshot" rows="14" class="vd-edit-textarea-yaml">{{ branche.yaml_snapshot }}</textarea>
           <button type="submit" class="vc-btn">Enregistrer YAML</button>
         </form>
@@ -171,6 +175,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               enctype="multipart/form-data"
               class="vd-form">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <input type="file" name="screenshot_yaml_viewer" accept="image/*">
           <button type="submit" class="vc-btn">Uploader viewer</button>
         </form>
@@ -193,6 +198,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               enctype="multipart/form-data"
               class="vd-form">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <input type="file" name="screenshot_yaml_form" accept="image/*">
           <button type="submit" class="vc-btn">Uploader form</button>
         </form>
@@ -210,6 +216,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
               class="vd-form vd-form--edit">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <label class="vd-edit-label">
             URL simulateur (corrigeable manuellement)
             <textarea name="url_simulateur"
@@ -238,6 +245,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               enctype="multipart/form-data"
               class="vd-form">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <input type="file" name="screenshot_playwright" accept="image/*">
           <button type="submit" class="vc-btn">Uploader Playwright</button>
         </form>
