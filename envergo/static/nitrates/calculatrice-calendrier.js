@@ -332,38 +332,37 @@
       .every((cmp) => evalComparaison(cmp, valeurs));
   }
 
-  // Detecte une fenetre DEGENEREE : une borne event±offset qui a franchi le
-  // 1er juillet (jourRaw hors [0, TOTAL_JOURS)) rend l'intervalle vide dans le
-  // sens AVANT voulu par l'auteur (ex `du: 01/07, au: semis-15jours` avec un
-  // semis tres precoce : semis-15j tombe AVANT le 01/07 -> il n'y a aucune
-  // fenetre). Sans ce garde, le repliement `% 365` transforme cet intervalle
-  // vide en quasi-toute-l'annee peinte (bug calendrier overflow).
-  //
-  // Garde-fou ROBUSTE cote moteur : il neutralise le cas meme quand le YAML
-  // n'a PAS de `condition: 01/07 < ...` explicite (certaines feuilles l'ont,
-  // d'autres non -- on ne depend pas de la presence du garde dans la donnee).
-  //
-  // On ne suppr. QUE l'inversion due a un OFFSET qui a wrappe : les wraps
-  // d'annee legitimes a bornes fixes ou event nu (ex `du: destruction-20j,
-  // au: 15/01` qui enjambe decembre->janvier) ont jourRaw dans [0,365) et ne
-  // sont jamais touches.
-  function _aWrappe(borne) {
-    return (
-      borne.isEvent &&
-      borne.offsetN != null &&
-      borne.jourRaw != null &&
-      (borne.jourRaw < 0 || borne.jourRaw >= TOTAL_JOURS)
-    );
-  }
+  // Detecte une fenetre DEGENEREE : un intervalle `du -> au` qui s'inverse
+  // (au tombe AVANT du dans le sens avant) a cause d'une date saisie, ce qui
+  // sans garde wrappe via `% 365` et peint quasi toute l'annee (bug calendrier).
+  // Couvre les deux symptomes observes :
+  //   - une borne event±offset qui franchit le 1er juillet (ex `du: 01/07,
+  //     au: semis-15jours` avec un semis tres precoce) ;
+  //   - une borne event (±offset) trop tardive/precoce qui passe de l'autre
+  //     cote d'une borne fixe (ex `du: destruction-20j, au: 31/01` avec une
+  //     destruction en mars -> du=23/02 > au=31/01).
+  // Garde-fou ROBUSTE cote moteur (ne depend pas d'un `condition:` explicite
+  // dans le YAML). On PRESERVE les wraps d'annee VOLONTAIRES entre deux dates
+  // FIXES (ex `du: 15/10 au: 31/01`) : voir _fenetreDegeneree.
   function _fenetreDegeneree(p, valeurs) {
     const du = parseBorne(p.du, valeurs);
     const au = parseBorne(p.au, valeurs);
     if (du.jourRaw === null || au.jourRaw === null) return false;
-    if (!_aWrappe(du) && !_aWrappe(au)) return false;
-    // Intervalle lu dans le sens AVANT (du -> au), bornes alignees sur la meme
-    // ancre : s'il est vide (au passe avant du), la periode ne s'applique pas.
+    // Intervalle lu dans le sens AVANT (du -> au), bornes alignées sur la même
+    // ancre : s'il est VIDE (au passe avant du), la fenêtre est inversée.
     const auAligne = _alignerSurAncre(au.jourRaw, du.jourRaw);
-    return auAligne < du.jourRaw;
+    const inverse = auAligne < du.jourRaw;
+    if (!inverse) return false;
+    // Une inversion est DÉGÉNÉRÉE (donnée incohérente -> on neutralise la
+    // période, sinon elle wrappe et peint quasi toute l'année) quand au moins
+    // une borne est un EVENT : sa position dépend d'une date saisie, et c'est
+    // cette saisie « trop tardive/précoce » qui a provoqué l'inversion
+    //   - ex `du: destruction-20j au: 31/01` avec une destruction en mars
+    //     -> du=23/02 > au=31/01, intervalle inversé involontaire (bug signalé) ;
+    //   - ex `du: date_semis au: date_destruction` avec semis après destruction.
+    // En revanche, une inversion entre DEUX DATES FIXES (ex `du: 15/10 au:
+    // 31/01`) est un wrap d'année VOLONTAIRE de l'auteur -> on la conserve.
+    return du.isEvent || au.isEvent;
   }
 
   // Predicat unique « la periode s'applique pour ces valeurs » : condition vraie
@@ -549,6 +548,15 @@
   const inputs = (data.inputs_requis || []).filter(
     (inp) => inp && typeof inp === "object" && inp.id
   );
+  // Ordre d'affichage du mini-form indépendant de l'ordre du YAML : le semis
+  // précède toujours la destruction (logique agronomique : on sème AVANT de
+  // détruire). Sans ce tri, une règle qui liste la destruction d'abord
+  // affichait les champs inversés (destruction à gauche, semis à droite).
+  // Tri stable (rang) : semis=0, destruction=2, autres=1 -> semis à gauche,
+  // destruction à droite, le reste au milieu dans son ordre d'origine.
+  const _rangInput = (inp) =>
+    inp.id.includes("semis") ? 0 : inp.id.includes("destruction") ? 2 : 1;
+  inputs.sort((a, b) => _rangInput(a) - _rangInput(b));
   if (inputs.length === 0) {
     mount.innerHTML =
       '<p class="fr-alert fr-alert--warning fr-alert--sm">Aucun input requis défini pour cette règle calculatrice.</p>';

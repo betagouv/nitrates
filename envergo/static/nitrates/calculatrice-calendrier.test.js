@@ -190,3 +190,47 @@ test("REGRESSION : un semis normal applique bien l'interdit 01/07 -> semis-15j",
   assert.strictEqual(regime[J("31/07")], "interdiction");
   assert.strictEqual(regime[J("15/08")], "libre"); // après semis-15j
 });
+
+test("BUG inversion : du=destruction-20j au=31/01 avec destruction tardive (mars) -> période neutralisée", () => {
+  // Cas signalé (#repro) : destruction 15/03 -> destruction-20j = 23/02, qui
+  // tombe APRÈS le 31/01. L'intervalle `du:23/02 au:31/01` s'inverse : sans
+  // garde il wrappe et peint quasi toute l'année. Une borne est un event
+  // (destruction-20j) -> inversion involontaire -> période neutralisée.
+  const periodes = [
+    { du: "date_destruction_prevue-20jours", au: "31/01", regime: "interdiction" },
+  ];
+  cal.setData({ type: "calculatrice", periodes });
+  const r = computeRegimePerDay(periodes, { date_destruction_prevue: "15/03" });
+  assert.strictEqual(
+    r.filter((v) => v === "interdiction").length,
+    0,
+    "La période inversée (event passé de l'autre côté d'une date fixe) doit être neutralisée."
+  );
+});
+
+test("NON-REGRESSION : wrap volontaire entre 2 dates fixes (15/10 -> 31/01) conservé", () => {
+  // Les deux bornes sont des dates FIXES : l'inversion 15/10 > 31/01 est un
+  // wrap d'année VOLONTAIRE (oct -> jan suivant), il NE doit PAS être neutralisé.
+  const periodes = [{ du: "15/10", au: "31/01", regime: "interdiction" }];
+  cal.setData({ type: "calculatrice", periodes });
+  const r = computeRegimePerDay(periodes, {});
+  assert.strictEqual(r[J("15/10")], "interdiction");
+  assert.strictEqual(r[J("01/12")], "interdiction");
+  assert.strictEqual(r[J("31/01")], "interdiction");
+  assert.strictEqual(r[J("01/02")], "libre");
+});
+
+test("BUG inversion : semis saisi APRÈS destruction (du=semis au=destruction) -> neutralisée", () => {
+  // Deux events inversés : semis 15/11 (idx 137) > destruction 15/08 (idx 45).
+  const periodes = [
+    { du: "date_semis_couvert", au: "date_destruction_couvert", regime: "autorisation_sous_condition" },
+  ];
+  cal.setData({ type: "calculatrice", periodes });
+  const r = computeRegimePerDay(periodes, {
+    date_semis_couvert: "15/11", date_destruction_couvert: "15/08",
+  });
+  assert.strictEqual(
+    r.filter((v) => v === "autorisation_sous_condition").length, 0,
+    "Fenêtre semis>destruction (deux events inversés) doit être neutralisée."
+  );
+});
