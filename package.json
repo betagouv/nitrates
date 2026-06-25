@@ -48,6 +48,7 @@
     "e2e-amenagement:ui": "TEST_DIR='./e2e/amenagement' playwright test --ui",
     "e2e-nitrates": "playwright test --config playwright.config.nitrates.ts",
     "e2e-nitrates:ui": "playwright test --config playwright.config.nitrates.ts --ui",
+    "test-nitrates-js": "node --test envergo/static/nitrates/*.test.js",
     "playwright:install": "playwright install --with-deps"
   }
 }

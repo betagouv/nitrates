@@ -12,21 +12,37 @@
 (function () {
   "use strict";
 
-  const dataEl = document.getElementById("nitrates-calculatrice-data");
-  const root = document.querySelector("[data-calc-cal-root]");
-  if (!dataEl || !root) return;
+  // Hors navigateur (Node, pour les tests de logique pure : cf.
+  // feedback_static_js_cache_dev — on valide la logique calendrier en Node
+  // car le JS statique servi en dev peut etre perime). Dans ce mode il n'y a
+  // pas de `document` : on n'execute pas le rendu, on expose seulement les
+  // helpers purs testables via module.exports, puis on sort. En navigateur
+  // cette branche est morte (document existe, module non).
+  const _isNode =
+    typeof module !== "undefined" &&
+    module.exports &&
+    typeof document === "undefined";
 
-  let data;
-  try {
-    data = JSON.parse(dataEl.textContent);
-  } catch (e) {
-    console.error("calculatrice-calendrier: JSON parse failed", e);
-    return;
+  const dataEl = _isNode
+    ? null
+    : document.getElementById("nitrates-calculatrice-data");
+  const root = _isNode ? null : document.querySelector("[data-calc-cal-root]");
+  if (!_isNode && (!dataEl || !root)) return;
+
+  // En Node : `data` reste vide (injectable par les tests via l'API exportee).
+  let data = _isNode ? {} : null;
+  if (!_isNode) {
+    try {
+      data = JSON.parse(dataEl.textContent);
+    } catch (e) {
+      console.error("calculatrice-calendrier: JSON parse failed", e);
+      return;
+    }
+    if (!data || data.type !== "calculatrice") return;
   }
-  if (!data || data.type !== "calculatrice") return;
 
-  const mount = root.querySelector("[data-calc-cal-mount]");
-  if (!mount) return;
+  const mount = _isNode ? null : root.querySelector("[data-calc-cal-mount]");
+  if (!_isNode && !mount) return;
 
   // ─── Constantes ────────────────────────────────────────────────────────
   // Année agricole = juillet → juin. Index 0 = juillet, 11 = juin.
@@ -188,28 +204,46 @@
   }
 
   // Parse une borne YAML (JJ/MM | event | event±Nunit) en index agricole.
-  // Retourne {jour: int|null, isEvent: bool, eventId: str|null, offsetJours: int}
+  // Retourne {jour: int|null, jourRaw: int|null, isEvent, eventId, ...offset}.
+  //
+  // `jour`    = index agricole borne dans [0, TOTAL_JOURS) (modulo) -- sert au
+  //             DESSIN sur la barre (toujours un index valide).
+  // `jourRaw` = MÊME valeur mais NON repliee (sans le `% TOTAL_JOURS`) pour les
+  //             bornes event±offset : un offset peut faire passer la borne juste
+  //             avant le 1er juillet (valeur < 0) ou apres le 30 juin (>= 365).
+  //             Le modulo masque ce franchissement et casse les COMPARAISONS de
+  //             condition (ex `01/07 < semis-15jours` avec semis=14/07 : la
+  //             borne semis-15j = 29/06, repliee a l'index 363, comparait
+  //             faussement `0 < 363` = vrai alors que 29/06 precede le 1er
+  //             juillet -> condition fausse). On garde donc le brut pour
+  //             comparer dans un repere continu autour de l'event (cf.
+  //             evalComparaison). Pour une date fixe ou un event nu, jourRaw ==
+  //             jour (aucun repliement possible).
   const BORNE_RE = /^([a-z][a-z0-9_]*)(?:([+-])(\d+)(jours|semaines|mois))?$/;
   function parseBorne(val, valeursInputs) {
-    if (!val) return { jour: null, isEvent: false };
+    if (!val) return { jour: null, jourRaw: null, isEvent: false };
     if (/^\d{2}\/\d{2}$/.test(val)) {
-      return { jour: jjmmToJourAgricole(val), isEvent: false };
+      const j = jjmmToJourAgricole(val);
+      return { jour: j, jourRaw: j, isEvent: false };
     }
     const m = BORNE_RE.exec(val);
-    if (!m) return { jour: null, isEvent: false };
+    if (!m) return { jour: null, jourRaw: null, isEvent: false };
     const eventId = m[1];
     const valEvent = valeursInputs[eventId];
-    if (!valEvent) return { jour: null, isEvent: true, eventId };
+    if (!valEvent) return { jour: null, jourRaw: null, isEvent: true, eventId };
     let jour = jjmmToJourAgricole(valEvent);
-    if (jour === null) return { jour: null, isEvent: true, eventId };
+    if (jour === null) return { jour: null, jourRaw: null, isEvent: true, eventId };
+    let jourRaw = jour;
     if (m[2]) {
       const sign = m[2] === "+" ? 1 : -1;
       const n = parseInt(m[3], 10);
       const unit = m[4];
-      jour = (jour + sign * n * UNITES_JOURS[unit] + TOTAL_JOURS) % TOTAL_JOURS;
+      jourRaw = jour + sign * n * UNITES_JOURS[unit];
+      jour = ((jourRaw % TOTAL_JOURS) + TOTAL_JOURS) % TOTAL_JOURS;
     }
     return {
       jour,
+      jourRaw,
       isEvent: true,
       eventId,
       offsetSign: m[2] || null,
@@ -236,17 +270,48 @@
   const CONDITION_RE = new RegExp(
     "^\\s*(" + _TERME + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + _TERME + ")\\s*$"
   );
+  // Ramene `f` (jour, possiblement franchissant l'annee) au representant
+  // {f, f-365, f+365} le plus proche de l'ancre `a`. Sert a comparer deux
+  // bornes dans un repere CONTINU : une condition compare des dates a quelques
+  // jours/semaines l'une de l'autre dans le meme cycle agricole, donc on les
+  // aligne autour d'une ancre commune plutot que sur l'origine fixe (1er juil).
+  // Sans ca, une borne event±offset qui franchit le 1er juillet (ex 29/06,
+  // index 363, juste AVANT l'origine 0) comparait a tort comme "tres apres"
+  // (cf. bug calendrier overflow : 01/07 < semis-15jours faussement vrai).
+  function _alignerSurAncre(f, a) {
+    let best = f;
+    let bestDist = Math.abs(f - a);
+    for (const cand of [f - TOTAL_JOURS, f + TOTAL_JOURS]) {
+      const d = Math.abs(cand - a);
+      if (d < bestDist) {
+        bestDist = d;
+        best = cand;
+      }
+    }
+    return best;
+  }
+
   // Evalue UNE comparaison `terme op terme`. Retourne true si vraie OU si un
   // terme n'est pas resolvable (event non saisi / part mal formee) -> mode
   // permissif (la periode reste affichee sans distorsion ; le validator
   // backend a deja rejete les conditions reellement invalides a la saisie).
+  //
+  // Comparaison dans un repere CONTINU autour des deux bornes : on part de leur
+  // valeur NON repliee (jourRaw) puis on aligne chaque cote sur l'autre via
+  // _alignerSurAncre. Cela neutralise le repliement annuel d'une borne
+  // event±offset qui franchit le 1er juillet (sinon `01/07 < semis-15jours`
+  // avec un semis tres precoce comparait `0 < 363` = vrai a tort, et peignait
+  // tout le calendrier en interdit). Les cas sans franchissement sont
+  // inchanges (jourRaw == jour, alignement = identite).
   function evalComparaison(rawCmp, valeurs) {
     const m = CONDITION_RE.exec(rawCmp);
     if (!m) return true;
     const op = m[2];
-    const gauche = parseBorne(m[1], valeurs).jour;
-    const droite = parseBorne(m[3], valeurs).jour;
-    if (gauche === null || droite === null) return true;
+    const pg = parseBorne(m[1], valeurs);
+    const pd = parseBorne(m[3], valeurs);
+    if (pg.jourRaw === null || pd.jourRaw === null) return true;
+    const gauche = _alignerSurAncre(pg.jourRaw, pd.jourRaw);
+    const droite = _alignerSurAncre(pd.jourRaw, pg.jourRaw);
     switch (op) {
       case "<": return gauche < droite;
       case "<=": return gauche <= droite;
@@ -265,6 +330,48 @@
     return rawCond
       .split("&&")
       .every((cmp) => evalComparaison(cmp, valeurs));
+  }
+
+  // Detecte une fenetre DEGENEREE : une borne event±offset qui a franchi le
+  // 1er juillet (jourRaw hors [0, TOTAL_JOURS)) rend l'intervalle vide dans le
+  // sens AVANT voulu par l'auteur (ex `du: 01/07, au: semis-15jours` avec un
+  // semis tres precoce : semis-15j tombe AVANT le 01/07 -> il n'y a aucune
+  // fenetre). Sans ce garde, le repliement `% 365` transforme cet intervalle
+  // vide en quasi-toute-l'annee peinte (bug calendrier overflow).
+  //
+  // Garde-fou ROBUSTE cote moteur : il neutralise le cas meme quand le YAML
+  // n'a PAS de `condition: 01/07 < ...` explicite (certaines feuilles l'ont,
+  // d'autres non -- on ne depend pas de la presence du garde dans la donnee).
+  //
+  // On ne suppr. QUE l'inversion due a un OFFSET qui a wrappe : les wraps
+  // d'annee legitimes a bornes fixes ou event nu (ex `du: destruction-20j,
+  // au: 15/01` qui enjambe decembre->janvier) ont jourRaw dans [0,365) et ne
+  // sont jamais touches.
+  function _aWrappe(borne) {
+    return (
+      borne.isEvent &&
+      borne.offsetN != null &&
+      borne.jourRaw != null &&
+      (borne.jourRaw < 0 || borne.jourRaw >= TOTAL_JOURS)
+    );
+  }
+  function _fenetreDegeneree(p, valeurs) {
+    const du = parseBorne(p.du, valeurs);
+    const au = parseBorne(p.au, valeurs);
+    if (du.jourRaw === null || au.jourRaw === null) return false;
+    if (!_aWrappe(du) && !_aWrappe(au)) return false;
+    // Intervalle lu dans le sens AVANT (du -> au), bornes alignees sur la meme
+    // ancre : s'il est vide (au passe avant du), la periode ne s'applique pas.
+    const auAligne = _alignerSurAncre(au.jourRaw, du.jourRaw);
+    return auAligne < du.jourRaw;
+  }
+
+  // Predicat unique « la periode s'applique pour ces valeurs » : condition vraie
+  // (ou absente) ET fenetre non degeneree. Utilise partout ou l'on filtrait
+  // auparavant sur la seule condition, pour que peinture, recap, bornes et
+  // legende voient exactement le meme jeu de periodes actives.
+  function _periodeActive(p, valeurs) {
+    return evalCondition(p.condition, valeurs) && !_fenetreDegeneree(p, valeurs);
   }
 
   // Hierarchie de severite des regimes pour la linearisation visuelle
@@ -396,9 +503,11 @@
     };
 
     // Filtrage : retire les periodes dont la condition est fausse pour
-    // les valeurs courantes (cf. spec_extension_grammaire_condition).
+    // les valeurs courantes (cf. spec_extension_grammaire_condition) ET dont
+    // la fenetre n'est pas degeneree (offset qui wrappe l'annee, cf.
+    // _fenetreDegeneree -- bug calendrier overflow).
     const periodesActives = (periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
 
     // Passe 1 : principales avec hierarchie.
@@ -412,6 +521,28 @@
       poserMasque(p);
     }
     return result;
+  }
+
+  // ─── Export Node (tests de logique pure) ───────────────────────────────
+  // Toute la suite (État, rendu DOM) depend de document/window : on s'arrete
+  // ici en Node et on n'expose que les fonctions pures du moteur de calcul.
+  // `setData` permet aux tests d'injecter le `data` (type + periodes) lu en
+  // navigateur depuis le <script type="application/json">.
+  if (_isNode) {
+    module.exports = {
+      jjmmToJourAgricole,
+      parseBorne,
+      evalComparaison,
+      evalCondition,
+      computeRegimePerDay,
+      _alignerSurAncre,
+      jourAgricoleToJJMM,
+      TOTAL_JOURS,
+      setData: (d) => {
+        data = d || {};
+      },
+    };
+    return;
   }
 
   // ─── État ──────────────────────────────────────────────────────────────
@@ -877,7 +1008,7 @@
     // sliver d'interdiction au semis). Sans ca, la fenetre effective du
     // recap commencerait au semis alors que la barre demarre au 15/10.
     const liste = (data.periodes || []).filter((pp) =>
-      evalCondition(pp.condition, valeurs)
+      _periodeActive(pp, valeurs)
     );
     const starts = new Array(TOTAL_JOURS).fill(0);
     const ends = new Array(TOTAL_JOURS).fill(0);
@@ -940,7 +1071,7 @@
   //     non vide.
   function activePeriodesSet() {
     const periodes = (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
     const principalCovers = computePrincipalCovers(periodes);
     const result = new Set();
@@ -964,7 +1095,7 @@
     // `periodes` peut etre fourni (deja filtre par condition) ou non
     // (fallback : on lit data.periodes et on filtre ici).
     const liste = periodes || (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
     const covers = new Array(TOTAL_JOURS).fill(false);
     for (const p of liste) {
@@ -1218,7 +1349,7 @@
   // (cf. spec_extension_grammaire_condition §Recalcul a chaque change).
   function periodesActives() {
     return (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
   }
 
