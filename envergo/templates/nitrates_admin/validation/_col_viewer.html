@@ -1,0 +1,39 @@
+{% comment %}
+Colonne « YAML viewer » en auto-save htmx : capture (upload auto au change) +
+lien vers le viewer. Re-rend #vd-col-viewer. Cf. _col_miro.html.
+{% endcomment %}
+<div class="vd-col" id="vd-col-viewer">
+  <h2>🌳 YAML viewer</h2>
+  {% if branche.screenshot_yaml_viewer %}
+    <img src="{{ branche.screenshot_yaml_viewer.url }}?v={{ branche.updated_at|date:'U' }}"
+         alt="YAML viewer"
+         class="vd-img vc-clickable"
+         data-lightbox
+         data-src="{{ branche.screenshot_yaml_viewer.url }}?v={{ branche.updated_at|date:'U' }}">
+  {% else %}
+    <p style="color:#999">Pas de capture admin viewer.</p>
+  {% endif %}
+  <p style="font-size:0.8rem;">
+    {% comment %}
+      Le viewer doit ouvrir l'arbre de CETTE feuille (?tree_id=), sinon il
+      retombe sur le PAN et l'ancre #regle= d'une feuille PAR/ZAR est
+      introuvable. arbre_tree_id résolu par la vue selon le scope.
+    {% endcomment %}
+    <a href="{% url 'nitrates_admin_yaml_tree' %}{% if arbre_tree_id %}?tree_id={{ arbre_tree_id }}{% endif %}#regle={{ branche.regle_id }}"
+       target="_blank">Ouvrir le viewer ↗</a>
+  </p>
+  <form hx-post="{% url 'nitrates_admin_validation_upload_yaml_viewer' pk=branche.pk %}"
+        hx-target="#vd-col-viewer"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        hx-trigger="change"
+        class="vd-form vd-autosave">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="viewer">
+    <input type="file" name="screenshot_yaml_viewer" accept="image/*">
+    <noscript>
+      <button type="submit" class="vc-btn">Uploader viewer</button>
+    </noscript>
+  </form>
+</div>

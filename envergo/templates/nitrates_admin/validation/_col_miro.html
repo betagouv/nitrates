@@ -1,0 +1,114 @@
+{% load static %}
+
+{% comment %}
+Colonne « Miro juriste » du détail de validation, en AUTO-SAVE htmx.
+
+Enveloppée dans #vd-col-miro : les forms d'édition/upload font un hx-post qui
+re-rend CETTE colonne (hx-target="#vd-col-miro", swap outerHTML) -> l'image
+uploadée / le texte enregistré apparaissent tout de suite, sans recharger la
+page ni perdre les autres captures.
+
+Auto-save :
+  - file input : hx-trigger="change" -> dès qu'on choisit un fichier, ça part.
+  - champs texte : hx-trigger="change" (= blur + valeur modifiée).
+Plus de bouton « Enregistrer » / « Upload » : on garde un <noscript> fallback.
+{% endcomment %}
+<div class="vd-col" id="vd-col-miro">
+  <h2>📐 Miro juriste</h2>
+  {% if branche.miro_widget_id %}
+    <p class="vd-miro-link">
+      <a href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
+         target="_blank"
+         rel="noopener">↗ Ouvrir la feuille dans le board Miro</a>
+      <span class="vd-miro-id">(widget {{ branche.miro_widget_id }})</span>
+    </p>
+  {% else %}
+    <p style="color:#999">
+      Pas de lien Miro. Coller l'id du widget ci-dessous
+      (board → clic droit sur la box → « Copy link to widget »,
+      l'id est la valeur de <code>moveToWidget=</code>).
+    </p>
+  {% endif %}
+  {% if branche.screenshot_miro %}
+    {% comment %}
+      Cache-buster ?v=updated_at : un override écrase souvent le fichier au même
+      nom -> sans ça, le navigateur réaffiche l'image cachée (l'utilisateur ne
+      voit pas son upload). updated_at change à chaque save -> force le reload.
+    {% endcomment %}
+    <img src="{{ branche.screenshot_miro.url }}?v={{ branche.updated_at|date:'U' }}"
+         alt="Miro"
+         class="vd-img vc-clickable"
+         data-lightbox
+         data-src="{{ branche.screenshot_miro.url }}?v={{ branche.updated_at|date:'U' }}">
+  {% else %}
+    <p style="color:#999">Aucun screenshot Miro.</p>
+  {% endif %}
+  {% if branche.resultat_miro %}
+    <p class="vd-resultat">
+      <strong>Attendu :</strong> {{ branche.resultat_miro }}
+      {% if branche.code_pc_miro %}<span class="vc-pc">{{ branche.code_pc_miro }}</span>{% endif %}
+    </p>
+  {% endif %}
+
+  {% comment %}
+    Form texte auto-save : chaque champ poste au change vers edit_meta, qui
+    re-rend cette colonne. data-autosave sert au JS pour le retour visuel.
+  {% endcomment %}
+  {% comment %}
+    hx-trigger="change" sur le FORM : htmx soumet le form dès qu'un de ses
+    inputs change (blur+modif pour les textes). hx-post/target/swap sur le form
+    -> la réponse re-rend #vd-col-miro.
+  {% endcomment %}
+  <form class="vd-form vd-form--edit vd-autosave"
+        hx-post="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+        hx-target="#vd-col-miro"
+        hx-swap="outerHTML"
+        hx-trigger="change">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="miro">
+    <label class="vd-edit-label">
+      Résultat attendu (texte juriste)
+      <textarea name="resultat_miro" rows="2" class="vd-edit-input">{{ branche.resultat_miro }}</textarea>
+    </label>
+    <label class="vd-edit-label">
+      Code PC
+      <input type="text"
+             name="code_pc_miro"
+             value="{{ branche.code_pc_miro }}"
+             class="vd-edit-input"
+             maxlength="20">
+    </label>
+    <label class="vd-edit-label">
+      Id widget Miro (moveToWidget)
+      <input type="text"
+             name="miro_widget_id"
+             value="{{ branche.miro_widget_id }}"
+             class="vd-edit-input"
+             placeholder="3458764674736757749"
+             maxlength="40">
+    </label>
+    <noscript>
+      <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
+    </noscript>
+  </form>
+
+  {% comment %}
+    Upload auto-save : hx-trigger="change" sur le form -> dès qu'on choisit un
+    fichier, le form part en multipart et la colonne (image incluse) se re-rend.
+  {% endcomment %}
+  <form hx-post="{% url 'nitrates_admin_validation_upload_miro' pk=branche.pk %}"
+        hx-target="#vd-col-miro"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        hx-trigger="change"
+        class="vd-form vd-autosave">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="miro">
+    <input type="file" name="screenshot_miro" accept="image/*">
+    <noscript>
+      <button type="submit" class="vc-btn">Override Miro</button>
+    </noscript>
+  </form>
+</div>

@@ -1,0 +1,30 @@
+{% comment %}
+Colonne « Simulateur » en auto-save htmx : URL simulateur éditable (save au
+change) + lien d'ouverture. Re-rend #vd-col-simulateur. Cf. _col_miro.html.
+{% endcomment %}
+<div class="vd-col" id="vd-col-simulateur">
+  <h2>🌍 Simulateur</h2>
+  {% if branche.url_simulateur %}
+    <p>
+      <a href="{{ branche.url_simulateur }}" target="_blank" class="vc-btn">Ouvrir simulateur ↗</a>
+    </p>
+  {% endif %}
+  <form class="vd-form vd-form--edit vd-autosave"
+        hx-post="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+        hx-target="#vd-col-simulateur"
+        hx-swap="outerHTML"
+        hx-trigger="change">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="simulateur">
+    <label class="vd-edit-label">
+      URL simulateur (corrigeable manuellement)
+      <textarea name="url_simulateur"
+                rows="4"
+                class="vd-edit-input vd-edit-input--mono">{{ branche.url_simulateur }}</textarea>
+    </label>
+    <noscript>
+      <button type="submit" class="vc-btn">Enregistrer URL</button>
+    </noscript>
+  </form>
+</div>

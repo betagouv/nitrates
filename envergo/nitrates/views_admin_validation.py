@@ -11,6 +11,8 @@ Tableau qui croise pour chaque feuille `culture_principale` :
 Cf. issue #28 / sprint MVP-1 fin.
 """
 
+import json
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -311,6 +313,51 @@ def _detail_url_avec_filtres(request, pk):
     return f"{base}?{urlencode(params)}" if params else base
 
 
+# Colonnes du détail re-rendables en auto-save htmx : `col` (POST) -> fragment.
+# Une vue d'override (edit_meta, upload_*) sert plusieurs colonnes ; le form
+# envoie un hidden `col` pour savoir laquelle re-rendre.
+_COL_FRAGMENTS = {
+    "miro": "nitrates_admin/validation/_col_miro.html",
+    "yaml": "nitrates_admin/validation/_col_yaml.html",
+    "viewer": "nitrates_admin/validation/_col_viewer.html",
+    "form": "nitrates_admin/validation/_col_form.html",
+    "simulateur": "nitrates_admin/validation/_col_simulateur.html",
+    "playwright": "nitrates_admin/validation/_col_playwright.html",
+}
+
+
+def _ctx_detail(request, branche):
+    """Contexte commun aux fragments de colonne (mêmes valeurs que la vue
+    détail) : branche, board Miro, filtres scope/nature, arbre cible."""
+    arbre = _arbre_actif_pour_branche(branche)
+    return {
+        "branche": branche,
+        "arbre_tree_id": arbre.pk if arbre else None,
+        "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
+        "scope_actif": request.POST.get("scope", "") or request.GET.get("scope", ""),
+        "nature_actif": request.POST.get("nature", "") or request.GET.get("nature", ""),
+    }
+
+
+def _reponse_override(request, branche, defaut_redirect_pk):
+    """Réponse d'une vue d'override.
+
+    - Requête htmx (auto-save) : re-rend le fragment de la colonne `col` et
+      déclenche un toast « Enregistré ✓ ». Pas de reload -> on ne perd ni la
+      page ni les autres captures.
+    - Sinon (no-JS / fallback <noscript>) : redirect classique vers le détail
+      en conservant les filtres scope/nature.
+    """
+    if request.headers.get("HX-Request") == "true":
+        col = request.POST.get("col", "")
+        template = _COL_FRAGMENTS.get(col)
+        if template:
+            resp = render(request, template, _ctx_detail(request, branche))
+            resp["HX-Trigger"] = json.dumps({"showToast": {"message": "Enregistré ✓"}})
+            return resp
+    return redirect(_detail_url_avec_filtres(request, branche.pk))
+
+
 @require_POST
 @staff_member_required
 def validation_set_statut(request, pk):
@@ -348,7 +395,7 @@ def validation_upload_miro(request, pk):
     if f:
         branche.screenshot_miro = f
         branche.save(update_fields=["screenshot_miro", "updated_at"])
-    return redirect(_detail_url_avec_filtres(request, pk))
+    return _reponse_override(request, branche, pk)
 
 
 @require_POST
@@ -360,7 +407,7 @@ def validation_upload_yaml_viewer(request, pk):
     if f:
         branche.screenshot_yaml_viewer = f
         branche.save(update_fields=["screenshot_yaml_viewer", "updated_at"])
-    return redirect(_detail_url_avec_filtres(request, pk))
+    return _reponse_override(request, branche, pk)
 
 
 @require_POST
@@ -372,7 +419,7 @@ def validation_upload_yaml_form(request, pk):
     if f:
         branche.screenshot_yaml_form = f
         branche.save(update_fields=["screenshot_yaml_form", "updated_at"])
-    return redirect(_detail_url_avec_filtres(request, pk))
+    return _reponse_override(request, branche, pk)
 
 
 @require_POST
@@ -408,7 +455,7 @@ def validation_edit_meta(request, pk):
     if updated:
         updated.append("updated_at")
         branche.save(update_fields=updated)
-    return redirect(_detail_url_avec_filtres(request, pk))
+    return _reponse_override(request, branche, pk)
 
 
 @require_POST
@@ -427,4 +474,4 @@ def validation_upload_playwright(request, pk):
                 "updated_at",
             ]
         )
-    return redirect(_detail_url_avec_filtres(request, pk))
+    return _reponse_override(request, branche, pk)
