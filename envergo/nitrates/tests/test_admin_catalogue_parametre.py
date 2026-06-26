@@ -1,0 +1,589 @@
+"""Tests de l'édition admin des nœuds catalogue_parametre (#128, couche UI).
+
+Couvre :
+  - grammar : kind autorisé, validation du nœud et des expressions de branche
+  - editor : mapping kind <-> type_noeud
+  - vue AddChildView : le formulaire expose le champ expression sous un
+    parent catalogue_parametre, et le POST crée la branche valeur+expression
+"""
+
+import pytest
+from django.test import Client
+
+from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.yaml_admin import editor, grammar
+from envergo.users.models import User
+
+pytestmark = pytest.mark.django_db
+
+
+def _arbre_minimal() -> dict:
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "n_origine",
+                            "champ": "effluent_peu_charge_elevage",
+                            "branches": [],
+                        },
+                    },
+                    {
+                        "valeur": False,
+                        "regle": {"id": "r_hors", "type": "non_applicable"},
+                    },
+                ],
+            }
+        },
+    }
+
+
+# ─── grammar ────────────────────────────────────────────────────────────────
+
+
+def test_un_seul_kind_catalogue_dans_le_dropdown():
+    """Fusion UX : pas de kind separe catalogue_parametre dans le dropdown.
+    Le mode expression se choisit DANS le formulaire catalogue (source)."""
+    allowed = grammar.get_allowed_child_kinds(_arbre_minimal(), ())
+    assert "noeud_catalogue" in allowed
+    assert "noeud_catalogue_parametre" not in allowed
+
+
+def test_validate_noeud_catalogue_parametre_ok():
+    node = {
+        "type_noeud": "catalogue_parametre",
+        "id": "n_origine",
+        "champ": "effluent_peu_charge_elevage",
+        "branches": [
+            {"valeur": True, "expression": "sous_fertilisant == 'a'"},
+        ],
+    }
+    res = grammar.validate_node_local(node, "noeud_catalogue_parametre")
+    assert res.ok, [e.message for e in res.errors]
+
+
+def test_validate_noeud_catalogue_parametre_champ_requis():
+    node = {"type_noeud": "catalogue_parametre", "id": "n_x", "branches": []}
+    res = grammar.validate_node_local(node, "noeud_catalogue_parametre")
+    assert not res.ok
+    assert any(e.field == "champ" for e in res.errors)
+
+
+def test_validate_expression_dunder_rejetee():
+    node = {
+        "type_noeud": "catalogue_parametre",
+        "id": "n_x",
+        "champ": "origine",
+        "branches": [{"valeur": True, "expression": "().__class__"}],
+    }
+    res = grammar.validate_node_local(node, "noeud_catalogue_parametre")
+    assert not res.ok
+    assert any("__class__" in e.message or "interdit" in e.message for e in res.errors)
+
+
+def test_validate_branche_valeur_plus_expression_ok():
+    errs = grammar._validate_branche(
+        {"valeur": True, "expression": "sous_fertilisant == 'a'"}
+    )
+    assert errs == []
+
+
+def test_validate_branche_expression_cassee_rejetee():
+    errs = grammar._validate_branche({"valeur": True, "expression": "1 +"})
+    assert len(errs) > 0
+
+
+# ─── editor mapping ─────────────────────────────────────────────────────────
+
+
+def test_kind_from_node_catalogue_parametre():
+    node = {"type_noeud": "catalogue_parametre", "id": "n_x", "champ": "c"}
+    assert editor._kind_from_node(node) == "noeud_catalogue_parametre"
+
+
+def test_grammar_kind_mapping():
+    assert (
+        editor._grammar_kind_from_content_kind("noeud_catalogue_parametre")
+        == "noeud_catalogue_parametre"
+    )
+
+
+# ─── vue AddChildView ───────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def staff_client(db):
+    u = User.objects.create(
+        email="cp@test.local", is_staff=True, is_superuser=True, is_active=True
+    )
+    c = Client()
+    c.force_login(u)
+    return c, u
+
+
+@pytest.fixture
+def draft(db, staff_client):
+    _, u = staff_client
+    return DecisionTree.objects.create(
+        name="cp-test", status="draft", contenu=_arbre_minimal(), created_by=u
+    )
+
+
+def test_form_expose_expression_sous_catalogue_parametre(staff_client, draft):
+    c, _ = staff_client
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn/n_origine&kind=regle"
+    )
+    r = c.get(url)
+    assert r.status_code == 200
+    assert 'name="expression"' in r.content.decode()
+
+
+def test_form_pas_d_expression_sous_catalogue_classique(staff_client, draft):
+    c, _ = staff_client
+    # Parent = racine (catalogue SIG classique) -> le formulaire d'ajout de
+    # branche n'a pas de champ expression (celui-ci n'apparait que sous un
+    # parent catalogue_parametre).
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn&kind=noeud_catalogue"
+    )
+    r = c.get(url)
+    assert r.status_code == 200
+    assert 'name="expression"' not in r.content.decode()
+
+
+def test_form_catalogue_propose_source_expression(staff_client, draft):
+    """Le dropdown source du formulaire catalogue inclut l'option expression."""
+    c, _ = staff_client
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn&kind=noeud_catalogue"
+    )
+    r = c.get(url)
+    html = r.content.decode()
+    assert 'name="c_source"' in html
+    assert 'value="expression"' in html
+
+
+def test_post_catalogue_source_expression_cree_catalogue_parametre(staff_client, draft):
+    """Choisir source=expression produit un nœud type_noeud=catalogue_parametre
+    (sans source stockée)."""
+    c, _ = staff_client
+    url = f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/?path=n_zvn"
+    post = {
+        "kind": "noeud_catalogue",
+        "valeur": "__test_cp__",
+        "c_source": "expression",
+        "c_champ": "origine_test",
+        "c_id": "n_cp_via_source",
+    }
+    r = c.post(url, post)
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_cp_via_source"))
+    assert node is not None
+    assert node["type_noeud"] == "catalogue_parametre"
+    assert node["champ"] == "origine_test"
+    assert "source" not in node
+
+
+def test_post_branche_avec_expression(staff_client, draft):
+    c, _ = staff_client
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn/n_origine"
+    )
+    post = {
+        "kind": "regle",
+        "valeur": "true",
+        "expression": "sous_fertilisant == 'effluents_peu_charges_elevage'",
+        "c_type": "interdiction",
+        "c_id": "r_cp_oui",
+    }
+    r = c.post(url, post)
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    cp = editor.get_node_at(draft.contenu, ("n_zvn", "n_origine"))
+    assert len(cp["branches"]) == 1
+    branche = cp["branches"][0]
+    assert branche["valeur"] is True
+    assert (
+        branche["expression"] == "sous_fertilisant == 'effluents_peu_charges_elevage'"
+    )
+    assert branche["regle"]["id"] == "r_cp_oui"
+
+
+def test_post_branche_sans_expression_rejete(staff_client, draft):
+    c, _ = staff_client
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn/n_origine"
+    )
+    post = {"kind": "regle", "valeur": "true", "c_type": "libre", "c_id": "r_x"}
+    r = c.post(url, post)
+    assert r.status_code == 422
+    assert "expression" in r.content.decode().lower()
+
+
+def test_post_branche_expression_dunder_rejete(staff_client, draft):
+    c, _ = staff_client
+    url = (
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/add-child/"
+        f"?path=n_zvn/n_origine"
+    )
+    post = {
+        "kind": "regle",
+        "valeur": "true",
+        "expression": "().__class__.__bases__",
+        "c_type": "libre",
+        "c_id": "r_x",
+    }
+    r = c.post(url, post)
+    assert r.status_code == 422
+
+
+# ─── Conversion complement -> catalogue_parametre (#128) ────────────────────
+
+
+def _arbre_avec_complement() -> dict:
+    """Arbre avec une question complémentaire effluent (true/false) sous un
+    catalogue ZV, à convertir en catalogue_parametre."""
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_effluent",
+                            "champ": "effluent_peu_charge",
+                            "texte": "S'agit-il d'un effluent peu chargé ?",
+                            "aide": "aide test",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "libelle": "Oui",
+                                    "regle": {"id": "r_oui", "type": "interdiction"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "libelle": "Non",
+                                    "regle": {"id": "r_non", "type": "libre"},
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "valeur": False,
+                        "regle": {"id": "r_hz", "type": "non_applicable"},
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_convert_complement_preserve_branches_et_contenu(staff_client):
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    # La conversion renomme l'id q_effluent -> n_effluent (convention).
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
+    # type converti
+    assert node["type_noeud"] == "catalogue_parametre"
+    # champ gardé, niveau/texte/aide retirés
+    assert node["champ"] == "effluent_peu_charge"
+    assert "niveau" not in node
+    assert "texte" not in node
+    assert "aide" not in node
+    # branches + contenu préservés, expression vide ajoutée
+    assert len(node["branches"]) == 2
+    for b in node["branches"]:
+        assert b["expression"] == ""
+        assert "regle" in b  # contenu intact
+    assert node["branches"][0]["valeur"] is True
+    assert node["branches"][0]["regle"]["id"] == "r_oui"
+
+
+def test_convert_racine_refuse(staff_client):
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv2", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn"
+    )
+    assert r.status_code == 403
+
+
+def test_convert_deja_catalogue_parametre_refuse(staff_client):
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv3", status="draft", contenu=_arbre_minimal(), created_by=u
+    )
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/n_origine"
+    )
+    assert r.status_code == 403
+
+
+def test_editer_branche_persiste_expression(staff_client):
+    """Après conversion, éditer une branche enregistre son expression."""
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv4", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    # convertit
+    c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    # édite la branche true pour lui donner une expression. La conversion a
+    # renomme q_effluent -> n_effluent, on adresse donc le nouvel id.
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
+        f"?path=n_zvn/n_effluent&valeur=true",
+        {
+            "valeur_new": "true",
+            "expression": "sous_fertilisant == 'effluents_peu_charges_elevage'",
+            "libelle": "Oui",
+        },
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
+    # Sous un catalogue_parametre, la valeur de branche n'est PAS coercee en
+    # bool : "true" reste la string "true" (c'est une etiquette, le routage est
+    # porte par l'expression). On retrouve donc la branche par sa string.
+    btrue = [b for b in node["branches"] if b["valeur"] == "true"][0]
+    assert btrue["expression"] == "sous_fertilisant == 'effluents_peu_charges_elevage'"
+
+
+def test_renommer_branche_catalogue_parametre_ne_coerce_pas(staff_client):
+    """Regression : renommer une branche de catalogue_parametre 'true' -> 'oui'
+    doit persister 'oui' (string), pas la recoercer en bool True (sinon
+    l'edition rend 200 mais sans effet visible)."""
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="rename_cp", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    expr = "sous_fertilisant == 'effluents_peu_charges_elevage'"
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
+        f"?path=n_zvn/n_effluent&valeur=true",
+        {"valeur_new": "oui", "expression": expr, "libelle": "Oui"},
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    node = editor.get_node_at(draft.contenu, ("n_zvn", "n_effluent"))
+    valeurs = [b["valeur"] for b in node["branches"]]
+    assert "oui" in valeurs, f"renommage non persiste : {valeurs}"
+    assert True not in valeurs, f"valeur recoercee en bool : {valeurs}"
+
+
+def test_editer_branche_expression_vide_rejetee(staff_client):
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv5", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
+        f"?path=n_zvn/n_effluent&valeur=true",
+        {"valeur_new": "true", "expression": "", "libelle": "Oui"},
+    )
+    assert r.status_code == 422
+
+
+def test_editer_branche_expression_dunder_rejetee(staff_client):
+    c, u = staff_client
+    draft = DecisionTree.objects.create(
+        name="conv6", status="draft", contenu=_arbre_avec_complement(), created_by=u
+    )
+    c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/"
+        f"convert-catalogue-parametre/?path=n_zvn/q_effluent"
+    )
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/branche/"
+        f"?path=n_zvn/n_effluent&valeur=true",
+        {"valeur_new": "true", "expression": "().__class__", "libelle": "Oui"},
+    )
+    assert r.status_code == 422
+
+
+# ─── Conversion formulaire -> catalogue_parametre : renommage id q_ -> n_ ───
+
+
+def test_conversion_renomme_id_q_en_n_et_reporte_renvois():
+    """Convertir un noeud formulaire (id q_*) en catalogue_parametre doit
+    renommer l'id en n_* (convention) et reporter les renvoi_vers, sinon le
+    noeud converti viole la regle de validation et devient ineditable."""
+    contenu = {
+        "arbre": {
+            "noeud": {
+                "id": "n_root",
+                "type_noeud": "catalogue",
+                "champ": "en_zone_vulnerable",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "id": "q_effluent",
+                            "type_noeud": "formulaire",
+                            "champ": "effluent",
+                            "niveau": "complement",
+                            "texte": "?",
+                            "branches": [{"valeur": True, "regle": {"id": "r_ok"}}],
+                        },
+                    },
+                    {"valeur": False, "renvoi_vers": "q_effluent"},
+                ],
+            }
+        }
+    }
+    editor._apply_convert_to_catalogue_parametre(contenu, ("n_root", "q_effluent"))
+    node = contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["type_noeud"] == "catalogue_parametre"
+    assert node["id"] == "n_effluent"  # q_ -> n_
+    # renvoi_vers reporte sur le nouvel id
+    assert contenu["arbre"]["noeud"]["branches"][1]["renvoi_vers"] == "n_effluent"
+    # L'id respecte desormais la regle catalogue_parametre : plus AUCUNE erreur
+    # sur le champ 'id' (le bug d'origine). Les expressions vides restent a
+    # remplir par le juriste -> ces erreurs-la sont normales et attendues.
+    res = grammar.validate_node_local(node, "noeud_catalogue_parametre")
+    assert not any(e.field == "id" for e in res.errors), res.errors
+
+
+def test_conversion_id_deja_n_inchange():
+    """Un noeud catalogue (id n_*) converti garde son id (deja conforme)."""
+    contenu = {
+        "arbre": {
+            "noeud": {
+                "id": "n_root",
+                "type_noeud": "catalogue",
+                "champ": "x",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "id": "n_zone",
+                            "type_noeud": "catalogue",
+                            "champ": "zone",
+                            "source": "sig",
+                            "branches": [{"valeur": True, "regle": {"id": "r_ok"}}],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    editor._apply_convert_to_catalogue_parametre(contenu, ("n_root", "n_zone"))
+    node = contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["id"] == "n_zone"
+
+
+def test_update_node_champ_catalogue_parametre_branches_vides():
+    """Editer le `champ` d'un catalogue_parametre ne doit PAS etre bloque par
+    des branches a expression vide (construction en cours) : on ne valide que
+    le noeud, pas ses branches (bug edition silencieuse #142)."""
+    from envergo.nitrates.models import DecisionTree
+    from envergo.users.models import User
+
+    u = User.objects.create(email="ed@test.local", is_staff=True)
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "n_eff",
+                            "champ": "effluent",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "expression": "",
+                                    "regle": {"id": "r_a"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "expression": "",
+                                    "regle": {"id": "r_b"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    t = DecisionTree.objects.create(
+        name="t",
+        status="draft",
+        scope="zar",
+        region_code="44",
+        contenu=arbre,
+        contenu_yaml_brut="",
+    )
+    res = editor.update_node(
+        t, ("n_zvn", "n_eff"), {"id": "n_eff", "champ": "effluent_bis"}, u
+    )
+    assert res.ok, res.errors
+    t.refresh_from_db()
+    node = t.contenu["arbre"]["noeud"]["branches"][0]["noeud"]
+    assert node["champ"] == "effluent_bis"
+
+
+def test_edit_node_renommage_id_ne_crashe_pas(staff_client, draft):
+    """Renommer l'id d'un noeud via la vue : le re-render doit cibler le
+    NOUVEAU path (sinon get_node_at=None -> get_tags(None) -> 500 silencieux,
+    pas de swap, pas d'erreur). Bug #142."""
+    c, _ = staff_client
+    # draft a un n_origine (catalogue_parametre) sous n_zvn
+    r = c.post(
+        f"/admin/nitrates/arbre-decision/{draft.pk}/edit/noeud/?path=n_zvn/n_origine",
+        {"id": "n_origine_renomme", "champ": "effluent_peu_charge_elevage"},
+    )
+    assert r.status_code == 200
+    draft.refresh_from_db()
+    assert editor.get_node_at(draft.contenu, ("n_zvn", "n_origine_renomme")) is not None

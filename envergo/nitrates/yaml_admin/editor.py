@@ -50,10 +50,14 @@ class EditResult:
     errors: list[FieldError] = field(default_factory=list)
     # Description courte pour la timeline / undo
     summary: str = ""
+    # Nouvel id du noeud quand une mutation le renomme (ex conversion en
+    # catalogue_parametre : q_* -> n_*). Permet a la vue de re-render avec le
+    # bon path. None si l'id n'a pas change.
+    new_id: str | None = None
 
     @classmethod
-    def success(cls, summary: str = "") -> "EditResult":
-        return cls(ok=True, summary=summary)
+    def success(cls, summary: str = "", new_id: str | None = None) -> "EditResult":
+        return cls(ok=True, summary=summary, new_id=new_id)
 
     @classmethod
     def fail(cls, errors: list[FieldError]) -> "EditResult":
@@ -92,12 +96,24 @@ def get_node_at(arbre: dict, path: tuple[str, ...]) -> dict | None:
 
 
 def get_branche_at(arbre: dict, parent_path: tuple[str, ...], valeur) -> dict | None:
-    """Retourne la branche d'un noeud parent identifiee par sa valeur."""
+    """Retourne la branche d'un noeud parent identifiee par sa valeur.
+
+    Tolerant au type : la valeur arrive de la query string et peut etre
+    coercee differemment du YAML (ex: branche d'un catalogue_parametre avec
+    valeur string 'False', mais la vue passe le bool False ; ou un int 2
+    stocke en string '2'). On tente un match exact puis un match par
+    comparaison string.
+    """
     parent = get_node_at(arbre, parent_path)
     if parent is None:
         return None
-    for branche in parent.get("branches") or []:
-        if isinstance(branche, dict) and branche.get("valeur") == valeur:
+    branches = [b for b in (parent.get("branches") or []) if isinstance(b, dict)]
+    for branche in branches:
+        if branche.get("valeur") == valeur:
+            return branche
+    # Fallback tolerant au type (str <-> bool/int).
+    for branche in branches:
+        if str(branche.get("valeur")) == str(valeur):
             return branche
     return None
 
@@ -137,7 +153,13 @@ def update_node(
             del merged[k]
         else:
             merged[k] = v
-    res = validate_node_local(merged, kind, arbre=tree.contenu, own_path=path)
+    # On edite UNIQUEMENT les champs scalaires du noeud (id/champ/niveau...),
+    # jamais les branches. On valide donc le noeud SANS ses branches : sinon
+    # editer le `champ` d'un catalogue_parametre echouerait des qu'une branche
+    # a encore une expression vide (construction en cours) -- bug : la
+    # validation des expressions se fait branche par branche, pas ici.
+    a_valider = {k: v for k, v in merged.items() if k != "branches"}
+    res = validate_node_local(a_valider, kind, arbre=tree.contenu, own_path=path)
     if not res.ok:
         return EditResult.from_validation(res)
     return _commit_mutation(
@@ -272,8 +294,17 @@ def update_branch_content(
                 )
             ]
         )
-    # 2. Le contenu lui-meme est valide (niveau 1)
-    grammar_kind = _grammar_kind_from_content_kind(content_kind)
+    # 2. Le contenu lui-meme est valide (niveau 1).
+    # Pour un noeud, on derive le grammar kind du type_noeud REEL du contenu
+    # (et non du content_kind d'entree) : le content_kind "noeud_catalogue"
+    # peut produire un noeud catalogue_parametre quand la source choisie est
+    # "expression" (fusion UX #128). On valide alors avec le bon schema.
+    if content_kind.startswith("noeud_") and isinstance(content_data, dict):
+        grammar_kind = _kind_from_node(content_data) or _grammar_kind_from_content_kind(
+            content_kind
+        )
+    else:
+        grammar_kind = _grammar_kind_from_content_kind(content_kind)
     res = validate_node_local(content_data, grammar_kind, arbre=tree.contenu)
     if not res.ok:
         return EditResult.from_validation(res)
@@ -291,6 +322,85 @@ def update_branch_content(
             contenu, parent_path, branche_valeur, storage_key, content_data
         ),
         summary=f"{content_kind} ajouté dans la branche {branche_valeur!r}",
+    )
+
+
+def insert_parent(
+    tree: DecisionTree,
+    node_path: tuple[str, ...],
+    content_kind: str,
+    content_data: dict,
+    user,
+) -> EditResult:
+    """Intercale un NOUVEAU noeud N juste AU-DESSUS du noeud cible A.
+
+    Avant :  P --[X]--> A --[branches de A]
+    Apres :  P --[X]--> N --[a_definir]--> A --[branches de A inchangees]
+
+    N prend la place de A dans la branche X du parent P ; A devient le contenu
+    d'une unique branche placeholder 'a_definir' de N (a renommer ensuite). A et
+    tout son sous-arbre restent intacts.
+
+    Declenche depuis la barre d'actions du noeud A (icone ⤴). La racine ne peut
+    pas etre intercalee (elle resout en_zone_vulnerable, contrat fige).
+    """
+    if not node_path:
+        return EditResult.fail(
+            [FieldError("", "On ne peut pas intercaler au-dessus de la racine.")]
+        )
+    node = get_node_at(tree.contenu, node_path)
+    if node is None:
+        return EditResult.fail([FieldError("", "Nœud cible introuvable.")])
+    # Le parent P de A et la branche de P qui porte A.
+    parent_path = node_path[:-1]
+    parent = get_node_at(tree.contenu, parent_path)
+    if parent is None:
+        return EditResult.fail([FieldError("", "Nœud parent introuvable.")])
+    branche_porteuse = next(
+        (
+            b
+            for b in (parent.get("branches") or [])
+            if isinstance(b, dict)
+            and isinstance(b.get("noeud"), dict)
+            and b["noeud"].get("id") == node_path[-1]
+        ),
+        None,
+    )
+    if branche_porteuse is None:
+        return EditResult.fail(
+            [FieldError("", "Branche porteuse du nœud introuvable.")]
+        )
+    if not content_kind.startswith("noeud_"):
+        return EditResult.fail(
+            [
+                FieldError(
+                    "", "Seul un nœud (formulaire / catalogue) peut être intercalé."
+                )
+            ]
+        )
+
+    # Validation du nouveau noeud (sans ses branches : on fabrique l'unique
+    # branche placeholder ici).
+    grammar_kind = _kind_from_node(content_data) or _grammar_kind_from_content_kind(
+        content_kind
+    )
+    a_valider = {k: v for k, v in content_data.items() if k != "branches"}
+    res = validate_node_local(a_valider, grammar_kind, arbre=tree.contenu)
+    if not res.ok:
+        return EditResult.from_validation(res)
+
+    new_id = content_data.get("id")
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_ADD,
+        target_path="/".join(node_path),
+        description=(
+            f"Intercalation du nœud {new_id!r} au-dessus de {node.get('id', '')}"
+        ),
+        mutate=lambda contenu: _apply_insert_parent(contenu, node_path, content_data),
+        summary=f"Nœud {new_id!r} intercalé au-dessus de {node.get('id', '')}",
+        new_id=new_id,
     )
 
 
@@ -397,6 +507,126 @@ def delete_node(
     )
 
 
+def convert_node_to_catalogue_parametre(
+    tree: DecisionTree,
+    path: tuple[str, ...],
+    user,
+) -> EditResult:
+    """Convertit un noeud existant (formulaire complement ou catalogue) en
+    `catalogue_parametre` (#128), SUR PLACE et SANS PERTE.
+
+    Cas d'usage : remplacer une question complementaire « S'agit-il d'un
+    effluent peu charge ? » par une resolution automatique par expression,
+    en gardant les branches deja construites (true/false + leur sous-arbre).
+
+    Transformation :
+      - type_noeud -> "catalogue_parametre"
+      - on RETIRE les champs propres au formulaire : niveau, texte, aide, source
+      - on RENOMME l'id en 'n_*' (convention catalogue_parametre, cf.
+        grammar.ID_NOEUD_CATALOGUE_RE) : un id 'q_*' herite du formulaire
+        violerait la regle de validation et bloquerait toute edition du noeud.
+        Les renvoi_vers pointant vers l'ancien id sont reportes.
+      - on GARDE champ (nom logique de sortie, tracabilite)
+      - on GARDE toutes les branches et leur contenu (noeud/regle/renvoi_vers)
+      - on ajoute `expression: ""` (vide) sur chaque branche qui n'en a pas,
+        a remplir ensuite par le juriste (l'arbre ne sera pas activable tant
+        que les expressions sont vides : le validateur deep les refuse).
+
+    Refuse la racine (un catalogue_parametre racine n'a pas de sens : la
+    racine resout en_zone_vulnerable) et les noeuds deja catalogue_parametre.
+    """
+    node = get_node_at(tree.contenu, path)
+    if node is None:
+        return EditResult.fail([FieldError("", "Nœud introuvable.")])
+    if len(path) < 2:
+        return EditResult.fail(
+            [FieldError("", "La racine ne peut pas être convertie.")]
+        )
+    tn = node.get("type_noeud")
+    if tn == "catalogue_parametre":
+        return EditResult.fail(
+            [FieldError("", "Ce nœud est déjà un catalogue paramétré.")]
+        )
+    if tn not in ("formulaire", "catalogue"):
+        return EditResult.fail(
+            [FieldError("", f"Type de nœud {tn!r} non convertible.")]
+        )
+    if not node.get("champ"):
+        return EditResult.fail(
+            [
+                FieldError(
+                    "",
+                    "Le nœud doit avoir un `champ` pour être converti "
+                    "(nom logique de sortie du catalogue paramétré).",
+                )
+            ]
+        )
+
+    nouvel_id = _id_catalogue_parametre(node.get("id"))
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_EDIT,
+        target_path="/".join(path),
+        description=(f"Conversion du nœud {node.get('id', '')} en catalogue paramétré"),
+        mutate=lambda contenu: _apply_convert_to_catalogue_parametre(contenu, path),
+        summary=f"Nœud {node.get('id', '')} converti en catalogue paramétré",
+        new_id=nouvel_id,
+    )
+
+
+def _id_catalogue_parametre(ancien_id: str | None) -> str | None:
+    """Id conforme a la convention catalogue_parametre (prefixe 'n_').
+    q_xxx -> n_xxx ; deja n_* -> inchange ; autre -> prefixe 'n_'. None si vide."""
+    if not ancien_id:
+        return None
+    if ancien_id.startswith("n_"):
+        return ancien_id
+    if ancien_id.startswith("q_"):
+        return "n_" + ancien_id[2:]
+    return "n_" + ancien_id
+
+
+def _apply_convert_to_catalogue_parametre(contenu: dict, path: tuple[str, ...]) -> None:
+    node = get_node_at(contenu, path)
+    if node is None:
+        return
+    node["type_noeud"] = "catalogue_parametre"
+    # Retire les champs propres au formulaire / catalogue SIG.
+    for cle in ("niveau", "texte", "aide", "source", "reference"):
+        node.pop(cle, None)
+    # Renomme l'id pour respecter la convention des catalogue_parametre
+    # (prefixe 'n_', cf. grammar.ID_NOEUD_CATALOGUE_RE). Un noeud formulaire
+    # converti a un id 'q_*' qui violerait la regle de validation et bloquerait
+    # toute edition ulterieure du noeud. On reporte le renommage sur les
+    # renvoi_vers qui pointaient vers l'ancien id.
+    ancien_id = node.get("id")
+    nouvel_id = _id_catalogue_parametre(ancien_id)
+    if nouvel_id and nouvel_id != ancien_id:
+        node["id"] = nouvel_id
+        racine = contenu.get("arbre", {}).get("noeud")
+        if racine:
+            _reporter_renvois(racine, ancien_id, nouvel_id)
+    # Ajoute une expression vide sur chaque branche qui n'en a pas, pour que
+    # le juriste la remplisse. On preserve valeur + contenu intacts.
+    for branche in node.get("branches") or []:
+        if isinstance(branche, dict) and "expression" not in branche:
+            branche["expression"] = ""
+
+
+def _reporter_renvois(noeud: dict, ancien_id: str, nouvel_id: str) -> None:
+    """Met a jour recursivement les `renvoi_vers` pointant vers `ancien_id`."""
+    if not isinstance(noeud, dict):
+        return
+    for branche in noeud.get("branches") or []:
+        if not isinstance(branche, dict):
+            continue
+        if branche.get("renvoi_vers") == ancien_id:
+            branche["renvoi_vers"] = nouvel_id
+        if "noeud" in branche:
+            _reporter_renvois(branche["noeud"], ancien_id, nouvel_id)
+
+
 # ─── Commit pipeline ───────────────────────────────────────────────────────
 
 
@@ -408,6 +638,7 @@ def _commit_mutation(
     description: str,
     mutate,
     summary: str,
+    new_id: str | None = None,
 ) -> EditResult:
     """Pattern d'application d'une mutation :
        1. Enregistrer une revision avec snapshot d'avant
@@ -427,7 +658,7 @@ def _commit_mutation(
         mutate(tree.contenu)
         tree.contenu_yaml_brut = _dump_yaml(tree.contenu)
         tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
-    return EditResult.success(summary=summary)
+    return EditResult.success(summary=summary, new_id=new_id)
 
 
 def _dump_yaml(contenu: dict) -> str:
@@ -488,11 +719,55 @@ def _apply_set_branch_content(
     branche = get_branche_at(contenu, parent_path, branche_valeur)
     if branche is None:
         return
-    # On efface les autres clefs de contenu pour respecter "exactement un de".
-    for key in ("noeud", "regle", "renvoi_vers"):
+    # On efface les autres clefs de contenu pour respecter "exactement un de"
+    # (cf. BRANCHE_SCHEMA oneOf : noeud/regle/renvoi_vers/renvoi_arbre/feuille_vide).
+    for key in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide"):
         if key != storage_key and key in branche:
             del branche[key]
-    branche[storage_key] = content_data
+    # Clefs SCALAIRES (string/bool) : le builder renvoie {key: valeur}, on
+    # stocke la valeur brute (le schema attend une string / un bool, pas un
+    # dict). Les clefs structurelles (noeud/regle) stockent le dict tel quel.
+    if storage_key in ("renvoi_vers", "renvoi_arbre", "feuille_vide") and isinstance(
+        content_data, dict
+    ):
+        branche[storage_key] = content_data.get(storage_key)
+    else:
+        branche[storage_key] = content_data
+
+
+def _apply_insert_parent(
+    contenu: dict,
+    node_path: tuple[str, ...],
+    nouveau_noeud: dict,
+) -> None:
+    """Intercale `nouveau_noeud` (N) juste au-dessus du noeud A (node_path).
+
+    P --[X]--> A   ->   P --[X]--> N --[a_definir]--> A
+
+    On remplace, dans la branche de P qui portait A, le noeud A par N ; N recoit
+    une unique branche placeholder 'a_definir' qui pointe vers A inchange.
+    """
+    node = get_node_at(contenu, node_path)
+    if node is None:
+        return
+    parent = get_node_at(contenu, node_path[:-1])
+    if parent is None:
+        return
+    branche = next(
+        (
+            b
+            for b in (parent.get("branches") or [])
+            if isinstance(b, dict)
+            and isinstance(b.get("noeud"), dict)
+            and b["noeud"].get("id") == node_path[-1]
+        ),
+        None,
+    )
+    if branche is None:
+        return
+    nouveau = dict(nouveau_noeud)
+    nouveau["branches"] = [{"valeur": "a_definir", "noeud": branche["noeud"]}]
+    branche["noeud"] = nouveau
 
 
 def _apply_delete_branch(
@@ -564,6 +839,8 @@ def _kind_from_node(node: dict) -> str | None:
         return "noeud_formulaire"
     if tn == "catalogue":
         return "noeud_catalogue"
+    if tn == "catalogue_parametre":
+        return "noeud_catalogue_parametre"
     return None
 
 
@@ -575,6 +852,7 @@ _GRAMMAR_KIND = {
     "noeud_formulaire_type_fertilisant": "noeud_formulaire",
     "noeud_formulaire_complement": "noeud_formulaire",
     "noeud_catalogue": "noeud_catalogue",
+    "noeud_catalogue_parametre": "noeud_catalogue_parametre",
     "regle": "regle",
     "renvoi_vers": "renvoi_vers",
 }
@@ -592,4 +870,8 @@ def _storage_key_from_content_kind(content_kind: str) -> str:
         return "regle"
     if content_kind == "renvoi_vers":
         return "renvoi_vers"
+    if content_kind == "renvoi_arbre":
+        return "renvoi_arbre"
+    if content_kind == "feuille_vide":
+        return "feuille_vide"
     raise ValueError(f"content_kind inconnu : {content_kind}")

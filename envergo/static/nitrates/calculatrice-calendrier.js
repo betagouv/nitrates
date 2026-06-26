@@ -76,6 +76,69 @@
     return total + (jour - 1);
   }
 
+  // ─── Bornage des inputs (#126) ─────────────────────────────────────────
+  // Un input date peut porter `min` et/ou `max` (JJ/MM) : la saisie doit
+  // rester dans [min, max] en ordre annee agricole (juil->juin). Sert a
+  // empecher des dates incoherentes avec la variante deja choisie en cascade
+  // (ex couvert recolte avant 31/12 -> destruction max=31/12).
+
+  // True si `jjmm` (string) respecte les bornes de l'input. Tolerant : si
+  // bornes absentes ou jjmm non parseable, considere dans les bornes.
+  function dansBornes(inp, jjmm) {
+    const j = jjmmToJourAgricole(jjmm);
+    if (j === null) return true;
+    if (inp.min) {
+      const jmin = jjmmToJourAgricole(inp.min);
+      if (jmin !== null && j < jmin) return false;
+    }
+    if (inp.max) {
+      const jmax = jjmmToJourAgricole(inp.max);
+      if (jmax !== null && j > jmax) return false;
+    }
+    return true;
+  }
+
+  // Phrase explicative quand une saisie sort des bornes, contextualisee sur
+  // le sens metier (avant/apres). Retourne "" si dans les bornes.
+  function messageHorsBornes(inp, jjmm) {
+    if (dansBornes(inp, jjmm)) return "";
+    const lc = deduireLabelCourt(inp);
+    const d = (v) => jjmmLisible(v).replace(/\.$/, "");
+    if (inp.max && !inp.min) {
+      return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
+    }
+    if (inp.min && !inp.max) {
+      return `La date de ${lc} doit être au plus tôt le ${d(inp.min)} pour ce type de couvert.`;
+    }
+    return `La date de ${lc} doit être comprise entre le ${d(inp.min)} et le ${d(inp.max)} pour ce type de couvert.`;
+  }
+
+  // Note explicative permanente affichee dans le date-picker quand l'input
+  // est borne. Explique POURQUOI certaines dates sont grisees, en reliant a
+  // la variante de couvert choisie en amont (#126). Retourne "" si pas de
+  // borne.
+  function messageBornePicker(inp) {
+    if (!inp || (!inp.min && !inp.max)) return "";
+    const lc = deduireLabelCourt(inp);
+    const intro = `D'après le type de couvert sélectionné, la ${lc}`;
+    // jjmmLisible retourne deja "31 déc." (point inclus) -> on strip pour ne
+    // pas doubler la ponctuation finale de la phrase.
+    const d = (jjmm) => jjmmLisible(jjmm).replace(/\.$/, "");
+    if (inp.max && !inp.min) {
+      return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
+    }
+    if (inp.min && !inp.max) {
+      return `${intro} intervient nécessairement à partir du ${d(inp.min)}.`;
+    }
+    return `${intro} doit être comprise entre le ${d(inp.min)} et le ${d(inp.max)}.`;
+  }
+
+  // "31/12" -> "31 déc." (via l'index agricole).
+  function jjmmLisible(jjmm) {
+    const j = jjmmToJourAgricole(jjmm);
+    return j !== null ? jourAgricoleToLisible(j) : jjmm;
+  }
+
   // Convertit un index de jour agricole en "JJ mois" lisible.
   function jourAgricoleToLisible(j) {
     if (j < 0 || j >= TOTAL_JOURS) return "";
@@ -155,36 +218,53 @@
     };
   }
 
-  // Evalue `condition` (mini-DSL "<input_id> <op> <JJ/MM>") sur les
-  // valeurs courantes du form. La comparaison utilise l'ordre de
+  // Evalue `condition` (mini-DSL "<terme> <op> <terme>") sur les valeurs
+  // courantes du form. Un terme = JJ/MM | event | event±Nunit, EXACTEMENT
+  // la grammaire des bornes du/au -> on le resout via parseBorne (synchro
+  // avec le backend condition.py). La comparaison utilise l'ordre de
   // l'annee agricole (juillet=0 ... juin~365). Cf.
   // spec_extension_grammaire_condition.
   //
   // Retourne true si la condition est vraie ou absente, false sinon.
-  // Si la valeur user pour input_id est manquante / non-parseable, on
-  // retourne true (mode "permissif") -- la periode reste affichee, sans
-  // distorsion, jusqu'a ce que l'utilisateur saisisse une valeur valide.
-  const CONDITION_RE = /^\s*([a-z][a-z0-9_]*)\s*(<=|>=|==|!=|<|>)\s*(\d{2}\/\d{2})\s*$/;
-  function evalCondition(rawCond, valeurs) {
-    if (!rawCond) return true;
-    const m = CONDITION_RE.exec(rawCond);
-    if (!m) return true; // condition mal formee : permissif (validator backend l'aura rejete)
-    const inputId = m[1];
+  // Mode "permissif" : si un terme reference un event non encore saisi
+  // (ou non parseable), on retourne true -- la periode reste affichee sans
+  // distorsion jusqu'a ce que l'utilisateur saisisse une valeur valide.
+  //
+  // Le terme = un sous-groupe (date | event | event±offset). On reutilise
+  // le coeur de BORNE_RE pour les 2 cotes.
+  const _TERME = "\\d{2}/\\d{2}|[a-z][a-z0-9_]*(?:[+-]\\d+(?:jours|semaines|mois))?";
+  const CONDITION_RE = new RegExp(
+    "^\\s*(" + _TERME + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + _TERME + ")\\s*$"
+  );
+  // Evalue UNE comparaison `terme op terme`. Retourne true si vraie OU si un
+  // terme n'est pas resolvable (event non saisi / part mal formee) -> mode
+  // permissif (la periode reste affichee sans distorsion ; le validator
+  // backend a deja rejete les conditions reellement invalides a la saisie).
+  function evalComparaison(rawCmp, valeurs) {
+    const m = CONDITION_RE.exec(rawCmp);
+    if (!m) return true;
     const op = m[2];
-    const dateLit = m[3];
-    const valUser = valeurs[inputId];
-    const jourUser = valUser ? jjmmToJourAgricole(valUser) : null;
-    const jourCible = jjmmToJourAgricole(dateLit);
-    if (jourUser === null || jourCible === null) return true;
+    const gauche = parseBorne(m[1], valeurs).jour;
+    const droite = parseBorne(m[3], valeurs).jour;
+    if (gauche === null || droite === null) return true;
     switch (op) {
-      case "<": return jourUser < jourCible;
-      case "<=": return jourUser <= jourCible;
-      case ">": return jourUser > jourCible;
-      case ">=": return jourUser >= jourCible;
-      case "==": return jourUser === jourCible;
-      case "!=": return jourUser !== jourCible;
+      case "<": return gauche < droite;
+      case "<=": return gauche <= droite;
+      case ">": return gauche > droite;
+      case ">=": return gauche >= droite;
+      case "==": return gauche === droite;
+      case "!=": return gauche !== droite;
     }
     return true;
+  }
+  // Une condition = 1+ comparaisons jointes par `&&` (conjonction / ET) : vraie
+  // si TOUTES le sont. Pas de `||` ni de parentheses (cf. condition.py backend,
+  // qui DOIT rester synchro). Condition absente => true.
+  function evalCondition(rawCond, valeurs) {
+    if (!rawCond) return true;
+    return rawCond
+      .split("&&")
+      .every((cmp) => evalComparaison(cmp, valeurs));
   }
 
   // Hierarchie de severite des regimes pour la linearisation visuelle
@@ -214,8 +294,16 @@
   //     QUE sur l'intersection avec les jours déjà couverts par une
   //     période principale en passe 1. Hors intersection : silence
   //     (la période est sans effet, pas d'affichage). Sur la zone
-  //     intersection, le masque ecrase la principale (override : c'est
-  //     le but du masque, ex 'interdit avant 4 semaines apres semis').
+  //     intersection :
+  //       - vs la PRINCIPALE sous-jacente : le masque ecrase toujours
+  //         (override : c'est le but du masque, ex 'interdit avant
+  //         4 semaines apres semis' override l'autorise du cadre).
+  //       - vs un AUTRE masque qui a deja peint le meme jour : hierarchie
+  //         de severite, le plus restrictif gagne (interdiction >
+  //         autorisation_sous_condition > libre). Sans ca, le dernier
+  //         masque de la liste gagnait, et un masque ASC tardif pouvait
+  //         cannibaliser un masque interdiction anterieur (bug observe :
+  //         l'interdit '20j avant destruction' efface par l'ASC du semis).
   //
   // Le `libre` initial = pas de zone overlay (fond vert visible).
   function computeRegimePerDay(periodes, valeurs) {
@@ -224,6 +312,12 @@
     // Sentinel : qui a touché chaque jour en passe 1 ? Sert à savoir
     // si une période masque peut écrire à cet index ou non.
     const principalCovers = new Array(TOTAL_JOURS).fill(false);
+
+    // Regime pose par un masque (passe 2) a chaque index, ou null si aucun
+    // masque n'a encore touche ce jour. Sert a arbitrer DEUX masques qui se
+    // chevauchent par severite (le 1er masque override la principale ; les
+    // suivants ne gagnent que s'ils sont >= severes).
+    const masqueRegime = new Array(TOTAL_JOURS).fill(null);
 
     // Compte le nombre de principales qui couvrent chaque jour. Sert a
     // distinguer un jour de CHEVAUCHEMENT reel (>=1 principale qui contient
@@ -282,7 +376,16 @@
         if (i === du && principalEnds[i] > 0 && principalStarts[i] === 0) {
           return;
         }
-        result[i] = regime;
+        // 1er masque sur ce jour : override la principale. Masque suivant :
+        // ne gagne que s'il est >= severe que le masque deja en place (sinon
+        // un ASC tardif ecraserait un interdit anterieur).
+        if (
+          masqueRegime[i] === null ||
+          (SEVERITE_REGIME[regime] ?? 0) >= (SEVERITE_REGIME[masqueRegime[i]] ?? 0)
+        ) {
+          result[i] = regime;
+          masqueRegime[i] = regime;
+        }
       };
       if (du <= au) {
         for (let i = du; i <= au; i++) apply(i);
@@ -389,39 +492,32 @@
     `;
   }
 
-  function renderCalendrier(regimeParJour, actives) {
-    // Segments contigus de même régime. On ne génère une zone overlay
-    // QUE pour rouge/orange : le vert est le fond global de la barre.
-    const segmentsRaw = [];
+  // Segments contigus de meme regime, derives de regimeParJour. Source
+  // unique de verite pour la barre, les bornes ET le recap (ce qui s'applique
+  // REELLEMENT, masques resolus -- pas les periodes brutes).
+  function computeSegments(regimeParJour) {
+    const segments = [];
     let cur = { regime: regimeParJour[0], du: 0, au: 0 };
     for (let i = 1; i < TOTAL_JOURS; i++) {
       if (regimeParJour[i] === cur.regime) {
         cur.au = i;
       } else {
-        segmentsRaw.push(cur);
+        segments.push(cur);
         cur = { regime: regimeParJour[i], du: i, au: i };
       }
     }
-    segmentsRaw.push(cur);
+    segments.push(cur);
+    return segments;
+  }
 
-    // Jours des dates saisies (semis/destruction) : a ces frontieres, c'est
-    // le tick NOIR qui materialise la transition. On supprime alors la
-    // bordure de zone du cote concerne pour ne pas avoir un double trait
-    // (tick noir + bord de zone colle a 1px). REGLE GENERALE, symetrique :
-    // un bord de zone (gauche ou droit) ADJACENT a une date saisie (a +/-1
-    // jour, car une zone finit AU jour saisi et la suivante commence le
-    // LENDEMAIN -- meme transition) perd sa bordure de ce cote. Vaut pour
-    // tous les regimes (interdiction/autorisation) et les 2 sens.
-    const inputDaysZone = [];
-    for (const inp of inputs) {
-      const j = jjmmToJourAgricole(valeurs[inp.id]);
-      if (j !== null) inputDaysZone.push(j);
-    }
-    // s.du = bord GAUCHE (1er jour de la zone) ; s.au = bord DROIT (dernier
-    // jour inclus). Chacun est "absorbe" s'il est adjacent a une date saisie.
-    const bordAdjacentInput = (jour) =>
-      inputDaysZone.some((d) => Math.abs(d - jour) <= 1);
+  function renderCalendrier(regimeParJour, actives) {
+    // On ne génère une zone overlay QUE pour rouge/orange : le vert est le
+    // fond global de la barre.
+    const segmentsRaw = computeSegments(regimeParJour);
 
+    // Les zones n'ont plus de bordure verticale : chaque frontiere est
+    // materialisee par un unique tic (cf. renderBornes / CSS --big-tick).
+    // Une zone ne porte donc que son fond colore + son z-index.
     const zonesHtml = segmentsRaw
       .map((s) => {
         const couleur = REGIME_COULEUR_ZONE[s.regime];
@@ -434,11 +530,6 @@
           `calendrier-epandage__zone--${couleur}`,
         ];
         if (flottant) classes.push("calendrier-epandage__zone--flottant");
-        // Bordures supprimees aux frontieres marquees par un tick noir.
-        if (bordAdjacentInput(s.au))
-          classes.push("calendrier-epandage__zone--no-border-right");
-        if (bordAdjacentInput(s.du))
-          classes.push("calendrier-epandage__zone--no-border-left");
         // Tooltip : phrase humaine qui decrit la fenetre. On cherche la
         // periode YAML d'origine qui couvre ce segment (premier match)
         // pour reutiliser sa structure (du, au, regime) et generer une
@@ -451,14 +542,17 @@
       })
       .join("");
 
-    // Marqueur "aujourd'hui" : point noir DANS la barre (cf. CSS standard
-    // `.calendrier-epandage__today`). Pas de label add-on : le CSS standard
-    // le pose deja via ::after "Aujourd'hui" sous le point.
+    // Marqueur "aujourd'hui" : point noir DANS la barre + label distinct ancre
+    // sur la barre (cf. CSS `.calendrier-epandage__today` / `__today-label`).
+    // Le label est un element a part (plus le ::after) pour etre borne par les
+    // bords du calendrier et ne jamais etre croppe quand le point tombe pres
+    // d'un bord (#134) ; meme structure que le templatetag statique.
     const aujourdhui = aujourdhuiAgricole();
     const aujLeft = aujourdhui != null ? (aujourdhui / TOTAL_JOURS) * 100 : null;
     const aujourdhuiHtml =
       aujLeft != null
-        ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>`
+        ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>` +
+          `<span class="calendrier-epandage__today-label" style="--today-pct:${aujLeft.toFixed(3)}%">Aujourd'hui</span>`
         : "";
 
     // Bornes textuelles sous la barre. Source unique = les segments
@@ -717,13 +811,22 @@
         if (it.couleur && it.couleur !== "noir") {
           cls.push(`calendrier-epandage__period-date--${it.couleur}`);
         }
-        if (it.kind === "input") {
-          cls.push("calendrier-epandage__period-date--big-tick");
-        }
+        // TOUS les ticks (frontieres de zone ET dates saisies) sont des
+        // big-tick : un SEUL trait vertical qui traverse toute la barre puis
+        // deborde de quelques px sous elle pour rejoindre le label. C'est ce
+        // meme trait unique qui materialise la frontiere -- les zones n'ont
+        // donc plus de border-left/right (cf. CSS). Garantit une ligne
+        // continue, meme couleur, parfaitement alignee (un seul element par
+        // frontiere au lieu de bordure-de-zone + leader separe).
+        cls.push("calendrier-epandage__period-date--big-tick");
         const tip = it.title || it.label;
+        // Le texte est dans un span INTERNE place sur une couche z-index
+        // superieure aux tics (cf. CSS .period isolation) : ainsi aucune barre
+        // verticale ne coupe le libelle quand deux dates sont proches. Le tic
+        // (::before) reste sur la couche basse, derriere tous les textes.
         return `<span class="${cls.join(" ")}"
                        style="left:${it.pct.toFixed(3)}%"
-                       data-tooltip="${escapeHtml(tip)}">${escapeHtml(it.label)}</span>`;
+                       data-tooltip="${escapeHtml(tip)}"><span class="calendrier-epandage__period-date-label">${escapeHtml(it.label)}</span></span>`;
       })
       .join("");
     return `<div class="calendrier-epandage__period">${inner}</div>`;
@@ -897,81 +1000,176 @@
     return `<ul class="calendrier-epandage__legende">${items}</ul>`;
   }
 
-  // Traduit une condition "<input_id> <op> <JJ/MM>" en phrase humaine
-  // pour le recap, ex "date_destruction_couvert < 05/12" ->
-  // "car destruction avant le 5 déc.". Utilise le label_court de l'input
-  // pour nommer la date utilisateur. Retourne null si non parseable.
+  // Phrase humaine d'un terme de condition (date | event | event±offset).
+  //   15/12                         -> "le 15 déc."
+  //   date_destruction_couvert      -> "la destruction"
+  //   date_semis_couvert+4semaines  -> "4 semaines après le semis"
+  function termeToText(raw, inputById) {
+    const m = BORNE_RE.exec(raw);
+    if (!m) {
+      // date fixe ?
+      if (/^\d{2}\/\d{2}$/.test(raw)) {
+        const j = jjmmToJourAgricole(raw);
+        return j != null ? `le ${jourAgricoleToLisible(j)}` : raw;
+      }
+      return raw;
+    }
+    const eventId = m[1];
+    const inp = inputById[eventId];
+    const nom = inp ? deduireLabelCourt(inp) : eventId;
+    if (!m[2]) {
+      // event nu
+      return `la ${nom}`;
+    }
+    // event ± offset
+    const n = m[3];
+    const unit = m[4];
+    const prep = m[2] === "+" ? "après" : "avant";
+    return `${n} ${unit} ${prep} le ${nom}`;
+  }
+
+  // Traduit une condition "<terme> <op> <terme>" en phrase humaine pour le
+  // recap, ex "date_destruction_couvert < 05/12" -> "car la destruction est
+  // avant le 5 déc." ou "date_semis_couvert+4semaines > 15/12" -> "car
+  // 4 semaines après le semis est après le 15 déc.". Retourne null si non
+  // parseable.
   function conditionToText(rawCond, inputById) {
     if (!rawCond) return null;
     const m = CONDITION_RE.exec(rawCond);
     if (!m) return null;
-    const inputId = m[1];
+    const gauche = termeToText(m[1], inputById);
     const op = m[2];
-    const dateLit = m[3];
-    const inp = inputById[inputId];
-    const nom = inp ? deduireLabelCourt(inp) : inputId;
-    // Date litterale en forme lisible (5 déc.) via l'index agricole.
-    const jour = jjmmToJourAgricole(dateLit);
-    const dateStr = jour != null ? jourAgricoleToLisible(jour) : dateLit;
-    // Operateur -> tournure FR. On parle de la date `nom` par rapport au
-    // seuil `dateStr`.
+    const droite = termeToText(m[3], inputById);
     const tournure = {
-      "<": `avant le ${dateStr}`,
-      "<=": `au plus tard le ${dateStr}`,
-      ">": `après le ${dateStr}`,
-      ">=": `à partir du ${dateStr}`,
-      "==": `le ${dateStr}`,
-      "!=": `différent du ${dateStr}`,
+      "<": "avant",
+      "<=": "au plus tard à",
+      ">": "après",
+      ">=": "au plus tôt à",
+      "==": "égal à",
+      "!=": "différent de",
     }[op];
     if (!tournure) return null;
-    return `car ${nom} ${tournure}`;
+    return `car ${gauche} est ${tournure} ${droite}`;
   }
 
-  function renderRecap(periodes) {
-    // Pour chaque période : phrase courte expliquant la fenêtre concrète.
-    // Periodes masque sans intersection : silencieux (cf. spec masque).
-    const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
-    const activeSet = activePeriodesSet();
-    const lignes = [];
-    for (const p of periodes || []) {
-      if (!activeSet.has(p)) continue;
+  // Trouve la periode active dont la fenetre EFFECTIVE recouvre ce segment,
+  // pour recuperer ses annotations (event+offset) et sa condition. On prefere
+  // la periode du meme regime que le segment, et celle dont la fenetre
+  // effective coincide le mieux avec le segment. Retourne null si aucune.
+  function periodeSourcePourSegment(segment, actives) {
+    let best = null;
+    for (const p of actives || []) {
       const regime = p.regime || "interdiction";
-      const verbe = REGIME_VERBE[regime] || regime;
-      const partDu = parseBorne(p.du, valeurs);
-      const partAu = parseBorne(p.au, valeurs);
-      // Dates affichees = fenetre EFFECTIVE (alignee sur la barre). Pour un
-      // masque, c'est l'intersection avec les principales (donc l'interdit
-      // "demarre au 15/10" et pas au semis) ; pour une principale, c'est sa
-      // fenetre brute. Les annotations event+offset restent calculees sur la
-      // borne brute (elles expriment la regle, pas la fenetre rendue).
-      const effective = effectivePeriodWindow(p);
-      const jourDu = effective ? effective.du : partDu.jour;
-      const jourAu = effective ? effective.au : partAu.jour;
-      const duStr = jourDu != null ? jourAgricoleToLisible(jourDu) : "?";
-      const auStr = jourAu != null ? jourAgricoleToLisible(jourAu) : "?";
-      const annDu = annoterBorne(partDu, "du", inputById);
-      const annAu = annoterBorne(partAu, "au", inputById);
-      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
-      const annotations = [annDu, annAu].filter(Boolean);
-      if (annotations.length > 0) {
-        ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
+      if (regime !== segment.regime) continue;
+      const eff = effectivePeriodWindow(p);
+      if (!eff) continue;
+      // Le segment doit etre inclus dans la fenetre effective de la periode.
+      const couvre = eff.du <= segment.du && eff.au >= segment.au;
+      if (!couvre) continue;
+      // Prefere la fenetre la plus serree autour du segment (source la plus
+      // specifique : un masque colle au segment plutot qu'une large principale).
+      const largeur = eff.au - eff.du;
+      if (best === null || largeur < best.largeur) {
+        best = { p, largeur };
       }
-      // Mention conditionnelle : si la periode n'est posee que sous condition
-      // (cf. spec_extension_grammaire_condition), on l'explicite a l'utilisateur
-      // pour qu'il comprenne POURQUOI cette fenetre s'applique a son cas.
-      const condTxt = conditionToText(p.condition, inputById);
-      if (condTxt) {
-        ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
-      }
-      lignes.push(`<li>${ligne}</li>`);
     }
+    return best ? best.p : null;
+  }
+
+  function renderRecap(regimeParJour, actives) {
+    // Le recap liste les SEGMENTS EFFECTIFS de la barre (ce qui s'applique
+    // REELLEMENT, masques resolus), pas les periodes brutes. Ainsi :
+    //   - une periode masque qui recouvre integralement une principale fait
+    //     disparaitre la ligne de cette principale (elle n'existe nulle part) ;
+    //   - les fenetres affichees == celles dessinees sur la barre.
+    // Pour chaque segment colore, on retrouve la periode source (meme regime,
+    // fenetre effective englobante) afin de garder l'annotation event+offset
+    // et la mention conditionnelle.
+    const inputById = Object.fromEntries(inputs.map((i) => [i.id, i]));
+    const segments = computeSegments(regimeParJour);
+
+    // Ordre de presentation (maquette #130) : interdiction d'abord, puis
+    // autorisation sous condition (prio), puis l'autorisation pure (#85) en
+    // dernier (prio 2). Tri stable -> ordre chronologique conserve au sein
+    // d'un meme regime.
+    const PRIORITE = { interdiction: 0, autorisation_sous_condition: 1, plafonnement: 1 };
+    const lignes = [];
+    for (const seg of segments) {
+      const regime = seg.regime;
+      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
+      const verbe = REGIME_VERBE[regime] || regime;
+      const duStr = jourAgricoleToLisible(seg.du);
+      // Borne droite affichee = dernier jour inclus du segment.
+      const auStr = jourAgricoleToLisible(seg.au);
+      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
+
+      const src = periodeSourcePourSegment(seg, actives);
+      if (src) {
+        const partDu = parseBorne(src.du, valeurs);
+        const partAu = parseBorne(src.au, valeurs);
+        const annotations = [
+          annoterBorne(partDu, "du", inputById),
+          annoterBorne(partAu, "au", inputById),
+        ].filter(Boolean);
+        if (annotations.length > 0) {
+          ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
+        }
+        const condTxt = conditionToText(src.condition, inputById);
+        if (condTxt) {
+          ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
+        }
+      }
+      lignes.push({ prio: PRIORITE[regime] ?? 9, html: `<li>${ligne}</li>` });
+    }
+
+    // Periode d'autorisation pure (vert, #85) = jours ni interdits ni sous
+    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne. Prio 2
+    // -> placee en dernier par le tri ci-dessous.
+    const ligneAutorisation = buildLigneAutorisation(segments);
+    if (ligneAutorisation) {
+      lignes.push({ prio: 2, html: `<li>${ligneAutorisation}</li>` });
+    }
+
     if (lignes.length === 0) return "";
+    lignes.sort((a, b) => a.prio - b.prio);
+    // Maquette #130 : pas de titre "Récapitulatif", liste nue (sans puces).
     return `
       <div class="calc-cal__recap">
-        <h4 class="fr-h6">Récapitulatif</h4>
-        <ul>${lignes.join("")}</ul>
+        <ul class="calc-cal__recap-list">${lignes.map((l) => l.html).join("")}</ul>
       </div>
     `;
+  }
+
+  // Construit la ligne "Periode d'autorisation : du X au Y et du Z au W" a
+  // partir des segments de regime "libre" (les jours purement autorises).
+  // Fusionne le wrap d'annee (segment finissant au jour 364 + segment
+  // commencant au jour 0 = une seule plage continue). "" si aucun jour libre.
+  function buildLigneAutorisation(segments) {
+    let libres = segments
+      .filter((s) => !REGIME_COULEUR_ZONE[s.regime]) // libre/vert uniquement
+      .map((s) => ({ du: s.du, au: s.au }));
+    if (libres.length === 0) return "";
+    // Fusion du wrap : derniere plage finit au dernier jour ET 1ere commence
+    // au jour 0 -> elles n'en font qu'une, a cheval sur juillet.
+    if (
+      libres.length >= 2 &&
+      libres[0].du === 0 &&
+      libres[libres.length - 1].au === TOTAL_JOURS - 1
+    ) {
+      const premiere = libres.shift();
+      const derniere = libres.pop();
+      libres.push({ du: derniere.du, au: premiere.au });
+    }
+    const morceaux = libres.map(
+      (p) => `du ${jourAgricoleToLisible(p.du)} au ${jourAgricoleToLisible(p.au)}`
+    );
+    let plages;
+    if (morceaux.length === 1) {
+      plages = morceaux[0];
+    } else {
+      plages = morceaux.slice(0, -1).join(", ") + " et " + morceaux[morceaux.length - 1];
+    }
+    return `<strong>Autorisé</strong> ${plages}`;
   }
 
   function escapeHtml(s) {
@@ -1029,7 +1227,7 @@
       ${renderMiniForm()}
       ${renderCalendrier(regimeParJour, actives)}
       ${renderLegende(regimeParJour)}
-      ${renderRecap(actives)}
+      ${renderRecap(regimeParJour, actives)}
     `;
     layoutBornesRows();
     bindInputs();
@@ -1093,6 +1291,57 @@
     // (label ~16px + maxRow*18px + petite marge) pour ne pas deborder sur
     // la legende, sans reserver d'espace vide quand peu de rows sont prises.
     container.style.height = `${20 + maxRow * ROW_STEP_PX + 8}px`;
+
+    // ── Pixel-snap des traits verticaux (::before) ──────────────────────
+    // Le trait fait 1px CSS mais sa position (left:% + translateX(-50%)) tombe
+    // a une fraction de pixel physique variable selon le jour -> l'anti-alias
+    // du navigateur le rend tantot net (1px), tantot etale (~2px), d'ou
+    // l'impression d'epaisseur differente entre semis et destruction.
+    // On corrige en nudgeant chaque label d'un sous-pixel pour que le CENTRE
+    // de son trait retombe pile sur la grille de pixels physiques (DPR).
+    const dpr = window.devicePixelRatio || 1;
+    for (const el of labels) {
+      el.style.marginLeft = "0px"; // reset avant mesure
+    }
+    // snapCss(x) : delta (px CSS) pour ramener le point physique x sur
+    // l'entier physique le plus proche. Le bord du fond de zone est snappe
+    // ainsi pour que le fond colore s'arrete pile sur un pixel entier ; le
+    // tic (centre sur la date, peint [centre-0.5, centre+0.5]) snappe sur le
+    // MEME entier -> son trait de 1px recouvre exactement la couture du fond.
+    // Le tic etant le SEUL trait de frontiere (plus de border-left/right) et
+    // dessine par-dessus le fond (couche .period au-dessus des zones), tout
+    // ecart sous-pixel du fond passe sous le tic : la ligne reste nette et
+    // continue de la barre au label.
+    const snapCss = (xCss) => {
+      const phys = xCss * dpr;
+      return (Math.round(phys) - phys) / dpr; // delta a appliquer
+    };
+
+    // ── Pixel-snap du fond des zones ────────────────────────────────────
+    // Aligne les bords gauche/droit du fond colore sur la grille de pixels
+    // (sinon le fond bave d'1px et le tic ne tombe plus dessus).
+    const bar = mount.querySelector(".calendrier-epandage__bar");
+    if (bar) {
+      const barRect = bar.getBoundingClientRect();
+      const zonesEl = [...bar.querySelectorAll(".calendrier-epandage__zone")];
+      for (const z of zonesEl) {
+        const r = z.getBoundingClientRect();
+        const dLeft = snapCss(r.left);
+        const dRight = snapCss(r.right);
+        z.style.left = `${(r.left - barRect.left + dLeft).toFixed(3)}px`;
+        z.style.width = `${(r.width - dLeft + dRight).toFixed(3)}px`;
+      }
+    }
+
+    // ── Pixel-snap des TICS (traits verticaux ::before) ─────────────────
+    // Chaque tic fait 1px CSS centre sur la date via translateX(-50%). On
+    // nudge le label d'un sous-pixel pour que le CENTRE du trait retombe pile
+    // sur un pixel physique entier -> trait net (pas d'anti-alias etale).
+    for (const el of labels) {
+      const r = el.getBoundingClientRect();
+      const center = (r.left + r.right) / 2; // x physique du trait (px CSS)
+      el.style.marginLeft = `${snapCss(center).toFixed(3)}px`;
+    }
   }
 
   // ─── Tooltip JS instantane ─────────────────────────────────────────────
@@ -1165,6 +1414,26 @@
     tooltipEl.style.top = `${Math.max(4, top)}px`;
   }
 
+  // Affiche (ou retire si msg vide) un petit message d'erreur sous le champ
+  // date, pour le bornage hors limites (#126). Cree le <p> a la demande.
+  function afficherErreurInput(inputEl, msg) {
+    const field = inputEl.closest(".calc-cal__field");
+    if (!field) return;
+    let err = field.querySelector(".calc-cal__field-error");
+    if (!msg) {
+      if (err) err.remove();
+      inputEl.removeAttribute("aria-invalid");
+      return;
+    }
+    if (!err) {
+      err = document.createElement("p");
+      err.className = "calc-cal__field-error";
+      field.appendChild(err);
+    }
+    err.textContent = msg;
+    inputEl.setAttribute("aria-invalid", "true");
+  }
+
   function bindInputs() {
     mount.querySelectorAll("input[data-input-id]").forEach((el) => {
       // Des qu'on focus, la valeur n'est plus celle "par defaut" -- on
@@ -1174,12 +1443,21 @@
       });
       el.addEventListener("change", () => {
         const id = el.dataset.inputId;
+        const inp = inputs.find((x) => x.id === id);
         const val = el.value.trim();
         // Validation minimale : si pas JJ/MM, on garde l'ancienne valeur.
         if (val && !/^\d{2}\/\d{2}$/.test(val)) {
           el.value = valeurs[id];
+          afficherErreurInput(el, "");
           return;
         }
+        // Bornage (#126) : saisie hors [min,max] refusee + phrase explicative.
+        if (val && inp && !dansBornes(inp, val)) {
+          afficherErreurInput(el, messageHorsBornes(inp, val));
+          el.value = valeurs[id]; // revert a la derniere valeur valide
+          return;
+        }
+        afficherErreurInput(el, "");
         if (val) valeurs[id] = val;
         syncUrl();
         render();
@@ -1256,7 +1534,11 @@
   function createPickerPopup(inputEl) {
     const current = parseJjmm(inputEl.value) || { jour: 15, mois: 1 };
     const state = { mois: current.mois, jour: current.jour };
+    // Input courant pour le bornage (#126) : les jours hors [min,max] sont
+    // desactives dans la grille.
+    const inpBorne = inputs.find((x) => x.id === inputEl.dataset.inputId);
 
+    const noteBorne = messageBornePicker(inpBorne);
     const popup = document.createElement("div");
     popup.className = "calc-cal__picker";
     popup.innerHTML = `
@@ -1269,6 +1551,7 @@
         <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
       </div>
       <div class="calc-cal__picker-grid" data-grid></div>
+      ${noteBorne ? `<p class="calc-cal__picker-note">${escapeHtml(noteBorne)}</p>` : ""}
     `;
 
     const moisLabel = popup.querySelector("[data-mois-label]");
@@ -1291,8 +1574,15 @@
       }
       for (let j = 1; j <= maxJour; j++) {
         const isSel = j === state.jour && state.mois === current.mois;
+        const jjmm =
+          String(j).padStart(2, "0") + "/" + String(state.mois).padStart(2, "0");
+        const horsBorne = inpBorne ? !dansBornes(inpBorne, jjmm) : false;
+        const cls =
+          "calc-cal__picker-day" +
+          (isSel ? " calc-cal__picker-day--selected" : "") +
+          (horsBorne ? " calc-cal__picker-day--disabled" : "");
         cells.push(
-          `<button type="button" class="calc-cal__picker-day${isSel ? " calc-cal__picker-day--selected" : ""}" data-jour="${j}">${j}</button>`,
+          `<button type="button" class="${cls}" data-jour="${j}"${horsBorne ? " disabled" : ""}>${j}</button>`,
         );
       }
       grid.innerHTML = cells.join("");

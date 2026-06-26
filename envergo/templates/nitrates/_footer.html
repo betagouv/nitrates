@@ -1,3 +1,5 @@
+{% load static %}
+
 <div class="fr-container">
   <div class="fr-footer__body">
     <div class="fr-footer__brand fr-enlarge-link">
@@ -9,6 +11,30 @@
     </div>
     <div class="fr-footer__content">
       <p class="fr-footer__content-desc">Simulateur des obligations nitrates. Service en construction.</p>
+
+      {% comment %}
+      Bascule de theme clair/sombre (#83). Par defaut le site suit l'OS
+      (data-fr-scheme="system") ; ces boutons forcent un theme et memorisent
+      le choix (localStorage), pilotes par theme_toggle.js. Place en pied de
+      page : discret, mais accessible pour le debug et les utilisateurs qui
+      preferent forcer un mode.
+      {% endcomment %}
+      <div class="nitrates-theme-toggle"
+           role="group"
+           aria-label="Choix du thème clair ou sombre">
+        <button type="button"
+                class="nitrates-theme-toggle__btn"
+                data-theme-choice="light"
+                aria-label="Thème clair"
+                title="Thème clair">☀</button>
+        <button type="button"
+                class="nitrates-theme-toggle__btn"
+                data-theme-choice="dark"
+                aria-label="Thème sombre"
+                title="Thème sombre">☾</button>
+      </div>
     </div>
   </div>
 </div>
+
+<script src="{% static 'nitrates/theme_toggle.js' %}" defer></script>

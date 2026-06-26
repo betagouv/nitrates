@@ -19,6 +19,8 @@ from typing import Iterable
 from jsonschema import Draft202012Validator
 
 from envergo.nitrates.yaml_tree.condition import validate_condition
+from envergo.nitrates.yaml_tree.expression import valider_expression
+from envergo.nitrates.yaml_tree.parcours import normaliser_codes_prescription
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -38,6 +40,7 @@ def validate_arbre(
     arbre: dict,
     referentiels: dict | None = None,
     references_sig_supportees: set[str] | None = None,
+    scope: str = "national",
 ) -> None:
     """Lance toute la chaine de validation. Leve ValidationError si KO.
 
@@ -55,6 +58,12 @@ def validate_arbre(
     reference n'est pas couverte par le backend (= dataset SIG manquant).
     Pas une erreur bloquante en MVP -- l'arbre brouillon evolue plus vite
     que les datasets -- mais on les liste pour traque.
+
+    scope : type d'arbre ('national' = PAN, 'region'/'zar' = PAR). Le PAN doit
+    etre COUVRANT (toutes les valeurs booleennes couvertes, cf. exhaustivite).
+    Les PAR/ZAR sont des OVERRIDES PARTIELS : un cas non couvert retombe sur
+    l'arbre de poids inferieur (no-match -> cascade). On ne leur applique donc
+    PAS le check d'exhaustivite booleenne.
     """
     errors: list[str] = []
 
@@ -75,7 +84,14 @@ def validate_arbre(
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
-    errors.extend(_check_branches_booleennes_exhaustives(arbre))
+    errors.extend(_check_catalogue_parametre(arbre))
+    # Exhaustivite booleenne : seulement pour le PAN (couvrant). Les PAR/ZAR
+    # sont des overrides partiels -> les trous sont legitimes (fallback cascade).
+    if scope == "national":
+        errors.extend(_check_branches_booleennes_exhaustives(arbre))
+        # Feuille vide interdite pour le PAN (il doit produire une regle
+        # partout, pas de reponse sans incidence). Autorisee pour PAR/ZAR.
+        errors.extend(_check_pas_de_feuille_vide(arbre))
 
     if referentiels:
         errors.extend(_check_references_referentiels(arbre, referentiels))
@@ -222,6 +238,19 @@ def _check_renvois_vers(arbre: dict, ids: dict[str, list[str]]) -> list[str]:
     return errors
 
 
+def _check_pas_de_feuille_vide(arbre: dict) -> list[str]:
+    """Le PAN ne doit contenir aucune feuille_vide : il est couvrant et doit
+    produire une regle sur chaque chemin. (Les PAR/ZAR, eux, les autorisent.)"""
+    errors: list[str] = []
+    for branche in _walk_branches(arbre):
+        if branche.get("feuille_vide"):
+            errors.append(
+                "[feuille_vide] une feuille vide n'est pas autorisee dans le "
+                "PAN national (l'arbre doit etre couvrant). Reservee aux PAR/ZAR."
+            )
+    return errors
+
+
 def _walk_branches(arbre: dict) -> Iterable[dict]:
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
@@ -283,6 +312,20 @@ def _is_valid_date(s: str) -> bool:
         return 1 <= j <= 31 and 1 <= m <= 12
     except (ValueError, AttributeError):
         return False
+
+
+# Jours par mois agricole (juil=index 0 ... juin=index 11). Doit rester
+# synchro avec JOURS_PAR_MOIS_AGRICOLE cote JS (calculatrice-calendrier.js).
+_JPM_AGRICOLE = [31, 31, 30, 31, 30, 31, 31, 28, 31, 30, 31, 30]
+
+
+def _jjmm_to_jour_agricole(s: str) -> int:
+    """Convertit 'JJ/MM' en index de jour de l'annee agricole (0 = 1er juillet).
+    Sert a comparer des dates dans l'ordre juil->juin (ex bornage min/max)."""
+    jour, mois = s.split("/")
+    j, m = int(jour), int(mois)
+    mois_agr = (m - 7 + 12) % 12
+    return sum(_JPM_AGRICOLE[:mois_agr]) + (j - 1)
 
 
 # ─── Coherence type / regime par periode ────────────────────────────────────
@@ -571,6 +614,34 @@ def _check_calculatrice(arbre: dict) -> list[str]:
                     f"`label_court` doit etre une chaine non vide "
                     f"si present (recu {label_court!r})."
                 )
+            # Bornage optionnel min/max (cf. #126). Dates JJ/MM valides ; si les
+            # deux sont presents, min doit preceder max dans l'ordre annee
+            # agricole (juil->juin), sinon la fenetre de saisie serait vide.
+            for borne_nom in ("min", "max"):
+                bval = inp.get(borne_nom)
+                if bval is not None and (
+                    not isinstance(bval, str)
+                    or not DATE_FIXE_RE.match(bval)
+                    or not _is_valid_date(bval)
+                ):
+                    errors.append(
+                        f"[calculatrice] regle '{rid}' input #{i} : "
+                        f"`{borne_nom}` doit etre une date JJ/MM valide "
+                        f"(recu {bval!r})."
+                    )
+            bmin, bmax = inp.get("min"), inp.get("max")
+            if (
+                isinstance(bmin, str)
+                and isinstance(bmax, str)
+                and _is_valid_date(bmin)
+                and _is_valid_date(bmax)
+                and _jjmm_to_jour_agricole(bmin) > _jjmm_to_jour_agricole(bmax)
+            ):
+                errors.append(
+                    f"[calculatrice] regle '{rid}' input #{i} : `min` ({bmin}) "
+                    f"doit preceder `max` ({bmax}) dans l'annee agricole "
+                    f"(juil->juin) -- sinon la fenetre de saisie est vide."
+                )
         # Regle 3 : unicite des ids
         if len(input_ids) != len(set(input_ids)):
             from collections import Counter
@@ -660,6 +731,70 @@ def _check_calculatrice(arbre: dict) -> list[str]:
     return errors
 
 
+# ─── Noeuds catalogue_parametre (eval sandboxe, cf. #128) ──────────────────
+
+
+def _check_catalogue_parametre(arbre: dict) -> list[str]:
+    """Validation des noeuds `type_noeud == 'catalogue_parametre'` (issue #128).
+
+    Regles :
+      1. Au moins une branche.
+      2. Chaque branche porte une `expression` (str non vide) -- pas de
+         `valeur`/`valeurs` seules (le routage se fait par expression). Une
+         `valeur` complementaire de tracabilite reste toleree (gere par le
+         schema), mais l'`expression` est obligatoire.
+      3. Chaque `expression` est valide : compilable en mode 'eval' et sans
+         attribut dunder (cf. expression.valider_expression). On ne l'execute
+         jamais ici.
+      4. Cible de branche valide (noeud / regle / renvoi_vers) -- deja garanti
+         par le schema branche, on ne re-verifie pas.
+
+    Pas de notion de branche `defaut` : si aucune expression n'est vraie a
+    runtime, le parcours leve ParcoursError (cf. parcours._resoudre_catalogue_parametre).
+    """
+    errors: list[str] = []
+    racine = arbre.get("arbre", {}).get("noeud")
+    if not isinstance(racine, dict):
+        return errors
+
+    for noeud in _walk_node(racine):
+        if not isinstance(noeud, dict):
+            continue
+        if noeud.get("type_noeud") != "catalogue_parametre":
+            continue
+        nid = noeud.get("id", "?")
+        branches = noeud.get("branches") or []
+        if not branches:
+            errors.append(
+                f"[catalogue_parametre] noeud '{nid}' : au moins une branche "
+                f"avec `expression` attendue."
+            )
+            continue
+        for i, branche in enumerate(branches, start=1):
+            if not isinstance(branche, dict):
+                continue
+            expr = branche.get("expression")
+            if expr is None:
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : "
+                    f"`expression` obligatoire (le routage d'un noeud "
+                    f"catalogue_parametre se fait par expression, pas par valeur)."
+                )
+                continue
+            if not isinstance(expr, str) or not expr.strip():
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : "
+                    f"`expression` doit etre une chaine non vide."
+                )
+                continue
+            err = valider_expression(expr)
+            if err:
+                errors.append(
+                    f"[catalogue_parametre] noeud '{nid}' branche #{i} : {err}"
+                )
+    return errors
+
+
 # ─── Ordre des niveaux formulaire ───────────────────────────────────────────
 
 
@@ -743,18 +878,42 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
     for obj in _walk_objects(arbre):
         if not isinstance(obj, dict):
             continue
-        cp = obj.get("code_prescription")
-        if cp and cp not in codes_pc:
-            errors.append(
-                f"[reference] regle '{obj.get('id')}' : code_prescription "
-                f"'{cp}' inconnu dans referentiels.yaml"
-            )
+        # code_prescription : scalaire OU liste -> on normalise pour valider
+        # chaque code et detecter les doublons.
+        cps = normaliser_codes_prescription(obj.get("code_prescription"))
+        vus: set[str] = set()
+        for cp in cps:
+            if cp not in codes_pc:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' inconnu dans le référentiel (DB)"
+                )
+            if cp in vus:
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' en doublon (une prescription ne peut etre listee "
+                    f"qu'une fois)"
+                )
+            vus.add(cp)
         note = obj.get("note")
         if note and note not in notes:
             errors.append(
                 f"[reference] regle '{obj.get('id')}' : note '{note}' "
-                f"inconnue dans referentiels.yaml"
+                f"inconnue dans le référentiel (DB)"
             )
+
+    # Patch de prescription sur les branches renvoi_vers : les valeurs source
+    # ET cible du remap code_prescription doivent etre des PC connus.
+    for branche in _walk_branches(arbre):
+        patch = branche.get("patch") if isinstance(branche, dict) else None
+        remap = (patch or {}).get("code_prescription") or {}
+        for src, dst in remap.items():
+            for pc in (src, dst):
+                if pc not in codes_pc:
+                    errors.append(
+                        f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
+                        f" : code_prescription '{pc}' inconnu dans le référentiel (DB)"
+                    )
     return errors
 
 
@@ -811,6 +970,12 @@ def _check_branches_booleennes_exhaustives(arbre: dict) -> list[str]:
         if not isinstance(noeud, dict):
             continue
         if "branches" not in noeud:
+            continue
+        # Les noeuds catalogue_parametre routent par expression, pas par
+        # valeur booleenne : leurs `valeur` (true/false/inconnu) ne sont que
+        # de la tracabilite. L'exhaustivite y est assuree par les expressions
+        # (ou leur absence => ParcoursError), pas par une paire true/false.
+        if noeud.get("type_noeud") == "catalogue_parametre":
             continue
         branches = noeud.get("branches") or []
         valeurs = {b.get("valeur") for b in branches if isinstance(b, dict)}

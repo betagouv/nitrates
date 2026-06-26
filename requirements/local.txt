@@ -184,6 +184,8 @@ editorconfig==0.17.1
     # via
     #   cssbeautifier
     #   jsbeautifier
+et-xmlfile==2.0.0
+    # via openpyxl
 executing==2.2.0
     # via stack-data
 factory-boy==3.3.3
@@ -279,6 +281,8 @@ numpy==2.3.2
     #   -r base.txt
     #   scipy
     #   shapely
+openpyxl==3.1.5
+    # via -r base.txt
 packaging==25.0
     # via
     #   -r base.txt

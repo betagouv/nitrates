@@ -76,20 +76,21 @@ def test_form_inclut_carte_et_simulator_js(client, nitrates_site):
 
 
 def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata):
-    """Point en ZV, sans reponses cascade : on doit voir une question
-    subsidiaire (rendue maintenant dans le panneau resultat a droite,
-    cf. issue #28)."""
+    """Point en ZV, sans reponses cascade : on est en attente d'une question
+    complementaire. Depuis #112, tant qu'une QC est en attente :
+      - le panneau resultat de DROITE n'est PAS rendu (colonne unique) ;
+      - les QC apparaissent SOUS le formulaire (bloc .resultat-panel--questions).
+    """
     response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
     assert response.status_code == 200
-    # Header du panneau resultat (renomme 2026-05-12 : "Reglementation
-    # nitrates applicable" pour preciser le scope, vs ancien
-    # "Reglementations applicables" trop generique).
-    assert b"glementation nitrates applicable" in response.content
-    # Question subsidiaire rendue dans le panneau resultat
+    # Bloc QC rendu sous le formulaire (#112).
     assert b"resultat-panel--questions" in response.content
-    # Titre du panneau questions subsidiaires (au pluriel depuis #58.1 :
-    # on peut maintenant rendre plusieurs questions en cascade).
+    assert b"qc-sous-form" in response.content
     assert b"Questions compl" in response.content
+    # Pas de panneau resultat a droite tant qu'une QC est en attente (#112) :
+    # ni la colonne result-col, ni le header du panneau resultat.
+    assert b"result-col" not in response.content
+    assert b"glementation nitrates applicable" not in response.content
 
 
 def test_panneaux_debug_actifs_par_flag_dedie(
@@ -112,6 +113,25 @@ def test_panneaux_debug_caches_sans_flag(
     settings.NITRATES_FORM_DEBUG_PANELS = False
     response = client.get("/simulateur/?lng=4.0345&lat=49.2583")
     assert b"Debug parcours" not in response.content
+
+
+def test_panel_debug_affiche_code_prescription_et_libelle(
+    client, nitrates_site, setup_geodata, settings
+):
+    """Le panel debug affiche le(s) code(s) prescription appliqué(s) avec leur
+    libellé court (mots_cles du référentiel), pour distinguer d'un coup d'oeil
+    des PC au texte très proche (ex pc13 vs pc14). Colza type_III -> pc11."""
+    settings.NITRATES_FORM_DEBUG_PANELS = True
+    response = client.get(
+        "/simulateur/?lng=4.0345&lat=49.2583"
+        "&occupation_sol=culture_principale&sous_culture=colza"
+        "&type_fertilisant=type_III"
+    )
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "code(s) prescription" in html
+    # Code + libellé court côte à côte (pc11 = "colza" dans le référentiel).
+    assert "<code>pc11</code>" in html
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):

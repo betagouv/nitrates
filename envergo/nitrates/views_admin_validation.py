@@ -11,11 +11,13 @@ Tableau qui croise pour chaque feuille `culture_principale` :
 Cf. issue #28 / sprint MVP-1 fin.
 """
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError
-from django.db.models import Max, Prefetch
+from django.db.models import Case, IntegerField, Max, Prefetch, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -34,9 +36,68 @@ def validation_index(request):
     actions_qs = BrancheValidationAction.objects.order_by("created_at").select_related(
         "user"
     )
-    branches = BrancheValidation.objects.prefetch_related(
-        Prefetch("actions", queryset=actions_qs)
+    # Ordre d'affichage : d'abord par ARBRE (PAN -> PAR -> ZAR), puis par
+    # `ordre` au sein de l'arbre (= séquence d'insertion au seed = ordre du
+    # board Miro). Ainsi la vue « Tous périmètres » enchaîne les 3 arbres dans
+    # l'ordre de la cascade, chacun déroulant sa propre séquence Miro ; et
+    # quand on filtre un scope, on ne voit que cet arbre, toujours dans l'ordre.
+    # On annote un rang de scope (les valeurs texte national/par/zar tomberaient
+    # par hasard dans le bon ordre alphabétique, mais on l'explicite).
+    base = (
+        BrancheValidation.objects.prefetch_related(
+            Prefetch("actions", queryset=actions_qs)
+        )
+        .annotate(
+            _scope_rang=Case(
+                When(scope="national", then=Value(0)),
+                When(scope="par_grand_est", then=Value(1)),
+                When(scope="zar_grand_est", then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("_scope_rang", "ordre", "chemin_yaml")
     )
+
+    # Deux axes de filtres ORTHOGONAUX et combinables (cf. carte #140) :
+    #   - scope  : PAN / PAR Grand Est / ZAR Grand Est
+    #   - nature : couvert d'interculture / culture principale
+    # Chaque axe a un param GET (`?scope=`, `?nature=`) qu'on croise. Ca
+    # autorise n'importe quelle combinaison (ex: PAR x couvert), au lieu de
+    # filtres pre-combines qui ferment les associations possibles.
+    SCOPES = [
+        ("national", "PAN"),
+        ("par_grand_est", "PAR Grand Est"),
+        ("zar_grand_est", "ZAR Grand Est"),
+    ]
+    NATURES = [
+        ("couvert", "Couvert"),
+        ("culture_principale", "Culture principale"),
+    ]
+    scope_actif = request.GET.get("scope", "")
+    nature_actif = request.GET.get("nature", "")
+
+    branches = base
+    if scope_actif in dict(SCOPES):
+        branches = branches.filter(scope=scope_actif)
+    if nature_actif in dict(NATURES):
+        branches = branches.filter(nature=nature_actif)
+
+    # Compteurs par valeur d'axe, en respectant le filtre de L'AUTRE axe
+    # (ainsi le badge « couvert » reflète bien le scope déjà sélectionné).
+    base_scope = (
+        base.filter(nature=nature_actif) if nature_actif in dict(NATURES) else base
+    )
+    base_nature = (
+        base.filter(scope=scope_actif) if scope_actif in dict(SCOPES) else base
+    )
+    scopes_ctx = [
+        (cle, label, base_scope.filter(scope=cle).count()) for cle, label in SCOPES
+    ]
+    natures_ctx = [
+        (cle, label, base_nature.filter(nature=cle).count()) for cle, label in NATURES
+    ]
+
     stats = {
         "total": branches.count(),
         "valide": branches.filter(statut=BrancheValidation.STATUT_VALIDE).count(),
@@ -51,6 +112,11 @@ def validation_index(request):
     ctx = {
         "branches": branches,
         "stats": stats,
+        "scopes": scopes_ctx,
+        "natures": natures_ctx,
+        "scope_actif": scope_actif,
+        "nature_actif": nature_actif,
+        "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
     }
     return render(request, "nitrates_admin/validation/index.html", ctx)
 
@@ -97,7 +163,7 @@ def validation_create(request):
                     "type_fertilisant_miro", ""
                 ).strip()[:50],
                 resultat_miro=request.POST.get("resultat_miro", "").strip()[:500],
-                code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:20],
+                code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:300],
                 url_simulateur=request.POST.get("url_simulateur", "").strip()[:2000],
             )
         except IntegrityError:
@@ -148,8 +214,35 @@ def validation_detail(request, pk):
     return render(
         request,
         "nitrates_admin/validation/detail.html",
-        {"branche": branche},
+        {
+            "branche": branche,
+            "miro_board_id": settings.NITRATES_MIRO_BOARD_ID,
+            # Filtres scope/nature transmis par l'index : on les réinjecte dans
+            # le lien retour + le form de statut pour que le tableau revienne
+            # filtré comme on l'a laissé (cf. retour Max : validation feuille à
+            # feuille dans un périmètre, sans re-cliquer les filtres au retour).
+            "scope_actif": request.GET.get("scope", ""),
+            "nature_actif": request.GET.get("nature", ""),
+        },
     )
+
+
+def _index_url_avec_filtres(request):
+    """URL de l'index de validation en repropageant scope/nature lus dans la
+    requête courante (POST ou GET). Vide -> index nu. Centralise la
+    reconstruction pour les redirects qui doivent préserver le filtre."""
+    from urllib.parse import urlencode
+
+    base = reverse("nitrates_admin_validation_index")
+    params = {
+        k: v
+        for k, v in (
+            ("scope", request.POST.get("scope") or request.GET.get("scope") or ""),
+            ("nature", request.POST.get("nature") or request.GET.get("nature") or ""),
+        )
+        if v
+    }
+    return f"{base}?{urlencode(params)}" if params else base
 
 
 @require_POST
@@ -175,7 +268,9 @@ def validation_set_statut(request, pk):
     # Denormalise le statut sur la branche pour faciliter le filtrage SQL.
     branche.statut = statut
     branche.save(update_fields=["statut", "updated_at"])
-    return redirect("nitrates_admin_validation_index")
+    # Retour au tableau EN PRÉSERVANT le filtre scope/nature (transmis en hidden
+    # par le form de statut) -> on retombe sur la même sélection de feuilles.
+    return redirect(_index_url_avec_filtres(request))
 
 
 @require_POST
@@ -228,7 +323,8 @@ def validation_edit_meta(request, pk):
         "url_simulateur": 2000,
         "yaml_snapshot": 50000,
         "resultat_miro": 500,
-        "code_pc_miro": 20,
+        "code_pc_miro": 300,
+        "miro_widget_id": 40,
         "note_verif": 2000,
     }
     updated = []

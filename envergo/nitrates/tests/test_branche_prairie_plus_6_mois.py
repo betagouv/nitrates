@@ -138,9 +138,20 @@ def test_prairie_plus_6_type_I(setup):
 
 
 def test_prairie_plus_6_type_II_peu_charge(setup):
-    """Type II + effluents peu charges Oui : autorise sous condition
-    15/11 -> 15/01, pc7."""
-    ev = _evaluator(_moulinette(type_fertilisant="type_II", effluent_peu_charge="true"))
+    """Type II + effluents peu charges : autorise sous condition
+    15/11 -> 15/01, pc7.
+
+    Depuis #98, la branche "peu charge" n'est plus pilotee par un champ
+    effluent_peu_charge=true/false mais par une expression catalogue_parametre
+    sur `sous_fertilisant in (effluents_peu_charges_elevage,
+    effluents_peu_charges_non_elevage)`. On pousse donc le sous_fertilisant
+    correspondant (le contrat metier resultant est inchange)."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            sous_fertilisant="effluents_peu_charges_elevage",
+        )
+    )
     assert ev.result == RESULTS.action_requise
     assert ev.regle.regle_id == "r_prairie_plus_6_type_II_peu_charge"
     assert ev.regle.type == "autorisation_sous_condition"
@@ -159,6 +170,38 @@ def test_prairie_plus_6_type_II_non_peu_charge(setup):
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_II"
     assert ev.regle.periodes == [{"du": "15/11", "au": "15/01"}]
+
+
+# ─── 3c/3d. Carte #98 : inference via flags du fertilisant ─────────────────
+
+
+def test_prairie_plus_6_effluent_eleve_infere_la_question(setup):
+    """Carte #98 : « effluents peu chargés issus d'élevage » -> la branche
+    catalogue_parametre infère "peu chargé" via sous_fertilisant -> même
+    feuille que le 3a (r_prairie_plus_6_type_II_peu_charge)."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            sous_fertilisant="effluents_peu_charges_elevage",
+        )
+    )
+    assert ev.result == RESULTS.action_requise
+    assert ev.regle.regle_id == "r_prairie_plus_6_type_II_peu_charge"
+    assert ev.regle.code_prescription == "pc7"
+
+
+def test_prairie_plus_6_effluent_non_eleve_infere_la_question(setup):
+    """« Effluents peu chargés non issus d'élevage » : la branche prairie+6 ne
+    distingue pas l'origine élevage -> même feuille peu chargé que pour
+    l'élevage (l'expression catalogue_parametre accepte les deux valeurs)."""
+    ev = _evaluator(
+        _moulinette(
+            type_fertilisant="type_II",
+            sous_fertilisant="effluents_peu_charges_non_elevage",
+        )
+    )
+    assert ev.result == RESULTS.action_requise
+    assert ev.regle.regle_id == "r_prairie_plus_6_type_II_peu_charge"
 
 
 # ─── 4a. type_III + montagne note 7 (Pyrenees-Atlantiques 64) ─────────────
@@ -195,8 +238,8 @@ def test_prairie_plus_6_type_III_montagne_note_6(setup):
 
 
 def test_prairie_plus_6_type_III_non_montagne(setup):
-    """Type III + commune non montagne (Reims) : interdit 01/10 -> 15/01."""
+    """Type III + commune non montagne (Reims) : interdit 01/10 -> 31/01."""
     ev = _evaluator(_moulinette(type_fertilisant="type_III", code_insee="51454"))
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_III"
-    assert ev.regle.periodes == [{"du": "01/10", "au": "15/01"}]
+    assert ev.regle.periodes == [{"du": "01/10", "au": "31/01"}]

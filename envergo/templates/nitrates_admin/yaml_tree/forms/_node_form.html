@@ -172,6 +172,25 @@
           });
         })();
       </script>
+    {% elif node.type_noeud == "catalogue_parametre" %}
+      <p class="yaml-tree__form-hint">
+        Catalogue en mode <strong>expression</strong> : le routage est porté
+        par les expressions de chaque branche (bouton ✎ sur la branche). Ici
+        on édite seulement le nom logique du résultat.
+      </p>
+      <div class="yaml-tree__form-row">
+        <label class="yaml-tree__form-label"
+               title="Nom logique du résultat : clé écrite dans le contexte (traçabilité).">
+          <span>champ technique</span>
+          <input type="text"
+                 name="champ"
+                 value="{{ node.champ|default_if_none:'' }}"
+                 required>
+        </label>
+        {% for err in errors %}
+          {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+        {% endfor %}
+      </div>
     {% endif %}
 
     <div class="yaml-tree__form-actions">

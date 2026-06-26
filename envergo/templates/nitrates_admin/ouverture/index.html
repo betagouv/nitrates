@@ -1,0 +1,352 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% load static %}
+
+{% block title %}Ouverture géographique{% endblock %}
+
+{% block extra_css %}
+  <style>
+    /* L'overlay global "Action en cours…" vient de base.html mais son CSS
+       (yaml-admin) n'est pas chargé sur cette page : sans règle il reste
+       visible. On le neutralise ici. */
+    .yaml-admin__global-overlay {
+      display: none !important;
+    }
+
+    .yaml-admin__toasts {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .yaml-admin__toast {
+      background: #1f4789;
+      color: #fff;
+      padding: 0.5rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+      transition: opacity .4s;
+    }
+
+    .yaml-admin__toast--fade {
+      opacity: 0;
+    }
+
+    .ouverture__intro {
+      padding: 1rem 1.5rem 0;
+      max-width: 70rem;
+    }
+
+    .ouverture__cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      padding: 1rem 1.5rem 3rem;
+      align-items: start;
+    }
+
+    .ouverture__col {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fafafa;
+      overflow: hidden;
+    }
+
+    .ouverture__col-title {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #ddd;
+      font-size: 1rem;
+    }
+
+    .ouverture__col--ouvert .ouverture__col-title {
+      background: #e3f6e3;
+      color: #18753c;
+    }
+
+    .ouverture__col--ferme .ouverture__col-title {
+      background: #f6e3e3;
+      color: #ce0500;
+    }
+
+    /* La liste plate occupe toute la colonne et reste une zone de drop même
+       vide (min-height). */
+    .ouverture__list {
+      list-style: none;
+      margin: 0;
+      padding: 0.5rem;
+      min-height: 120px;
+    }
+
+    /* Zone de drop explicite en tête de colonne : cible claire où lâcher un
+       département, le rangement par région se fait ensuite tout seul. */
+    .ouverture__dropzone {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 0.82rem;
+      color: #777;
+      border: 2px dashed #c0c0c0;
+      border-radius: 8px;
+      padding: 0.7rem;
+      margin: 0 0.18rem 0.6rem;
+      background: rgba(0, 0, 0, 0.015);
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    /* Surbrillance quand un département survole la zone pendant le drag
+       (SortableJS pose la classe sur la zone via onMove). */
+    .ouverture__col--ouvert .ouverture__dropzone--active {
+      border-color: #18753c;
+      background: #e3f6e3;
+      color: #18753c;
+    }
+
+    .ouverture__col--ferme .ouverture__dropzone--active {
+      border-color: #ce0500;
+      background: #f6e3e3;
+      color: #ce0500;
+    }
+
+    .ouverture__entete {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.82rem;
+      color: #555;
+      padding: 0.6rem 0.4rem 0.3rem;
+      margin-top: 0.3rem;
+      border-top: 1px dashed #e2e2e2;
+      cursor: default;
+    }
+
+    .ouverture__entete:first-child {
+      border-top: none;
+      margin-top: 0;
+    }
+
+    .ouverture__region-toggle {
+      margin-left: auto;
+      font-size: 0.72rem;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      padding: 0.1rem 0.45rem;
+      color: #333;
+    }
+
+    .ouverture__region-toggle:hover {
+      background: #f0f0f0;
+    }
+
+    .ouverture__dept {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #fff;
+      border: 1px solid #c8c8c8;
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      margin: 0.18rem;
+      cursor: grab;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+
+    .ouverture__dept:hover {
+      border-color: #1f4789;
+    }
+
+    .ouverture__dept:active {
+      cursor: grabbing;
+    }
+
+    .ouverture__dept-code {
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .ouverture__dept-ghost {
+      opacity: 0.35;
+    }
+
+    .ouverture__dept-chosen {
+      box-shadow: 0 0 0 2px #1f4789;
+    }
+
+    .ouverture__dept-drag {
+      opacity: 0.9;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .ouverture__col {
+        background: #262626;
+        border-color: #444;
+      }
+
+      .ouverture__dept {
+        background: #333;
+        border-color: #555;
+        color: #eee;
+      }
+
+      .ouverture__entete {
+        color: #bbb;
+        border-top-color: #444;
+      }
+
+      .ouverture__region-toggle {
+        background: #333;
+        color: #eee;
+        border-color: #666;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Token CSRF rendu dans la page : le cookie csrftoken est HttpOnly
+    (CSRF_COOKIE_HTTPONLY=True), donc inaccessible en JS. On lit le token
+    depuis cet input caché pour les POST fetch du drag&drop.
+  {% endcomment %}
+  <form style="display:none">
+    {% csrf_token %}
+  </form>
+
+  <div class="ouverture__intro">
+    <h1>Ouverture géographique du simulateur</h1>
+    <p>
+      Glissez un département d'une colonne à l'autre pour ouvrir ou fermer le
+      simulateur. Les départements <strong>ouverts</strong> ({{ nb_ouverts }})
+      affichent le formulaire ; les <strong>fermés</strong> ({{ nb_fermes }})
+      affichent un message « pas encore ouvert ».
+      <em>Fermé par défaut.</em>
+    </p>
+  </div>
+
+  <div class="ouverture__cols">
+    <section class="ouverture__col ouverture__col--ouvert">
+      <h2 class="ouverture__col-title">✅ Ouverts ({{ nb_ouverts }})</h2>
+      <ul class="ouverture__list" data-bucket="ouvert">
+        <li class="ouverture__dropzone" data-dropzone>
+          <span>⬇ Déposer ici pour <strong>ouvrir</strong> le département</span>
+        </li>
+        {% for item in items_ouverts %}
+          {% include "nitrates_admin/ouverture/_item.html" with bucket="ouvert" %}
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="ouverture__col ouverture__col--ferme">
+      <h2 class="ouverture__col-title">⛔ Fermés ({{ nb_fermes }})</h2>
+      <ul class="ouverture__list" data-bucket="ferme">
+        <li class="ouverture__dropzone" data-dropzone>
+          <span>⬇ Déposer ici pour <strong>fermer</strong> le département</span>
+        </li>
+        {% for item in items_fermes %}
+          {% include "nitrates_admin/ouverture/_item.html" with bucket="ferme" %}
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
+  <script>
+    (function () {
+      const toggleUrl = "{% url 'nitrates_admin_ouverture_toggle' %}";
+      const toggleRegionUrl = "{% url 'nitrates_admin_ouverture_toggle_region' %}";
+
+      function csrf() {
+        const i = document.querySelector('[name=csrfmiddlewaretoken]');
+        return i ? i.value : '';
+      }
+
+      function toast(msg) {
+        document.dispatchEvent(new CustomEvent('showToast', { detail: { message: msg } }));
+      }
+
+      // Persiste le déplacement d'un département, puis recharge la page pour
+      // recalculer le regroupement par région côté serveur (simple et fiable).
+      function persister(code, estOuvert) {
+        const body = new URLSearchParams();
+        body.set('code', code);
+        body.set('est_ouvert', estOuvert ? 'true' : 'false');
+        return fetch(toggleUrl, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+        }).then((r) => {
+          if (!r.ok) { toast('⚠️ Échec (' + code + ')'); return; }
+          location.reload();
+        }).catch(() => toast('⚠️ Réseau (' + code + ')'));
+      }
+
+      // Une seule liste par colonne, même groupe -> drop toujours possible.
+      // On filtre sur les chips département (les en-têtes ne sont pas draggables).
+      function clearDropzones() {
+        document.querySelectorAll('.ouverture__dropzone--active').forEach((z) =>
+          z.classList.remove('ouverture__dropzone--active')
+        );
+      }
+
+      document.querySelectorAll('.ouverture__list').forEach((ul) => {
+        new Sortable(ul, {
+          group: 'departements',
+          draggable: '.ouverture__dept',
+          animation: 150,
+          ghostClass: 'ouverture__dept-ghost',
+          chosenClass: 'ouverture__dept-chosen',
+          dragClass: 'ouverture__dept-drag',
+          // Surbrillance de la dropzone de la colonne survolée pendant le drag.
+          onMove: function (evt) {
+            clearDropzones();
+            const targetList = evt.to;
+            const zone = targetList
+              ? targetList.querySelector('.ouverture__dropzone')
+              : null;
+            if (zone) zone.classList.add('ouverture__dropzone--active');
+            return true;
+          },
+          onEnd: function (evt) {
+            clearDropzones();
+            const item = evt.item;
+            const code = item.getAttribute('data-code');
+            if (!code) return;
+            const bucket = item.closest('[data-bucket]');
+            // Pas de changement de colonne -> rien à persister (juste réordre).
+            if (evt.from === evt.to) return;
+            const estOuvert = bucket && bucket.getAttribute('data-bucket') === 'ouvert';
+            persister(code, estOuvert);
+          },
+        });
+      });
+
+      // Boutons "ouvrir/fermer toute la région".
+      document.querySelectorAll('[data-region-toggle]').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          const body = new URLSearchParams();
+          body.set('region_code', btn.getAttribute('data-region-code'));
+          body.set('est_ouvert', btn.getAttribute('data-cible'));
+          fetch(toggleRegionUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+          }).then((r) => {
+            if (r.ok) location.reload(); else toast('⚠️ Échec région');
+          });
+        });
+      });
+    })();
+  </script>
+{% endblock %}

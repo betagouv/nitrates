@@ -89,11 +89,10 @@ class YamlTreeView(TemplateView):
                 lock_blocked_by = tree.locked_by
                 mode = "lecture"
 
-        active_tree = (
-            DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
-            .only("pk", "name")
-            .first()
-        )
+        # L'actif de reference pour le bandeau "Voir l'arbre actif" = l'actif
+        # de la MEME zone d'activation que l'arbre affiche (un draft de PAR
+        # se compare au PAR actif, pas au PAN).
+        active_tree = _active_tree_for_zone(tree)
 
         arbre = load_tree_admin(tree)
         racine = arbre.get("arbre", {}).get("noeud") or {}
@@ -182,7 +181,12 @@ class EditActiveView(View):
                 "L'édition de l'arbre actif est réservée aux administrateurs. "
                 "Vous pouvez cloner l'arbre actif pour créer votre propre brouillon."
             )
-        draft = DecisionTree.find_or_create_edit_draft(request.user)
+        # Plusieurs arbres peuvent etre actifs (PAN/PAR/ZAR). On determine quel
+        # arbre actif editer a partir du tree affiche (tree_id), et on resout
+        # l'actif de SA zone d'activation. Le lock est ainsi par zone.
+        tree_id = request.GET.get("tree_id") or request.POST.get("tree_id")
+        active = _resolve_active_for_zone(tree_id)
+        draft = DecisionTree.find_or_create_edit_draft(request.user, active=active)
         if draft is None:
             return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
         url = reverse("nitrates_admin_yaml_tree") + f"?tree_id={draft.pk}&mode=edition"
@@ -280,10 +284,13 @@ class CreateDraftView(View):
     def post(self, request, *args, **kwargs):
         from_id = request.GET.get("from") or request.POST.get("from")
         if from_id:
+            # Clone l'arbre demande explicitement, quelle que soit sa zone.
             source = get_object_or_404(DecisionTree, pk=from_id)
         else:
+            # Sans source explicite : point d'entree = le PAN actif (fallback).
             source = DecisionTree.objects.filter(
-                status=DecisionTree.STATUS_ACTIVE
+                status=DecisionTree.STATUS_ACTIVE,
+                scope=DecisionTree.SCOPE_NATIONAL,
             ).first()
             if source is None:
                 return HttpResponseRedirect(reverse("nitrates_admin_yaml_tree"))
@@ -314,14 +321,55 @@ def _edited_origin_name(tree: DecisionTree, user=None) -> str:
 
 def _resolve_tree(tree_id) -> DecisionTree | None:
     """Retourne le DecisionTree cible. Si tree_id est fourni, on le charge
-    (lance 404 si introuvable). Sinon on retourne l'actif courant.
-    Retourne None si rien n'est dispo (DB vide)."""
+    (quel que soit son scope), sinon on retombe sur le PAN comme point
+    d'entree de l'editeur (le plus general ; l'utilisateur bascule ensuite
+    sur n'importe quel actif via le selecteur). Retourne None si rien n'est
+    dispo (DB vide)."""
     if tree_id:
         try:
             return DecisionTree.objects.get(pk=tree_id)
         except (DecisionTree.DoesNotExist, ValueError):
             return None
-    return DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).first()
+    # Pas de tree_id : point d'entree = le PAN (fallback uniquement).
+    return DecisionTree.objects.filter(
+        status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+    ).first()
+
+
+def _active_tree_for_zone(tree: DecisionTree | None) -> DecisionTree | None:
+    """L'arbre ACTIF de la meme zone d'activation que `tree`.
+
+    Sert au bandeau 'Voir l'arbre actif' (comparaison draft <-> actif de la
+    MEME zone) : un draft de PAR doit pointer vers le PAR actif, pas le PAN.
+    """
+    if tree is None:
+        return None
+    return (
+        DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE,
+            scope=tree.scope,
+            region_code=tree.region_code,
+            activation_map=tree.activation_map,
+        )
+        .only("pk", "name")
+        .first()
+    )
+
+
+def _resolve_active_for_zone(tree_id) -> DecisionTree | None:
+    """Arbre actif a editer : l'actif de la zone du tree affiche (via tree_id).
+    Sans tree_id, fallback sur le PAN actif (point d'entree)."""
+    if tree_id:
+        try:
+            ref = DecisionTree.objects.get(pk=tree_id)
+        except (DecisionTree.DoesNotExist, ValueError):
+            ref = None
+        active = _active_tree_for_zone(ref)
+        if active is not None:
+            return active
+    return DecisionTree.objects.filter(
+        status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_NATIONAL
+    ).first()
 
 
 def _querystring_base(vue: str, filtre: str, tree_pk, mode: str = "lecture") -> str:

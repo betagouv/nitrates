@@ -1,32 +1,40 @@
 """Seed des `BrancheValidation` pour les feuilles « couvert d'interculture ».
 
-Pendant couvert (sprint 2) du seed `seed_branches_validation` (culture
-principale). Pour chaque feuille atteignable sous
-`occupation_sol = couvert_intercultures` du YAML actif (renvoi_vers
-resolus), cree/met a jour une `BrancheValidation` avec :
-  - `chemin_yaml` (cle naturelle, path d'IDs)
-  - `branche_label` (chemin metier lisible)
-  - `url_simulateur` (deeplink pre-rempli : couvert + type fertilisant +
-    complement ICPE/IAA + zonage note 5)
-  - `yaml_snapshot` (extrait YAML de la regle, round-trip ruamel)
-  - `resultat_miro` = texte attendu **derive du SVG/CSV** (board Miro
-    arbre complet 2026-05-30) quand un rapprochement existe ; sinon le
-    texte YAML de la regle.
+Pendant couvert du seed `seed_branches_validation` (culture principale).
+Pour chaque feuille atteignable sous `occupation_sol = couvert_intercultures`
+du YAML actif (renvoi_vers résolus), crée/met à jour une `BrancheValidation`
+avec UNIQUEMENT les champs **factuels et sûrs**, dérivés du YAML :
 
-Le rapprochement YAML <-> SVG est pre-calcule dans
-`snapshot_miro/arbre_complet/2026-05-30/couvert_reference_svg.json`
-(genere par l'analyse SVG + CSV, cf. `cross_validation_couvert.md`).
-Si le fichier est absent, on retombe sur le texte YAML seul.
+  - `chemin_yaml`    (clé naturelle, path d'IDs)
+  - `branche_label`  (chemin métier lisible)
+  - `url_simulateur` (deeplink pré-rempli : couvert + type fertilisant +
+                      complément ICPE/IAA + zonage note 5)
+  - `yaml_snapshot`  (extrait YAML de la règle, round-trip ruamel)
+  - `branche_miro`   (slug sous_culture, factuel)
+  - `type_fertilisant_miro` (type fertilisant, factuel)
+  - `ordre`          (tri canonique, couvert empilé après la CP)
 
-N'ecrase PAS les champs de validation (statut, screenshots) si la ligne
-existe deja. Ne touche PAS aux 41 lignes culture principale.
+VOLONTAIREMENT LAISSÉS VIDES (saisie 100 % manuelle par le validateur) :
+  `resultat_miro`, `miro_widget_id`, `screenshot_miro`, `code_pc_miro`,
+  `flag_verif`, `note_verif`.
 
-ATTENTION : `flag_verif` / `note_verif` SONT re-ecrits a chaque seed
-(ce sont des notes POSEES PAR LE SEED, pas une saisie humaine). Si Max
-leve un flag manuellement dans l'app puis re-seede, le flag revient.
-C'est voulu : la source des flags = l'analyse de seed. Pour lever un
-flag durablement, retirer la regle de FLAGS_PAR_REGLE ou ajuster la
-logique `_flag_pour_feuille`.
+Décision carte #140 : le board Miro couvert est trop ambigu vis-à-vis du
+YAML (mêmes libellés dupliqués jusqu'à 10×, feuilles calculatrices sans
+texte figé, type III « après 01/01 » absent du board) pour un
+rapprochement texte/widget automatique fiable. Plutôt qu'un mapping auto
+douteux, le validateur colle lui-même, par feuille :
+  - le `miro_widget_id` (depuis « Copy link to widget » du board → l'app
+    fabrique le deeplink `?moveToWidget=<id>`), et/ou
+  - un screenshot Miro scopé à la main.
+L'ancien rapprochement heuristique (couvert_reference_svg.json + flags) est
+abandonné ; le snapshot SVG du board (widgets.json) reste comme référence
+pour retrouver les ids à la main.
+
+N'écrase PAS les champs de validation (statut, screenshots, miro_widget_id,
+resultat_miro, code_pc_miro saisis à la main) si la ligne existe déjà : le
+re-seed ne pose que des `defaults` sur create, et ne met à jour QUE les
+champs dérivés du YAML (label, url, snapshot, ordre, slugs) — voir
+`CHAMPS_DERIVES`. Ne touche PAS aux lignes culture principale.
 
 Usage :
     python manage.py seed_branches_validation_couvert
@@ -34,12 +42,9 @@ Usage :
     python manage.py seed_branches_validation_couvert --reset   # couvert only
 """
 
-import json
-from pathlib import Path
 from urllib.parse import urlencode
 
 import yaml
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from envergo.nitrates.management.commands.seed_branches_validation import (
@@ -48,9 +53,33 @@ from envergo.nitrates.management.commands.seed_branches_validation import (
     TYPE_FERTILISANT_RESOLU_VERS_FORM,
     _yaml_snapshot,
 )
-from envergo.nitrates.models import BrancheValidation
+from envergo.nitrates.models import BrancheValidation, DecisionTree
 from envergo.nitrates.yaml_tree.feuilles import enumerer_feuilles_couvert_v2
 from envergo.nitrates.yaml_tree.loader_db import load_active_tree, load_active_tree_raw
+
+
+def _charger_arbre_national():
+    """Charge l'arbre NATIONAL (PAN), même quand plusieurs arbres sont
+    actifs en DB partagée (national + PAR + ZAR Grand Est). Le couvert que
+    ce seed provisionne est celui du PAN ; on cible donc explicitement
+    l'arbre national par son nom, au lieu de `load_active_tree()` qui fait
+    un `.get(status='active')` ambigu et lève MultipleObjectsReturned.
+
+    Retourne (contenu_json, yaml_brut). Fallback sur le loader standard
+    quand un seul arbre est actif (comportement historique inchangé).
+    """
+    actifs = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+    nat = actifs.filter(name__icontains="national").first()
+    if nat is not None:
+        return nat.contenu, (nat.contenu_yaml_brut or "")
+    # Un seul arbre actif (ou aucun « national ») : loader standard.
+    raw = ""
+    try:
+        raw = load_active_tree_raw()
+    except Exception:
+        pass
+    return load_active_tree(), raw
+
 
 # sous_culture (slug arbre) -> (categorie_culture UI, sous_culture_form UI).
 # Permet de pre-remplir la cascade du formulaire pour atterrir sur la
@@ -109,60 +138,17 @@ CHAMPS_COMPLEMENT = (
     "icpe_ed",
 )
 
-# ─── Cas speciaux a verifier (flag pose au seed) ──────────────────────────
-# Notes posees PAR LE SEED (pas une action user) pour que Max ne perde pas
-# la trace des points a regarder lors de la re-validation humaine. Cf.
-# snapshot_miro/.../cross_validation_couvert.md pour le detail.
-# Clef = regle_id ; appliquee a TOUTES les feuilles atteignant cette regle.
-FLAGS_PAR_REGLE = {
-    "r_cine_avant_3112_type_III": (
-        "DIVERGENCE board : le YAML dit « Apport interdit toute l'année » "
-        "(01/07→30/06), alors que le board montre des motifs datés "
-        "(15/10 ou 15/11 → 15/01). À confirmer juriste."
-    ),
-    "r_cine_avant_3112_type_0_icpe_a": (
-        "FORMULATION à trancher : période affichée OK (15/12→15/01, = board), "
-        "mais la condition dit « conditions de la note 1 » que le board ne "
-        "formule pas. Vérifier le libellé de condition (pas un bug de routage)."
-    ),
-    "r_cie_courte_type_III": (
-        "FORMULATION : le YAML exprime en positif (« apports possibles… entre "
-        "le semis et les 15 j ») ce que le board exprime en négatif "
-        "(« apports interdits sauf… »). Même périmètre, à harmoniser."
-    ),
-    # Les 6 feuilles courte 0/I/II : bug renvoi_vers regles_partagees corrigé
-    # pendant ce sprint -> re-vérifier qu'elles rendent bien le bon résultat.
-    "r_cie_courte_types_0_I_II": (
-        "EX-BUG corrigé (renvoi_vers regles_partagees non indexé → "
-        "ParcoursError). Re-vérifier le rendu : « Apport autorisé » [PC15]."
-    ),
-    "r_cine_courte_types_0_I_II": (
-        "EX-BUG corrigé (renvoi_vers regles_partagees non indexé → "
-        "ParcoursError). Re-vérifier le rendu : « Apport autorisé » [PC13]."
-    ),
-}
-
-# Seuil de rapprochement SVG en dessous duquel on flague la feuille comme
-# « texte board incertain » (le seed n'a pas su matcher le texte YAML a une
-# feuille-resultat du board avec confiance).
-SCORE_FLAG_SEUIL = 0.5
-
-
-def _ref_svg() -> dict:
-    """Charge le rapprochement YAML<->SVG pre-calcule (keyed par
-    chemin_yaml). Renvoie {} si le fichier n'est pas la."""
-    path = (
-        Path(settings.NITRATES_SPECS_DIR)
-        / "snapshot_miro"
-        / "arbre_complet"
-        / "2026-05-30"
-        / "couvert_reference_svg.json"
-    )
-    if not path.exists():
-        return {}
-    with path.open() as f:
-        data = json.load(f)
-    return {row["chemin_yaml"]: row for row in data}
+# Champs DERIVES du YAML : recalcules a chaque seed, ecrases meme sur une
+# ligne existante (ils refletent l'arbre, pas une saisie humaine). Tout le
+# reste (validation + saisie Miro manuelle) est preserve sur update.
+CHAMPS_DERIVES = (
+    "branche_label",
+    "url_simulateur",
+    "yaml_snapshot",
+    "branche_miro",
+    "type_fertilisant_miro",
+    "ordre",
+)
 
 
 def _build_url(feuille: dict) -> str:
@@ -206,45 +192,6 @@ def _build_url(feuille: dict) -> str:
     return "/simulateur/?" + urlencode(params)
 
 
-def _flag_pour_feuille(regle_id: str, row: dict) -> tuple[bool, str]:
-    """Determine si la feuille merite un flag « a verifier » et sa note.
-
-    Priorite :
-      1. note explicite par regle_id (divergences/formulations/ex-bugs) ;
-      2. feuille calculatrice sans texte fige -> comparaison visuelle ;
-      3. rapprochement SVG faible (score < seuil) -> texte board incertain.
-
-    Renvoie ("", False) si rien a signaler."""
-    note_explicite = FLAGS_PAR_REGLE.get(regle_id)
-    if note_explicite:
-        return True, note_explicite
-
-    if not row:
-        # Pas de ligne de reference : on ne sait pas rapprocher, a verifier.
-        return True, (
-            "Aucun rapprochement board pour cette feuille (absente de la "
-            "référence SVG). À vérifier manuellement."
-        )
-
-    yaml_texte = (row.get("yaml_texte") or "").strip()
-    if not yaml_texte:
-        return True, (
-            "Feuille calculatrice sans texte figé : le résultat dépend des "
-            "dates (semis/destruction). Comparer visuellement le calendrier "
-            "au board (pas de rapprochement texte possible)."
-        )
-
-    score = row.get("match_score")
-    if isinstance(score, (int, float)) and score < SCORE_FLAG_SEUIL:
-        return True, (
-            f"Rapprochement board incertain (score {score}). Le texte YAML "
-            "n'a pas été matché avec confiance à une feuille-résultat du "
-            "board — vérifier que le résultat correspond bien."
-        )
-
-    return False, ""
-
-
 class Command(BaseCommand):
     help = "Seed BrancheValidation pour les feuilles couvert d'interculture."
 
@@ -257,22 +204,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
-        arbre = load_active_tree()
+        arbre, raw = _charger_arbre_national()
         feuilles = enumerer_feuilles_couvert_v2(arbre)
 
         try:
-            raw = load_active_tree_raw()
             arbre_rt = yaml.safe_load(raw) if raw else arbre
         except Exception:
             arbre_rt = arbre
-
-        ref = _ref_svg()
-        if not ref:
-            self.stdout.write(
-                self.style.WARNING(
-                    "Reference SVG absente : resultat_miro = texte YAML seul."
-                )
-            )
 
         if opts["reset"] and not opts["dry_run"]:
             qs = BrancheValidation.objects.filter(
@@ -282,81 +220,68 @@ class Command(BaseCommand):
             qs.delete()
             self.stdout.write(f"Reset couvert : {n} lignes supprimees.")
 
-        crees = mis_a_jour = avec_ref = flags = 0
+        crees = mis_a_jour = 0
         for feuille in feuilles:
             chemin_yaml = "/".join(feuille["chemin_ids"])
-            url = _build_url(feuille)
-            snapshot = _yaml_snapshot(arbre_rt, feuille["regle_id"])
             sous_culture = feuille["contexte"].get("sous_culture", "")
 
-            row = ref.get(chemin_yaml, {})
-            svg_attendu = row.get("svg_attendu")
-            score = row.get("match_score")
-            # resultat_miro : texte attendu cote board. Priorite au texte SVG
-            # rapproche avec confiance (score >= 0.5) ; sinon le texte derive
-            # (texte YAML, ou periodes pour les regles calculatrice sans
-            # `texte` fige). Pour ces dernieres, le rapprochement se fait
-            # visuellement via Playwright + screenshot Miro, pas par texte.
-            resultat = svg_attendu or row.get("derived") or ""
-            if svg_attendu:
-                avec_ref += 1
-
-            flag, note = _flag_pour_feuille(feuille["regle_id"], row)
-            if flag:
-                flags += 1
-
+            derives = {
+                "branche_label": feuille["label"][:500],
+                "url_simulateur": _build_url(feuille)[:2000],
+                "yaml_snapshot": _yaml_snapshot(arbre_rt, feuille["regle_id"]),
+                "branche_miro": sous_culture[:200],
+                "type_fertilisant_miro": (
+                    feuille["contexte"].get("type_fertilisant") or ""
+                )[:50],
+            }
             try:
-                ordre = (
+                derives["ordre"] = (
                     ORDRE_OFFSET
                     + ORDRE_SOUS_CULTURE.index(sous_culture) * 1000
                     + feuilles.index(feuille)
                 )
             except ValueError:
-                ordre = 9999
+                derives["ordre"] = 9999
 
             if opts["dry_run"]:
-                tag = (
-                    f"[SVG {score}] {svg_attendu[:50]}"
-                    if svg_attendu
-                    else "[pas de match SVG]"
+                self.stdout.write(
+                    f"[dry-run] {chemin_yaml[-70:]:70} "
+                    f"{sous_culture}/{derives['type_fertilisant_miro']}"
                 )
-                flag_tag = " ⚑VERIF" if flag else ""
-                self.stdout.write(f"[dry-run] {chemin_yaml[-70:]:70} {tag}{flag_tag}")
                 continue
 
-            defaults = {
-                "regle_id": feuille["regle_id"] or "",
-                "branche_label": feuille["label"][:500],
-                "url_simulateur": url[:2000],
-                "yaml_snapshot": snapshot,
-                "branche_miro": sous_culture[:200],
-                "type_fertilisant_miro": (
-                    feuille["contexte"].get("type_fertilisant") or ""
-                )[:50],
-                "resultat_miro": resultat[:500],
-                "ordre": ordre,
-                "flag_verif": flag,
-                "note_verif": note,
-            }
-            _, created = BrancheValidation.objects.update_or_create(
-                chemin_yaml=chemin_yaml,
-                defaults=defaults,
-            )
-            if created:
+            obj = BrancheValidation.objects.filter(chemin_yaml=chemin_yaml).first()
+            if obj is None:
+                # Create : pose les derives. Les champs Miro/validation
+                # gardent leurs defauts modele (vides) -> saisie manuelle.
+                BrancheValidation.objects.create(
+                    chemin_yaml=chemin_yaml,
+                    regle_id=feuille["regle_id"] or "",
+                    nature=BrancheValidation.NATURE_COUVERT,
+                    **derives,
+                )
                 crees += 1
             else:
+                # Update : ne touche QUE les derives YAML, preserve toute
+                # la saisie humaine (miro_widget_id, resultat_miro,
+                # screenshots, statut, code_pc, flags).
+                for champ in CHAMPS_DERIVES:
+                    setattr(obj, champ, derives[champ])
+                obj.regle_id = feuille["regle_id"] or ""
+                obj.nature = BrancheValidation.NATURE_COUVERT
+                obj.save(
+                    update_fields=list(CHAMPS_DERIVES)
+                    + ["regle_id", "nature", "updated_at"]
+                )
                 mis_a_jour += 1
 
         if opts["dry_run"]:
-            self.stdout.write(
-                f"\n[dry-run] {len(feuilles)} feuilles couvert, "
-                f"{avec_ref} avec resultat SVG, {flags} flaggees a verifier."
-            )
+            self.stdout.write(f"\n[dry-run] {len(feuilles)} feuilles couvert.")
         else:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"OK couvert : {crees} crees, {mis_a_jour} mis a jour, "
-                    f"{avec_ref} avec resultat SVG, {flags} flaggees a verifier "
-                    f"(total BrancheValidation {BrancheValidation.objects.count()})."
+                    f"OK couvert : {crees} crees, {mis_a_jour} mis a jour "
+                    f"(champs Miro laisses vides, saisie manuelle). "
+                    f"Total BrancheValidation {BrancheValidation.objects.count()}."
                 )
             )

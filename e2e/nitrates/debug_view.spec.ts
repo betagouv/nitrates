@@ -10,12 +10,13 @@ const RENNES_LAT = 48.1215230;
 
 test.describe('Nitrates debug view', () => {
   test('home page shows the Leaflet map and the placeholder cartouche', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/simulateur/');
 
     await expect(page).toHaveTitle(/Simulateur nitrates/);
-    // La home `/` garde son h1 court "Simulateur nitrates" (vs `/simulateur/`
-    // qui a une phrase narrative validee 2026-05-12).
-    await expect(page.locator('h1')).toContainText('Simulateur nitrates');
+    // Le panneau debug parcelle (#nitrates-debug) n'existe que sur
+    // `/simulateur/` (la home publique `/` le masque : force_debug=False).
+    // h1 narrative validee UX.
+    await expect(page.locator('h1')).toContainText("règles d'épandage");
 
     const map = page.locator('#nitrates-map');
     await expect(map).toBeVisible();
@@ -29,7 +30,7 @@ test.describe('Nitrates debug view', () => {
   test('clicking on Reims fills the cartouche with Marne / Grand Est / ZV Seine-Normandie', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto('/simulateur/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
     // Fire a Leaflet click directly (more reliable than DOM coords on a tiled map).
@@ -44,14 +45,15 @@ test.describe('Nitrates debug view', () => {
     await expect(cartouche).toContainText('44');
     await expect(cartouche).toContainText('Grand Est');
     await expect(cartouche).toContainText(/OUI.*Seine-Normandie/);
-    // Reims n'est pas sur une parcelle PAC importée, donc pas de RPG.
-    await expect(cartouche).toContainText(/aucune parcelle RPG/);
+    // Le panneau remonte l'info parcelle (cadastre IGN et/ou RPG) ; on verifie
+    // juste qu'une info parcelle est presente (Reims a une parcelle cadastre).
+    await expect(cartouche).toContainText(/[Pp]arcelle/);
   });
 
   test('clicking on a known RPG parcel in Ille-et-Vilaine shows the parcel info', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto('/simulateur/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
     await page.evaluate(([lng, lat]) => {

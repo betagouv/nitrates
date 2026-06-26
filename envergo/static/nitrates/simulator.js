@@ -40,6 +40,38 @@
     if (lockedMsg) lockedMsg.hidden = true;
   }
 
+  // ─── Carte #57 : bornage geographique ────────────────────────────────
+  // Quand la parcelle cliquee est dans un departement non ouvert, on masque
+  // le formulaire et on affiche un message dedie (#form-region-fermee).
+
+  function masquerFormulaire() {
+    const formZone = document.getElementById("form-after-localisation");
+    const lockedMsg = document.getElementById("form-locked-message");
+    if (formZone) formZone.hidden = true;
+    if (lockedMsg) lockedMsg.hidden = true;
+  }
+
+  function masquerMessageFerme() {
+    const fermee = document.getElementById("form-region-fermee");
+    if (fermee) fermee.hidden = true;
+  }
+
+  function afficherMessageFerme(regionLabel, departmentCode) {
+    const fermee = document.getElementById("form-region-fermee");
+    if (!fermee) return;
+    const lieu = document.getElementById("form-region-fermee-lieu");
+    if (lieu) {
+      if (regionLabel) {
+        lieu.textContent = regionLabel;
+      } else if (departmentCode) {
+        lieu.textContent = "votre département (" + departmentCode + ")";
+      } else {
+        lieu.textContent = "votre secteur";
+      }
+    }
+    fermee.hidden = false;
+  }
+
   const map = L.map(mapEl, { attributionControl: false }).setView(
     INITIAL_CENTER,
     INITIAL_ZOOM
@@ -126,6 +158,43 @@
   zvLayer.on("add", loadZvIfNeeded);
   zvLayer.addTo(map);
 
+  // Carte #34 : overlay ZAR (Zone d'Action Renforcée). Couvre toutes les ZAR
+  // chargées (potentiellement plusieurs régions ; aujourd'hui le Grand Est).
+  // Non affiché par défaut : c'est une tickbox que l'utilisateur active.
+  const zarLayer = L.geoJSON(null, {
+    style: () => ({
+      color: "#c9191e",
+      weight: 2.5,
+      fillColor: "#ff1a1a",
+      fillOpacity: 0.6,
+    }),
+    onEachFeature: (feature, layer) => {
+      const p = feature.properties || {};
+      const titre = p.nom_complet || p.nom || "ZAR";
+      layer.bindTooltip(`${titre}${p.departement ? " (" + p.departement + ")" : ""}`, {
+        sticky: true,
+      });
+    },
+  });
+  let zarLoaded = false;
+  function loadZarIfNeeded() {
+    if (zarLoaded) return;
+    zarLoaded = true;
+    fetch(window.NITRATES_ZAR_GEOJSON_URL)
+      .then((r) => r.json())
+      .then((data) => {
+        zarLayer.addData(data);
+        // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
+        zarLayer.bringToFront();
+      })
+      .catch((err) => console.error("ZAR GeoJSON load failed:", err));
+  }
+  zarLayer.on("add", function () {
+    loadZarIfNeeded();
+    // Si la couche est déjà chargée, on la repasse au premier plan au ré-add.
+    if (zarLoaded) zarLayer.bringToFront();
+  });
+
   L.control
     .layers(
       {
@@ -135,10 +204,16 @@
       {
         "Cadastre": cadastreOverlay,
         "Zones vulnérables nitrates": zvLayer,
+        "Zones d'action renforcée (ZAR)": zarLayer,
       },
       { collapsed: false }
     )
     .addTo(map);
+
+  // Affiche la couche ZAR par défaut (debug) : un overlay présent sur la carte
+  // a sa tickbox cochée d'office dans le L.control.layers. L'évènement "add"
+  // déclenche le chargement paresseux du GeoJSON.
+  zarLayer.addTo(map);
 
   let marker = null;
 
@@ -161,6 +236,20 @@
           (data.zv_info && data.zv_info.bassin) || "—"
         })`
       : "NON";
+
+    const zarClass = data.en_zar
+      ? "nitrates-debug__badge-yes"
+      : "nitrates-debug__badge-no";
+    const zarText = data.en_zar ? "OUI" : "NON";
+
+    // Zones Est : affichees seulement en Grand Est (data.en_grand_est).
+    const badge = (v) =>
+      `<dd class="${v ? "nitrates-debug__badge-yes" : "nitrates-debug__badge-no"}">${v ? "OUI" : "NON"}</dd>`;
+    const grandEstHtml = data.en_grand_est
+      ? `<dt>En Grand Est</dt>${badge(true)}` +
+        `<dt>Zone Grand Est 1</dt>${badge(data.zone_grand_est_1)}` +
+        `<dt>Zone Grand Est 2</dt>${badge(data.zone_grand_est_2)}`
+      : "";
 
     const ci = communeInfo || {};
     const communeHtml = ci.nom
@@ -185,6 +274,8 @@
         }</dd>
         <dt>Parcelle cadastre</dt><dd>${parcelHtml}</dd>
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
+        <dt>Zone d'action renforcée (ZAR)</dt><dd class="${zarClass}">${zarText}</dd>
+        ${grandEstHtml}
       </dl>
     `;
   }
@@ -289,6 +380,13 @@
             zv_info: cat.en_zone_vulnerable
               ? { nom: cat.bassin_label, bassin: cat.bassin }
               : null,
+            // Champs ZAR / Zones Est : sans eux le panneau affichait ZAR=NON
+            // au chargement par URL (ex bouton preview admin), alors que le
+            // catalog serveur les connait.
+            en_zar: cat.en_zar,
+            en_grand_est: cat.en_grand_est,
+            zone_grand_est_1: cat.zone_grand_est_1,
+            zone_grand_est_2: cat.zone_grand_est_2,
           },
           communeInfo,
           parcelInfo
@@ -304,8 +402,10 @@
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
 
-    // Issues #89 + #96 : devoile le formulaire au 1er clic carte.
-    revealFormAfterLocalisation();
+    // Carte #57 : on NE devoile PAS le formulaire immediatement. On attend
+    // la reponse localisation (DebugView) qui indique si le simulateur est
+    // ouvert pour ce departement. Si ouvert -> on revele le form ; sinon ->
+    // message "pas encore ouvert". cf. .then() ci-dessous.
 
     if (marker) {
       marker.setLatLng(e.latlng);
@@ -318,18 +418,36 @@
         '<p class="nitrates-debug__placeholder">Chargement…</p>';
     }
 
-    const url = `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}`;
-    Promise.all([
-      fetch(url, { headers: { Accept: "application/json" } }).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      }),
-      fetchCommuneInfo(lat, lng),
-      fetchParcelInfo(lat, lng),
-    ])
+    // On resout d'abord la commune (code INSEE) puis on interroge l'endpoint
+    // debug AVEC ce code : les Zones Est (ZGE1/ZGE2) se resolvent par INSEE
+    // cote serveur, sinon elles ressortent toujours None dans le panneau.
+    Promise.all([fetchCommuneInfo(lat, lng), fetchParcelInfo(lat, lng)])
+      .then(([communeInfo, parcelInfo]) => {
+        const code = communeInfo.code || "";
+        const url =
+          `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}` +
+          (code ? `&code_insee=${encodeURIComponent(code)}` : "");
+        return fetch(url, { headers: { Accept: "application/json" } })
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+          })
+          .then((data) => [data, communeInfo, parcelInfo]);
+      })
       .then(([data, communeInfo, parcelInfo]) => {
         renderDebug(data, communeInfo, parcelInfo);
         updateLocalisationReadonly(data, communeInfo.nom);
+        // Carte #57 : bornage geographique. Le backend renvoie
+        // simulateur_ouvert selon le departement de la parcelle. Si ouvert,
+        // on devoile le formulaire ; sinon on affiche le message "pas encore
+        // ouvert" et on garde le formulaire masque.
+        if (data.simulateur_ouvert) {
+          masquerMessageFerme();
+          revealFormAfterLocalisation();
+        } else {
+          masquerFormulaire();
+          afficherMessageFerme(data.region_label, data.department_code);
+        }
         // Pousse le code INSEE dans le hidden : il sera soumis avec
         // le form et utilise cote backend pour resoudre la zone
         // montagne (D113-14) sans charger les polygones communes.
@@ -338,6 +456,13 @@
       })
       .catch((err) => renderError(err.message || String(err)));
   });
+
+  // Aucun lat/lng pre-rempli (arrivee sur `/` ou `/simulateur/` sans
+  // parametres) : on NE pre-selectionne AUCUNE parcelle. La carte reste
+  // sur sa vue Grand Est par defaut et l'utilisateur est invite a cliquer.
+  // (Avant, un point ZAR etait pre-clique pour le confort dev, ce qui
+  // declenchait un auto-scroll vers les questions sans laisser lire la
+  // page d'accueil -- cf. #153.)
 
   // ─── Recherche commune BAN ─────────────────────────────────────────
   const searchInput = document.getElementById("map-search");

@@ -74,7 +74,16 @@ REGLE_SCHEMA = {
                 },
             },
         },
-        "code_prescription": {"type": "string"},
+        # Code(s) de prescription conditionnee. Accepte un scalaire (1 PC) OU
+        # une liste (plusieurs PC sur la meme regle). Forme historique scalaire
+        # conservee pour ne pas reecrire les arbres existants. La validation
+        # metier (PC connu, pas de doublon) est dans le validateur.
+        "code_prescription": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            ]
+        },
         "note": {"type": "string"},
         "source_juridique": {"type": "string"},
         "message": {"type": "string"},
@@ -123,6 +132,14 @@ REGLE_SCHEMA = {
                             "label_court": {"type": "string"},
                             "type": {"enum": ["date"]},
                             "placeholder": {"type": "string"},
+                            # Bornage optionnel de la saisie (cf. #126). Dates
+                            # limites au format JJ/MM. `min` = date la plus tot
+                            # autorisee, `max` = la plus tard. Ex pour un couvert
+                            # recolte avant le 31/12 : max=31/12 ; recolte apres
+                            # le 01/01 : min=01/01. Comparaison en annee agricole
+                            # (juil->juin). Le front grise les dates hors borne.
+                            "min": {"type": "string", "pattern": r"^\d{2}/\d{2}$"},
+                            "max": {"type": "string", "pattern": r"^\d{2}/\d{2}$"},
                         },
                     },
                 ]
@@ -134,13 +151,16 @@ REGLE_SCHEMA = {
     },
 }
 
-# Primitive `noeud` : interne, soit "formulaire" (question utilisateur), soit
-# "catalogue" (donnee resolue automatiquement).
+# Primitive `noeud` : interne. Trois familles :
+#   - "formulaire"          : question posee a l'utilisateur
+#   - "catalogue"           : donnee resolue automatiquement (lecture contexte)
+#   - "catalogue_parametre" : branche choisie par evaluation d'expression
+#                             Python sur le contexte (cf. #128)
 NOEUD_SCHEMA = {
     "type": "object",
     "required": ["type_noeud", "id", "champ", "branches"],
     "properties": {
-        "type_noeud": {"enum": ["formulaire", "catalogue"]},
+        "type_noeud": {"enum": ["formulaire", "catalogue", "catalogue_parametre"]},
         "id": {"type": "string", "pattern": "^[qn]_[a-zA-Z0-9_]+$"},
         "champ": {"type": "string"},
         "branches": {
@@ -173,12 +193,18 @@ NOEUD_SCHEMA = {
 }
 
 # Primitive `branche` : reponse possible. Doit contenir EXACTEMENT UN de
-# {noeud, regle, renvoi_vers} et EXACTEMENT UN de {valeur, valeurs}.
+# {noeud, regle, renvoi_vers}, et exactement un MECANISME DE SELECTION parmi :
+#   - `valeur`     : valeur unique comparee au contexte (catalogue / formulaire)
+#   - `valeurs`    : liste de valeurs equivalentes (regroupement DB, cf. #61)
+#   - `expression` : expression Python evaluee en sandbox, pour les noeuds
+#                    `catalogue_parametre` (cf. #128). Une branche `expression`
+#                    PEUT porter en plus une `valeur` (tracabilite : ecrite
+#                    dans le contexte si l'expression l'emporte), mais ce n'est
+#                    pas elle qui pilote le branchement.
 #
 # `valeurs: [a, b]` (pluriel) permet de grouper plusieurs valeurs sur une
 # meme branche (ex `plan_epandage` qui matche `icpe_e_ou_d` = soit `icpe_e`
 # soit `icpe_d`). Le walker du parcours teste l'appartenance a la liste.
-# Cf. #61 phase 3 : extension de la grammaire pour les regroupements DB.
 BRANCHE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -189,25 +215,67 @@ BRANCHE_SCHEMA = {
             "minItems": 1,
             "items": {"type": ["string", "boolean", "integer"]},
         },
+        # Expression Python (catalogue_parametre). La grammaire fine (chaine
+        # non vide, compilable, pas de dunder) est validee par
+        # validator._check_catalogue_parametre.
+        "expression": {"type": "string"},
         "libelle": {"type": "string"},
         "noeud": {"$ref": "#/$defs/noeud"},
         "regle": {"$ref": "#/$defs/regle"},
         "renvoi_vers": {"type": "string"},
+        # Patch applique sur la feuille atteinte via renvoi_vers : remappe des
+        # codes de prescription (ex {code_prescription: {pc12: pc14}}). Permet
+        # de reutiliser un sous-arbre identique en changeant juste les PC, sans
+        # tout reecrire (cf. CINE detruit avant 31/12 : PC12 -> PC14 en ZAR).
+        "patch": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "code_prescription": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        # Renvoi explicite vers un autre arbre de la cascade (region|national).
+        "renvoi_arbre": {"type": "string"},
+        # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.
+        # validator). Rend la branche cliquable ; au runtime = no-match/fallback.
+        "feuille_vide": {"type": "boolean"},
     },
     "allOf": [
-        # Exactement un de {valeur, valeurs} :
+        # Exactement un mecanisme de selection parmi {valeur, valeurs, expression}.
+        # Le cas `expression` autorise une `valeur` complementaire (tracabilite),
+        # d'ou le `valeurs` interdit a ses cotes mais `valeur` tolere.
         {
             "oneOf": [
-                {"required": ["valeur"]},
-                {"required": ["valeurs"]},
+                # valeur seule (catalogue / formulaire classique)
+                {
+                    "required": ["valeur"],
+                    "not": {"required": ["valeurs"]},
+                    "properties": {"expression": False},
+                },
+                # valeurs seules (regroupement)
+                {
+                    "required": ["valeurs"],
+                    "not": {"required": ["valeur"]},
+                    "properties": {"expression": False},
+                },
+                # expression (catalogue_parametre), valeur optionnelle tracabilite
+                {
+                    "required": ["expression"],
+                    "not": {"required": ["valeurs"]},
+                },
             ]
         },
-        # Exactement un de {noeud, regle, renvoi_vers} :
+        # Exactement un de {noeud, regle, renvoi_vers, renvoi_arbre, feuille_vide} :
         {
             "oneOf": [
                 {"required": ["noeud"]},
                 {"required": ["regle"]},
                 {"required": ["renvoi_vers"]},
+                {"required": ["renvoi_arbre"]},
+                {"required": ["feuille_vide"]},
             ]
         },
     ],

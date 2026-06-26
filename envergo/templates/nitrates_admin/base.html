@@ -84,6 +84,7 @@
         <a href="{% url 'admin:nitrates_decisiontree_changelist' %}"
            style="color:#fff">Arbres (liste)</a>
         <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
+        <a href="{% url 'nitrates_admin_ouverture_index' %}" style="color:#fff;">Ouverture géographique</a>
       </nav>
       <span style="margin-left:auto;color:#cdd6e4;">
         {% if user.is_authenticated %}{{ user.email }}{% endif %}
@@ -101,9 +102,16 @@
        (Annuler, Restaurer, Sauvegarder, Activer, etc.). Active par body.yaml-admin--busy
        depuis les listeners htmx ci-dessous. Les forms d'edition inline ont leur
     propre spinner local (cf. .yaml-tree__inline-form.htmx-request).{% endcomment %}
-    <div class="yaml-admin__global-overlay" aria-hidden="true">
-      <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
-    </div>
+    {% comment %}
+    Les pages SANS mutation htmx globale (ex: dashboard de validation, lecture
+    seule) peuvent vider ce bloc pour ne pas embarquer l'overlay -- sinon un
+    form POST natif le declenche et il peut rester colle "Action en cours…".
+    {% endcomment %}
+    {% block global_overlay %}
+      <div class="yaml-admin__global-overlay" aria-hidden="true">
+        <div class="yaml-admin__global-overlay-msg" id="yaml-admin-overlay-msg">⏳ Action en cours…</div>
+      </div>
+    {% endblock %}
 
     <main>
       {% block content %}{% endblock %}
@@ -264,6 +272,16 @@
       });
       document.addEventListener('htmx:responseError', _hideBusy);
       document.addEventListener('htmx:sendError', _hideBusy);
+      // FILET DE SECURITE : quand la reponse retargette + swappe (outerHTML)
+      // le <li> qui CONTIENT l'element declencheur (ex: conversion en catalogue
+      // parametre -> HX-Retarget #node-<nouvel_id>), le trigger est detruit par
+      // le swap et `htmx:afterRequest` ne remonte pas toujours jusqu'a document
+      // -> l'overlay "Sauvegarde…" reste affiche a l'infini alors que la
+      // mutation a reussi. `htmx:afterSettle` est emis sur la cible APRES le
+      // swap (et bulle depuis un element bien present dans le DOM), donc il
+      // ferme l'overlay de maniere fiable. On l'ecoute sur body (capture des
+      // events des elements swappes).
+      document.body.addEventListener('htmx:afterSettle', _hideBusy);
 
       // Pour les formulaires NATIFS (POST sans htmx, ex: "💾 Sauvegarder"
       // qui sort de l'edition), on montre aussi l'overlay au submit. La

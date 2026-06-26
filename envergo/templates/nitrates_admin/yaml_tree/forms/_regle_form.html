@@ -90,14 +90,12 @@
                      name="periodes-{{ forloop.counter0 }}-du"
                      value="{{ p.du|default_if_none:'' }}"
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-au"
                      value="{{ p.au|default_if_none:'' }}"
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <select name="periodes-{{ forloop.counter0 }}-regime"
                       data-regime-select
                       style="max-width:22ch">
@@ -118,10 +116,9 @@
               <input type="text"
                      name="periodes-{{ forloop.counter0 }}-condition"
                      value="{{ p.condition|default_if_none:'' }}"
-                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM && date_xxx > JJ/MM"
                      data-condition-cell
-                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
-                     style="max-width:34ch">
+                     title="Mini-DSL : <terme> <op> <terme>, plusieurs comparaisons jointes par && (ET). Terme = JJ/MM, event, ou event±Nunite. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition.">
                 <button type="button"
                         class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
                         title="Supprimer cette période"
@@ -145,14 +142,12 @@
                      name="periodes-{{ regle.periodes|length|default:0 }}-du"
                      value=""
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <input type="text"
                      name="periodes-{{ regle.periodes|length|default:0 }}-au"
                      value=""
                      placeholder="JJ/MM ou événement"
-                     list="evenements-phenologiques-list"
-                     style="max-width:24ch">
+                     list="evenements-phenologiques-list">
               <select name="periodes-{{ regle.periodes|length|default:0 }}-regime"
                       data-regime-select
                       style="max-width:22ch">
@@ -172,10 +167,9 @@
               <input type="text"
                      name="periodes-{{ regle.periodes|length|default:0 }}-condition"
                      value=""
-                     placeholder="(optionnel) ex : date_xxx < JJ/MM"
+                     placeholder="(optionnel) ex : date_xxx < JJ/MM && date_xxx > JJ/MM"
                      data-condition-cell
-                     title="Mini-DSL : <input_id> <op> <JJ/MM>. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition."
-                     style="max-width:34ch">
+                     title="Mini-DSL : <terme> <op> <terme>, plusieurs comparaisons jointes par && (ET). Terme = JJ/MM, event, ou event±Nunite. La periode n'est appliquee que si la condition est vraie a runtime. Cf. spec_extension_grammaire_condition.">
                 <button type="button"
                         class="yaml-admin__btn yaml-admin__btn--small yaml-tree__periode-remove"
                         title="Supprimer cette période"
@@ -279,6 +273,26 @@
                                style="max-width:10ch">
                       </label>
                     </div>
+                    <div class="yaml-tree__form-row">
+                      <label class="yaml-tree__form-label">
+                        <span>min (JJ/MM)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-min"
+                               value="{{ inp.min|default_if_none:'' }}"
+                               placeholder="01/01"
+                               pattern="^\d{2}/\d{2}$"
+                               style="max-width:10ch">
+                      </label>
+                      <label class="yaml-tree__form-label">
+                        <span>max (JJ/MM)</span>
+                        <input type="text"
+                               name="inputs_requis-{{ forloop.counter0 }}-max"
+                               value="{{ inp.max|default_if_none:'' }}"
+                               placeholder="31/12"
+                               pattern="^\d{2}/\d{2}$"
+                               style="max-width:10ch">
+                      </label>
+                    </div>
                     {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
                     <input type="hidden"
                            name="inputs_requis-{{ forloop.counter0 }}-type"
@@ -344,6 +358,26 @@
                            style="max-width:10ch">
                   </label>
                 </div>
+                <div class="yaml-tree__form-row">
+                  <label class="yaml-tree__form-label">
+                    <span>min (JJ/MM)</span>
+                    <input type="text"
+                           name="inputs_requis-__IDX__-min"
+                           value=""
+                           placeholder="01/01"
+                           pattern="^\d{2}/\d{2}$"
+                           style="max-width:10ch">
+                  </label>
+                  <label class="yaml-tree__form-label">
+                    <span>max (JJ/MM)</span>
+                    <input type="text"
+                           name="inputs_requis-__IDX__-max"
+                           value=""
+                           placeholder="31/12"
+                           pattern="^\d{2}/\d{2}$"
+                           style="max-width:10ch">
+                  </label>
+                </div>
                 <input type="hidden" name="inputs_requis-__IDX__-type" value="date">
               </div>
             </template>
@@ -392,27 +426,70 @@
           </div>
         </fieldset>
 
+        {% comment %}
+          Prescription(s) conditionnee(s) : une regle peut en porter plusieurs.
+          On rend un <select> (ou <input>) par PC deja posee, tous nommes
+          `code_prescription` -> cote serveur RegleForm.codes_prescription()
+          lit la liste (getlist). Le bouton "+ ajouter" clone la 1re ligne
+          (JS, pas d'aller-retour serveur) ; chaque ligne a un bouton retirer.
+        {% endcomment %}
         <div class="yaml-tree__form-row">
           <label class="yaml-tree__form-label">
-            <span>code_prescription</span>
-            {% if regle_choices.code_prescription %}
-              <select name="code_prescription">
-                <option value="">— (aucun)</option>
-                {% for c in regle_choices.code_prescription %}
-                  <option value="{{ c.value }}"
-                          {% if c.value == regle.code_prescription %}selected{% endif %}
-                          {% if c.description %}title="{{ c.description }}"{% endif %}>
-                    {{ c.value }}
-                    {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
-                  </option>
+            <span>code(s) prescription</span>
+            <div data-pc-group>
+              {% with codes_prescription_existants|default_if_none:"" as codes %}
+                {% for cp in codes %}
+                  <div class="yaml-tree__pc-row" data-pc-row>
+                    {% if regle_choices.code_prescription %}
+                      <select name="code_prescription" data-pc-select>
+                        <option value="">— (aucun)</option>
+                        {% for c in regle_choices.code_prescription %}
+                          <option value="{{ c.value }}"
+                                  {% if c.value == cp %}selected{% endif %}
+                                  {% if c.description %}title="{{ c.description }}"{% endif %}>
+                            {{ c.value }}
+                            {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <input type="text"
+                             name="code_prescription"
+                             value="{{ cp }}"
+                             placeholder="ex: pc4">
+                    {% endif %}
+                    <button type="button"
+                            class="yaml-admin__btn yaml-admin__btn--sm"
+                            data-pc-remove
+                            title="Retirer">✕</button>
+                  </div>
                 {% endfor %}
-              </select>
-            {% else %}
-              <input type="text"
-                     name="code_prescription"
-                     value="{{ regle.code_prescription|default_if_none:'' }}"
-                     placeholder="ex: pc4">
-            {% endif %}
+                {% comment %}Ligne vide initiale si la regle n'a aucune PC.{% endcomment %}
+                {% if not codes %}
+                  <div class="yaml-tree__pc-row" data-pc-row>
+                    {% if regle_choices.code_prescription %}
+                      <select name="code_prescription" data-pc-select>
+                        <option value="">— (aucun)</option>
+                        {% for c in regle_choices.code_prescription %}
+                          <option value="{{ c.value }}"
+                                  {% if c.description %}title="{{ c.description }}"{% endif %}>
+                            {{ c.value }}
+                            {% if c.libelle and c.libelle != c.value %}— {{ c.libelle }}{% endif %}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <input type="text" name="code_prescription" value="" placeholder="ex: pc4">
+                    {% endif %}
+                    <button type="button"
+                            class="yaml-admin__btn yaml-admin__btn--sm"
+                            data-pc-remove
+                            title="Retirer">✕</button>
+                  </div>
+                {% endif %}
+              {% endwith %}
+            </div>
+            <button type="button" class="yaml-admin__btn yaml-admin__btn--sm" data-pc-add>+ ajouter une prescription</button>
           </label>
         </div>
         <div class="yaml-tree__form-row">
@@ -737,6 +814,42 @@
           if (!btn) return;
           const row = btn.closest('[data-input-requis-row]');
           if (row) row.remove();
+        });
+      })();
+
+      // ─── Multi-PC : ajout / suppression de lignes code_prescription ───────
+      (function () {
+        const form = document.currentScript.closest('form');
+        if (!form) return;
+        const group = form.querySelector('[data-pc-group]');
+        const addBtn = form.querySelector('[data-pc-add]');
+        if (!group || !addBtn) return;
+        addBtn.addEventListener('click', () => {
+          const rows = group.querySelectorAll('[data-pc-row]');
+          const src = rows[rows.length - 1] || rows[0];
+          if (!src) return;
+          const clone = src.cloneNode(true);
+          // Reset la valeur du champ clone (select -> option vide, input -> '').
+          const field = clone.querySelector('select, input');
+          if (field) field.value = '';
+          group.appendChild(clone);
+          if (field) field.focus();
+        });
+        // Suppression par delegation : on garde toujours au moins une ligne.
+        group.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-pc-remove]');
+          if (!btn) return;
+          const rows = group.querySelectorAll('[data-pc-row]');
+          const row = btn.closest('[data-pc-row]');
+          if (!row) return;
+          if (rows.length > 1) {
+            row.remove();
+          } else {
+            // Derniere ligne : on la vide au lieu de la supprimer (sinon plus
+            // moyen d'ajouter une PC ensuite).
+            const field = row.querySelector('select, input');
+            if (field) field.value = '';
+          }
         });
       })();
         </script>

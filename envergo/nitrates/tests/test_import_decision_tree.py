@@ -174,3 +174,116 @@ def test_name_personnalise(yaml_valide):
     )
     tree = DecisionTree.objects.get()
     assert tree.name == "pan_test_2026"
+
+
+# ─── Zone d'activation (scope) ──────────────────────────────────────────────
+
+
+def test_defaut_scope_national(yaml_valide):
+    """Sans option scope, l'arbre est cree national (retro-compat)."""
+    call_command("import_decision_tree", str(yaml_valide), "--mode", "auto")
+    tree = DecisionTree.objects.get()
+    assert tree.scope == DecisionTree.SCOPE_NATIONAL
+    assert tree.region_code == ""
+    assert tree.activation_map_id is None
+    assert tree.weight == 1
+
+
+def test_import_par_region_zone_independante_du_pan(yaml_valide):
+    """Un PAR Grand Est s'importe en actif meme si un PAN actif existe deja :
+    'auto' raisonne par zone."""
+    DecisionTree.objects.create(
+        name="pan", status=DecisionTree.STATUS_ACTIVE, contenu={}, contenu_yaml_brut=""
+    )
+    call_command(
+        "import_decision_tree",
+        str(yaml_valide),
+        "--mode",
+        "auto",
+        "--scope",
+        "region",
+        "--region-code",
+        "44",
+        "--name",
+        "par_ge",
+    )
+    par = DecisionTree.objects.get(name="par_ge")
+    assert par.status == DecisionTree.STATUS_ACTIVE  # 1er de SA zone -> actif
+    assert par.scope == DecisionTree.SCOPE_REGION
+    assert par.region_code == "44"
+    assert par.weight == 10
+    # PAN et PAR actifs en parallele
+    assert DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).count() == 2
+
+
+def test_import_zar_avec_couche_par_nom(yaml_valide):
+    from envergo.geodata.models import MAP_TYPES, Map
+
+    m = Map.objects.create(
+        name="zar_par7_grand_est",
+        map_type=MAP_TYPES.zone_action_renforcee,
+        description="test",
+    )
+    call_command(
+        "import_decision_tree",
+        str(yaml_valide),
+        "--mode",
+        "auto",
+        "--scope",
+        "zar",
+        "--region-code",
+        "44",
+        "--activation-map",
+        "zar_par7_grand_est",
+        "--name",
+        "zar_ge",
+    )
+    zar = DecisionTree.objects.get(name="zar_ge")
+    assert zar.scope == DecisionTree.SCOPE_ZAR
+    assert zar.activation_map_id == m.pk
+    assert zar.weight == 20
+
+
+def test_scope_region_sans_code_echoue(yaml_valide):
+    with pytest.raises(CommandError, match="region exige --region-code"):
+        call_command(
+            "import_decision_tree",
+            str(yaml_valide),
+            "--mode",
+            "auto",
+            "--scope",
+            "region",
+        )
+    assert not DecisionTree.objects.exists()
+
+
+def test_scope_zar_sans_map_echoue(yaml_valide):
+    with pytest.raises(CommandError, match="zar exige --activation-map"):
+        call_command(
+            "import_decision_tree",
+            str(yaml_valide),
+            "--mode",
+            "auto",
+            "--scope",
+            "zar",
+            "--region-code",
+            "44",
+        )
+    assert not DecisionTree.objects.exists()
+
+
+def test_activation_map_introuvable_echoue(yaml_valide):
+    with pytest.raises(CommandError, match="introuvable"):
+        call_command(
+            "import_decision_tree",
+            str(yaml_valide),
+            "--mode",
+            "auto",
+            "--scope",
+            "zar",
+            "--region-code",
+            "44",
+            "--activation-map",
+            "nexiste_pas",
+        )
+    assert not DecisionTree.objects.exists()

@@ -1,0 +1,66 @@
+{% load yaml_admin_extras %}
+
+{% comment %}
+Formulaire d'intercalation d'un noeud parent, declenche depuis la barre
+d'actions d'un noeud A (icone ⤴).
+  Avant :  P --[X]--> A      Apres :  P --[X]--> N --[a_definir]--> A
+A (et tout son sous-arbre) descend sous une branche placeholder de N. On ne
+saisit donc PAS de valeur de branche : uniquement le type du nouveau noeud + ses
+champs. Seuls les noeuds sont intercalables.
+
+Variables : tree, node_path_str (= path du noeud A), node_id, allowed_kinds,
+            selected_kind, errors, form_data.
+{% endcomment %}
+<div class="yaml-tree__add-form yaml-tree__add-form--insert"
+     id="insert-parent-zone-{{ node_path_str|slugify }}"
+     data-add-form-init="true">
+  <form class="yaml-tree__inline-form yaml-tree__inline-form--add"
+        hx-post="{% url 'nitrates_admin_yaml_insert_parent' tree_pk=tree.pk %}?path={{ node_path_str }}"
+        hx-target="#insert-parent-zone-{{ node_path_str|slugify }}"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    <p class="yaml-tree__add-form-title">
+      Intercaler un nœud au-dessus de <code>{{ node_id }}</code>
+      <small style="font-weight: normal; color: #555;">(ce nœud descend dessous, avec tout son sous-arbre)</small>
+    </p>
+
+    {% if errors %}
+      <div class="yaml-tree__form-errors">
+        {% for err in errors %}
+          {% if not err.field %}<p class="yaml-tree__form-error-global">{{ err.message }}</p>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="yaml-tree__form-row">
+      <label class="yaml-tree__form-label">
+        <span>type de nœud à intercaler</span>
+        <select name="kind"
+                hx-get="{% url 'nitrates_admin_yaml_insert_parent' tree_pk=tree.pk %}?path={{ node_path_str }}"
+                hx-trigger="change"
+                hx-target="#insert-parent-zone-{{ node_path_str|slugify }}"
+                hx-swap="outerHTML"
+                hx-include="[name='c_champ'],[name='c_source'],[name='c_texte']">
+          {% for k in allowed_kinds %}
+            <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% for err in errors %}
+        {% if err.field == "kind" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% include "nitrates_admin/yaml_tree/forms/_add_form_kind_fields.html" with kind=selected_kind errors=errors form_data=form_data %}
+
+    <div class="yaml-tree__form-actions">
+      <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Intercaler</button>
+      <button type="button"
+              class="yaml-admin__btn"
+              hx-get="{% url 'nitrates_admin_yaml_insert_parent_cancel' tree_pk=tree.pk %}?path={{ node_path_str }}"
+              hx-target="#insert-parent-zone-{{ node_path_str|slugify }}"
+              hx-swap="outerHTML">Annuler</button>
+    </div>
+  </form>
+</div>

@@ -94,6 +94,32 @@ def test_get_branche_at(base_arbre):
     assert b["regle"]["id"] == "r_colza"
 
 
+def test_get_branche_at_tolere_str_vs_bool():
+    """Regression : une branche de catalogue_parametre peut porter la valeur
+    string 'False' alors que la vue passe le bool False (coercion query
+    string). Le match doit retomber sur la comparaison string -> sinon 403
+    'Règle introuvable' à l'édition."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue_parametre",
+                "id": "n_cp",
+                "champ": "x",
+                "branches": [
+                    {"valeur": True, "regle": {"id": "r_t", "type": "libre"}},
+                    {"valeur": "False", "regle": {"id": "r_f", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    # bool False (ce que _parse_valeur produit) doit retrouver la branche 'False'.
+    b = editor.get_branche_at(arbre, ("n_cp",), False)
+    assert b is not None and b["regle"]["id"] == "r_f"
+    # bool True matche exactement.
+    b2 = editor.get_branche_at(arbre, ("n_cp",), True)
+    assert b2 is not None and b2["regle"]["id"] == "r_t"
+
+
 # ─── update_node ───────────────────────────────────────────────────────────
 
 

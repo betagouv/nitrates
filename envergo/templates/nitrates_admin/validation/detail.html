@@ -2,10 +2,20 @@
 
 {% block title %}Validation {{ branche.regle_id|default:branche.chemin_yaml }}{% endblock %}
 
+{% comment %}
+Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
+"Action en cours…" de la base (cf. index validation).
+{% endcomment %}
+{% block global_overlay %}{% endblock %}
+
 {% block content %}
   <div class="fr-container-fluid fr-py-3w">
     <p>
-      <a href="{% url 'nitrates_admin_validation_index' %}">← Retour au tableau</a>
+      {% comment %}
+      Retour au tableau en conservant le filtre scope/nature d'où l'on vient
+      (transmis par l'index dans l'URL du lien « Voir »).
+      {% endcomment %}
+      <a href="{% url 'nitrates_admin_validation_index' %}?scope={{ scope_actif }}&nature={{ nature_actif }}">← Retour au tableau</a>
     </p>
 
     <h1>{{ branche.regle_id|default:"feuille" }}</h1>
@@ -56,6 +66,20 @@
       {# 1. Miro #}
       <div class="vd-col">
         <h2>📐 Miro juriste</h2>
+        {% if branche.miro_widget_id %}
+          <p class="vd-miro-link">
+            <a href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
+               target="_blank"
+               rel="noopener">↗ Ouvrir la feuille dans le board Miro</a>
+            <span class="vd-miro-id">(widget {{ branche.miro_widget_id }})</span>
+          </p>
+        {% else %}
+          <p style="color:#999">
+            Pas de lien Miro. Coller l'id du widget ci-dessous
+            (board → clic droit sur la box → « Copy link to widget »,
+            l'id est la valeur de <code>moveToWidget=</code>).
+          </p>
+        {% endif %}
         {% if branche.screenshot_miro %}
           <img src="{{ branche.screenshot_miro.url }}"
                alt="Miro"
@@ -86,6 +110,15 @@
                    value="{{ branche.code_pc_miro }}"
                    class="vd-edit-input"
                    maxlength="20">
+          </label>
+          <label class="vd-edit-label">
+            Id widget Miro (moveToWidget)
+            <input type="text"
+                   name="miro_widget_id"
+                   value="{{ branche.miro_widget_id }}"
+                   class="vd-edit-input"
+                   placeholder="3458764674736757749"
+                   maxlength="40">
           </label>
           <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
         </form>
@@ -249,6 +282,9 @@
             action="{% url 'nitrates_admin_validation_set_statut' pk=branche.pk %}"
             class="vd-form vd-form--validation">
         {% csrf_token %}
+        {# Filtre courant repropagé : après validation, le tableau revient filtré. #}
+        <input type="hidden" name="scope" value="{{ scope_actif }}">
+        <input type="hidden" name="nature" value="{{ nature_actif }}">
         <h3 style="font-size:0.95rem; margin-top:1rem;">Ajouter ma validation</h3>
         <div>
           <label>

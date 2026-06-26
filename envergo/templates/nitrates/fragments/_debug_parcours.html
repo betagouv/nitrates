@@ -1,0 +1,195 @@
+{% load yaml_admin_extras %}
+{% load nitrates_tags %}
+
+{% comment %}
+Panel "Debug parcours" (outil developpeur, gate par NITRATES_FORM_DEBUG_PANELS
+via la variable `debug`). Extrait de _panneau_resultat.html (#112) pour pouvoir
+l'afficher AUSSI sous le formulaire quand une question complementaire est en
+attente (le panneau resultat n'est alors pas rendu, cf. _qc_sous_form.html).
+
+Inputs : ev (evaluator courant, avec result_code / regle / chemin / contexte),
+moulinette, request (pour draft_tree_id).
+{% endcomment %}
+
+<details class="fr-mt-3w nitrates-debug-panel">
+  <summary>Debug parcours</summary>
+
+  <div class="nitrates-debug-panel__section">
+    <h5 class="nitrates-debug-panel__title">Resultat</h5>
+    <dl class="nitrates-debug-panel__dl">
+      {% comment %}
+      `result_code` retire : il vaut le regle_id de la feuille atteinte (cf.
+      ArbreDecisionEvaluator._result_code = res.regle_id) -> doublon avec la
+      ligne regle_id juste en dessous. On affiche a la place `result` (la
+      categorie standardisee Envergo : interdiction / autorisation_sous_condition
+      / non_disponible), qui n'est dupliquee nulle part.
+      {% endcomment %}
+      <dt>result (catégorie Envergo)</dt>
+      <dd>
+        <code>{{ ev.result|default:"—" }}</code>
+      </dd>
+      <dt>regle_id</dt>
+      <dd>
+        <code>{{ ev.regle.regle_id|default:"—" }}</code>
+      </dd>
+      {% comment %}
+      Note PC appliquée : le code seul (pc13 / pc14) ne suffit pas à savoir
+      lequel a matché — les textes se ressemblent. On affiche code + libellé
+      court (mots_cles du référentiel) pour lever l'ambiguïté d'un coup d'oeil.
+      Liste : une règle peut porter plusieurs PC (#multi-PC).
+      {% endcomment %}
+      <dt>code(s) prescription</dt>
+      <dd>
+        {% for cp in ev.regle.codes_prescription %}
+          {% with pc=codes_prescription|get_item:cp %}
+            <code>{{ cp }}</code>
+            {% if pc.mots_cles %}— {{ pc.mots_cles }}{% endif %}
+          {% endwith %}
+          {% if not forloop.last %}<br>{% endif %}
+        {% empty %}
+          <code>—</code>
+        {% endfor %}
+      </dd>
+      {% comment %}Texte libre du YAML (message / texte) : affiche ici (#85) -- il ne s'affiche plus au-dessus du calendrier.{% endcomment %}
+      {% if ev.regle.message or ev.regle.texte %}
+        <dt>message / texte (YAML)</dt>
+        <dd>
+          {{ ev.regle.message|default:ev.regle.texte }}
+        </dd>
+      {% endif %}
+    </dl>
+  </div>
+
+  {% if ev.chemin %}
+    <div class="nitrates-debug-panel__section">
+      <h5 class="nitrates-debug-panel__title">
+        Chemin parcouru
+        {% admin_url_for_resultat ev.chemin request.GET.draft_tree_id ev.arbre_matche.pk as admin_link %}
+        {% if admin_link %}
+          <a class="nitrates-debug-panel__admin-link"
+             href="{{ admin_link }}"
+             target="_blank"
+             rel="noopener"
+             title="Ouvrir ce nœud dans l'éditeur YAML (admin, nouvel onglet)">↗ Modifier dans l'admin</a>
+        {% endif %}
+      </h5>
+      <ol class="nitrates-debug-panel__path">
+        {% for n in ev.chemin %}
+          <li>
+            <code>{{ n }}</code>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  {% endif %}
+
+  {% if ev.candidats %}
+    <div class="nitrates-debug-panel__section">
+      <h5 class="nitrates-debug-panel__title">Arbres (cascade PAN / PAR / ZAR)</h5>
+      <dl class="nitrates-debug-panel__dl">
+        <dt>candidats (poids ↓)</dt>
+        <dd>
+          {% for a in ev.candidats %}
+            <code>{{ a.scope }}:{{ a.name }} (w{{ a.weight }})</code>
+            {% if not forloop.last %}·{% endif %}
+          {% endfor %}
+        </dd>
+        <dt>cascade</dt>
+        <dd>
+          {% for t in ev.cascade_trace %}
+            <code>{{ t.candidat.scope }} → {{ t.statut }}</code>
+            {% if not forloop.last %}·{% endif %}
+          {% empty %}
+            <code>—</code>
+          {% endfor %}
+        </dd>
+        <dt>arbre appliqué</dt>
+        <dd>
+          {% if ev.arbre_matche %}
+            <code>{{ ev.arbre_matche.scope }}:{{ ev.arbre_matche.name }} (#{{ ev.arbre_matche.pk }})</code>
+          {% else %}
+            <code>—</code>
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+  {% endif %}
+
+  {% if ev.contexte %}
+    <div class="nitrates-debug-panel__section">
+      <h5 class="nitrates-debug-panel__title">Contexte (resolutions formulaire + catalogue)</h5>
+      <dl class="nitrates-debug-panel__dl">
+        {% for cle, valeur in ev.contexte.items %}
+          <dt>{{ cle }}</dt>
+          <dd>
+            <code>{{ valeur }}</code>
+          </dd>
+        {% endfor %}
+      </dl>
+    </div>
+  {% endif %}
+
+  {% if moulinette.catalog %}
+    <div class="nitrates-debug-panel__section">
+      <h5 class="nitrates-debug-panel__title">Zonages (catalog)</h5>
+      <dl class="nitrates-debug-panel__dl">
+        <dt>en_zone_vulnerable</dt>
+        <dd>
+          <code>{{ moulinette.catalog.en_zone_vulnerable }}</code>
+        </dd>
+        <dt>en_zar</dt>
+        <dd>
+          <code>{{ moulinette.catalog.en_zar }}</code>
+        </dd>
+        {% comment %}
+        Zones Est (ZGE1/ZGE2) : pertinentes uniquement en Grand Est (region 44).
+        Hors Grand Est on n'affiche pas ces lignes (toujours False, bruit).
+        {% endcomment %}
+        <dt>en Grand Est</dt>
+        <dd>
+          <code>
+            {% if moulinette.catalog.region_code == "44" %}
+              True
+            {% else %}
+              False
+            {% endif %}
+          </code>
+        </dd>
+        {% if moulinette.catalog.region_code == "44" %}
+          <dt>zone_grand_est_1</dt>
+          <dd>
+            <code>{{ moulinette.catalog.zone_grand_est_1 }}</code>
+          </dd>
+          <dt>zone_grand_est_2</dt>
+          <dd>
+            <code>{{ moulinette.catalog.zone_grand_est_2 }}</code>
+          </dd>
+        {% endif %}
+        <dt>zone_montagne_d113_14</dt>
+        <dd>
+          <code>{{ moulinette.catalog.zone_montagne_d113_14 }}</code>
+        </dd>
+        <dt>zone_montagne_classification</dt>
+        <dd>
+          <code>{{ moulinette.catalog.zone_montagne_classification }}</code>
+        </dd>
+        <dt>zone_note_5</dt>
+        <dd>
+          <code>{{ moulinette.catalog.zone_note_5 }}</code>
+        </dd>
+        <dt>code_insee</dt>
+        <dd>
+          <code>{{ moulinette.catalog.code_insee|default:"—" }}</code>
+        </dd>
+        <dt>departement</dt>
+        <dd>
+          <code>{{ moulinette.catalog.department_code|default:"—" }}</code>
+        </dd>
+        <dt>region</dt>
+        <dd>
+          <code>{{ moulinette.catalog.region_code|default:"—" }} ({{ moulinette.catalog.region_label|default:"—" }})</code>
+        </dd>
+      </dl>
+    </div>
+  {% endif %}
+</details>

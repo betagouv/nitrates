@@ -6,9 +6,9 @@
 
 {% block extra_css %}
   {% leaflet_css %}
-  <link href="{% static 'nitrates/home.css' %}" rel="stylesheet">
-  <link href="{% static 'nitrates/calendrier.css' %}" rel="stylesheet">
-  <link href="{% static 'nitrates/simulateur.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/home.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/simulateur.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block extra_js %}
@@ -19,6 +19,7 @@
     L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
+    window.NITRATES_ZAR_GEOJSON_URL = "{% url 'nitrates_zar_geojson' %}";
     window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
     window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
     window.NITRATES_INITIAL_DATA = {
@@ -39,14 +40,24 @@
       en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
       bassin: "{{ moulinette.catalog.bassin|default:'' }}",
       bassin_label: "{{ moulinette.catalog.bassin_label|default:'' }}",
+      en_zar: {% if moulinette.catalog.en_zar %}true{% else %}false{% endif %},
+      en_grand_est: {% if moulinette.catalog.region_code == "44" %}true{% else %}false{% endif %},
+      zone_grand_est_1: {% if moulinette.catalog.zone_grand_est_1 %}true{% else %}false{% endif %},
+      zone_grand_est_2: {% if moulinette.catalog.zone_grand_est_2 %}true{% else %}false{% endif %},
     };
     {% endif %}
   </script>
   <script defer src="{% static 'nitrates/simulator.js' %}"></script>
   <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {# Saisie en 2 questions du type de couvert interculture longue (hack UI). #}
+  <script defer src="{% static 'nitrates/couvert_split.js' %}"></script>
+  {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
+  <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
-    <script defer src="{% static 'nitrates/epandage_aujourdhui.js' %}"></script>
+    {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
+    {# resultat final -> section Localisation/resultat en haut (#112). #}
+    <script defer src="{% static 'nitrates/scroll_resultat.js' %}"></script>
   {% endif %}
 {% endblock %}
 
@@ -82,15 +93,24 @@
       </div>
     </div>
 
-    {# ─── Section formulaire + resultats ───────────────────────────── #}
-    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat %} layout--split{% endif %}"
+    {% comment %}
+    Section formulaire + resultats.
+    Le panel resultat (colonne droite + layout--split) n'apparait QUE quand un
+    resultat final est pret, c'est-a-dire qu'il reste aucune question
+    complementaire a poser (qc_en_attente == False). Tant qu'une QC est en
+    attente, on reste en colonne unique : le formulaire occupe toute la largeur
+    et les questions complementaires sont rendues sous lui (#112).
+    {% endcomment %}
+    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat and not qc_en_attente %} layout--split{% endif %}"
          style="align-items: flex-start">
 
-      {# Colonne gauche : form + carte #}
-      <div class="fr-col-12 fr-col-lg-5 form-col">{% include "nitrates/fragments/_panneau_form.html" %}</div>
+      {# Colonne gauche : form + carte (+ QC sous le form si en attente) #}
+      <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-5{% endif %} form-col">
+        {% include "nitrates/fragments/_panneau_form.html" %}
+      </div>
 
-      {# Colonne droite : resultat (si dispo) #}
-      {% if afficher_resultat %}
+      {# Colonne droite : resultat final, seulement si plus aucune QC en attente #}
+      {% if afficher_resultat and not qc_en_attente %}
         <div class="fr-col-12 fr-col-lg-7 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
       {% endif %}
 

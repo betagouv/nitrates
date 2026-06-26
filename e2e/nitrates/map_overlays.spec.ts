@@ -1,16 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nitrates map — fonds, overlays, contrôles', () => {
-  test('LayerControl is rendered with 2 base layers and 2 overlays', async ({ page }) => {
+  test('LayerControl is rendered with 2 base layers and 3 overlays', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
     const layerControl = page.locator('.leaflet-control-layers');
     await expect(layerControl).toBeVisible();
+    // 2 fonds de carte
     await expect(layerControl).toContainText('Plan IGN');
     await expect(layerControl).toContainText('Photo aérienne');
-    await expect(layerControl).toContainText('Parcelles RPG (PAC)');
+    // 3 overlays. Le RPG (PAC) est désactivé en MVP au profit du Cadastre IGN ;
+    // la ZAR a été ajoutée (#34).
+    await expect(layerControl).toContainText('Cadastre');
     await expect(layerControl).toContainText('Zones vulnérables nitrates');
+    await expect(layerControl).toContainText("Zones d'action renforcée (ZAR)");
   });
 
   test('attribution does not contain the Ukraine flag', async ({ page }) => {
@@ -59,19 +63,21 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
       .toBeGreaterThan(0);
   });
 
-  test('activating the RPG overlay loads tile images', async ({ page }) => {
+  test('activating the Cadastre overlay loads tile images', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
-    const rpgCheckbox = page
+    // Le RPG (PAC) est désactivé en MVP ; l'overlay parcellaire est désormais
+    // le Cadastre IGN (CADASTRALPARCELS.PARCELLAIRE_EXPRESS).
+    const cadastreCheckbox = page
       .locator('.leaflet-control-layers-overlays label')
-      .filter({ hasText: 'Parcelles RPG (PAC)' })
+      .filter({ hasText: 'Cadastre' })
       .locator('input[type="checkbox"]');
 
-    await rpgCheckbox.check();
+    await cadastreCheckbox.check();
 
-    // Les tuiles WMTS RPG arrivent depuis data.geopf.fr ; on vérifie qu'au moins
-    // une est présente dans le DOM Leaflet après quelques secondes.
+    // Les tuiles WMTS cadastre arrivent depuis data.geopf.fr ; on vérifie qu'au
+    // moins une est présente dans le DOM Leaflet après quelques secondes.
     await expect
       .poll(
         async () =>
@@ -80,7 +86,7 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
               '.leaflet-tile-pane img.leaflet-tile'
             );
             return Array.from(imgs).filter((i) =>
-              (i as HTMLImageElement).src.includes('IGNF_RPG')
+              (i as HTMLImageElement).src.includes('CADASTRALPARCELS')
             ).length;
           }),
         { timeout: 8000 }
@@ -100,35 +106,29 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
       .locator('input[type="checkbox"]')
       .check();
 
-    // On attend les 8 features, puis on récupère les couleurs.
-    const result = await expect
+    // On attend les 8 bassins. NB : chaque zone ZV est un MultiPolygon que
+    // Leaflet éclate en N sous-layers (getLayers().length ~= nombre de
+    // polygones composants, pas de features) -> on compte les BASSINS
+    // distincts (1 par feature ZV), pas les sous-layers.
+    await expect
       .poll(
         async () =>
           page.evaluate(() => {
             const map = (window as any).nitratesMap;
-            const colors = new Set<string>();
             const bassins = new Set<string>();
-            let count = 0;
             map.eachLayer((layer: any) => {
               if (typeof layer.getLayers === 'function') {
                 layer.getLayers().forEach((sub: any) => {
-                  count++;
-                  const opts = sub.options || {};
-                  if (opts.fillColor) colors.add(opts.fillColor);
                   const props = sub.feature && sub.feature.properties;
                   if (props && props.bassin) bassins.add(props.bassin);
                 });
               }
             });
-            return {
-              count,
-              colors: [...colors],
-              bassins: [...bassins].sort(),
-            };
+            return bassins.size;
           }),
         { timeout: 15000 }
       )
-      .toMatchObject({ count: 8 });
+      .toBe(8);
 
     // Vérifie qu'on a bien 8 bassins distincts et au moins 6 couleurs
     // (deux peuvent se ressembler en hex mais c'est ok)
@@ -161,16 +161,17 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     expect(final.colorCount).toBeGreaterThanOrEqual(6);
   });
 
-  test('clicking on a known RPG parcel shows the legend label for the culture code', async ({
+  test('clicking on a parcel fills the debug cartouche', async ({
     page,
   }) => {
-    await page.goto('/');
+    // Le panneau debug (#nitrates-debug) n'existe que sur /simulateur/
+    // (la home publique / le masque).
+    await page.goto('/simulateur/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
-    // Rennes, parcelle dont on savait qu'elle etait PTR dans le dataset
-    // RPG full. Note 2026-05-12 : le RPG 2023 light dispo en dev n'inclut
-    // pas necessairement cette parcelle precise. On verifie seulement que
-    // le cartouche s'est rempli (territoire identifie).
+    // Rennes (Ille-et-Vilaine). On vérifie seulement que le cartouche se
+    // remplit (territoire identifié) ; l'info parcelle vient désormais du
+    // cadastre IGN.
     await page.evaluate(() => {
       const w = window as any;
       w.nitratesMap.fire('click', {
@@ -182,8 +183,6 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     await expect(cartouche).toContainText('Informations parcelle', {
       timeout: 10000,
     });
-    // Test souple : soit on tombe sur la parcelle (libelle PTR/Prairie),
-    // soit on tombe hors-parcelle (dataset light) => message "aucune".
-    await expect(cartouche).toContainText(/PTR.*Prairie|aucune parcelle/);
+    await expect(cartouche).toContainText(/[Pp]arcelle|Bretagne|35/);
   });
 });

@@ -10,6 +10,7 @@ from envergo.nitrates.templatetags.nitrates_tags import (
     _day_of_year,
     _segment_interdit,
     calendrier_epandage,
+    est_interdit_toute_lannee,
 )
 
 # La fixture session `update_default_site` (envergo/conftest.py) cree un
@@ -92,6 +93,30 @@ def test_calendrier_interdiction_genere_segments():
     # Note 2026-05-12 : tous les types epandage utilisent un label
     # commun "Calendrier d'épandage" (UX validee par Max).
     assert "Calendrier" in ctx["label"]
+
+
+def test_calendrier_segment_porte_un_tooltip():
+    """Chaque segment expose un tooltip humain au survol (#134) : verbe de
+    regime + phrase de bornes, comme le calendrier dynamique."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    )
+    seg = ctx["segments"][0]
+    assert seg["tooltip"].startswith("Interdit")
+    assert "15" in seg["tooltip"]
+
+
+def test_calendrier_tooltip_orange_sous_condition():
+    """Zone orange -> tooltip 'Autorisé sous conditions ...'."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="autorisation_sous_condition",
+            periodes=[{"du": "15/12", "au": "15/01"}],
+        )
+    )
+    seg = ctx["segments"][0]
+    assert seg["couleur"] == "orange"
+    assert seg["tooltip"].startswith("Autorisé sous conditions")
 
 
 def test_calendrier_libre_pas_de_zone_overlay():
@@ -188,8 +213,9 @@ def test_calendrier_12_mois_annee_agricole():
     """L'ordre des mois suit l'annee agricole (juil debut, juin fin)."""
     ctx = calendrier_epandage(_regle())
     assert len(ctx["mois"]) == 12
+    # Labels alignes sur le calendrier dynamique (#134) : "Jui" pour juin.
     assert ctx["mois"][0] == "Juil"
-    assert ctx["mois"][-1] == "Juin"
+    assert ctx["mois"][-1] == "Jui"
 
 
 def test_calendrier_regime_mixte_par_periode():
@@ -234,3 +260,78 @@ def test_calendrier_regime_periode_prime_sur_type_global():
     # 1 seul segment rouge (le 2e), pas de segment pour le 1er (libre)
     assert len(ctx["segments"]) == 1
     assert ctx["segments"][0]["couleur"] == "rouge"
+
+
+# ─── est_interdit_toute_lannee (#85) ────────────────────────────────────────
+
+
+def test_toute_lannee_vrai_pour_interdiction_01_07_30_06():
+    r = _regle(type="interdiction", periodes=[{"du": "01/07", "au": "30/06"}])
+    assert est_interdit_toute_lannee(r) is True
+
+
+def test_toute_lannee_faux_pour_interdiction_hivernale():
+    # Colza type_II : interdiction 15/12 -> 15/01, pas toute l'annee.
+    r = _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    assert est_interdit_toute_lannee(r) is False
+
+
+def test_toute_lannee_faux_si_regle_none():
+    assert est_interdit_toute_lannee(None) is False
+
+
+def test_toute_lannee_faux_si_autre_periode_presente():
+    # Une interdiction pleine annee MAIS avec une autre periode -> pas "toute
+    # l'annee" au sens simple (le calendrier nuance).
+    r = _regle(
+        type="mixte",
+        periodes=[
+            {"du": "01/07", "au": "30/06", "regime": "interdiction"},
+            {"du": "15/12", "au": "15/01", "regime": "autorisation_sous_condition"},
+        ],
+    )
+    assert est_interdit_toute_lannee(r) is False
+
+
+def test_calendrier_borne_phenologique_label_resolu():
+    """Le label du tick d'une borne phenologique est resolu vers son
+    libelle_public lisible, pas le slug snake_case (#85)."""
+    ctx = calendrier_epandage(
+        _regle(
+            type="mixte",
+            periodes=[
+                {"du": "15/12", "au": "15/01", "regime": "interdiction"},
+                {
+                    "du": "derniere_coupe_luzerne",
+                    "au": "15/01",
+                    "regime": "autorisation_sous_condition",
+                },
+            ],
+        )
+    )
+    labels = [b["label"] for b in ctx["bornes"]]
+    assert "Dernière coupe de la luzerne" in labels
+    assert "derniere_coupe_luzerne" not in labels
+
+
+def test_calendrier_asc_sans_periode_peint_toute_lannee():
+    """ASC sans aucune periode = "sous condition toute l'annee" (regles
+    partagees CIE/CINE courte, type III, plafonnements). Le calendrier doit
+    synthetiser une periode pleine annee -> overlay orange + legende "Autorise
+    sous condition", au lieu d'un fond vert trompeur "Autorise" (fix Max
+    2026-06-18)."""
+    ctx = calendrier_epandage(_regle(type="autorisation_sous_condition", periodes=None))
+    # Au moins un segment orange couvrant l'annee.
+    assert ctx["segments"], "aucun segment peint (fond vert trompeur)"
+    assert any(s["couleur"] == "orange" for s in ctx["segments"])
+    # Legende : "Autorise sous condition" present, pas seulement "Autorise".
+    labels = [item["label"] for item in ctx["legende"]]
+    assert any("sous condition" in label for label in labels)
+
+
+def test_calendrier_autorisation_simple_sans_periode_reste_verte():
+    """Garde-fou : une autorisation PURE (type "autorisation" ou "libre") sans
+    periode ne doit PAS etre repeinte en orange -- seuls ASC / plafonnement le
+    sont. Le cas 99% (autorise librement) reste vert."""
+    ctx = calendrier_epandage(_regle(type="libre", periodes=None))
+    assert all(s["couleur"] != "orange" for s in ctx["segments"])

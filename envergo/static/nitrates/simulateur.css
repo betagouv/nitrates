@@ -4,13 +4,18 @@
 
 /* ─── Recherche commune (BAN) ──────────────────────────────────────── */
 
-/* z-index assez haut pour passer au-dessus des panes Leaflet (max ~700
-   pour les tooltips). Sans ca, la dropdown de l'autocomplete commune
-   est cachee par le SVG GeoJSON des zones ZV. */
+/* z-index AU-DESSUS des controles Leaflet : les conteneurs .leaflet-top
+   (zoom +/- et controle de couches/legende IGN) sont a z-index 1000. Comme
+   .map-search-wrapper cree un contexte d'empilement, c'est SA valeur (et non
+   le 9999 interne des suggestions, piege dans ce contexte) qui est comparee
+   aux controles. A 1000 ex-aequo, la carte (plus loin dans le DOM) passait
+   devant -> la dropdown d'autocomplete etait masquee par les boutons/legende.
+   On monte donc le wrapper a 1100 : les suggestions recouvrent toute la carte
+   et ses controles. */
 .map-search-wrapper {
   position: relative;
   margin-bottom: 6px;
-  z-index: 1000;
+  z-index: 1100;
 }
 
 .ban-suggestions {
@@ -42,6 +47,24 @@
 
 .ban-suggestions li:hover {
   background: #f0f0f0;
+}
+
+/* Mode sombre (#83) : les suggestions avaient un fond blanc fixe + texte gris
+   -> illisible en sombre. On passe a un fond gris fonce + texte clair, avec un
+   survol legerement plus clair. */
+[data-fr-theme="dark"] .ban-suggestions {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li {
+  border-bottom-color: #444;
+  color: #f0f0f0;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li:hover {
+  background: #3a3a3a;
 }
 
 /* ─── Localisation read-only (commune / dept / region) ────────────── */
@@ -128,6 +151,18 @@
   margin-top: 22px;
 }
 
+/* ─── Couvert interculture longue : saisie en 2 questions (hack front) ───
+   Les 4 radios d'origine sous_culture_form restent dans le DOM (source de
+   verite, soumis avec le form) mais sont masques visuellement ; couvert_split.js
+   monte 2 sous-questions a la place et recompose la valeur. */
+.couvert-split__origin-hidden {
+  display: none;
+}
+
+.couvert-split__group + .couvert-split__group {
+  margin-top: 22px;
+}
+
 /* ─── Carte ────────────────────────────────────────────────────────── */
 
 /* Leaflet pose des elements de proxy (.leaflet-proxy) hors viewport
@@ -211,11 +246,38 @@ body {
 
 .resultat-panel.resultat-panel--questions {
   /* Fond violet pastel valide par la designeuse (cf. #58.2). Distingue
-     visuellement les questions complementaires (etape 2) du reste de la
-     page. Le mode dark sera traite a part dans une carte transverse. */
+     visuellement les questions complementaires (etape 2) du reste de la page.
+
+     Mode dark (#112) : ce fond violet reste CLAIR dans les deux themes. Or en
+     dark, les variables DSFR de texte (--text-*-grey) basculent vers du clair
+     -> texte clair sur violet clair = illisible. On REDEFINIT donc localement
+     ces variables vers des teintes sombres : tout texte/label/radio de ce
+     bloc qui s'appuie sur elles redevient lisible, sans toucher au reste de la
+     page ni au choix du violet. Valeurs = tokens "grey" du theme light DSFR. */
+  --text-title-grey: #161616;
+  --text-default-grey: #3a3a3a;
+  --text-mention-grey: #666;
+  --text-action-high-grey: #161616;
+  --border-action-high-blue-france: #000091;
+  --background-default-grey: #fff;
+
   background: #cecefc;
   padding: 30px;
   border-radius: 4px;
+
+  /* Couleur de texte de base du bloc (titres fr-h*, paragraphes, labels qui
+     n'utiliseraient pas une variable ci-dessus). */
+  color: #161616;
+}
+
+/* Titres et labels DSFR a l'interieur : forcer la teinte sombre meme si une
+   regle DSFR dark les a passes en clair via une autre variable. */
+.resultat-panel.resultat-panel--questions h2,
+.resultat-panel.resultat-panel--questions .fr-h3,
+.resultat-panel.resultat-panel--questions .fr-text--lead,
+.resultat-panel.resultat-panel--questions .form-question-text,
+.resultat-panel.resultat-panel--questions .fr-label {
+  color: #161616;
 }
 
 .resultat-panel.resultat-panel--questions .form-question-group {
@@ -308,18 +370,6 @@ body {
   border-radius: 8px;
   padding: 1.5rem 2rem;
   color: var(--text-default-grey);
-}
-
-/* Sinon, regle de base — : ligne separatrice italic entre les periodes
-   autorisation_sous_condition (en haut) et les periodes interdiction
-   (en dessous), pour expliciter le fallback (cf. #88). */
-.periodes-mixte__fallback-intro {
-  list-style: none;
-  margin-left: -1.25em;
-  margin-top: 0.25em;
-  margin-bottom: 0.25em;
-  color: var(--text-mention-grey);
-  font-size: 0.95em;
 }
 
 .resultat-panel h2,
@@ -524,4 +574,148 @@ body {
 
 .form-locked-message p {
   margin: 0;
+}
+
+/* ─── Bascule de theme clair/sombre, pied de page (#83) ──────────────────── */
+
+.nitrates-theme-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.nitrates-theme-toggle__btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--border-default-grey, #ddd);
+  border-radius: 4px;
+  background: var(--background-default-grey, #fff);
+  color: var(--text-default-grey, #3a3a3a);
+}
+
+.nitrates-theme-toggle__btn:hover {
+  background: var(--background-alt-grey, #f3f4f6);
+}
+
+/* Bouton du theme actuellement force (light ou dark) : mis en avant. */
+.nitrates-theme-toggle__btn--active {
+  border-color: var(--border-action-high-blue-france, #000091);
+  background: var(--background-action-low-blue-france, #e3e3fd);
+  color: var(--text-action-high-blue-france, #000091);
+}
+
+/* ─── Mode sombre : bloc Questions complementaires (#83) ─────────────────
+   En light le bloc est violet pastel clair (#cecefc) + texte noir (#112). En
+   sombre on bascule vers un violet FONCE (#24244b) + texte blanc, qui s'integre
+   au theme sombre au lieu de detoner comme un ilot clair. On reaffecte les
+   variables DSFR localement (inverse du fix #112) pour que titres / labels /
+   radios suivent, et on adapte le bouton. */
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions {
+  --text-title-grey: #fff;
+  --text-default-grey: #e9e9f5;
+  --text-mention-grey: #c4c4dd;
+  --text-action-high-grey: #fff;
+
+  /* Bordure du radio coche : un violet clair visible sur le fond fonce. */
+  --border-action-high-blue-france: #b8b8f8;
+  --background-default-grey: #24244b;
+
+  background: #24244b;
+  color: #fff;
+}
+
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions h2,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-h3,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-text--lead,
+[data-fr-theme="dark"]
+  .resultat-panel.resultat-panel--questions
+  .form-question-text,
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-label {
+  color: #fff;
+}
+
+/* Boutons primaires du simulateur en sombre (hero "Voir les regles", submit
+   "Lancer la simulation") : par defaut le DSFR dark rend un texte bleu fonce
+   sur un fond violet-bleu clair -> contraste insuffisant (retour Max #83). On
+   force un bouton bleu france franc + texte blanc, plus lisible et net.
+   Regle GENERALE (tous les .fr-btn de la page simulateur). Le bouton du bloc
+   QC est re-traite juste apres (cascade : meme specificite, ordre l'emporte). */
+[data-fr-theme="dark"] .fr-container .fr-btn {
+  background-color: #6a6af5;
+  color: #fff;
+}
+
+[data-fr-theme="dark"] .fr-container .fr-btn:hover {
+  background-color: #8585f6;
+}
+
+/* Bouton du bloc QC en sombre : sur le violet fonce #24244b, on veut un bouton
+   qui ressort en clair (violet tres clair + texte fonce). Place APRES la regle
+   generale pour la surcharger sur ce bloc precis. */
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-btn {
+  background-color: #c3c3fb;
+  color: #1b1b35;
+}
+
+[data-fr-theme="dark"] .resultat-panel.resultat-panel--questions .fr-btn:hover {
+  background-color: #d6d6fd;
+}
+
+/* ─── Section "région pas encore ouverte" (carte #57) ────────────────── */
+.form-region-fermee {
+  margin-top: 24px;
+  padding: 28px 32px;
+  background: #f5f7fb;
+  border: 1px solid #dde3ee;
+  border-radius: 12px;
+  color: #2a2f3a;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 6%);
+}
+
+/* Titre + sous-texte alignés sur la même colonne de gauche : le cadenas est
+   posé en marqueur de liste (hors flux du texte) pour que les deux lignes
+   commencent au même point. */
+.form-region-fermee__titre {
+  margin: 0 0 10px;
+  padding-left: 2rem;
+  position: relative;
+  font-weight: 600;
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: #1d1d1d;
+}
+
+.form-region-fermee__cadenas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 1.3rem;
+}
+
+.form-region-fermee__texte {
+  margin: 0;
+  padding-left: 2rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #45474d;
+}
+
+/* Plafond d'azote : encart DSFR avec la valeur chiffree mise en avant
+   (cf. retour Max 2026-06-18 : le plafond etait plaque en texte brut). */
+.nitrates-plafond__valeur {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nitrates-plafond__unite {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-left: 0.25rem;
 }

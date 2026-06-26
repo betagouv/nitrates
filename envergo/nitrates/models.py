@@ -13,11 +13,10 @@ import copy
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import F, IntegerField, Q
-from django.db.models.functions import Cast
+from django.db.models import Q
 from django.utils import timezone
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
@@ -33,6 +32,7 @@ from envergo.nitrates.zonage_montagne import (
     zonage_montagne_pour_commune,
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
+from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 
 EPSG_WGS84 = 4326
 
@@ -89,10 +89,54 @@ class DecisionTree(models.Model):
         (STATUS_ARCHIVE, "Archive"),
     ]
 
+    # Perimetre d'application (zone d'activation declarative) de cet arbre.
+    #   national : PAN, defaut partout (pas de region ni de couche SIG).
+    #   region   : PAR regional (ex Grand Est R44), actif sur la region + ZV.
+    #   zar      : PAR en zone d'action renforcee, actif sur une couche SIG.
+    # Le PAN est declaratif (scope=national), jamais deduit de l'absence de FK.
+    SCOPE_NATIONAL = "national"
+    SCOPE_REGION = "region"
+    SCOPE_ZAR = "zar"
+    SCOPE_CHOICES = [
+        (SCOPE_NATIONAL, "National (PAN)"),
+        (SCOPE_REGION, "Régional (PAR)"),
+        (SCOPE_ZAR, "Zone d'action renforcée (ZAR)"),
+    ]
+    # Poids de resolution : le candidat active de poids MAX gagne. Trous
+    # volontaires pour inserer un scope intermediaire (ex dept=15) plus tard
+    # sans rejouer les poids existants.
+    DEFAULT_WEIGHT_BY_SCOPE = {
+        SCOPE_NATIONAL: 1,
+        SCOPE_REGION: 10,
+        SCOPE_ZAR: 20,
+    }
+
     name = models.CharField(max_length=255)
     status = models.CharField(
         max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT
     )
+
+    # ─── Zone d'activation (selection dynamique PAN/PAR/ZAR) ───────────────
+    scope = models.CharField(
+        "Périmètre",
+        max_length=16,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_NATIONAL,
+    )
+    # Code region INSEE (ex "44" = Grand Est). Requis si scope=region.
+    region_code = models.CharField("Code région", max_length=3, blank=True, default="")
+    # Couche SIG d'activation (ZAR). Requise si scope=zar ; optionnelle ailleurs
+    # (plasticite : un PAR peut a terme s'activer par SIG, region ou codes).
+    activation_map = models.ForeignKey(
+        "geodata.Map",
+        verbose_name="Couche d'activation",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    # Poids de resolution : le candidat active de poids MAX gagne.
+    weight = models.PositiveIntegerField("Poids de résolution", default=1)
 
     # Arbre deserialise -- manipulable comme dict. Source de verite runtime.
     contenu = models.JSONField()
@@ -134,11 +178,31 @@ class DecisionTree(models.Model):
 
     class Meta:
         constraints = [
-            # Une seule version active a la fois.
+            # Plusieurs arbres actifs coexistent (PAN + PAR + ZAR), mais un seul
+            # par zone d'activation. En PG/Django 4.2 les NULL sont DISTINCTS
+            # dans un index unique : une contrainte composite sur
+            # (scope, region_code, activation_map) ne couvre donc PAS les lignes
+            # ou activation_map IS NULL (= PAN ET PAR-hors-ZAR). D'ou 3 contraintes.
+            #
+            # (a) region-avec-map & zar : activation_map NON NULL -> composite fiable.
             models.UniqueConstraint(
-                fields=["status"],
-                condition=Q(status="active"),
-                name="nitrates_decisiontree_unique_active",
+                fields=["scope", "region_code", "activation_map"],
+                condition=Q(status="active", activation_map__isnull=False),
+                name="nitrates_decisiontree_unique_active_map",
+            ),
+            # (b) National : 1 seul PAN actif (map NULL -> non couvert par (a)).
+            models.UniqueConstraint(
+                fields=["scope"],
+                condition=Q(status="active", scope="national"),
+                name="nitrates_decisiontree_unique_active_national",
+            ),
+            # (c) PAR regional sans couche SIG : 1 seul actif par region.
+            models.UniqueConstraint(
+                fields=["scope", "region_code"],
+                condition=Q(
+                    status="active", scope="region", activation_map__isnull=True
+                ),
+                name="nitrates_decisiontree_unique_active_region_no_map",
             ),
         ]
         indexes = [
@@ -154,6 +218,30 @@ class DecisionTree(models.Model):
     def __str__(self):
         return f"{self.name} ({self.status})"
 
+    def clean(self):
+        """Coherence declarative de la zone d'activation.
+
+        Appele par full_clean()/forms admin (pas par save()). Les garanties
+        d'unicite, elles, sont assurees par les contraintes DB (cf. Meta).
+        """
+        super().clean()
+        if self.scope == self.SCOPE_NATIONAL:
+            if self.region_code or self.activation_map_id is not None:
+                raise ValidationError(
+                    "Un arbre national (PAN) ne doit avoir ni code région "
+                    "ni couche d'activation."
+                )
+        elif self.scope == self.SCOPE_REGION:
+            if not self.region_code:
+                raise ValidationError(
+                    "Un arbre régional (PAR) doit avoir un code région."
+                )
+        elif self.scope == self.SCOPE_ZAR:
+            if self.activation_map_id is None:
+                raise ValidationError(
+                    "Un arbre ZAR doit avoir une couche d'activation (SIG)."
+                )
+
     @transaction.atomic
     def activate(self):
         """Active ce DecisionTree. L'actif courant passe en archive.
@@ -167,18 +255,17 @@ class DecisionTree(models.Model):
 
         Idempotent : re-activer un tree deja actif ne casse rien.
 
-        TODO MVP : un seul tree actif global. Quand on ajoutera les
-        overrides regionaux (PAR), la notion d'actif devra etre adossee
-        a un scope (national | region | dept | bassin) +
-        champ optionnel `scope_value` (code region/dept/bassin), avec
-        contrainte unique partielle sur (status='active', scope, scope_value).
-        Cette methode `activate()` devra alors n'archiver que les actifs
-        du meme scope.
+        Multi-arbres : on n'archive que les actifs de la MEME zone d'activation
+        (scope, region_code, activation_map). Activer un PAR Grand Est ne
+        touche donc pas le PAN ni le ZAR -- ils restent actifs en parallele.
         """
         now = timezone.now()
         canonical_name = None
         for current_active in DecisionTree.objects.filter(
-            status=self.STATUS_ACTIVE
+            status=self.STATUS_ACTIVE,
+            scope=self.scope,
+            region_code=self.region_code,
+            activation_map=self.activation_map,
         ).exclude(pk=self.pk):
             # Sauvegarde le nom canonique (sans suffixe d'archive) pour
             # le passer au nouveau tree actif.
@@ -259,10 +346,19 @@ class DecisionTree(models.Model):
     def clone_to_draft(cls, source: "DecisionTree", user=None) -> "DecisionTree":
         """Clone un tree existant en nouveau draft. Le contenu et le YAML
         brut sont dupliques en profondeur. Le nouveau draft pointe vers
-        `source` via `parent`."""
+        `source` via `parent`.
+
+        La zone d'activation (scope / region_code / activation_map / weight)
+        est HERITEE de la source : un draft de PAR/ZAR reste dans sa zone, pour
+        que la preview et l'activation soient coherentes (sinon un draft de ZAR
+        deviendrait un PAN a l'activation)."""
         return cls.objects.create(
             name=cls.unique_draft_name(source.name, user=user),
             status=cls.STATUS_DRAFT,
+            scope=source.scope,
+            region_code=source.region_code,
+            activation_map=source.activation_map,
+            weight=source.weight,
             contenu=copy.deepcopy(source.contenu),
             contenu_yaml_brut=source.contenu_yaml_brut,
             parent=source,
@@ -270,23 +366,26 @@ class DecisionTree(models.Model):
         )
 
     @classmethod
-    def find_or_create_edit_draft(cls, user) -> "DecisionTree | None":
-        """Trouve le draft d'edition de l'arbre actif pour cet utilisateur,
-        ou en cree un nouveau.
+    def find_or_create_edit_draft(
+        cls, user, active: "DecisionTree | None" = None
+    ) -> "DecisionTree | None":
+        """Trouve le draft d'edition de l'arbre actif `active` pour cet
+        utilisateur, ou en cree un nouveau.
+
+        `active` est l'arbre ACTIF de la zone d'activation a editer (PAN, PAR,
+        ZAR...). Plusieurs arbres etant actifs simultanement, l'appelant doit
+        preciser lequel. Le lock est porte par le draft, donc le verrouillage
+        est naturellement PAR ZONE : editer le draft du PAR n'empeche pas
+        d'editer celui du PAN.
 
         Logique : on cherche un draft existant qui satisfait les 3 criteres :
-          1. parent = arbre actif courant
+          1. parent = `active`
           2. created_by = user
           3. pas locked par un autre user (lock libre ou expire ou meme user)
+        Si aucun match, on clone `active` en nouveau draft.
 
-        Si aucun match, on clone l'actif en nouveau draft. Permet a
-        l'utilisateur de retrouver son travail en cours s'il revient
-        plus tard, sans pour autant perturber un autre admin qui
-        editerait deja un draft sur le meme actif.
-
-        Retourne None si aucun arbre actif n'existe (cas anormal).
+        Retourne None si `active` est None (aucun arbre actif pour cette zone).
         """
-        active = cls.objects.filter(status=cls.STATUS_ACTIVE).first()
         if active is None:
             return None
 
@@ -493,6 +592,10 @@ class MoulinetteNitrates(Moulinette):
                 .first()
             )
             catalog["en_zone_vulnerable"] = zv_zone is not None
+            # On memorise l'id de la zone ZV intersectee pour que
+            # get_criteria n'ait pas a refaire un ST_Intersects exact sur la
+            # geometrie ZV (~2 M points, ~0.5 s). cf. get_criteria.
+            catalog["zv_zone_id"] = zv_zone.id if zv_zone else None
             if zv_zone:
                 attrs = zv_zone.attributes or {}
                 catalog["bassin"] = bassin_code_from_attributes(attrs)
@@ -500,6 +603,23 @@ class MoulinetteNitrates(Moulinette):
             else:
                 catalog["bassin"] = None
                 catalog["bassin_label"] = None
+
+            # Zone d'action renforcee (ZAR) : couche SIG du PAR Grand Est.
+            # Memo de l'id de zone (PK indexe) pour que select_active_tree
+            # selectionne l'arbre ZAR sans refaire un ST_Intersects exact.
+            # Couche petite (186 zones) -> cout negligeable, et atteinte
+            # uniquement pour des points en ZV (hors ZV, get_criteria renvoie
+            # none() donc l'arbre n'est pas evalue).
+            zar_zone = (
+                Zone.objects.filter(
+                    map__map_type=MAP_TYPES.zone_action_renforcee,
+                    geometry__intersects=point,
+                )
+                .only("id")
+                .first()
+            )
+            catalog["en_zar"] = zar_zone is not None
+            catalog["zar_zone_id"] = zar_zone.id if zar_zone else None
 
             # Zonages reglementaires resolus a partir du code INSEE pousse
             # par le front (clic carte). Calcul cheap (lookup CSV en
@@ -516,6 +636,11 @@ class MoulinetteNitrates(Moulinette):
                 code_insee
             )
             catalog["zone_note_5"] = zone_note_5_pour_commune(code_insee)
+            # Zones Est Grand Est (resolues par code INSEE / departement, cf.
+            # zonage_zones_est). Exposees pour le debug : aident a comprendre
+            # pourquoi un arbre PAR Grand Est route vers tel sous-cas.
+            catalog["zone_grand_est_1"] = est_zone_grand_est_1(code_insee)
+            catalog["zone_grand_est_2"] = est_zone_grand_est_2(code_insee)
 
         return catalog
 
@@ -524,22 +649,39 @@ class MoulinetteNitrates(Moulinette):
 
         Le critere `arbre_decision` a la map ZV comme activation_map :
         si le point n'intersecte aucune ZV, le critere n'est pas retourne
-        et l'arbre ne tourne pas."""
+        et l'arbre ne tourne pas.
+
+        Perf : on filtre UNIQUEMENT par `intersects`, sans calculer la
+        distance exacte. Les criteres nitrates ont `activation_distance=0`
+        (activation binaire dans/hors ZV) : un point qui intersecte la zone
+        est forcement a distance 0, donc `distance <= activation_distance`
+        est toujours vrai et redondant. Or `ST_Distance` exact sur la
+        geometrie ZV (~2 M points) coute ~1.3 s par appel -- on l'evite.
+        Si un jour un critere nitrates utilise une activation_distance > 0
+        (buffer), il faudra reintroduire le filtre distance ici."""
         coords = self.catalog.get("lng_lat")
         criteria = super().get_criteria()
         if coords is None:
             return criteria.none()
-        return (
-            criteria.filter(activation_map__zones__geometry__intersects=coords)
-            .annotate(
-                distance=Cast(
-                    Distance("activation_map__zones__geometry", coords),
-                    IntegerField(),
-                )
+
+        # get_catalog_data a deja resolu la zone ZV intersectee (statut ZV).
+        # On reutilise son id pour filtrer par PK plutot que de refaire un
+        # ST_Intersects exact sur la geometrie ZV (~2 M points, ~0.5 s).
+        # "zv_zone_id" absent du catalog => None par defaut (cle posee a
+        # chaque passage de get_catalog_data des qu'on a lng/lat).
+        if "zv_zone_id" in self.catalog:
+            zone_id = self.catalog["zv_zone_id"]
+            if zone_id is None:
+                # Hors ZV : aucun critere nitrates ne s'active.
+                return criteria.none()
+            return criteria.filter(activation_map__zones__id=zone_id).select_related(
+                "activation_map"
             )
-            .filter(distance__lte=F("activation_distance"))
-            .select_related("activation_map")
-        )
+
+        # Fallback (catalog incomplet) : intersection geographique directe.
+        return criteria.filter(
+            activation_map__zones__geometry__intersects=coords
+        ).select_related("activation_map")
 
     # ─── Implementations des abstracts ─────────────────────────────────────
 
@@ -635,6 +777,44 @@ class BrancheValidation(models.Model):
         (STATUT_A_CORRIGER, "À corriger"),
     ]
 
+    # Scope reglementaire de la feuille : a quel arbre elle appartient.
+    # Permet de filtrer le dashboard par PAN / PAR Grand Est / ZAR Grand Est
+    # quand on provisionnera les arbres regionaux (carte #140 / skill cloud).
+    # Defaut national : toutes les feuilles existantes sont du PAN.
+    SCOPE_NATIONAL = "national"
+    SCOPE_PAR_GRAND_EST = "par_grand_est"
+    SCOPE_ZAR_GRAND_EST = "zar_grand_est"
+    SCOPE_CHOICES = [
+        (SCOPE_NATIONAL, "PAN (national)"),
+        (SCOPE_PAR_GRAND_EST, "PAR Grand Est"),
+        (SCOPE_ZAR_GRAND_EST, "ZAR Grand Est"),
+    ]
+    scope = models.CharField(
+        max_length=20,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_NATIONAL,
+        db_index=True,
+    )
+
+    # Nature de la feuille, ORTHOGONALE au scope : une feuille couvert
+    # d'interculture existe aussi bien dans le PAN que dans un PAR/ZAR. On
+    # garde les deux axes separes (scope x nature) pour pouvoir croiser
+    # n'importe quelle combinaison dans le dashboard (ex: PAR x couvert).
+    # Pose au seed (le couvert seed -> couvert, le CP seed -> culture
+    # principale) et derive du chemin_yaml pour l'existant. Cf. carte #140.
+    NATURE_CULTURE_PRINCIPALE = "culture_principale"
+    NATURE_COUVERT = "couvert"
+    NATURE_CHOICES = [
+        (NATURE_CULTURE_PRINCIPALE, "Culture principale"),
+        (NATURE_COUVERT, "Couvert d'interculture"),
+    ]
+    nature = models.CharField(
+        max_length=20,
+        choices=NATURE_CHOICES,
+        default=NATURE_CULTURE_PRINCIPALE,
+        db_index=True,
+    )
+
     # Cle naturelle : path d'ids YAML separes par "/".
     chemin_yaml = models.CharField(
         max_length=1000,
@@ -673,7 +853,19 @@ class BrancheValidation(models.Model):
         blank=True,
         help_text="Texte resultat attendu cote Miro (ex 'Interdit du 15/12 au 15/01')",
     )
-    code_pc_miro = models.CharField(max_length=20, blank=True)
+    # Notes PC du board juriste, potentiellement plusieurs concaténées
+    # (ex `PC1 "ICPE A" · PC13 (plafond ...)`) -> large. Cf. carte #140.
+    code_pc_miro = models.CharField(max_length=300, blank=True)
+    # Id du widget Miro de la feuille-resultat sur le board juriste. Permet
+    # un deeplink cliquable `?moveToWidget=<id>` (Miro recentre la vue sur
+    # la box) — sans ambiguite, contrairement aux screenshots. Pose au seed
+    # par rapprochement SVG (cf. snapshot_miro/.../mapping_couvert.json),
+    # editable manuellement. Cf. carte #140.
+    miro_widget_id = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="data-widget-id du board Miro (pour deeplink moveToWidget)",
+    )
     screenshot_miro = models.ImageField(
         upload_to=_branche_screenshot_path,
         blank=True,
@@ -808,6 +1000,13 @@ class BrancheValidationAction(models.Model):
 # pour que Django les enregistre dans l'app nitrates et que les imports
 # `from envergo.nitrates.models import X` fonctionnent.
 
+from envergo.nitrates.models_contenu_rich import (  # noqa: E402, F401  (carte #131)
+    ContenuRichDSFR,
+)
+from envergo.nitrates.models_ouverture import (  # noqa: E402, F401  (carte #57)
+    DepartementOuverture,
+    departement_est_ouvert,
+)
 from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
     BrancheCulturale,
     CodePrescription,

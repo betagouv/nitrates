@@ -1,11 +1,18 @@
-"""Tests du modele DecisionTree : contrainte unique partielle + activate()."""
+"""Tests du modele DecisionTree : contraintes d'unicite par scope + activate()."""
 
 import pytest
 from django.db import IntegrityError, transaction
 
+from envergo.geodata.models import MAP_TYPES, Map
 from envergo.nitrates.models import DecisionTree
 
 pytestmark = pytest.mark.django_db
+
+
+def _make_zar_map(name="zar_test") -> Map:
+    return Map.objects.create(
+        name=name, map_type=MAP_TYPES.zone_action_renforcee, description="test"
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -26,12 +33,64 @@ def _make_tree(**overrides) -> DecisionTree:
     return DecisionTree.objects.create(**defaults)
 
 
-def test_un_seul_actif_a_la_fois():
-    """La contrainte UNIQUE partielle empeche d'avoir 2 trees actifs."""
+def test_un_seul_pan_actif():
+    """Contrainte (b) : un seul PAN (scope=national) actif a la fois."""
     _make_tree(name="t1", status=DecisionTree.STATUS_ACTIVE)
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             _make_tree(name="t2", status=DecisionTree.STATUS_ACTIVE)
+
+
+def test_pan_et_par_coexistent():
+    """Regression cle : PAN + PAR (region) peuvent etre actifs en parallele."""
+    _make_tree(name="pan", status=DecisionTree.STATUS_ACTIVE)
+    _make_tree(
+        name="par_ge",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+    assert DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).count() == 2
+
+
+def test_deux_par_meme_region_sans_map_interdit():
+    """Contrainte (c) : un seul PAR-hors-ZAR actif par region."""
+    _make_tree(
+        name="par1",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            _make_tree(
+                name="par2",
+                status=DecisionTree.STATUS_ACTIVE,
+                scope=DecisionTree.SCOPE_REGION,
+                region_code="44",
+            )
+
+
+def test_deux_par_regions_differentes_ok():
+    """Deux PAR de regions differentes coexistent."""
+    _make_tree(
+        name="par44",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+    _make_tree(
+        name="par32",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="32",
+    )
+    assert (
+        DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_REGION
+        ).count()
+        == 2
+    )
 
 
 def test_drafts_multiples_autorises():
@@ -81,3 +140,85 @@ def test_activate_premier_tree_sans_actif_courant():
     draft.refresh_from_db()
     assert draft.status == DecisionTree.STATUS_ACTIVE
     assert draft.activated_at is not None
+
+
+def test_deux_zar_meme_map_interdit():
+    """Contrainte (a) : un seul ZAR actif par couche d'activation."""
+    zar_map = _make_zar_map()
+    _make_tree(
+        name="zar1",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_ZAR,
+        region_code="44",
+        activation_map=zar_map,
+    )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            _make_tree(
+                name="zar2",
+                status=DecisionTree.STATUS_ACTIVE,
+                scope=DecisionTree.SCOPE_ZAR,
+                region_code="44",
+                activation_map=zar_map,
+            )
+
+
+def test_deux_zar_maps_differentes_ok():
+    """Deux ZAR sur des couches differentes coexistent."""
+    _make_tree(
+        name="zarA",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_ZAR,
+        region_code="44",
+        activation_map=_make_zar_map("zar_a"),
+    )
+    _make_tree(
+        name="zarB",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_ZAR,
+        region_code="44",
+        activation_map=_make_zar_map("zar_b"),
+    )
+    assert (
+        DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=DecisionTree.SCOPE_ZAR
+        ).count()
+        == 2
+    )
+
+
+def test_activate_archive_seulement_meme_scope():
+    """activate() d'un PAR n'archive QUE l'ancien PAR de meme zone : le PAN
+    et le ZAR actifs restent intacts."""
+    pan = _make_tree(name="pan", status=DecisionTree.STATUS_ACTIVE)
+    zar = _make_tree(
+        name="zar",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_ZAR,
+        region_code="44",
+        activation_map=_make_zar_map(),
+    )
+    ancien_par = _make_tree(
+        name="ancien_par",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+    nouveau_par = _make_tree(
+        name="nouveau_par",
+        status=DecisionTree.STATUS_DRAFT,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+    )
+
+    nouveau_par.activate()
+
+    pan.refresh_from_db()
+    zar.refresh_from_db()
+    ancien_par.refresh_from_db()
+    nouveau_par.refresh_from_db()
+
+    assert pan.status == DecisionTree.STATUS_ACTIVE  # intact
+    assert zar.status == DecisionTree.STATUS_ACTIVE  # intact
+    assert ancien_par.status == DecisionTree.STATUS_ARCHIVE  # archive
+    assert nouveau_par.status == DecisionTree.STATUS_ACTIVE

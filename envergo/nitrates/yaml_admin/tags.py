@@ -42,6 +42,7 @@ _REGLE_TYPES = {
 }
 
 _CATALOGUE_TAG = Tag("catalogue", "tag-catalogue", "🌍")
+_CATALOGUE_PARAMETRE_TAG = Tag("catalogue paramétré", "tag-catalogue-parametre", "🧮")
 _RENVOI_TAG = Tag("renvoi", "tag-renvoi", "↪️")
 _A_COMPLETER_TAG = Tag("a completer", "tag-a-completer", "⚠️")
 
@@ -74,6 +75,8 @@ def get_tags(entry_kind: str, data: dict) -> list[Tag]:
             src = data.get("source")
             if src:
                 tags.append(Tag(src, f"tag-source-{src}"))
+        elif tn == "catalogue_parametre":
+            tags.append(_CATALOGUE_PARAMETRE_TAG)
         elif tn == "formulaire":
             niveau = data.get("niveau")
             if niveau and niveau in _FORMULAIRE_NIVEAUX:

@@ -2,6 +2,13 @@
 
 {% block title %}Validation arbre{% endblock %}
 
+{% comment %}
+Page de lecture/validation : pas de mutation htmx globale. On vide l'overlay
+"Action en cours…" de la base (sinon un form POST natif — changement de statut,
+suppression — le déclenche et il peut rester collé en haut de page).
+{% endcomment %}
+{% block global_overlay %}{% endblock %}
+
 {% block content %}
   <div class="fr-container-fluid fr-py-3w">
     <div class="vc-header">
@@ -32,11 +39,44 @@
       {% endif %}
     </div>
 
+    {% comment %}
+      Deux axes orthogonaux et combinables : scope (PAN/PAR/ZAR) x nature
+      (couvert/culture principale). Chaque lien ne change QUE son axe et
+      préserve la valeur de l'autre via le param GET conservé.
+    {% endcomment %}
+    <div class="vc-filtres-bloc">
+      <div class="vc-filtres">
+        <span class="vc-filtres__lbl">Périmètre</span>
+        <a href="?{% if nature_actif %}nature={{ nature_actif }}{% endif %}"
+           class="vc-filtre{% if not scope_actif %} vc-filtre--on{% endif %}">Tous</a>
+        {% for cle, label, n in scopes %}
+          <a href="?scope={{ cle }}{% if nature_actif %}&nature={{ nature_actif }}{% endif %}"
+             class="vc-filtre{% if scope_actif == cle %} vc-filtre--on{% endif %}">
+            {{ label }} <span class="vc-filtre__n">{{ n }}</span>
+          </a>
+        {% endfor %}
+      </div>
+      <div class="vc-filtres">
+        <span class="vc-filtres__lbl">Nature</span>
+        <a href="?{% if scope_actif %}scope={{ scope_actif }}{% endif %}"
+           class="vc-filtre{% if not nature_actif %} vc-filtre--on{% endif %}">Toutes</a>
+        {% for cle, label, n in natures %}
+          <a href="?nature={{ cle }}{% if scope_actif %}&scope={{ scope_actif }}{% endif %}"
+             class="vc-filtre{% if nature_actif == cle %} vc-filtre--on{% endif %}">
+            {{ label }} <span class="vc-filtre__n">{{ n }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
     <table class="vc-table">
       <thead>
         <tr>
+          <th title="Ordre du board Miro (séquence d'insertion)">#</th>
           <th>Statut</th>
-          <th>Règle</th>
+          <th class="vc-col-regle">Règle</th>
+          <th>Périmètre</th>
+          <th>Nature</th>
           <th>Branche Miro</th>
           <th>Type fert.</th>
           <th>Résultat Miro attendu</th>
@@ -48,7 +88,11 @@
       </thead>
       <tbody>
         {% for branche in branches %}
-          <tr class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
+          <tr id="row-{{ branche.pk }}"
+              data-statut="{{ branche.statut }}"
+              data-touched="{% if branche.actions.all %}1{% else %}0{% endif %}"
+              class="vc-row vc-row--{{ branche.statut }}{% if branche.flag_verif %} vc-row--flag{% endif %}">
+            <td class="vc-col-ordre">{{ branche.ordre }}</td>
             <td>
               {% if branche.statut == 'valide' %}
                 <span class="vc-pill vc-pill--ok">✅</span>
@@ -65,9 +109,23 @@
                 {% endif %}
               {% endwith %}
             </td>
-            <td>
+            <td class="vc-col-regle">
               <code class="vc-regle-id">{{ branche.regle_id|default:"—" }}</code>
               {% if branche.flag_verif %}<span class="vc-flag" title="{{ branche.note_verif }}">⚑ à vérifier</span>{% endif %}
+            </td>
+            <td>
+              {% if branche.scope %}
+                <span class="vc-tag vc-tag--scope-{{ branche.scope }}">{{ branche.get_scope_display }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if branche.nature %}
+                <span class="vc-tag vc-tag--nature-{{ branche.nature }}">{{ branche.get_nature_display }}</span>
+              {% else %}
+                —
+              {% endif %}
             </td>
             <td>{{ branche.branche_miro|default:"—" }}</td>
             <td>{{ branche.type_fertilisant_miro|default:"—" }}</td>
@@ -80,13 +138,20 @@
               {% endif %}
             </td>
             <td class="vc-row__media">
+              {% if branche.miro_widget_id %}
+                <a class="vc-miro-link"
+                   href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
+                   target="_blank"
+                   rel="noopener"
+                   title="Ouvrir la feuille dans le board Miro (moveToWidget)">🔗 Miro</a>
+              {% endif %}
               {% if branche.screenshot_miro %}
                 <img src="{{ branche.screenshot_miro.url }}"
                      alt="Miro"
                      class="vc-thumb vc-clickable"
                      data-lightbox
                      data-src="{{ branche.screenshot_miro.url }}">
-              {% else %}
+              {% elif not branche.miro_widget_id %}
                 <span style="color:#999">—</span>
               {% endif %}
             </td>
@@ -102,7 +167,12 @@
               {% endif %}
             </td>
             <td class="vc-row__actions">
-              <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}"
+              {% comment %}
+              On propage scope/nature au détail pour qu'au retour (← Retour /
+              après validation) on retrouve le filtre courant, sans recliquer
+              (cf. retour Max : on valide feuille par feuille dans un périmètre).
+              {% endcomment %}
+              <a href="{% url 'nitrates_admin_validation_detail' pk=branche.pk %}?scope={{ scope_actif }}&nature={{ nature_actif }}"
                  class="vc-btn">Voir</a>
               <form method="post"
                     action="{% url 'nitrates_admin_validation_delete' pk=branche.pk %}"
@@ -132,6 +202,64 @@
       display: flex;
       gap: 1rem;
       margin: 1rem 0;
+    }
+
+    .vc-filtres-bloc {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin: 0.5rem 0 1.25rem;
+    }
+
+    .vc-filtres {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .vc-filtres__lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666;
+      min-width: 7ch;
+    }
+
+    .vc-filtre {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 16px;
+      border: 1px solid #ccc;
+      background: #fff;
+      color: #1f4789 !important;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .vc-filtre:hover {
+      border-color: #1f4789;
+    }
+
+    .vc-filtre--on {
+      background: #1f4789;
+      color: #fff !important;
+      border-color: #1f4789;
+    }
+
+    .vc-filtre__n {
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      padding: 0 7px;
+      font-size: 0.75rem;
+    }
+
+    .vc-filtre--on .vc-filtre__n {
+      background: rgba(255, 255, 255, 0.25);
     }
 
     .vc-pill {
@@ -167,6 +295,51 @@
       color: #6a6af4;
     }
 
+    /* Colonne ordre Miro : discrete, sert juste de repere de sequence. */
+    .vc-col-ordre {
+      color: #999;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    /* Tags Perimetre / Nature : couleur distincte par valeur pour reperer
+       d'un coup d'oeil le melange des regles (cf. retour Max #140). */
+    .vc-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .vc-tag--scope-national {
+      background: #e1ecff;
+      color: #1f4789;
+    }
+
+    .vc-tag--scope-par_grand_est {
+      background: #e7f3ec;
+      color: #18753c;
+    }
+
+    .vc-tag--scope-zar_grand_est {
+      background: #fde8e8;
+      color: #a3231f;
+    }
+
+    .vc-tag--nature-culture_principale {
+      background: #fff3e0;
+      color: #b35900;
+    }
+
+    .vc-tag--nature-couvert {
+      background: #f3eafc;
+      color: #6e2fb0;
+    }
+
     .vc-table {
       width: 100%;
       border-collapse: collapse;
@@ -186,9 +359,21 @@
       font-weight: 600;
     }
 
+    /* Colonne Règle : bornée + wrap sur 2 lignes, pour rendre la largeur
+       aux colonnes d'images (captions plus grandes). */
+    .vc-col-regle {
+      max-width: 18ch;
+    }
+
     .vc-regle-id {
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       color: #555;
+      display: inline-block;
+      max-width: 18ch;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.15;
     }
 
     .vc-flag {
@@ -214,18 +399,36 @@
     }
 
     .vc-row__media {
-      width: 100px;
+      width: 220px;
     }
 
     .vc-thumb {
-      max-width: 90px;
-      max-height: 50px;
+      max-width: 210px;
+      max-height: 130px;
       border: 1px solid #ddd;
       border-radius: 3px;
+      display: block;
+      margin-top: 3px;
     }
 
     .vc-clickable {
       cursor: zoom-in;
+    }
+
+    .vc-miro-link {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #1f4789 !important;
+      background: #e1ecff;
+      border-radius: 10px;
+      padding: 1px 7px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .vc-miro-link:hover {
+      background: #c7dbff;
     }
 
     .vc-btn {
@@ -261,6 +464,26 @@
       background: #fffaf2;
     }
 
+    /* Surlignage temporaire de la 1re feuille non validée ciblée par
+       l'auto-scroll (cf. script en bas de page). S'estompe après ~2.5s. */
+    .vc-row--cible {
+      animation: vc-cible-pulse 2.5s ease-out;
+    }
+
+    @keyframes vc-cible-pulse {
+
+      0%,
+      30% {
+        background: #fff3a8;
+        box-shadow: inset 3px 0 0 #f5b400;
+      }
+
+      100% {
+        background: inherit;
+        box-shadow: none;
+      }
+    }
+
     .vc-validators {
       display: flex;
       flex-wrap: wrap;
@@ -277,4 +500,34 @@
       white-space: nowrap;
     }
   </style>
+
+  {% comment %}
+  Auto-scroll vers la 1re feuille JAMAIS TOUCHÉE (aucune action, data-touched=0)
+  au chargement. Sert le flux de validation en série (cf. retour Max) : on saute
+  les feuilles déjà traitées — y compris celles mises « à corriger », qu'on ne
+  veut PAS retraiter — pour atterrir sur la prochaine vierge. Si toutes ont été
+  touchées -> pas de scroll. La ligne ciblée est surlignée brièvement.
+  {% endcomment %}
+  <script>
+    (function () {
+      function scrollFirstUntouched() {
+        var rows = document.querySelectorAll(".vc-row");
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].getAttribute("data-touched") === "0") {
+            rows[i].scrollIntoView({ block: "center", behavior: "smooth" });
+            rows[i].classList.add("vc-row--cible");
+            setTimeout(function (r) {
+              return function () { r.classList.remove("vc-row--cible"); };
+            }(rows[i]), 2500);
+            return;
+          }
+        }
+      }
+      if (document.readyState !== "loading") {
+        scrollFirstUntouched();
+      } else {
+        document.addEventListener("DOMContentLoaded", scrollFirstUntouched);
+      }
+    })();
+  </script>
 {% endblock %}

@@ -1,19 +1,15 @@
 {% load nitrates_tags %}
 
 {% comment %}
-Une question complementaire avec ses radios. Partial reutilise dans deux
-contextes :
-
-  1. Saisie (_resultat_questions.html, panneau resultat droit) :
-     - input form="form-simulateur" pour partager le submit avec le form
-       principal
-     - id prefixe "id_qc_right_<champ>_<valeur>"
-     - peut etre cachee si q.parent_champ (cascade conditionnelle #58.1)
-
-  2. Recap (_qc_recap.html, sous le form principal) :
-     - input sans form= (rattache au form parent natural)
-     - id prefixe "qc-<champ>-<valeur>"
-     - jamais conditionnelle (toutes les QC affichees sont deja repondues)
+Une question complementaire avec ses radios. Partial utilise par
+_qc_sous_form.html (#112), qui rend dans UN seul bloc, sous le formulaire
+principal :
+  - les QC deja repondues (id_prefix "id_qc_sf_done_", radios editables) ;
+  - les QC en attente (id_prefix "id_qc_sf_new_"), avec cascade
+    conditionnelle (#58.1 : cachees si q.parent_champ, revelees par
+    subsidiaires_cascade.js).
+Comme le bloc est DANS le form principal, form_attr est vide (pas besoin de
+form="form-simulateur").
 
 Inputs du partial :
   q                 : QuestionFormulaire-like (.champ, .texte, .choix

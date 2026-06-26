@@ -1,0 +1,184 @@
+/* Bandeau "site en construction" (issue #113).
+   Affiche uniquement sur le root public (is_building).
+
+   Deux elements qui se relaient EN FONDU DOUX, pilotes par construction.js
+   selon la visibilite du header :
+   - .nitrates-construction__ribbon : ruban 45deg coin haut-gauche (defaut) ;
+   - .nitrates-construction__bar : barre fine sticky top (quand .scrolled).
+
+   Jaune chantier, sobre : hachures discretes seulement sur le ruban, barre
+   top en aplat propre. */
+
+:root {
+  --nitrates-chantier-jaune: #f4c20d; /* jaune chantier */
+  --nitrates-chantier-fonce: #1d1d1d;
+}
+
+/* ====================================================================
+   RUBAN 45deg coin haut-gauche (etat repos)
+   ==================================================================== */
+.nitrates-construction__ribbon {
+  /* Methode canonique du "corner ribbon" : on ancre le CENTRE de la bande
+     sur un point (d, d) de la diagonale du coin, puis on tourne de -45deg
+     autour de ce centre. Comme le point d'ancrage est sur la diagonale et
+     que la bande est centree dessus (translate -50%/-50%), ses deux
+     extremites depassent symetriquement des bords haut et gauche -> le
+     texte tombe pile au centre du triangle visible. d pilote a quelle
+     distance du coin passe la bande (plus grand = plus bas/droite). */
+  --ribbon-d: 4.5rem;
+  --ribbon-w: 26rem;
+
+  position: fixed;
+  top: var(--ribbon-d);
+  left: var(--ribbon-d);
+  z-index: 1000;
+  width: var(--ribbon-w);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  transform-origin: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2rem;
+  background: var(--nitrates-chantier-jaune);
+  box-shadow: 0 0.15rem 0.6rem rgb(0 0 0 / 30%);
+  pointer-events: none;
+
+  /* fondu doux sortant quand on passe en mode barre */
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+.nitrates-construction__ribbon-label {
+  color: var(--nitrates-chantier-fonce);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 30%);
+}
+
+/* liseres hachures DISCRETES, uniquement sur le ruban (fines, en bordure) */
+.nitrates-construction__ribbon::before,
+.nitrates-construction__ribbon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.22rem;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--nitrates-chantier-fonce) 0,
+    var(--nitrates-chantier-fonce) 0.45rem,
+    transparent 0.45rem,
+    transparent 0.9rem
+  );
+  opacity: 0.5;
+}
+
+.nitrates-construction__ribbon::before {
+  top: 0;
+}
+
+.nitrates-construction__ribbon::after {
+  bottom: 0;
+}
+
+/* ====================================================================
+   BARRE fine horizontale sticky top (etat .scrolled)
+   ==================================================================== */
+.nitrates-construction__bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 1.25rem;
+
+  /* padding vertical un peu plus large pour loger les liseres hachures */
+  padding: 0.4rem 1rem;
+  background: var(--nitrates-chantier-jaune);
+  box-shadow: 0 0.1rem 0.5rem rgb(0 0 0 / 20%);
+  color: var(--nitrates-chantier-fonce);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 0.25;
+  text-align: center;
+
+  /* cachee par defaut : hors-ecran vers le haut + transparente */
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+/* fines rayures chantier discretes en haut + bas de la barre top */
+.nitrates-construction__bar::before,
+.nitrates-construction__bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.22rem;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--nitrates-chantier-fonce) 0,
+    var(--nitrates-chantier-fonce) 0.45rem,
+    transparent 0.45rem,
+    transparent 0.9rem
+  );
+  opacity: 0.5;
+}
+
+.nitrates-construction__bar::before {
+  top: 0;
+}
+
+.nitrates-construction__bar::after {
+  bottom: 0;
+}
+
+.nitrates-construction__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* ====================================================================
+   BASCULE (classe .scrolled posee par le JS quand le header sort)
+   ==================================================================== */
+.nitrates-construction.scrolled .nitrates-construction__ribbon {
+  opacity: 0; /* le ruban s'efface en douceur */
+}
+
+.nitrates-construction.scrolled .nitrates-construction__bar {
+  opacity: 1; /* la barre apparait en fondu, glisse depuis le haut */
+  transform: translateY(0);
+}
+
+/* NB (#151) : on NE reserve PLUS la hauteur de la barre via un padding-top
+   sur <body>. Ce padding deplacait le header qui est lui-meme l'element
+   observe par l'IntersectionObserver -> boucle de retroaction : pile au
+   seuil de bascule, ajouter le padding repoussait le header dans le
+   viewport, l'observer rebasculait, etc. D'ou les sauts rapides de toute la
+   section header au scroll/zoom lent. La barre etant en position:fixed, elle
+   se contente de recouvrir le haut du contenu (deja scrolle a ce moment-la),
+   ce qui est acceptable pour un simple bandeau d'avertissement. */
+
+/* Respecte prefers-reduced-motion : pas de glissement, juste l'opacite. */
+@media (prefers-reduced-motion: reduce) {
+  .nitrates-construction__ribbon,
+  .nitrates-construction__bar {
+    transition: opacity 0.2s ease;
+  }
+
+  .nitrates-construction__bar {
+    transform: none;
+  }
+}

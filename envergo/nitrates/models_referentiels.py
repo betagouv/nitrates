@@ -173,6 +173,18 @@ class Fertilisant(models.Model):
         max_length=32,
         choices=CategorieFertilisant.choices,
     )
+    champs_prefill = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Champs à injecter dans le contexte de parcours quand ce "
+            "fertilisant est choisi, pour auto-résoudre des questions "
+            "complémentaires de l'arbre (ex effluent_peu_charge / "
+            "effluent_peu_charge_elevage). Mêmes clés que les `champ` des "
+            "nœuds `complement`. La question n'est alors pas posée mais "
+            "inférée. Vide = aucune inférence."
+        ),
+    )
     type_reglementaire = models.CharField(
         max_length=16,
         choices=TypeFertilisant.choices,
@@ -254,6 +266,19 @@ class CodePrescription(models.Model):
     texte_redaction_initiale = models.TextField(
         blank=True,
         help_text="Rédaction juridique brute de l'arrêté.",
+    )
+    # Contenu riche éditable (carte #136). Source unique du rendu DSFR du PC
+    # quand non vide : compilé en HTML au rendu (cf. compile_dsfr), édité via
+    # l'éditeur WYSIWYG dans l'admin. Les champs texte ci-dessus restent en
+    # place (fallback tant que `blocs` est vide ; pas de casse pour les autres
+    # consommateurs de la table).
+    blocs = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Contenu riche (format {schema, blocs:[...]}). Édité via l'éditeur, "
+            "jamais à la main. Si vide, on retombe sur texte_court."
+        ),
     )
     toujours_affiche = models.BooleanField(
         default=False,

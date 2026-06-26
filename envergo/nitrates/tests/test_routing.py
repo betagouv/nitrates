@@ -13,9 +13,13 @@ def nitrates_site(settings):
     return site
 
 
-def test_home_redirects_unauth_to_login(client, nitrates_site):
-    """La racine `/` est desormais protegee par ProConnect (login_required).
-    Un visiteur non authentifie doit etre redirige vers la page de login."""
+def test_home_redirects_unauth_to_login(client, nitrates_site, settings):
+    """En mode ferme (lockdown + root non ouvert aux alpha-testeurs, cf. #113),
+    la racine `/` est protegee : un visiteur non authentifie est redirige vers
+    le login. Le mode OUVERT (200 + bandeau construction) est teste a part
+    dans test_root_alpha_construction.py."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = False
     response = client.get("/")
     assert response.status_code == 302
     assert "login" in response["Location"].lower()

@@ -144,6 +144,41 @@ test.describe('Simulateur nitrates : page formulaire', () => {
   });
 });
 
+test.describe('Simulateur nitrates : pas de parcelle pre-selectionnee (#153)', () => {
+  // Regression #153 : un point ZAR (Chateau-Porcien) etait pre-clique au
+  // chargement quand aucun lat/lng n'etait fourni. Resultat : une parcelle
+  // apparaissait selectionnee, le form se devoilait et un auto-scroll
+  // amenait directement aux questions sans laisser lire la page d'accueil.
+  // On veut au contraire : carte vierge, aucun marker, message d'invite
+  // visible, lat/lng vides. Verifie sur les DEUX endpoints (/ et /simulateur/).
+  for (const path of ['/', '/simulateur/']) {
+    test(`${path} : carte vierge, aucune parcelle pre-selectionnee`, async ({
+      page,
+    }) => {
+      await page.goto(path);
+      await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
+
+      // lat/lng vides : rien n'a ete pre-rempli.
+      await expect(page.locator('#id_lat')).toHaveValue('');
+      await expect(page.locator('#id_lng')).toHaveValue('');
+
+      // Aucun marker Leaflet pose sur la carte (pas de parcelle selectionnee).
+      // Le pre-clic posait un L.marker -> icone .leaflet-marker-icon dans le DOM.
+      // On laisse le temps a un eventuel clic synthetique de s'executer.
+      await page.waitForTimeout(1000);
+      await expect(page.locator('#nitrates-map .leaflet-marker-icon')).toHaveCount(0);
+
+      // Le message d'invite est visible et le form reste verrouille : donc
+      // pas de devoilement ni d'auto-scroll vers les questions.
+      await expect(page.locator('#form-locked-message')).toBeVisible();
+      await expect(page.locator('#form-locked-message')).toContainText(
+        'Cliquez sur la carte'
+      );
+      await expect(page.locator('#form-after-localisation')).toBeHidden();
+    });
+  }
+});
+
 test.describe('Simulateur nitrates : cascade radios', () => {
   test('clic sur sol_non_cultive remplit occupation_sol et skip sous_culture', async ({
     page,

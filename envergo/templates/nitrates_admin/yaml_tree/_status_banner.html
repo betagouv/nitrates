@@ -37,7 +37,7 @@
     {% endif %}
     {% if tree.status == "active" %}
       <a class="yaml-admin__btn yaml-admin__btn--primary"
-         href="{% url 'nitrates_admin_yaml_edit_active' %}"
+         href="{% url 'nitrates_admin_yaml_edit_active' %}?tree_id={{ tree.pk }}"
          data-preserve-state>✏️ Éditer cet arbre</a>
     {% elif tree.status == "draft" and not is_editing %}
       <a class="yaml-admin__btn yaml-admin__btn--primary"

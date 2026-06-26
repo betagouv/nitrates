@@ -44,19 +44,8 @@ def enumerer_feuilles_culture_principale_v2(arbre: dict) -> list[dict]:
 
     contexte_base = {"en_zone_vulnerable": True}
     chemin_init: list[str] = []
-    if racine.get("type_noeud") == "catalogue" and racine.get("id") == "n_zvn":
-        chemin_init.append(racine["id"])
-        branche_oui = next(
-            (b for b in racine.get("branches", []) if b.get("valeur") is True),
-            None,
-        )
-        if not branche_oui or "noeud" not in branche_oui:
-            return []
-        sous = branche_oui["noeud"]
-    else:
-        sous = racine
-
-    if sous.get("champ") != "occupation_sol":
+    sous = _descendre_porte_zvn(racine, chemin_init)
+    if sous is None or sous.get("champ") != "occupation_sol":
         return []
 
     chemin_init.append(sous["id"])
@@ -98,19 +87,8 @@ def enumerer_feuilles_couvert_v2(arbre: dict) -> list[dict]:
     index = _index_par_id(arbre)
     contexte_base = {"en_zone_vulnerable": True}
     chemin_init: list[str] = []
-    if racine.get("type_noeud") == "catalogue" and racine.get("id") == "n_zvn":
-        chemin_init.append(racine["id"])
-        branche_oui = next(
-            (b for b in racine.get("branches", []) if b.get("valeur") is True),
-            None,
-        )
-        if not branche_oui or "noeud" not in branche_oui:
-            return []
-        sous = branche_oui["noeud"]
-    else:
-        sous = racine
-
-    if sous.get("champ") != "occupation_sol":
+    sous = _descendre_porte_zvn(racine, chemin_init)
+    if sous is None or sous.get("champ") != "occupation_sol":
         return []
 
     chemin_init.append(sous["id"])
@@ -129,6 +107,35 @@ def enumerer_feuilles_couvert_v2(arbre: dict) -> list[dict]:
     contexte_init = {**contexte_base, "occupation_sol": "couvert_intercultures"}
     _walk(branche_couvert["noeud"], contexte_init, [], chemin_init, cas, index)
     return cas
+
+
+def _descendre_porte_zvn(racine: dict, chemin_init: list) -> dict | None:
+    """Franchit la porte « en zone vulnerable » de la racine et renvoie le
+    noeud `occupation_sol` sous la branche True.
+
+    Generalise l'ancien cas hardcode `id == "n_zvn"` : l'arbre national a
+    sa racine catalogue `n_zvn`, mais les arbres regionaux (PAR / ZAR Grand
+    Est) ont une racine differente (`n_en_zone_vulnerable`, etc.). On detecte
+    la porte ZV par son `champ` (`en_zone_vulnerable`) plutot que par son id,
+    et on descend dans la branche `valeur is True`. Si la racine n'est pas
+    une porte ZV (cas ou occupation_sol est directement la racine), on la
+    renvoie telle quelle. Mute `chemin_init` (ajoute l'id de la porte).
+    """
+    est_porte_zv = (
+        racine.get("type_noeud") == "catalogue"
+        and racine.get("champ") == "en_zone_vulnerable"
+    ) or racine.get("id") == "n_zvn"
+    if est_porte_zv:
+        if racine.get("id"):
+            chemin_init.append(racine["id"])
+        branche_oui = next(
+            (b for b in racine.get("branches", []) if b.get("valeur") is True),
+            None,
+        )
+        if not branche_oui or "noeud" not in branche_oui:
+            return None
+        return branche_oui["noeud"]
+    return racine
 
 
 def _index_par_id(arbre: dict) -> dict:
@@ -182,6 +189,31 @@ def _walk(
             branche = next(
                 b for b in noeud.get("branches", []) if b.get("valeur") == valeur
             )
+            _explore_branche(
+                branche,
+                sous_contexte,
+                sous_label,
+                nouveau_chemin,
+                cas,
+                index,
+                profondeur,
+            )
+        return
+
+    if type_noeud == "catalogue_parametre":
+        # On explore TOUTES les branches (couverture exhaustive de la mini-app
+        # de validation), comme un catalogue. Le routage runtime se fait par
+        # expression (cf. #128) mais pour l'enumeration on materialise chaque
+        # issue possible. La `valeur` de tracabilite est posee dans le contexte
+        # quand elle existe ; le label retombe sur l'expression sinon.
+        for i, branche in enumerate(noeud.get("branches", [])):
+            sous_contexte = dict(contexte)
+            if "valeur" in branche:
+                sous_contexte[champ] = branche["valeur"]
+                etiquette = f"{champ}={branche['valeur']}"
+            else:
+                etiquette = f"{champ}~expr#{i + 1}"
+            sous_label = path_label + [etiquette]
             _explore_branche(
                 branche,
                 sous_contexte,

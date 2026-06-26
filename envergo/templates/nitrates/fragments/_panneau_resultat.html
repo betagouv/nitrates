@@ -26,6 +26,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% endif %}
   </div>
 
+  {% comment %}
+  Zone d'action renforcée : ligne affichee UNIQUEMENT si la parcelle est en ZAR
+  (catalog.en_zar). Meme style que la ligne Zone vulnerable.
+  {% endcomment %}
+  {% if moulinette.catalog.en_zar %}
+    <div class="resultat-row">
+      <span class="resultat-row__label">Zone d'action renforcée (ZAR)</span>
+      <span class="resultat-badge resultat-badge--concerne">CONCERNÉ</span>
+    </div>
+  {% endif %}
+
   {% if not moulinette.catalog.en_zone_vulnerable %}
     <div class="fr-alert fr-alert--info fr-mt-3w">
       <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
@@ -36,18 +47,18 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
     {% for entry in regulations_evaluees %}
       {% with criterion=entry.criterion ev=entry.evaluator %}
 
-        {% if ev.questions_subsidiaires %}
-          {% comment %}
-          Parcours en pause sur une question subsidiaire : on remplace tout
-          le rendu resultat (header / calendrier / texte) par le mini-form
-          de QC qui partage le form principal via form="form-simulateur".
-          {% endcomment %}
-          {% include "nitrates/fragments/_resultat_questions.html" %}
-        {% elif ev.regle %}
-          {# ─── Épandage : header dynamique (issue #28, badge interpole today) ─── #}
-          {# Source unique pour le module epandage_aujourdhui.js (cf. JSON serialise via to_json_dict). #}
-          {{ ev.regle.to_json_dict|json_script:"regle-actuelle" }}
-          {% epandage_header ev.regle %}
+        {% comment %}
+        Note (#112) : les questions complementaires ne sont PLUS rendues ici.
+        Tant qu'une QC est en attente, le panel resultat n'est pas affiche du
+        tout (cf. simulateur.html : la result-col n'existe que si
+        not qc_en_attente). Les QC sont posees sous le formulaire principal
+        (cf. _qc_sous_form.html). Ce panneau ne rend donc que le resultat
+        final.
+
+        Le calendrier (plus bas) est le 1er element visuel du resultat : le
+        bloc "Epandage / aujourd'hui" a ete retire (#85).
+        {% endcomment %}
+        {% if ev.regle %}
         {% else %}
           {# Fallback ancien rendu si pas de regle (cas edge non_disponible). #}
           <div class="resultat-row">
@@ -68,11 +79,20 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
         {% if ev.regle %}
 
-          {# Texte introductif (message specifique a la regle, ex maïs brunissement) #}
-          {% if ev.regle.message %}
-            <p class="fr-mt-2w">{{ ev.regle.message }}</p>
-          {% elif ev.regle.texte %}
-            <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
+          {% comment %}
+          Phrase d'intro au-dessus du calendrier (#85) : UNIQUEMENT pour une
+          interdiction toute l'annee (ex "interdit toute l'annee sur sol non
+          cultive"), ou le calendrier seul ne dirait rien. Pour tous les
+          autres cas (dont les couverts), le calendrier est le 1er element et
+          le texte libre du YAML part dans le panneau debug plus bas.
+          {% endcomment %}
+          {% est_interdit_toute_lannee ev.regle as intro_toute_lannee %}
+          {% if intro_toute_lannee %}
+            {% if ev.regle.message %}
+              <p class="fr-mt-2w">{{ ev.regle.message }}</p>
+            {% elif ev.regle.texte %}
+              <p class="fr-mt-2w">{{ ev.regle.texte }}</p>
+            {% endif %}
           {% endif %}
 
           {% comment %}
@@ -85,91 +105,61 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% calendrier_epandage ev.regle %}
           {% endif %}
 
-          {# Condition d'autorisation (issue #28) : surface texte_condition pour les regimes "autorisation_sous_condition". #}
-          {% if ev.regle.texte_condition %}
-            <div class="fr-callout fr-callout--blue-ecume fr-mt-3w">
-              <h4 class="fr-callout__title">Condition d'autorisation</h4>
-              <p>{{ ev.regle.texte_condition }}</p>
+          {% comment %}
+          Ancien callout "Condition d'autorisation" (texte_condition, #28)
+          retire : redondant avec les prescriptions conditionnees riches qui
+          portent desormais tout le detail. Le texte_condition reste exploite
+          par le calendrier / les puces de periodes, pas en bloc separe.
+          {% endcomment %}
+
+          {% comment %}
+          Liste UNIQUE des periodes datees, en puces (#85), ordre (du plus au
+          moins restrictif, cf. tag periodes_datees) : interdiction, plafond,
+          autorisation sous condition, puis la periode d'autorisation pure
+          (vert) en dernier. L'autorisation pure = jours ni interdits ni sous
+          condition (complement, fusion des plages), affichee meme sans
+          periode YAML (cas "libre" = autorise toute l'annee).
+          Vaut pour mixte ET non-mixte. Les regles calculatrice (couverts) ont
+          leur propre recap cote JS, on n'en met pas ici (pas de doublon).
+          {% endcomment %}
+          {% if ev.regle.type != "calculatrice" %}
+            {% periodes_datees ev.regle as puces_periodes %}
+            {% if puces_periodes %}
+              <ul class="fr-mb-0 periodes-liste">
+                {% for puce in puces_periodes %}
+                  <li>
+                    <strong>{{ puce.label }} :</strong> {{ puce.phrase }}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% endif %}
+
+          {% comment %}
+          Plafond d'azote (si applicable) : presente en encart DSFR plutot
+          qu'en texte plaque (cf. retour Max). Le chiffre est mis en avant
+          comme une valeur cle ; le contexte ("toutes formes et origines
+          confondues...") est porte par les prescriptions / regles permanentes.
+          {% endcomment %}
+          {% if ev.regle.plafond_azote_kg_n_ha %}
+            <div class="fr-callout fr-callout--blue-cumulus fr-mt-2w nitrates-plafond">
+              <p class="fr-callout__title fr-mb-1v">Plafond d'azote</p>
+              <p class="fr-callout__text">
+                <span class="nitrates-plafond__valeur">{{ ev.regle.plafond_azote_kg_n_ha }}</span>
+                <span class="nitrates-plafond__unite">kg N/ha</span>
+              </p>
             </div>
           {% endif %}
 
           {% comment %}
-          Periodes (texte). Pour les regles non-mixtes : "Periode
-          d'interdiction". Pour mixte : on liste chaque periode avec son
-          regime (interdiction / autorisation_sous_condition).
+          Panel debug "parcours" : positionné SOUS toute la partie calendrier
+          (calendrier + périodes interdit/autorisé + plafond) et JUSTE AU-DESSUS
+          des prescriptions conditionnées / bloc riche (cf. retour Max). Mode
+          développeur uniquement (NITRATES_FORM_DEBUG_PANELS / force_debug) ->
+          absent sur la route publique /result/. Foldé par défaut.
           {% endcomment %}
-          {% comment %}
-          Pour les regles calculatrice, le recap textuel est rendu cote JS
-          dans le composant (calendrier-dynamique-couvert), avec annotations
-          dynamiques (« jusqu'a 4 semaines apres semis »). Pas de doublon ici.
-          {% endcomment %}
-          {% if ev.regle.periodes and ev.regle.type != "calculatrice" %}
-            {% if ev.regle.type == "mixte" %}
-              {% comment %}
-              Affichage en 2 temps :
-                1. les periodes "autorisation_sous_condition" (derogation
-                   locale, qu'elle soit phenologique ou non) en haut.
-                2. les periodes "interdiction" (regle de base) en dessous,
-                   precedees d'une mention "Sinon, regle de base —" sur sa
-                   propre ligne (italic) pour expliciter que c'est le
-                   fallback.
-
-              On affiche le prefixe "Sinon, regle de base —" des qu'on a
-              au moins une autorisation_sous_condition ET au moins une
-              interdiction (peu importe que les bornes soient fixes ou
-              phenologiques). Sinon (mixte avec uniquement de l'interdiction
-              ou uniquement de l'autorisation), pas de prefixe.
-              {% endcomment %}
-              {% with has_autorisation=ev.regle.has_autorisation_sous_condition has_interdiction=ev.regle.has_interdiction %}
-                <ul class="fr-mb-0 periodes-mixte">
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "autorisation_sous_condition" %}
-                      <li>
-                        <strong>Autorisé sous conditions :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                  {% if has_autorisation and has_interdiction %}
-                    <li class="periodes-mixte__fallback-intro">
-                      <em>Sinon, règle de base</em>
-                    </li>
-                  {% endif %}
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "interdiction" %}
-                      <li>
-                        <strong>Interdiction :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                  {% for p in ev.regle.periodes %}
-                    {% if p.regime == "plafonnement" %}
-                      <li>
-                        <strong>Plafond :</strong>
-                        {% periode_phrase p %}.
-                      </li>
-                    {% endif %}
-                  {% endfor %}
-                </ul>
-              {% endwith %}
-            {% else %}
-              <p>
-                <strong>Période d'interdiction :</strong>
-                {% for p in ev.regle.periodes %}
-                  du {{ p.du }} au {{ p.au }}
-                  {% if not forloop.last %};{% endif %}
-                {% endfor %}
-                .
-              </p>
-            {% endif %}
-          {% endif %}
-
-          {# Plafond (si applicable) #}
-          {% if ev.regle.plafond_azote_kg_n_ha %}
-            <p>
-              <strong>Plafond :</strong> {{ ev.regle.plafond_azote_kg_n_ha }} kg N/ha
-            </p>
+          {% if debug %}
+            {% include "nitrates/fragments/_debug_parcours.html" %}
           {% endif %}
 
           {% comment %}
@@ -179,26 +169,36 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
           avec un message regle qui dit deja la meme chose en plus contextuel.
           {% endcomment %}
-          {% if ev.regle.code_prescription and not ev.regle.message %}
-            {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
-              {% if pc %}
-                <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:ev.regle.code_prescription }}</h4>
-                {% if pc.texte_court %}
-                  <p>
-                    {{ pc.texte_court|linebreaksbr }}
-                    {% if pc.texte_redaction_initiale %}
-                      <a href="#accordion-texte-init-{{ ev.regle.code_prescription }}"
-                         class="fr-link fr-link--sm nitrates-voir-plus"
-                         data-target="accordion-texte-init-{{ ev.regle.code_prescription }}">voir plus</a>
-                    {% endif %}
+          {% comment %}
+            Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
+            (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
+            PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
+            DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
+          {% endcomment %}
+          {% if ev.regle.codes_prescription and not ev.regle.message %}
+            {% for cp in ev.regle.codes_prescription %}
+              {% with pc=codes_prescription|get_item:cp %}
+                {% if pc.blocs %}
+                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
+                {% elif pc %}
+                  <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
+                  {% if pc.texte_court %}
+                    <p>
+                      {{ pc.texte_court|linebreaksbr }}
+                      {% if pc.texte_redaction_initiale %}
+                        <a href="#accordion-texte-init-{{ cp }}"
+                           class="fr-link fr-link--sm nitrates-voir-plus"
+                           data-target="accordion-texte-init-{{ cp }}">voir plus</a>
+                      {% endif %}
+                    </p>
+                  {% endif %}
+                {% else %}
+                  <p class="fr-text--sm">
+                    <strong>Code prescription :</strong> {{ cp }}
                   </p>
                 {% endif %}
-              {% else %}
-                <p class="fr-text--sm">
-                  <strong>Code prescription :</strong> {{ ev.regle.code_prescription }}
-                </p>
-              {% endif %}
-            {% endwith %}
+              {% endwith %}
+            {% endfor %}
           {% endif %}
 
           {# Note réglementaire : libelle long resolu via referentiels #}
@@ -240,55 +240,40 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% endwith %}
           {% endif %}
 
-          {# Accordeon DSFR "Prescriptions generales" (texte fixe issu maquette) #}
+          {% comment %}
+          Regles permanentes : contenu riche editable en DB (carte #131),
+          recompile en HTML DSFR depuis le JSON `resultat.regles_permanentes`.
+          Remplace l'ancien accordeon hardcode (intro + 6 puces). Edite par les
+          juristes dans l'admin, sans toucher au code. Rendu sous les
+          prescriptions conditionnees.
+          {% endcomment %}
           <div class="fr-accordions-group fr-mt-3w">
-            <section class="fr-accordion">
-              <h3 class="fr-accordion__title">
-                <button class="fr-accordion__btn"
-                        aria-expanded="false"
-                        aria-controls="accordion-prescriptions-permanentes">
-                  Prescriptions générales d'interdiction permanente
-                </button>
-              </h3>
-              <div class="fr-collapse" id="accordion-prescriptions-permanentes">
-                <p>
-                  Indépendamment des périodes d'interdiction saisonnières,
-                  certaines situations rendent l'épandage interdit en toutes
-                  circonstances. Ces interdictions permanentes s'appliquent
-                  quelle que soit la période de l'année et le type de
-                  fertilisant utilisé.
-                </p>
-                <ul class="fr-mb-0">
-                  <li>Épandage sur sols enneigés ou couverts de neige.</li>
-                  <li>Épandage sur sols pris en masse par le gel.</li>
-                  <li>Épandage sur sols détrempés ou inondés.</li>
-                  <li>Épandage à moins de 35 m des berges (2 m si bande enherbée).</li>
-                  <li>Épandage sur sols à forte pente (selon les conditions du PAR).</li>
-                  <li>Épandage par aspersion à moins de 10 m des cours d'eau.</li>
-                </ul>
-              </div>
-            </section>
+            {% contenu_rich "resultat.regles_permanentes" %}
 
-            {# Texte reglementaire initial du PC (cible des liens "voir plus") #}
-            {% if ev.regle.code_prescription %}
-              {% with pc=codes_prescription|get_item:ev.regle.code_prescription %}
-                {% if pc.texte_redaction_initiale %}
+            {% comment %}
+              Texte reglementaire initial de chaque PC (cible des liens "voir
+              plus") : un accordeon par PC (#multi-PC). UNIQUEMENT en fallback —
+              si le PC a des blocs (#136), son contenu riche remplace deja cet
+              accordeon (rendu plus haut), on ne le redouble pas ici.
+            {% endcomment %}
+            {% for cp in ev.regle.codes_prescription %}
+              {% with pc=codes_prescription|get_item:cp %}
+                {% if not pc.blocs and pc.texte_redaction_initiale %}
                   <section class="fr-accordion">
                     <h3 class="fr-accordion__title">
                       <button class="fr-accordion__btn"
                               aria-expanded="false"
-                              aria-controls="accordion-texte-init-{{ ev.regle.code_prescription }}">
-                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:ev.regle.code_prescription }})
+                              aria-controls="accordion-texte-init-{{ cp }}">
+                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:cp }})
                       </button>
                     </h3>
-                    <div class="fr-collapse"
-                         id="accordion-texte-init-{{ ev.regle.code_prescription }}">
+                    <div class="fr-collapse" id="accordion-texte-init-{{ cp }}">
                       <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
                     </div>
                   </section>
                 {% endif %}
               {% endwith %}
-            {% endif %}
+            {% endfor %}
           </div>
 
         {% endif %}
@@ -309,100 +294,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               source : {{ ev.catalogue_manquant.source }})
             </p>
           </div>
-        {% endif %}
-
-        {# Panel debug : seulement en mode developpeur (settings.DEBUG) #}
-        {% if debug %}
-          <details class="fr-mt-3w nitrates-debug-panel" open>
-            <summary>Debug parcours</summary>
-
-            <div class="nitrates-debug-panel__section">
-              <h5 class="nitrates-debug-panel__title">Resultat</h5>
-              <dl class="nitrates-debug-panel__dl">
-                <dt>result_code</dt>
-                <dd>
-                  <code>{{ ev.result_code|default:"—" }}</code>
-                </dd>
-                <dt>regle_id</dt>
-                <dd>
-                  <code>{{ ev.regle.regle_id|default:"—" }}</code>
-                </dd>
-              </dl>
-            </div>
-
-            {% if ev.chemin %}
-              <div class="nitrates-debug-panel__section">
-                <h5 class="nitrates-debug-panel__title">
-                  Chemin parcouru
-                  {% admin_url_for_resultat ev.chemin request.GET.draft_tree_id as admin_link %}
-                  {% if admin_link %}
-                    <a class="nitrates-debug-panel__admin-link"
-                       href="{{ admin_link }}"
-                       target="_blank"
-                       rel="noopener"
-                       title="Ouvrir ce nœud dans l'éditeur YAML (admin, nouvel onglet)">↗ Modifier dans l'admin</a>
-                  {% endif %}
-                </h5>
-                <ol class="nitrates-debug-panel__path">
-                  {% for n in ev.chemin %}
-                    <li>
-                      <code>{{ n }}</code>
-                    </li>
-                  {% endfor %}
-                </ol>
-              </div>
-            {% endif %}
-
-            {% if ev.contexte %}
-              <div class="nitrates-debug-panel__section">
-                <h5 class="nitrates-debug-panel__title">Contexte (resolutions formulaire + catalogue)</h5>
-                <dl class="nitrates-debug-panel__dl">
-                  {% for cle, valeur in ev.contexte.items %}
-                    <dt>{{ cle }}</dt>
-                    <dd>
-                      <code>{{ valeur }}</code>
-                    </dd>
-                  {% endfor %}
-                </dl>
-              </div>
-            {% endif %}
-
-            {% if moulinette.catalog %}
-              <div class="nitrates-debug-panel__section">
-                <h5 class="nitrates-debug-panel__title">Zonages (catalog)</h5>
-                <dl class="nitrates-debug-panel__dl">
-                  <dt>en_zone_vulnerable</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.en_zone_vulnerable }}</code>
-                  </dd>
-                  <dt>zone_montagne_d113_14</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.zone_montagne_d113_14 }}</code>
-                  </dd>
-                  <dt>zone_montagne_classification</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.zone_montagne_classification }}</code>
-                  </dd>
-                  <dt>zone_note_5</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.zone_note_5 }}</code>
-                  </dd>
-                  <dt>code_insee</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.code_insee|default:"—" }}</code>
-                  </dd>
-                  <dt>departement</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.department_code|default:"—" }}</code>
-                  </dd>
-                  <dt>region</dt>
-                  <dd>
-                    <code>{{ moulinette.catalog.region_code|default:"—" }} ({{ moulinette.catalog.region_label|default:"—" }})</code>
-                  </dd>
-                </dl>
-              </div>
-            {% endif %}
-          </details>
         {% endif %}
 
       {% endwith %}

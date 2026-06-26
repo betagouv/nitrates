@@ -1,0 +1,22 @@
+{% extends "nitrates/base.html" %}
+
+{% load static nitrates_tags %}
+
+{% block title %}Aperçu — {{ titre_preview }}{% endblock %}
+
+{% block extra_css %}
+  {% comment %}
+  CSS calendrier/DSFR pour que les blocs (fr-accordion, fr-callout, fr-h*…)
+  soient rendus comme côté public (carte #136). Le DSFR de base vient de
+  multisite_base via nitrates/base.
+  {% endcomment %}
+  <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container fr-my-4w">
+    <p class="fr-badge fr-badge--info fr-badge--sm">Aperçu staff — rendu final</p>
+    <h1 class="fr-h4 fr-text--mention-grey">{{ titre_preview }}</h1>
+    <div class="fr-mt-3w">{{ contenu_html|safe }}</div>
+  </div>
+{% endblock %}

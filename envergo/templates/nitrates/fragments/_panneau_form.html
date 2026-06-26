@@ -101,6 +101,23 @@ remplis au clic carte (cf. simulator.js).
     </div>
   {% endif %}
 
+  {% comment %}
+    Carte #57 — bornage géographique. Masqué par défaut ; révélé par
+    simulator.js (afficherMessageFerme) quand la parcelle cliquée est dans
+    un département où le simulateur n'est pas encore ouvert.
+  {% endcomment %}
+  <section id="form-region-fermee"
+           class="form-region-fermee"
+           role="status"
+           hidden>
+    <p class="form-region-fermee__titre">
+      <span class="form-region-fermee__cadenas" aria-hidden="true">🔒</span>
+      Le simulateur n'est pas encore ouvert dans
+      <strong id="form-region-fermee-lieu">votre secteur</strong>.
+    </p>
+    <p class="form-region-fermee__texte">Revenez bientôt&nbsp;: votre secteur sera prochainement pris en charge.</p>
+  </section>
+
   <div id="form-after-localisation"
        {% if not data.lat or not data.lng %}hidden{% endif %}>
 
@@ -165,16 +182,29 @@ remplis au clic carte (cf. simulator.js).
              name="type_fertilisant"
              id="id_type_fertilisant"
              value="{{ data.type_fertilisant|default:'' }}">
+      {# Flags de pre-remplissage (carte #98) : effluents peu charges issus / #}
+      {# non issus d'elevage pre-repondent ces questions complementaires de #}
+      {# l'arbre, qui sont alors inferees au lieu d'etre posees. #}
+      <input type="hidden"
+             name="effluent_peu_charge"
+             id="id_effluent_peu_charge"
+             value="{{ data.effluent_peu_charge|default:'' }}">
+      <input type="hidden"
+             name="effluent_peu_charge_elevage"
+             id="id_effluent_peu_charge_elevage"
+             value="{{ data.effluent_peu_charge_elevage|default:'' }}">
     </div>
 
     {% comment %}
-  Questions complementaires en cours de saisie : rendues dans le panneau
-  resultat (a droite). Quand toutes repondues, le recap s'affiche en
-  dessous du form via _qc_recap.html.
+  Questions complementaires (#112) : rendues SOUS le formulaire, dans un seul
+  bloc violet (repondues editables + en attente). Tant qu'une QC est en
+  attente (qc_en_attente), le panel resultat de droite est masque et on reste
+  en colonne unique. Une fois tout repondu, ce bloc reste affiche en recap et
+  le resultat apparait a droite.
     {% endcomment %}
-    {% if afficher_resultat and qc_repondues %}
+    {% if qc_en_attente or qc_repondues %}
       <div class="form-section questions-complementaires-box"
-           style="margin-top: 32px">{% include "nitrates/fragments/_qc_recap.html" %}</div>
+           style="margin-top: 32px">{% include "nitrates/fragments/_qc_sous_form.html" %}</div>
     {% endif %}
 
     {% include "nitrates/fragments/_form_hidden_passthrough.html" %}

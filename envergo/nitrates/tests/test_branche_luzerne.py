@@ -288,7 +288,7 @@ def test_luzerne_type_III_iaa_non_montagne(setup):
 
 def test_luzerne_type_III_icpe_a_sans_iaa_renvoi(setup):
     """Type III + ICPE A + non IAA : renvoi r_prairie_plus_6_type_III.
-    Cas non montagne : interdit 01/10 -> 15/01 (cf. test prairie+6)."""
+    Cas non montagne : interdit 01/10 -> 31/01 (cf. test prairie+6)."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -299,14 +299,15 @@ def test_luzerne_type_III_icpe_a_sans_iaa_renvoi(setup):
     )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_III"
-    assert ev.regle.periodes == [{"du": "01/10", "au": "15/01"}]
+    assert ev.regle.periodes == [{"du": "01/10", "au": "31/01"}]
 
 
 # ─── 4e. type_III + autre -> renvoi prairie+6 type_III ────────────────────
 
 
 def test_luzerne_type_III_autre_renvoi(setup):
-    """Type III + autre plan d'epandage : renvoi r_prairie_plus_6_type_III."""
+    """Type III + autre plan d'epandage : renvoi r_prairie_plus_6_type_III.
+    Cas non montagne : interdit 01/10 -> 31/01."""
     ev = _evaluator(
         _moulinette(
             type_fertilisant="type_III",
@@ -316,4 +317,4 @@ def test_luzerne_type_III_autre_renvoi(setup):
     )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_prairie_plus_6_type_III"
-    assert ev.regle.periodes == [{"du": "01/10", "au": "15/01"}]
+    assert ev.regle.periodes == [{"du": "01/10", "au": "31/01"}]
