@@ -126,7 +126,7 @@ def expected_signature(regle):
             a = True
         if "interdi" in reg:
             i = True
-        raw.append(f"{reg} {p.get('du','')}->{p.get('au','')}")
+        raw.append(f"{reg} {p.get('du', '')}->{p.get('au', '')}")
     return ds, a, i, " | ".join(raw)
 
 
@@ -261,7 +261,7 @@ with open(os.path.join(OUT, "_RAPPORT_ZAR.md"), "w") as fh:
     )
     for rid, sec, note, box, conf in report:
         boxs = f"{box[0]:.0f},{box[1]:.0f},{box[2]:.0f},{box[3]:.0f}" if box else "—"
-        fh.write(f"| {rid} | {sec} | {conf} | {note.replace('|','/')} | {boxs} |\n")
+        fh.write(f"| {rid} | {sec} | {conf} | {note.replace('|', '/')} | {boxs} |\n")
 
 print("\nDONE", ndone, conf_counts, "| enrich:", len(enrich))
 sys.exit(0)
