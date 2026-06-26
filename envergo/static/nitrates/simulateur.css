@@ -284,15 +284,13 @@ body {
   margin-top: 18px;
 }
 
-/* ─── Result panel sticky en desktop ──────────────────────────────── */
-
-@media (width >= 992px) {
-  .results-row.layout--split .result-col {
-    position: sticky;
-    top: 1rem;
-    align-self: flex-start;
-  }
-}
+/* ─── Scroll lié des 2 colonnes (#156) ─────────────────────────────────
+   Avant, la colonne résultat était `position: sticky` : en scrollant, le
+   formulaire défilait puis le résultat « collait » en haut -> effet en deux
+   temps (on scrollait d'abord une colonne, puis l'autre). On retire le sticky :
+   les 2 colonnes défilent ENSEMBLE avec la page, ancrées par le haut (la
+   `.results-row` est déjà en `align-items: flex-start`). La plus longue
+   continue naturellement quand l'autre est épuisée. */
 
 /* ─── Section hero ─────────────────────────────────────────────────── */
 
