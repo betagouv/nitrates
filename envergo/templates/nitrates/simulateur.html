@@ -57,6 +57,8 @@
   <script defer src="{% static 'nitrates/couvert_split.js' %}"></script>
   {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
   <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
+  {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
+  <script defer src="{% static 'nitrates/reset_form.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
