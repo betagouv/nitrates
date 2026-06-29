@@ -54,6 +54,11 @@ ENVERGO_AMENAGEMENT_DOMAIN = "testserver"
 
 RATELIMIT_ENABLE = False
 
+# F1 : base.py ferme le form mot de passe par defaut (secure-by-default). En
+# test on le REOUVRE : les tests qui valident le 403 posent explicitement le
+# flag a True via la fixture `settings` (cf. test_admin_login_proconnect_only).
+ADMIN_PASSWORD_LOGIN_DISABLED = False
+
 # LOGGING
 # ------------------------------------------------------------------------------
 # Silence the noisiest loggers during tests (DS API calls, GraphQL transport)

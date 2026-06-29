@@ -154,11 +154,15 @@ if PROCONNECT_ENABLED:
 # Faille pentest F1 (2026-06-18) : le formulaire user/pass de /admin/login/
 # reste un fallback qui CONTOURNE ProConnect si l'IdP tombe. Quand cette option
 # est True, l'AdminSite refuse explicitement (403) le login par mot de passe :
-# seul ProConnect (via /oidc/) peut authentifier. Defaut False en dev/local
-# (on se connecte au form classique). Force a True en prod/staging, cf.
-# production.py, ou un garde-fou exige aussi PROCONNECT_ENABLED.
+# seul ProConnect (via /oidc/) peut authentifier.
+#
+# DEFAUT = True (secure-by-default) : on FERME le fallback partout, et chaque
+# environnement qui a besoin du form mot de passe (dev/local, test, ci) le
+# REOUVRE explicitement en posant le flag a False. Pilotable par la variable
+# d'env DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED. En prod, un garde-fou
+# (production.py) exige en plus PROCONNECT_ENABLED quand le flag est True.
 ADMIN_PASSWORD_LOGIN_DISABLED = env.bool(
-    "DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED", default=False
+    "DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED", default=True
 )
 
 # PASSWORDS
