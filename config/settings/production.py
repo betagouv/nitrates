@@ -136,6 +136,30 @@ ADMIN_URL = env("DJANGO_ADMIN_URL")
 if PROCONNECT_ENABLED:  # noqa F405
     LOGIN_REDIRECT_URL = "/" + ADMIN_URL.lstrip("/")
 
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : durcissement auth admin nitrates.
+# Faille pentest F1 (2026-06-18) : le form user/pass de /admin/login/ contourne
+# ProConnect si l'IdP tombe. En prod/staging nitrates, ProConnect est la SEULE
+# voie d'auth admin autorisee. On (1) interdit le fallback mot de passe (403 sur
+# /admin/login/, applique cote serveur par EnvergoAdminSite), et (2) on refuse
+# de demarrer si ProConnect n'est pas reellement configure -- sinon l'admin
+# serait soit inaccessible, soit ouvert au seul form mot de passe (le risque
+# qu'on ferme). Override possible via env pour un environnement non-nitrates.
+ADMIN_PASSWORD_LOGIN_DISABLED = env.bool(
+    "DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED", default=True
+)
+if ADMIN_PASSWORD_LOGIN_DISABLED and not PROCONNECT_ENABLED:  # noqa F405
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "Auth admin nitrates : ADMIN_PASSWORD_LOGIN_DISABLED=True exige "
+        "PROCONNECT_ENABLED (PROCONNECT_CLIENT_ID + PROCONNECT_CLIENT_SECRET "
+        "definis et DJANGO_PROCONNECT_DISABLED non a True). Sans ProConnect "
+        "actif, l'admin n'aurait aucune voie d'authentification autorisee. "
+        "Configurez ProConnect, ou posez DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED="
+        "false en connaissance de cause (rouvre le fallback mot de passe, "
+        "faille F1)."
+    )
+
 # Anymail
 # ------------------------------------------------------------------------------
 # https://anymail.readthedocs.io/en/stable/installation/#installing-anymail

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.admin.forms import AdminAuthenticationForm
+from django.http import HttpResponseForbidden
 from django.urls import reverse
 from django_otp.admin import OTPAdminAuthenticationForm, OTPAdminSite
 
@@ -37,6 +38,31 @@ class EnvergoAdminSite(OTPAdminSite):
     # We need to dynamically deactivate the otp verification depending on the settings
     login_form = get_login_form()
     login_template = get_login_template()
+
+    def login(self, request, extra_context=None):
+        """Refuse le login par mot de passe quand la politique l'exige.
+
+        Faille pentest F1 (2026-06-18) : tant que /admin/login/ sert (et
+        accepte au POST) le formulaire user/pass Django, ce formulaire est un
+        fallback qui CONTOURNE ProConnect si l'IdP tombe. Le masquer en CSS ne
+        protege rien cote serveur.
+
+        Quand `ADMIN_PASSWORD_LOGIN_DISABLED` est actif (prod/staging
+        nitrates), on repond 403 a /admin/login/ pour un utilisateur NON
+        authentifie : la seule voie d'auth admin est alors ProConnect, qui ne
+        passe PAS par cette vue (il entre par /oidc/authentication/ puis pose
+        la session). Un utilisateur deja authentifie garde le comportement
+        normal (Django le redirige vers l'admin), pour ne pas casser un retour
+        sur /admin/login/ avec une session valide.
+        """
+        if getattr(settings, "ADMIN_PASSWORD_LOGIN_DISABLED", False) and not (
+            request.user.is_authenticated and request.user.is_active
+        ):
+            return HttpResponseForbidden(
+                "Connexion par mot de passe desactivee. "
+                "Authentification admin via ProConnect uniquement."
+            )
+        return super().login(request, extra_context)
 
     def each_context(self, request):
         """Inject ProConnect context for templates (notably login)."""

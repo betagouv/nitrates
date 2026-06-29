@@ -151,6 +151,16 @@ if PROCONNECT_ENABLED:
     # exact (incluant le prefixe secret en prod) est calcule plus bas une
     # fois ADMIN_URL connu, cf. section ADMIN.
 
+# Faille pentest F1 (2026-06-18) : le formulaire user/pass de /admin/login/
+# reste un fallback qui CONTOURNE ProConnect si l'IdP tombe. Quand cette option
+# est True, l'AdminSite refuse explicitement (403) le login par mot de passe :
+# seul ProConnect (via /oidc/) peut authentifier. Defaut False en dev/local
+# (on se connecte au form classique). Force a True en prod/staging, cf.
+# production.py, ou un garde-fou exige aussi PROCONNECT_ENABLED.
+ADMIN_PASSWORD_LOGIN_DISABLED = env.bool(
+    "DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED", default=False
+)
+
 # PASSWORDS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers
