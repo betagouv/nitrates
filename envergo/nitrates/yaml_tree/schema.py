@@ -10,6 +10,10 @@ REGLE_SCHEMA = {
     "type": "object",
     "required": ["id"],
     "additionalProperties": False,
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Champs meta techniques prefixes `_` (ex: _certitude, _certitude_raison)
+    # toleres et inertes au runtime. Le reste reste strict (additionalProperties:False).
+    "patternProperties": {"^_": {}},
     # `type` est requis sauf si la regle est marquee `a_completer: true`
     # (stub brouillon, pas encore typee).
     "anyOf": [
@@ -35,6 +39,9 @@ REGLE_SCHEMA = {
                 "type": "object",
                 "required": ["du", "au"],
                 "additionalProperties": False,
+                # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+                # Champs meta techniques prefixes `_` toleres et inertes au runtime.
+                "patternProperties": {"^_": {}},
                 "properties": {
                     "du": {"type": "string"},
                     "au": {"type": "string"},
@@ -208,6 +215,9 @@ NOEUD_SCHEMA = {
 BRANCHE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Champs meta techniques prefixes `_` toleres et inertes au runtime.
+    "patternProperties": {"^_": {}},
     "properties": {
         "valeur": {"type": ["string", "boolean", "integer"]},
         "valeurs": {
