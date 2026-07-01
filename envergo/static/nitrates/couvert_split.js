@@ -108,7 +108,7 @@
     );
     wrap.appendChild(
       groupe(
-        "Est-il encore en place après l'hiver ?",
+        "Est-il encore en place après le 1er janvier ?",
         AXE_PRESENCE,
         "couvert_split_presence"
       )

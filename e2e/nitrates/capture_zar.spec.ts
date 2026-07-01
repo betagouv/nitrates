@@ -102,7 +102,7 @@ async function atteindreResultat(
       .all();
     if (questions.length === 0) {
       const lancer = page
-        .locator('button[type="submit"]', { hasText: /Lancer|Relancer/ })
+        .locator('button[type="submit"]', { hasText: /Lancer|Relancer|Suivant/ })
         .first();
       if (await lancer.isVisible().catch(() => false)) {
         await lancer.click();
@@ -153,7 +153,7 @@ async function atteindreResultat(
       }
     }
     const submit = page
-      .locator('button[type="submit"]', { hasText: /Relancer|Lancer/ })
+      .locator('button[type="submit"]', { hasText: /Suivant|Relancer|Lancer/ })
       .first();
     if (!(await submit.isVisible().catch(() => false))) return false;
     await submit.click();

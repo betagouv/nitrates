@@ -142,10 +142,12 @@
     //    aux passthrough anonymes injectes par _form_hidden_passthrough.html.
     retirerPassthroughObsoletes();
 
-    // 5. Le bouton « Relancer la simulation » redevient « Lancer la
-    //    simulation » : il n'y a plus de QC en attente cote DOM.
+    // 5. Le bouton « Suivant » (libelle affiche quand une QC est en attente,
+    //    cf. #160) redevient « Lancer la simulation » : apres elagage il n'y a
+    //    plus de QC en attente cote DOM. On matche « Suivant » (libelle actuel)
+    //    ET « Relancer » (ancien libelle) par robustesse.
     const submitBtn = form.querySelector('button[type="submit"]');
-    if (submitBtn && /Relancer/.test(submitBtn.textContent)) {
+    if (submitBtn && /Suivant|Relancer/.test(submitBtn.textContent)) {
       submitBtn.textContent = "Lancer la simulation";
     }
   }

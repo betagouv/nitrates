@@ -126,12 +126,12 @@ remplis au clic carte (cf. simulator.js).
       <h2 class="form-section-title">Culture</h2>
 
       <div class="form-question-group">
-        <p class="form-question-text">Catégorie de culture ou couvert *</p>
+        <p class="form-question-text">Quelle est l'occupation du sol en cours ou à venir sur la parcelle ? *</p>
         <div data-cascade="categorie_culture"></div>
       </div>
 
       <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
-        <p class="form-question-text">Précisez le type de culture *</p>
+        <p class="form-question-text">Précisez le type de culture ou de couvert&nbsp;: *</p>
         <div data-cascade="sous_culture_form"></div>
       </div>
     </div>
@@ -167,12 +167,12 @@ remplis au clic carte (cf. simulator.js).
       <h2 class="form-section-title">Fertilisant</h2>
 
       <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
-        <p class="form-question-text">Catégorie de fertilisant *</p>
+        <p class="form-question-text">Quel fertilisant souhaitez-vous épandre ? *</p>
         <div data-cascade="categorie_fertilisant"></div>
       </div>
 
       <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
-        <p class="form-question-text">Fertilisant précis *</p>
+        <p class="form-question-text">Précisez la catégorie de fertilisant utilisé&nbsp;: *</p>
         <div data-cascade="sous_fertilisant"></div>
         <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
       </div>
@@ -215,7 +215,7 @@ remplis au clic carte (cf. simulator.js).
       juste son libellé.{% endcomment %}
       <button type="submit" class="fr-btn">
         {% if qc_en_attente %}
-          Relancer la simulation
+          Suivant
         {% else %}
           Lancer la simulation
         {% endif %}

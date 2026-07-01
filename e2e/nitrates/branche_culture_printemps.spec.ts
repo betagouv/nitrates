@@ -137,11 +137,10 @@ test.describe('Branche culture_de_printemps : flow question complementaire', () 
     await expect(labelOui).toBeVisible();
     await labelOui.click();
 
-    // Le radio est dans le form principal, on submit via le bouton.
-    // exact: true car "Relancer la simulation" (bandeau QC) contient aussi
-    // "lancer la simulation" -> sinon strict mode violation (2 boutons).
+    // Le radio est dans le form principal, on submit via le bouton. Quand une
+    // QC est en attente, le bouton s'intitule « Suivant » (#160).
     await page
-      .getByRole('button', { name: 'Lancer la simulation', exact: true })
+      .getByRole('button', { name: 'Suivant', exact: true })
       .click();
     await page.waitForLoadState('networkidle');
 
