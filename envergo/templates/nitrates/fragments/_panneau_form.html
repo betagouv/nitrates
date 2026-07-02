@@ -160,10 +160,16 @@ remplis au clic carte (cf. simulator.js).
            id="id_prairie_permanente"
            value="{{ data.prairie_permanente|default:'' }}">
 
-    {# ─── Fertilisant ────────────────────────────────────────────────── #}
+    {% comment %}
+    Section Fertilisant : cachee tant qu'aucune de ses questions n'est visible
+    (la cascade Culture n'est pas encore complete). Sinon un titre orphelin
+    « Fertilisant » s'affiche seul au-dessus du bouton (#160). cascade.js
+    revele/cache #section-fertilisant en meme temps que categorie_fertilisant.
+    {% endcomment %}
     <div class="form-section"
          id="section-fertilisant"
-         style="margin-top: 40px">
+         style="margin-top: 40px"
+         hidden>
       <h2 class="form-section-title">Fertilisant</h2>
 
       <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
@@ -209,10 +215,18 @@ remplis au clic carte (cf. simulator.js).
 
     {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
 
-    <div style="margin-top: 32px;">
-      {% comment %}S'il y a une QC en attente, ce bouton fait office de
-      « relance » (le bouton doublon du bloc QC est supprimé) -> on adapte
-      juste son libellé.{% endcomment %}
+    {% comment %}
+    Bouton de soumission. 3 etats :
+      - parcours en cours (pas de resultat)  -> « Lancer la simulation »
+      - une QC en attente                    -> « Suivant »
+      - resultat final affiche               -> PAS de bouton : rien a
+        relancer tant que l'utilisateur n'a rien change. reset_form.js (#135)
+        le revele + remet « Lancer la simulation » des qu'un champ est modifie.
+    Le conteneur porte un id pour que reset_form.js puisse le re-afficher.
+    {% endcomment %}
+    <div id="form-submit-row"
+         style="margin-top: 32px"
+         {% if afficher_resultat and not qc_en_attente %}hidden{% endif %}>
       <button type="submit" class="fr-btn">
         {% if qc_en_attente %}
           Suivant

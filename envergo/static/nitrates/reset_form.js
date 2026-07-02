@@ -150,6 +150,13 @@
     if (submitBtn && /Suivant|Relancer/.test(submitBtn.textContent)) {
       submitBtn.textContent = "Lancer la simulation";
     }
+
+    // 6. Re-afficher le bouton de soumission : cote serveur il est CACHE quand
+    //    un resultat final est affiche (rien a relancer). L'utilisateur vient
+    //    de modifier un champ -> il faut pouvoir relancer -> on revele la ligne
+    //    bouton. (#160 : pas de bouton orphelin sous un resultat inchange.)
+    const submitRow = document.getElementById("form-submit-row");
+    if (submitRow) submitRow.hidden = false;
   }
 
   function retirerPassthroughObsoletes() {

@@ -87,12 +87,28 @@
     if (wrapper) wrapper.hidden = true;
   }
 
+  // Section entiere (titre + questions) : cachee tant qu'aucune de ses
+  // questions n'est visible, sinon un titre orphelin s'affiche seul (#160).
+  function montrerSection(id) {
+    const s = document.getElementById(id);
+    if (s) s.hidden = false;
+  }
+  function cacherSection(id) {
+    const s = document.getElementById(id);
+    if (s) s.hidden = true;
+  }
+
   function viderContainer(champ) {
     const c = containers[champ];
     if (!c) return;
     c.innerHTML = "";
     c.hidden = true;
     cacherWrapper(champ);
+    // Vider categorie_fertilisant = la section Fertilisant n'a plus aucune
+    // question a montrer -> on cache aussi son titre (#160).
+    if (champ === "categorie_fertilisant") {
+      cacherSection("section-fertilisant");
+    }
   }
 
   function slug(s) {
@@ -176,6 +192,7 @@
     const container = containers.categorie_fertilisant;
     container.innerHTML = "";
     container.hidden = false;
+    montrerSection("section-fertilisant");
     montrerWrapper("categorie_fertilisant");
     const cats = (referentiels || {}).categories_fertilisants || {};
     for (const [cle, meta] of Object.entries(cats)) {

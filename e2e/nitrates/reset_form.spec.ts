@@ -45,6 +45,9 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // Etat initial : resultat affiche, layout en 2 colonnes.
     await expect(page.locator('.result-col')).toBeVisible();
     await expect(page.locator('.results-row.layout--split')).toHaveCount(1);
+    // #160 : sur un resultat inchange, PAS de bouton « Lancer la simulation »
+    // (rien a relancer).
+    await expect(page.locator('#form-submit-row')).toBeHidden();
 
     // L'user change la categorie de fertilisant (composts).
     await page.locator('label[for="id_categorie_fertilisant__composts"]').click();
@@ -52,6 +55,11 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // Le resultat disparait, retour colonne unique.
     await expect(page.locator('.result-col')).toHaveCount(0);
     await expect(page.locator('.results-row.layout--split')).toHaveCount(0);
+    // Le bouton REAPPARAIT : l'utilisateur a modifie un champ, il peut relancer.
+    await expect(page.locator('#form-submit-row')).toBeVisible();
+    await expect(
+      page.locator('#form-submit-row button[type="submit"]')
+    ).toHaveText(/Lancer la simulation/);
 
     // type_fertilisant obsolete (type_III) est reset par la cascade : il ne
     // doit plus etre dans l'URL miroir (c'etait une cause des bugs precedents).
