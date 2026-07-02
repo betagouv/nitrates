@@ -173,13 +173,17 @@ def test_periodes_par_section_groupe_et_ordonne():
     )
     sections = periodes_par_section(r)
     titres = [s["titre"] for s in sections]
-    assert titres == ["Interdiction", "Autorisé sous conditions", "Autorisé"]
+    assert titres == [
+        "Période d’interdiction",
+        "Période d’autorisation sous condition",
+        "Période d’autorisation",
+    ]
     # Mois en toutes lettres dans les phrases.
     assert sections[0]["periodes"][0]["phrase"] == "du 15 décembre au 15 janvier"
     # La justification (texte_condition) est portee par les sections non-libres.
     assert sections[0]["periodes"][0]["justification"] == "Interdit du 15/12 au 15/01."
     # L'autorisation pure n'a pas de justification.
-    assert sections[-1]["titre"] == "Autorisé"
+    assert sections[-1]["titre"] == "Période d’autorisation"
     assert sections[-1]["periodes"][0]["justification"] is None
 
 
@@ -187,7 +191,7 @@ def test_periodes_par_section_sans_texte_condition():
     # Pas de texte_condition -> justification None (pas de ⓘ cote template).
     r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
     sections = periodes_par_section(r)
-    assert sections[0]["titre"] == "Interdiction"
+    assert sections[0]["titre"] == "Période d’interdiction"
     assert sections[0]["periodes"][0]["justification"] is None
 
 

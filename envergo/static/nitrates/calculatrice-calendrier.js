@@ -84,11 +84,22 @@
   // Titre de section du récap (#159, maquette : regroupement par régime, une
   // liste à puces par section). Ordre = du plus au moins restrictif.
   const SECTIONS_RECAP = [
-    { regime: "interdiction", titre: "Interdiction" },
-    { regime: "autorisation_sous_condition", titre: "Autorisé sous conditions" },
-    { regime: "plafonnement", titre: "Soumis à plafonnement" },
-    { regime: "libre", titre: "Autorisé" },
+    { regime: "interdiction", titre: "Période d’interdiction" },
+    {
+      regime: "autorisation_sous_condition",
+      titre: "Période d’autorisation sous condition",
+    },
+    { regime: "plafonnement", titre: "Période de plafonnement" },
+    { regime: "libre", titre: "Période d’autorisation" },
   ];
+
+  // Vocabulaire metier des references de couvert pour la justification (#159).
+  // Le point de reference est exprime en clair, sans la date fixe redondante.
+  // Defini AVANT l'export Node (sinon TDZ en test unitaire, cf. conditionToText).
+  const REF_COUVERT = {
+    date_semis_couvert: "l’implantation du couvert",
+    date_destruction_couvert: "la destruction ou la récolte du couvert",
+  };
 
   const UNITES_JOURS = { jours: 1, semaines: 7, mois: 30 };
 
@@ -552,6 +563,8 @@
       computeRegimePerDay,
       _alignerSurAncre,
       jourAgricoleToJJMM,
+      conditionToText,
+      jourAgricoleToLisible,
       TOTAL_JOURS,
       setData: (d) => {
         data = d || {};
@@ -1208,18 +1221,61 @@
     return `${n} ${unit} ${prep} le ${nom}`;
   }
 
-  // Traduit une condition "<terme> <op> <terme>" en phrase humaine pour le
-  // recap, ex "date_destruction_couvert < 05/12" -> "car la destruction est
-  // avant le 5 déc." ou "date_semis_couvert+4semaines > 15/12" -> "car
-  // 4 semaines après le semis est après le 15 déc.". Retourne null si non
-  // parseable.
+  // Terme "event ± offset" exprime en phrase metier couvert (#159), ex :
+  //   date_semis_couvert+4semaines    -> "4 semaines après l’implantation du couvert"
+  //   date_destruction_couvert-20jours-> "20 jours avant la destruction ou la récolte du couvert"
+  //   date_semis_couvert (nu)         -> "l’implantation du couvert"
+  // Retourne null si le terme n'est pas un event couvert connu.
+  function termeCouvertToText(raw) {
+    const m = BORNE_RE.exec(raw);
+    if (!m) return null;
+    const ref = REF_COUVERT[m[1]];
+    if (!ref) return null;
+    if (!m[2]) return ref; // event nu
+    const prep = m[2] === "+" ? "après" : "avant";
+    return `${m[3]} ${m[4]} ${prep} ${ref}`;
+  }
+
+  // Traduit une condition "<terme> <op> <terme>" en JUSTIFICATION metier (#159).
+  // Pour les couverts, un des deux termes est un event couvert (semis /
+  // destruction) et l'autre une date fixe (borne technique, redondante). On
+  // produit "Car interdit jusqu’à / à partir de <point de reference>" :
+  //   - "jusqu’à"      quand la periode est ANTERIEURE au point event ;
+  //   - "à partir de"  quand elle est POSTERIEURE.
+  // On ne touche PAS a la construction du terme event (le "avant/après" de
+  // l'offset vient du signe ±). Ex :
+  //   15/10 < date_semis_couvert+4semaines
+  //     -> "Car interdit jusqu’à 4 semaines après l’implantation du couvert"
+  //   15/10 < date_destruction_couvert-20jours
+  //     -> "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+  // Fallback sur l'ancienne tournure "car <g> est <op> <d>" si aucun terme
+  // n'est un event couvert connu (robustesse hors-couvert).
   function conditionToText(rawCond, inputById) {
     if (!rawCond) return null;
     const m = CONDITION_RE.exec(rawCond);
     if (!m) return null;
-    const gauche = termeToText(m[1], inputById);
+    const gaucheRaw = m[1];
     const op = m[2];
-    const droite = termeToText(m[3], inputById);
+    const droiteRaw = m[3];
+
+    // Cas couvert : un terme event couvert + une date fixe.
+    const evGauche = termeCouvertToText(gaucheRaw);
+    const evDroite = termeCouvertToText(droiteRaw);
+    if (evDroite && !evGauche) {
+      // <date fixe> op <event> : op "<" => periode avant l'event => "jusqu’à".
+      const prop = op === "<" || op === "<=" ? "jusqu’à" : "à partir de";
+      return `Car interdit ${prop} ${evDroite}`;
+    }
+    if (evGauche && !evDroite) {
+      // <event> op <date fixe> : op "<" => l'event est avant la date fixe,
+      // donc l'interdiction commence a l'event => "à partir de".
+      const prop = op === "<" || op === "<=" ? "à partir de" : "jusqu’à";
+      return `Car interdit ${prop} ${evGauche}`;
+    }
+
+    // Fallback (hors couvert / deux dates fixes) : ancienne tournure.
+    const gauche = termeToText(gaucheRaw, inputById);
+    const droite = termeToText(droiteRaw, inputById);
     const tournure = {
       "<": "avant",
       "<=": "au plus tard à",
@@ -1287,19 +1343,12 @@
 
       const src = periodeSourcePourSegment(seg, actives);
       if (src) {
-        const partDu = parseBorne(src.du, valeurs);
-        const partAu = parseBorne(src.au, valeurs);
-        const annotations = [
-          annoterBorne(partDu, "du", inputById),
-          annoterBorne(partAu, "au", inputById),
-        ].filter(Boolean);
-        if (annotations.length > 0) {
-          ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
-        }
+        // #159 (retour Emma) : la justification metier remplace l'ENTIERETE de
+        // l'ancien "(annotation) — car ..." (l'annotation event+offset entre
+        // parentheses N'EST PLUS affichee separement). On ne garde qu'un picto
+        // ⓘ dont le tooltip porte la phrase complete "(car interdit jusqu'a...)".
         const condTxt = conditionToText(src.condition, inputById);
         if (condTxt) {
-          // Justification -> picto info + tooltip (data-tooltip, cf.
-          // bindTooltips). Le texte "car ..." n'est plus inline (#159).
           ligne += ` <span class="calc-cal__recap-info" tabindex="0" role="img" aria-label="${escapeHtml(condTxt)}" data-tooltip="${escapeHtml(condTxt)}">ⓘ</span>`;
         }
       }
@@ -1601,7 +1650,13 @@
   function positionTooltip(e) {
     if (!tooltipEl) return;
     const tipRect = tooltipEl.getBoundingClientRect();
-    const left = e.pageX + 12;
+    // Borne a droite : si le tooltip deborderait du viewport, on le decale a
+    // gauche du curseur (#159 : tooltips longs pres du bord droit).
+    const marge = 8;
+    const maxLeft =
+      window.scrollX + document.documentElement.clientWidth - tipRect.width - marge;
+    let left = e.pageX + 12;
+    if (left > maxLeft) left = Math.max(marge, e.pageX - tipRect.width - 12);
     const top = e.pageY - tipRect.height - 10;
     tooltipEl.style.left = `${Math.max(4, left)}px`;
     tooltipEl.style.top = `${Math.max(4, top)}px`;

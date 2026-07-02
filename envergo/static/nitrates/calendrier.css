@@ -693,15 +693,20 @@
   pointer-events: none;
   background: rgb(33 33 33 / 95%);
   color: #fff;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.4;
   z-index: 1000;
-  white-space: nowrap;
+
+  /* Le texte de justification (#159) peut etre long -> il DOIT s'enrouler
+     dans la largeur max, sinon nowrap le coupe a droite. */
+  white-space: normal;
+  overflow-wrap: break-word;
   opacity: 0;
   transition: opacity 80ms;
-  max-width: 320px;
+  max-width: 340px;
+  box-sizing: border-box;
 }
 
 .calc-cal__recap {
@@ -723,11 +728,13 @@
   font-weight: 700;
 }
 
-/* Liste a puces des periodes d'une section (#159). */
-.calc-cal__recap-list {
+/* Liste a puces des periodes d'une section (#159). ul.<classe> : specificite
+   (0,1,1) pour battre le reset DSFR sur `ul`. */
+ul.calc-cal__recap-list {
   margin: 0;
+  padding-inline-start: 1.25rem;
   padding-left: 1.25rem;
-  list-style: disc;
+  list-style-type: disc;
   line-height: 1.6;
 }
 

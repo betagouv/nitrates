@@ -399,11 +399,11 @@ _LABEL_PERIODE = {
 _ORDRE_REGIME = ["interdiction", "plafonnement", "autorisation_sous_condition"]
 
 
-# Titre de section (#159, maquette : regroupement par regime, liste a puces).
+# Titre de section (#159, wording Emma : "Période d'interdiction", etc.).
 _SECTION_TITRE = {
-    "interdiction": "Interdiction",
-    "autorisation_sous_condition": "Autorisé sous conditions",
-    "plafonnement": "Soumis à plafonnement",
+    "interdiction": "Période d’interdiction",
+    "autorisation_sous_condition": "Période d’autorisation sous condition",
+    "plafonnement": "Période de plafonnement",
 }
 
 
@@ -450,7 +450,7 @@ def periodes_par_section(regle) -> list[dict]:
     if autorisation:
         sections.append(
             {
-                "titre": "Autorisé",
+                "titre": "Période d’autorisation",
                 "periodes": [{"phrase": autorisation, "justification": None}],
             }
         )

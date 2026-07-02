@@ -234,3 +234,44 @@ test("BUG inversion : semis saisi APRÈS destruction (du=semis au=destruction) -
     "Fenêtre semis>destruction (deux events inversés) doit être neutralisée."
   );
 });
+
+// ─── conditionToText : justification métier couvert (#159, retour Emma) ──────
+// La phrase remplace l'entièreté de l'ancien "(annotation) — car ...". Format :
+// "Car interdit jusqu'à / à partir de <N unités> avant/après
+//  l'implantation du couvert | la destruction ou la récolte du couvert".
+test("conditionToText #159 : semis + offset -> 'après l'implantation'", () => {
+  assert.strictEqual(
+    cal.conditionToText("15/10 < date_semis_couvert+4semaines"),
+    "Car interdit jusqu’à 4 semaines après l’implantation du couvert"
+  );
+  assert.strictEqual(
+    cal.conditionToText("date_semis_couvert+15jours < 15/01"),
+    "Car interdit à partir de 15 jours après l’implantation du couvert"
+  );
+});
+
+test("conditionToText #159 : destruction - offset -> 'avant la destruction ou la récolte'", () => {
+  assert.strictEqual(
+    cal.conditionToText("15/10 < date_destruction_couvert-20jours"),
+    "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+  );
+  assert.strictEqual(
+    cal.conditionToText("date_destruction_couvert-20jours < 15/01"),
+    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+  );
+  assert.strictEqual(
+    cal.conditionToText("date_destruction_couvert-20jours > 15/11"),
+    "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+  );
+});
+
+test("conditionToText : fallback ancienne tournure hors couvert", () => {
+  // Pas d'event couvert connu -> ancienne phrase "car ... est ...".
+  const txt = cal.conditionToText("15/12 < 15/01");
+  assert.ok(txt && txt.startsWith("car "), "fallback attendu pour deux dates fixes");
+});
+
+test("conditionToText : condition vide/nulle -> null", () => {
+  assert.strictEqual(cal.conditionToText(""), null);
+  assert.strictEqual(cal.conditionToText(null), null);
+});
