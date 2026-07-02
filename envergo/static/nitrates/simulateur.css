@@ -717,3 +717,21 @@ body {
   font-weight: 500;
   margin-left: 0.25rem;
 }
+
+/* Recap des periodes sous le calendrier statique (#159) : regroupement par
+   section (titre + liste a puces) + picto info portant la justification. */
+.periodes-section-titre {
+  margin: 0.75rem 0 0.25rem;
+  font-weight: 700;
+}
+
+.periodes-liste {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.periodes-info {
+  cursor: help;
+  color: #000091;
+  margin-left: 0.15rem;
+}

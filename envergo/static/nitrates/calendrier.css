@@ -708,12 +708,26 @@
   margin-top: 1.5rem;
 }
 
-/* Liste nue (maquette #130) : pas de puces, pas d'indentation de puce.
-   Le verbe en gras de chaque ligne porte deja le rythme visuel. */
+/* Regroupement par regime (#159, maquette) : un titre de section + une liste
+   a puces des periodes concernees. */
+.calc-cal__recap-section {
+  margin-bottom: 1rem;
+}
+
+.calc-cal__recap-section:last-child {
+  margin-bottom: 0;
+}
+
+.calc-cal__recap-titre {
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+}
+
+/* Liste a puces des periodes d'une section (#159). */
 .calc-cal__recap-list {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding-left: 1.25rem;
+  list-style: disc;
   line-height: 1.6;
 }
 
@@ -722,13 +736,12 @@
   font-size: 0.92em;
 }
 
-/* Mention conditionnelle dans le recap : explique pourquoi une periode
-   s'applique (ex "car destruction avant le 5 déc."). En italique + teinte
-   discrete pour ne pas voler la vedette au verbe principal. */
-.calc-cal__recap-cond {
-  color: var(--text-mention-grey);
-  font-size: 0.92em;
-  font-style: italic;
+/* Picto info ⓘ : porte la justification en tooltip (#159, data-tooltip +
+   bindTooltips). Discret, cliquable/focusable pour l'accessibilite. */
+.calc-cal__recap-info {
+  cursor: help;
+  color: var(--blue-france-sun-113-625, #000091);
+  margin-left: 0.15rem;
 }
 
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */

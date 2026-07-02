@@ -81,6 +81,15 @@
     non_applicable: "ne s'applique pas",
   };
 
+  // Titre de section du récap (#159, maquette : regroupement par régime, une
+  // liste à puces par section). Ordre = du plus au moins restrictif.
+  const SECTIONS_RECAP = [
+    { regime: "interdiction", titre: "Interdiction" },
+    { regime: "autorisation_sous_condition", titre: "Autorisé sous conditions" },
+    { regime: "plafonnement", titre: "Soumis à plafonnement" },
+    { regime: "libre", titre: "Autorisé" },
+  ];
+
   const UNITES_JOURS = { jours: 1, semaines: 7, mois: 30 };
 
   // ─── Helpers ───────────────────────────────────────────────────────────
@@ -1263,16 +1272,18 @@
     // autorisation sous condition (prio), puis l'autorisation pure (#85) en
     // dernier (prio 2). Tri stable -> ordre chronologique conserve au sein
     // d'un meme regime.
-    const PRIORITE = { interdiction: 0, autorisation_sous_condition: 1, plafonnement: 1 };
-    const lignes = [];
+    // Puces regroupees PAR REGIME (#159). Chaque puce : "du X au Y (annotation)"
+    // + un picto info ⓘ portant la JUSTIFICATION en tooltip (le "— car ..."
+    // n'est plus affiche en clair, il passe dans le ⓘ). On ne change PAS la
+    // construction de la phrase de justification (conditionToText), seulement
+    // son emplacement d'affichage.
+    const pucesParRegime = {}; // regime -> [html <li>...]
     for (const seg of segments) {
       const regime = seg.regime;
-      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
-      const verbe = REGIME_VERBE[regime] || regime;
+      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : gere a part
       const duStr = jourAgricoleToLisible(seg.du);
-      // Borne droite affichee = dernier jour inclus du segment.
       const auStr = jourAgricoleToLisible(seg.au);
-      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
+      let ligne = `du ${duStr} au ${auStr}`;
 
       const src = periodeSourcePourSegment(seg, actives);
       if (src) {
@@ -1287,28 +1298,37 @@
         }
         const condTxt = conditionToText(src.condition, inputById);
         if (condTxt) {
-          ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
+          // Justification -> picto info + tooltip (data-tooltip, cf.
+          // bindTooltips). Le texte "car ..." n'est plus inline (#159).
+          ligne += ` <span class="calc-cal__recap-info" tabindex="0" role="img" aria-label="${escapeHtml(condTxt)}" data-tooltip="${escapeHtml(condTxt)}">ⓘ</span>`;
         }
       }
-      lignes.push({ prio: PRIORITE[regime] ?? 9, html: `<li>${ligne}</li>` });
+      (pucesParRegime[regime] = pucesParRegime[regime] || []).push(
+        `<li>${ligne}</li>`
+      );
     }
 
     // Periode d'autorisation pure (vert, #85) = jours ni interdits ni sous
-    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne. Prio 2
-    // -> placee en dernier par le tri ci-dessous.
+    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne.
     const ligneAutorisation = buildLigneAutorisation(segments);
     if (ligneAutorisation) {
-      lignes.push({ prio: 2, html: `<li>${ligneAutorisation}</li>` });
+      pucesParRegime.libre = [`<li>${ligneAutorisation}</li>`];
     }
 
-    if (lignes.length === 0) return "";
-    lignes.sort((a, b) => a.prio - b.prio);
-    // Maquette #130 : pas de titre "Récapitulatif", liste nue (sans puces).
-    return `
-      <div class="calc-cal__recap">
-        <ul class="calc-cal__recap-list">${lignes.map((l) => l.html).join("")}</ul>
-      </div>
-    `;
+    // Rendu : une section par regime present, dans l'ordre SECTIONS_RECAP,
+    // titre + liste a puces (maquette #159).
+    const sectionsHtml = SECTIONS_RECAP.filter(
+      (s) => (pucesParRegime[s.regime] || []).length > 0
+    ).map(
+      (s) => `
+        <div class="calc-cal__recap-section">
+          <p class="calc-cal__recap-titre">${s.titre} :</p>
+          <ul class="calc-cal__recap-list">${pucesParRegime[s.regime].join("")}</ul>
+        </div>`
+    );
+
+    if (sectionsHtml.length === 0) return "";
+    return `<div class="calc-cal__recap">${sectionsHtml.join("")}</div>`;
   }
 
   // Construit la ligne "Periode d'autorisation : du X au Y et du Z au W" a
@@ -1340,7 +1360,9 @@
     } else {
       plages = morceaux.slice(0, -1).join(", ") + " et " + morceaux[morceaux.length - 1];
     }
-    return `<strong>Autorisé</strong> ${plages}`;
+    // Le régime « Autorisé » est désormais porté par le titre de section
+    // (#159) : la puce ne contient que les plages, sans le mot « Autorisé ».
+    return plages;
   }
 
   function escapeHtml(s) {

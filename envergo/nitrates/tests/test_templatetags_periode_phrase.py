@@ -12,6 +12,7 @@ from envergo.nitrates.templatetags.nitrates_tags import (
     periode_autorisation_phrase,
     periode_phrase,
     periodes_datees,
+    periodes_par_section,
 )
 
 
@@ -151,3 +152,44 @@ def test_periodes_datees_interdiction_simple_sans_regime():
 
 def test_periodes_datees_regle_none():
     assert periodes_datees(None) == []
+
+
+# ─── periodes_par_section : regroupement par section + justification (#159) ──
+
+
+def test_periodes_par_section_groupe_et_ordonne():
+    # interdiction + ASC -> 3 sections (interdiction, ASC, autorisation pure).
+    r = _regle(
+        type="mixte",
+        texte_condition="Interdit du 15/12 au 15/01.",
+        periodes=[
+            {"du": "15/12", "au": "15/01", "regime": "interdiction"},
+            {
+                "du": "derniere_coupe_luzerne",
+                "au": "15/01",
+                "regime": "autorisation_sous_condition",
+            },
+        ],
+    )
+    sections = periodes_par_section(r)
+    titres = [s["titre"] for s in sections]
+    assert titres == ["Interdiction", "Autorisé sous conditions", "Autorisé"]
+    # Mois en toutes lettres dans les phrases.
+    assert sections[0]["periodes"][0]["phrase"] == "du 15 décembre au 15 janvier"
+    # La justification (texte_condition) est portee par les sections non-libres.
+    assert sections[0]["periodes"][0]["justification"] == "Interdit du 15/12 au 15/01."
+    # L'autorisation pure n'a pas de justification.
+    assert sections[-1]["titre"] == "Autorisé"
+    assert sections[-1]["periodes"][0]["justification"] is None
+
+
+def test_periodes_par_section_sans_texte_condition():
+    # Pas de texte_condition -> justification None (pas de ⓘ cote template).
+    r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
+    sections = periodes_par_section(r)
+    assert sections[0]["titre"] == "Interdiction"
+    assert sections[0]["periodes"][0]["justification"] is None
+
+
+def test_periodes_par_section_regle_none():
+    assert periodes_par_section(None) == []

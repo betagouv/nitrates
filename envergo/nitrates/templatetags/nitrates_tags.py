@@ -399,19 +399,69 @@ _LABEL_PERIODE = {
 _ORDRE_REGIME = ["interdiction", "plafonnement", "autorisation_sous_condition"]
 
 
+# Titre de section (#159, maquette : regroupement par regime, liste a puces).
+_SECTION_TITRE = {
+    "interdiction": "Interdiction",
+    "autorisation_sous_condition": "Autorisé sous conditions",
+    "plafonnement": "Soumis à plafonnement",
+}
+
+
+@register.simple_tag
+def periodes_par_section(regle) -> list[dict]:
+    """Recap des periodes GROUPE PAR SECTION pour le calendrier statique (#159).
+
+    Structure (une section par regime present, ordre du plus au moins
+    restrictif ; l'autorisation pure ferme la liste) :
+
+    [{"titre": "Interdiction",
+      "periodes": [{"phrase": "du 15 novembre au 15 janvier",
+                    "justification": "Interdit du 15/11 au 15/01."}]},
+     {"titre": "Autorisé sous conditions", "periodes": [...]},
+     {"titre": "Autorisé", "periodes": [{"phrase": "du ... au ...",
+                                          "justification": None}]}]
+
+    `justification` = texte_condition de la REGLE (une seule par regle, #159 :
+    on reutilise l'existant sans toucher au schema YAML). Rendue par le
+    template dans un tooltip ⓘ. On ne l'attache qu'aux sections interdiction /
+    autorisation sous condition (l'autorisation pure n'a pas de justification).
+    """
+    if regle is None:
+        return []
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    justification = getattr(regle, "texte_condition", None) or None
+
+    sections = []
+    for regime in _ORDRE_REGIME:
+        puces = [
+            {
+                "phrase": periode_phrase(p),
+                "justification": justification,
+            }
+            for p in periodes
+            if (p.get("regime") or regle_type) == regime
+        ]
+        if puces:
+            sections.append({"titre": _SECTION_TITRE[regime], "periodes": puces})
+
+    # Autorisation pure (vert) : derniere section, sans justification.
+    autorisation = periode_autorisation_phrase(regle)
+    if autorisation:
+        sections.append(
+            {
+                "titre": "Autorisé",
+                "periodes": [{"phrase": autorisation, "justification": None}],
+            }
+        )
+    return sections
+
+
 @register.simple_tag
 def periodes_datees(regle) -> list[dict]:
-    """Liste ordonnee des puces a afficher sous le calendrier statique (#85) :
-
-    [{"label": "Interdiction", "phrase": "..."},
-     {"label": "Autorisé sous conditions", "phrase": "..."},
-     {"label": "Période d'autorisation", "phrase": "du ... au ..."}]
-
-    Ordre (du plus restrictif au moins) : interdiction -> plafond ->
-    autorisation sous condition -> autorisation pure (vert) en dernier.
-    Les periodes YAML sont groupees par regime EFFECTIF (p.regime sinon le
-    type de la regle). `phrase` est formatee via periode_phrase (format date
-    unifie + libelles phenologiques lisibles).
+    """[DEPRECATED, conserve pour compat tests] Liste plate des puces datees.
+    Prefere `periodes_par_section` (#159). Ordre : interdiction -> plafond ->
+    autorisation sous condition -> autorisation pure.
     """
     if regle is None:
         return []
