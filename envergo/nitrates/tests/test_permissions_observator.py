@@ -308,3 +308,23 @@ def test_provision_admin_revoke_retire_groupes(db, observator_group):
     u.refresh_from_db()
     assert u.is_staff is False
     assert u.groups.count() == 0
+
+
+def test_provision_admin_neutralise_password_existant(db):
+    """Faille pentest F2 : re-provisionner un compte qui a DEJA un mot de passe
+    utilisable doit le neutraliser (sinon vecteur de login qui contourne
+    ProConnect). L'ancienne exception « emergency access » est supprimee."""
+    from envergo.users.models import User
+
+    # Compte pre-existant avec un mot de passe utilisable (cas F2).
+    u = User.objects.create(email="legacy-admin@example.com", is_active=True)
+    u.set_password("MotDePasseUtilisable123!")  # pragma: allowlist secret
+    u.save()
+    assert u.has_usable_password() is True
+
+    # Re-provisionner via la commande doit neutraliser le mot de passe.
+    call_command("provision_admin", "--email", "legacy-admin@example.com")
+
+    u.refresh_from_db()
+    assert u.is_staff is True
+    assert u.has_usable_password() is False
