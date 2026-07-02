@@ -40,24 +40,35 @@ class EnvergoAdminSite(OTPAdminSite):
     login_template = get_login_template()
 
     def login(self, request, extra_context=None):
-        """Refuse le login par mot de passe quand la politique l'exige.
+        """Refuse la SOUMISSION du login par mot de passe quand la politique
+        l'exige, sans casser l'affichage de la page login.
 
-        Faille pentest F1 (2026-06-18) : tant que /admin/login/ sert (et
-        accepte au POST) le formulaire user/pass Django, ce formulaire est un
-        fallback qui CONTOURNE ProConnect si l'IdP tombe. Le masquer en CSS ne
-        protege rien cote serveur.
+        Faille pentest F1 (2026-06-18) : tant que la page login admin ACCEPTE
+        au POST le formulaire user/pass Django, ce formulaire est un fallback
+        qui CONTOURNE ProConnect si l'IdP tombe. Le masquer en CSS ne protege
+        rien cote serveur. On ferme donc le vecteur en refusant le POST de
+        credentials (403).
 
-        Quand `ADMIN_PASSWORD_LOGIN_DISABLED` est actif (prod/staging
-        nitrates), on repond 403 a /admin/login/ pour un utilisateur NON
-        authentifie : la seule voie d'auth admin est alors ProConnect, qui ne
-        passe PAS par cette vue (il entre par /oidc/authentication/ puis pose
-        la session). Un utilisateur deja authentifie garde le comportement
-        normal (Django le redirige vers l'admin), pour ne pas casser un retour
-        sur /admin/login/ avec une session valide.
+        NB : en prod/staging l'URL admin est obfusquee (`DJANGO_ADMIN_URL`, ex
+        `/792139-admin/login/`), pas `/admin/login/`. Ce override porte sur la
+        VUE login, donc il s'applique quel que soit le prefixe.
+
+        MAIS on ne bloque PAS le GET : la page login est la seule qui affiche le
+        bouton ProConnect (template `admin/login_with_proconnect.html`,
+        `proconnect_login_url` injecte par `each_context`). La bloquer en 403
+        (regression #197) faisait un cul-de-sac : plus aucune voie d'entree
+        depuis la page login, il fallait connaitre l'URL magique
+        /oidc/authenticate/. On rend donc la page sur GET (bouton ProConnect
+        visible), et on ne refuse que le POST mot de passe.
+
+        Un utilisateur deja authentifie garde le comportement normal (Django le
+        redirige vers l'admin), pour ne pas casser un retour sur la page login
+        avec une session valide.
         """
-        if getattr(settings, "ADMIN_PASSWORD_LOGIN_DISABLED", False) and not (
-            request.user.is_authenticated and request.user.is_active
-        ):
+        password_login_closed = getattr(
+            settings, "ADMIN_PASSWORD_LOGIN_DISABLED", False
+        ) and not (request.user.is_authenticated and request.user.is_active)
+        if password_login_closed and request.method == "POST":
             return HttpResponseForbidden(
                 "Connexion par mot de passe desactivee. "
                 "Authentification admin via ProConnect uniquement."

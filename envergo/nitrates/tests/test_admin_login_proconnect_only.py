@@ -2,10 +2,12 @@
 contourne ProConnect.
 
 Ces tests verrouillent la remediation : quand
-`ADMIN_PASSWORD_LOGIN_DISABLED` est actif, l'AdminSite refuse (403) toute
-authentification par mot de passe sur /admin/login/, y compris le POST direct
-d'identifiants superuser valides (le PoC du pentester). Quand l'option est
-desactivee (dev/local), le comportement Django standard est preserve.
+`ADMIN_PASSWORD_LOGIN_DISABLED` est actif, l'AdminSite refuse (403) la
+SOUMISSION (POST) d'identifiants par mot de passe sur /admin/login/, y compris
+le POST direct d'identifiants superuser valides (le PoC du pentester). Le GET
+de la page reste servi pour proposer le bouton ProConnect (regression #197 : un
+403 sur GET faisait un cul-de-sac). Quand l'option est desactivee (dev/local),
+le comportement Django standard est preserve.
 """
 
 import pytest
@@ -67,10 +69,20 @@ def test_login_mot_de_passe_fonctionne_quand_option_off(client, settings):
 # ── Option activee (prod/staging) : fallback mot de passe ferme (403) ──
 
 
-def test_get_login_403_quand_option_on(client, settings):
+def test_get_login_ne_renvoie_pas_403_quand_option_on(client, settings):
+    """Regression #197 : le GET de /admin/login/ ne doit PAS renvoyer 403 — ca
+    faisait un cul-de-sac (plus aucune voie d'entree, il fallait connaitre
+    /oidc/authenticate/). La page doit s'afficher (200) : c'est elle qui porte
+    le bouton ProConnect. Seul le POST mot de passe est refuse (test suivant).
+
+    NB : PROCONNECT_ENABLED reste OFF ici (le routing OIDC n'est inclus qu'au
+    boot de l'URLconf, cf. config/urls.py — on ne peut pas le basculer au
+    runtime du test). On verifie donc le point cle de la regression : GET != 403.
+    """
     settings.ADMIN_PASSWORD_LOGIN_DISABLED = True
     resp = client.get(login_url())
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert resp.status_code != 403
 
 
 def test_poc_pentester_post_creds_superuser_refuse_403(client, settings, superuser):
