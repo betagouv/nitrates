@@ -729,12 +729,16 @@
 }
 
 /* Liste a puces des periodes d'une section (#159). ul.<classe> : specificite
-   (0,1,1) pour battre le reset DSFR sur `ul`. */
+   (0,1,1) pour battre le reset DSFR sur `ul`. Le bloc liste est nettement
+   decale sous le titre : `margin-inline-start` pousse la puce a droite du titre,
+   `padding-inline-start` reserve l'espace puce->texte. */
 ul.calc-cal__recap-list {
   margin: 0;
+  margin-inline-start: 0.75rem;
   padding-inline-start: 1.25rem;
   padding-left: 1.25rem;
   list-style-type: disc;
+  list-style-position: outside;
   line-height: 1.6;
 }
 
