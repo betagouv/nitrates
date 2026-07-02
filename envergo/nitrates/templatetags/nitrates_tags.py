@@ -266,27 +266,29 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
 # Abreviations de mois alignees sur le calendrier dynamique (JS
 # calculatrice-calendrier.js : MOIS_AGRICOLES). Format "15 juil.", "15 aoû.".
 # Index = mois civil 1..12 -> abreviation. On unifie ce format partout (#85).
-_MOIS_ABREV = {
-    1: "jan.",
-    2: "fév.",
-    3: "mar.",
-    4: "avr.",
+# Mois en toutes lettres (#159, maquette designeuse) : les dates de periode
+# sous le calendrier sont ecrites en clair ("15 novembre"), pas en abrege.
+_MOIS_COMPLET = {
+    1: "janvier",
+    2: "février",
+    3: "mars",
+    4: "avril",
     5: "mai",
-    6: "juin",  # "juin" en entier pour le distinguer de "juil." (juillet)
-    7: "juil.",
-    8: "aoû.",
-    9: "sept.",
-    10: "oct.",
-    11: "nov.",
-    12: "déc.",
+    6: "juin",
+    7: "juillet",
+    8: "août",
+    9: "septembre",
+    10: "octobre",
+    11: "novembre",
+    12: "décembre",
 }
 
 
 def _date_lisible(jour: int, mois: int) -> str:
-    """(jour, mois) civil -> "15 juil." (jour + mois abrege, format unifie).
-    Le 1er du mois est rendu "1er" (ex "1er fév.")."""
+    """(jour, mois) civil -> "15 novembre" (jour + mois en toutes lettres, #159).
+    Le 1er du mois est rendu "1er" (ex "1er février")."""
     jour_fmt = "1er" if jour == 1 else str(jour)
-    return f"{jour_fmt} {_MOIS_ABREV.get(mois, str(mois))}"
+    return f"{jour_fmt} {_MOIS_COMPLET.get(mois, str(mois))}"
 
 
 def _jour_agricole_to_date(j: int) -> tuple[int, int]:

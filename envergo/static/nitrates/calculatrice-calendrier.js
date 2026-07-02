@@ -50,6 +50,13 @@
     "Juil", "Aoû", "Sept", "Oct", "Nov", "Déc",
     "Jan", "Fév", "Mar", "Avr", "Mai", "Jui",
   ];
+  // Mois en toutes lettres, ordre agricole (juillet -> juin). Pour les dates
+  // des periodes affichees sous le calendrier (#159 : "15 novembre", pas
+  // "15 nov."). MOIS_AGRICOLES reste pour les 12 labels de colonnes de la barre.
+  const MOIS_AGRICOLES_COMPLETS = [
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    "janvier", "février", "mars", "avril", "mai", "juin",
+  ];
   const JOURS_PAR_MOIS_AGRICOLE = [31, 31, 30, 31, 30, 31, 31, 28, 31, 30, 31, 30];
   const TOTAL_JOURS = 365;
 
@@ -119,7 +126,7 @@
   function messageHorsBornes(inp, jjmm) {
     if (dansBornes(inp, jjmm)) return "";
     const lc = deduireLabelCourt(inp);
-    const d = (v) => jjmmLisible(v).replace(/\.$/, "");
+    const d = (v) => jjmmLisible(v);
     if (inp.max && !inp.min) {
       return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
     }
@@ -137,9 +144,8 @@
     if (!inp || (!inp.min && !inp.max)) return "";
     const lc = deduireLabelCourt(inp);
     const intro = `D'après le type de couvert sélectionné, la ${lc}`;
-    // jjmmLisible retourne deja "31 déc." (point inclus) -> on strip pour ne
-    // pas doubler la ponctuation finale de la phrase.
-    const d = (jjmm) => jjmmLisible(jjmm).replace(/\.$/, "");
+    // jjmmLisible retourne "31 décembre" (mois en toutes lettres, #159).
+    const d = (jjmm) => jjmmLisible(jjmm);
     if (inp.max && !inp.min) {
       return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
     }
@@ -155,13 +161,14 @@
     return j !== null ? jourAgricoleToLisible(j) : jjmm;
   }
 
-  // Convertit un index de jour agricole en "JJ mois" lisible.
+  // Convertit un index de jour agricole en "JJ mois" lisible, mois en toutes
+  // lettres (#159 : "15 novembre").
   function jourAgricoleToLisible(j) {
     if (j < 0 || j >= TOTAL_JOURS) return "";
     let idx = j;
     for (let i = 0; i < 12; i++) {
       if (idx < JOURS_PAR_MOIS_AGRICOLE[i]) {
-        return `${idx + 1} ${MOIS_AGRICOLES[i].toLowerCase()}.`;
+        return `${idx + 1} ${MOIS_AGRICOLES_COMPLETS[i]}`;
       }
       idx -= JOURS_PAR_MOIS_AGRICOLE[i];
     }

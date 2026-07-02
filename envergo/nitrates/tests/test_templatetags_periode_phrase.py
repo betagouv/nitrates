@@ -26,22 +26,24 @@ pytestmark = pytest.mark.django_db
 
 
 def test_periode_phrase_bornes_fixes():
-    # Format date lisible unifie "15 juil." (#85), plus de JJ/MM.
-    assert periode_phrase({"du": "15/07", "au": "15/02"}) == "du 15 juil. au 15 fév."
+    # Format date lisible : mois en toutes lettres (#159), plus de JJ/MM.
+    assert (
+        periode_phrase({"du": "15/07", "au": "15/02"}) == "du 15 juillet au 15 février"
+    )
 
 
 def test_periode_phrase_borne_pheno_debut_resout_libelle():
     # `derniere_coupe_luzerne` -> "Dernière coupe de la luzerne", minuscule
     # initiale car insere en milieu de phrase. Plus aucun slug ni guillemet.
     phrase = periode_phrase({"du": "derniere_coupe_luzerne", "au": "15/01"})
-    assert phrase == "de dernière coupe de la luzerne au 15 jan."
+    assert phrase == "de dernière coupe de la luzerne au 15 janvier"
     assert "_" not in phrase
     assert "«" not in phrase
 
 
 def test_periode_phrase_borne_pheno_fin_resout_libelle():
     phrase = periode_phrase({"du": "15/07", "au": "brunissement_des_soies"})
-    assert phrase == "du 15 juil. au brunissement des soies (maïs)"
+    assert phrase == "du 15 juillet au brunissement des soies (maïs)"
     assert "_" not in phrase
 
 
@@ -61,16 +63,17 @@ def test_minuscule_initiale():
 
 
 def test_date_lisible_format_unifie():
-    assert _date_lisible(15, 7) == "15 juil."
-    assert _date_lisible(1, 2) == "1er fév."  # 1er du mois
-    assert _date_lisible(30, 6) == "30 juin"  # juin en entier (vs juil.)
-    assert _date_lisible(31, 8) == "31 aoû."
+    # Mois en toutes lettres (#159).
+    assert _date_lisible(15, 7) == "15 juillet"
+    assert _date_lisible(1, 2) == "1er février"  # 1er du mois
+    assert _date_lisible(30, 6) == "30 juin"
+    assert _date_lisible(31, 8) == "31 août"
 
 
 def test_autorisation_interdiction_simple_wrap():
     # Interdit 15/10 -> 31/01 (wrap annee) -> autorise le reste 01/02 -> 14/10.
     r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
-    assert periode_autorisation_phrase(r) == "du 1er fév. au 14 oct."
+    assert periode_autorisation_phrase(r) == "du 1er février au 14 octobre"
 
 
 def test_autorisation_toute_lannee_interdite_vide():
