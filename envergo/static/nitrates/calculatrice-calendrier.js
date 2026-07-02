@@ -82,15 +82,17 @@
   };
 
   // Titre de section du récap (#159, maquette : regroupement par régime, une
-  // liste à puces par section). Ordre = du plus au moins restrictif.
+  // liste à puces par section). Ordre = du moins au plus restrictif, pour
+  // s'aligner sur le récap des cultures principales (autorisation d'abord,
+  // interdiction en dernier).
   const SECTIONS_RECAP = [
-    { regime: "interdiction", titre: "Période d’interdiction" },
+    { regime: "libre", titre: "Période d’autorisation" },
     {
       regime: "autorisation_sous_condition",
       titre: "Période d’autorisation sous condition",
     },
     { regime: "plafonnement", titre: "Période de plafonnement" },
-    { regime: "libre", titre: "Période d’autorisation" },
+    { regime: "interdiction", titre: "Période d’interdiction" },
   ];
 
   // Vocabulaire metier des references de couvert pour la justification (#159).

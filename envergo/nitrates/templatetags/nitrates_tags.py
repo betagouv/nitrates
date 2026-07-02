@@ -393,10 +393,10 @@ _LABEL_PERIODE = {
     "interdiction": "Interdiction",
     "plafonnement": "Plafond",
 }
-# Ordre d'affichage des puces (du plus au moins restrictif) : interdiction,
-# plafond, autorisation sous condition. L'autorisation pure (vert) ferme la
-# liste, geree a part.
-_ORDRE_REGIME = ["interdiction", "plafonnement", "autorisation_sous_condition"]
+# Ordre d'affichage des puces (du moins au plus restrictif, pour s'aligner sur
+# le recap des cultures principales) : autorisation sous condition, plafond,
+# interdiction. L'autorisation pure (vert) ouvre la liste, geree a part.
+_ORDRE_REGIME = ["autorisation_sous_condition", "plafonnement", "interdiction"]
 
 
 # Titre de section (#159, wording Emma : "Période d'interdiction", etc.).
@@ -411,15 +411,15 @@ _SECTION_TITRE = {
 def periodes_par_section(regle) -> list[dict]:
     """Recap des periodes GROUPE PAR SECTION pour le calendrier statique (#159).
 
-    Structure (une section par regime present, ordre du plus au moins
-    restrictif ; l'autorisation pure ferme la liste) :
+    Structure (une section par regime present, ordre du moins au plus
+    restrictif ; l'autorisation pure ouvre la liste) :
 
-    [{"titre": "Interdiction",
-      "periodes": [{"phrase": "du 15 novembre au 15 janvier",
-                    "justification": "Interdit du 15/11 au 15/01."}]},
+    [{"titre": "Autorisé", "periodes": [{"phrase": "du ... au ...",
+                                          "justification": None}]},
      {"titre": "Autorisé sous conditions", "periodes": [...]},
-     {"titre": "Autorisé", "periodes": [{"phrase": "du ... au ...",
-                                          "justification": None}]}]
+     {"titre": "Interdiction",
+      "periodes": [{"phrase": "du 15 novembre au 15 janvier",
+                    "justification": "Interdit du 15/11 au 15/01."}]}]
 
     `justification` = texte_condition de la REGLE (une seule par regle, #159 :
     on reutilise l'existant sans toucher au schema YAML). Rendue par le
@@ -433,6 +433,17 @@ def periodes_par_section(regle) -> list[dict]:
     justification = getattr(regle, "texte_condition", None) or None
 
     sections = []
+
+    # Autorisation pure (vert) : premiere section, sans justification.
+    autorisation = periode_autorisation_phrase(regle)
+    if autorisation:
+        sections.append(
+            {
+                "titre": "Période d’autorisation",
+                "periodes": [{"phrase": autorisation, "justification": None}],
+            }
+        )
+
     for regime in _ORDRE_REGIME:
         puces = [
             {
@@ -445,15 +456,6 @@ def periodes_par_section(regle) -> list[dict]:
         if puces:
             sections.append({"titre": _SECTION_TITRE[regime], "periodes": puces})
 
-    # Autorisation pure (vert) : derniere section, sans justification.
-    autorisation = periode_autorisation_phrase(regle)
-    if autorisation:
-        sections.append(
-            {
-                "titre": "Période d’autorisation",
-                "periodes": [{"phrase": autorisation, "justification": None}],
-            }
-        )
     return sections
 
 

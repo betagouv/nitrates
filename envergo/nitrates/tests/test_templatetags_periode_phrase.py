@@ -121,8 +121,9 @@ def test_autorisation_regle_none_vide():
 # ─── periodes_datees : ordre des puces (#85) ────────────────────────────────
 
 
-def test_periodes_datees_ordre_interdiction_asc_autorisation():
-    # Ordre attendu : interdiction d'abord, puis ASC, puis autorisation pure.
+def test_periodes_datees_ordre_asc_interdiction():
+    # Ordre (deprecated) suit _ORDRE_REGIME du moins au plus restrictif : ASC,
+    # puis interdiction. L'autorisation pure (complement) ferme la liste.
     r = _regle(
         type="mixte",
         periodes=[
@@ -136,8 +137,8 @@ def test_periodes_datees_ordre_interdiction_asc_autorisation():
     )
     labels = [p["label"] for p in periodes_datees(r)]
     assert labels == [
-        "Interdiction",
         "Autorisé sous conditions",
+        "Interdiction",
         "Période d'autorisation",
     ]
 
@@ -173,26 +174,28 @@ def test_periodes_par_section_groupe_et_ordonne():
     )
     sections = periodes_par_section(r)
     titres = [s["titre"] for s in sections]
+    # Ordre du moins au plus restrictif : autorisation pure d'abord, puis
+    # autorisation sous condition, interdiction en dernier.
     assert titres == [
-        "Période d’interdiction",
-        "Période d’autorisation sous condition",
         "Période d’autorisation",
+        "Période d’autorisation sous condition",
+        "Période d’interdiction",
     ]
-    # Mois en toutes lettres dans les phrases.
-    assert sections[0]["periodes"][0]["phrase"] == "du 15 décembre au 15 janvier"
+    # Mois en toutes lettres dans les phrases (section interdiction en dernier).
+    assert sections[-1]["periodes"][0]["phrase"] == "du 15 décembre au 15 janvier"
     # La justification (texte_condition) est portee par les sections non-libres.
-    assert sections[0]["periodes"][0]["justification"] == "Interdit du 15/12 au 15/01."
-    # L'autorisation pure n'a pas de justification.
-    assert sections[-1]["titre"] == "Période d’autorisation"
-    assert sections[-1]["periodes"][0]["justification"] is None
+    assert sections[-1]["periodes"][0]["justification"] == "Interdit du 15/12 au 15/01."
+    # L'autorisation pure (premiere section) n'a pas de justification.
+    assert sections[0]["titre"] == "Période d’autorisation"
+    assert sections[0]["periodes"][0]["justification"] is None
 
 
 def test_periodes_par_section_sans_texte_condition():
     # Pas de texte_condition -> justification None (pas de ⓘ cote template).
     r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
     sections = periodes_par_section(r)
-    assert sections[0]["titre"] == "Période d’interdiction"
-    assert sections[0]["periodes"][0]["justification"] is None
+    interdiction = next(s for s in sections if s["titre"] == "Période d’interdiction")
+    assert interdiction["periodes"][0]["justification"] is None
 
 
 def test_periodes_par_section_regle_none():
