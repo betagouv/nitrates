@@ -92,6 +92,16 @@ class RequireLoginEverywhere:
             # ni /api/arbre/ qui restent fermes).
             if path.startswith("/geojson/") or path.startswith("/api/referentiels/"):
                 return True
+            # /simulateur/debug/ (mal nomme : ce n'est PAS un panneau debug mais
+            # l'endpoint de GEOLOCALISATION appele au clic sur la carte, carte
+            # #57). Sa reponse porte `simulateur_ouvert` qui pilote l'affichage
+            # du formulaire sur le root public. Sans cet exempt, le clic carte
+            # est redirige vers le login (302 suivi en silence par fetch -> HTML
+            # au lieu de JSON), `simulateur_ouvert` est absent et le formulaire
+            # ne s'affiche JAMAIS (symptome : "cliquez sur la carte" fige). On
+            # l'exempte AVANT le prefixe /simulateur/ (qui, lui, reste ferme).
+            if path.startswith("/simulateur/debug/"):
+                return True
         return False
 
     def __call__(self, request):

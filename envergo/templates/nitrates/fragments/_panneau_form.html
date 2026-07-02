@@ -8,9 +8,16 @@ conteneurs `[data-cascade="<champ>"]`. Lat/lng sont des hidden inputs
 remplis au clic carte (cf. simulator.js).
 {% endcomment %}
 
-<form id="form-simulateur"
-      method="get"
-      action="{% url 'nitrates_simulateur' %}">
+{% comment %}
+Le form resoumet vers la PAGE COURANTE (request.path), pas vers
+`nitrates_simulateur` en dur : sur le root public `/` (ouvert aux
+alpha-testeurs, #113) le resultat doit rester sur `/`. Coder `/simulateur/`
+en dur renvoyait la soumission vers une URL fermee par le lockdown -> redirect
+login au clic sur "Lancer la simulation". MoulinetteView sert les deux chemins
+(`/` via HomeView et `/simulateur/`), donc resoumettre sur place fonctionne
+dans les deux cas.
+{% endcomment %}
+<form id="form-simulateur" method="get" action="{{ request.path }}">
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
   <div class="form-section" id="section-localisation">

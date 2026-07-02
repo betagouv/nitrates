@@ -78,6 +78,34 @@ def test_donnees_carte_exemptees_si_root_ouvert(client, settings, nitrates_site,
     assert resp.status_code != 302
 
 
+def test_geoloc_clic_carte_exemptee_si_root_ouvert(client, settings, nitrates_site):
+    """Le clic sur la carte du root public fetch /simulateur/debug/ (endpoint
+    de GEOLOCALISATION, pas un panneau debug) : sa reponse porte
+    `simulateur_ouvert` qui pilote l'affichage du formulaire. Doit etre exempte
+    du lockdown, sinon le clic est redirige vers le login, le form ne s'affiche
+    JAMAIS ("cliquez sur la carte" fige)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get("/simulateur/debug/?lng=4.03&lat=48.30&geo=1")
+
+    # Pas de redirection login : la vue repond (JSON), le form pourra s'ouvrir.
+    assert resp.status_code != 302
+    assert resp.status_code == 200
+    assert "simulateur_ouvert" in resp.json()
+
+
+def test_geoloc_clic_carte_fermee_si_root_ferme(client, settings, nitrates_site):
+    """Root ferme : l'endpoint geoloc reste protege (exemption conditionnee)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = False
+
+    resp = client.get("/simulateur/debug/?lng=4.03&lat=48.30&geo=1")
+
+    assert resp.status_code == 302
+    assert "/login/" in resp["Location"]
+
+
 @pytest.mark.parametrize(
     "path", ["/geojson/zv/", "/geojson/zar/", "/api/referentiels/"]
 )
