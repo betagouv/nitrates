@@ -79,8 +79,19 @@ class RequireLoginEverywhere:
             return True
         # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
         # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.
-        if path == "/" and getattr(settings, "NITRATES_ROOT_OUVERT", False):
-            return True
+        if getattr(settings, "NITRATES_ROOT_OUVERT", False):
+            if path == "/":
+                return True
+            # La page racine charge sa carte SIG en fetch() sur ces endpoints
+            # de DONNEES PUBLIQUES read-only (zones reglementaires ZV/ZAR issues
+            # des sources SIG officielles, referentiels de l'arbre). Sans cet
+            # exempt, l'anonyme est redirige vers le login admin et le fetch
+            # recoit du HTML au lieu de JSON -> carte vide + "Unexpected token
+            # 'C', Connexion... is not valid JSON" (issue #197 suite). On ouvre
+            # donc les memes donnees que la racine, rien de plus (ni /simulateur/
+            # ni /api/arbre/ qui restent fermes).
+            if path.startswith("/geojson/") or path.startswith("/api/referentiels/"):
+                return True
         return False
 
     def __call__(self, request):

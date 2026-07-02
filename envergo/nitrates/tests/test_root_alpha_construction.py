@@ -60,6 +60,39 @@ def test_simulateur_reste_ferme_meme_si_root_ouvert(client, settings, nitrates_s
     assert "/login/" in resp["Location"]
 
 
+@pytest.mark.parametrize(
+    "path", ["/geojson/zv/", "/geojson/zar/", "/api/referentiels/"]
+)
+def test_donnees_carte_exemptees_si_root_ouvert(client, settings, nitrates_site, path):
+    """La page racine ouverte charge sa carte SIG en fetch() sur les endpoints
+    de donnees publiques : ils doivent etre exemptes du lockdown, sinon
+    l'anonyme est redirige vers le login et le fetch recoit du HTML (carte
+    vide, "... is not valid JSON"). Regression carte SIG staging."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get(path)
+
+    # Pas de redirection login (le middleware laisse passer). La vue peut
+    # repondre 200 (donnees) sans jamais 302 vers /login/.
+    assert resp.status_code != 302
+
+
+@pytest.mark.parametrize(
+    "path", ["/geojson/zv/", "/geojson/zar/", "/api/referentiels/"]
+)
+def test_donnees_carte_fermees_si_root_ferme(client, settings, nitrates_site, path):
+    """Root ferme : les endpoints de donnees restent proteges par le lockdown
+    (l'exemption est conditionnee a NITRATES_ROOT_OUVERT)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = False
+
+    resp = client.get(path)
+
+    assert resp.status_code == 302
+    assert "/login/" in resp["Location"]
+
+
 # --- Bandeau "en construction" + debug off sur le root ----------------------
 
 
