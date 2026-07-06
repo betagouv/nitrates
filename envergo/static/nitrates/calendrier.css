@@ -705,7 +705,11 @@
   overflow-wrap: break-word;
   opacity: 0;
   transition: opacity 80ms;
-  max-width: 340px;
+
+  /* Largeur max bornee au viewport (moins une marge) : sur mobile, 340px fixe
+     debordait de l'ecran quand le tooltip s'affichait pres d'un bord (#177).
+     min() garantit qu'il ne depasse jamais la largeur de l'ecran. */
+  max-width: min(340px, calc(100vw - 24px));
   box-sizing: border-box;
 }
 

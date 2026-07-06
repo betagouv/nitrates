@@ -111,7 +111,11 @@
   color: var(--nitrates-chantier-fonce);
   font-size: 0.875rem;
   font-weight: 600;
-  line-height: 0.25;
+
+  /* line-height normal : le texte du disclaimer peut passer sur PLUSIEURS
+     lignes (surtout mobile ou la largeur est faible). Un line-height ecrase
+     (< 1) faisait se chevaucher les lignes -> texte illisible (#177). */
+  line-height: 1.3;
   text-align: center;
 
   /* cachee par defaut : hors-ecran vers le haut + transparente */
@@ -195,10 +199,19 @@
     letter-spacing: 0.02em;
   }
 
-  /* Barre sticky : padding et typo un cran plus compacts sur mobile. */
+  /* Barre sticky : padding et typo un cran plus compacts sur mobile. Le texte
+     du disclaimer passe sur 2-3 lignes sur mobile -> on garde align-items en
+     haut pour que le picto reste au niveau de la 1re ligne, et on empeche le
+     picto de retrecir. */
   .nitrates-construction__bar {
     font-size: 0.8rem;
-    padding: 0.4rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    align-items: flex-start;
+  }
+
+  .nitrates-construction__bar .nitrates-construction__icon {
+    flex-shrink: 0;
+    line-height: 1.3;
   }
 }
 
