@@ -602,14 +602,24 @@ def _collecter_questions(
     return questions
 
 
-def _resoudre_renvoi(branche: dict, index_ids: dict[str, dict]) -> dict | None:
+def _resoudre_renvoi(
+    branche: dict, index_ids: dict[str, dict], visites: set[str] | None = None
+) -> dict | None:
     """Si la branche est un `renvoi_vers` pointant vers un noeud traversable
     (formulaire / catalogue / catalogue_parametre), retourne ce noeud pour
     poursuivre la collecte des QC dedans. Retourne None sinon (branche normale,
     renvoi vers une regle terminale, ou id introuvable) : le prefetch QC
-    n'a rien a collecter au-dela d'une feuille."""
+    n'a rien a collecter au-dela d'une feuille.
+
+    `visites` : garde-fou anti-cycle. La collecte suit les `renvoi_vers` de
+    facon recursive ; un renvoi cyclique dans le YAML (A -> B -> A) provoquerait
+    sinon une recursion infinie. On memorise les cibles deja traversees et on
+    coupe (retourne None) si on retombe dessus. Les arbres actuels n'ont aucun
+    cycle, c'est une securite pour un futur editeur d'arbre."""
     cible_id = branche.get("renvoi_vers")
     if not cible_id:
+        return None
+    if visites is not None and cible_id in visites:
         return None
     cible = index_ids.get(cible_id)
     if cible and cible.get("type_noeud") in (
@@ -617,6 +627,8 @@ def _resoudre_renvoi(branche: dict, index_ids: dict[str, dict]) -> dict | None:
         "catalogue",
         "catalogue_parametre",
     ):
+        if visites is not None:
+            visites.add(cible_id)
         return cible
     return None
 
@@ -655,17 +667,25 @@ def _collecter_aval_si_chemin_unique(
     questions: list[QuestionFormulaire],
     index_ids: dict[str, dict],
     resoudre_catalogue=None,
+    _visites_renvoi: set[str] | None = None,
 ) -> None:
     """Suit la branche en cours et collecte les noeuds formulaire en aval
     tant qu'on peut identifier le chemin (valeurs presentes dans le
     contexte ou catalogue resolu)."""
+    if _visites_renvoi is None:
+        _visites_renvoi = set()
     # Branche `renvoi_vers` : sous-arbre reutilisable (cf. _descendre_branche).
     # On resout la cible et on continue la collecte dedans, sinon la QC en aval
-    # d'un renvoi n'est jamais prefetchee.
-    cible = _resoudre_renvoi(branche, index_ids)
+    # d'un renvoi n'est jamais prefetchee. `_visites_renvoi` coupe les cycles.
+    cible = _resoudre_renvoi(branche, index_ids, _visites_renvoi)
     if cible is not None:
         _collecter_aval_si_chemin_unique(
-            {"noeud": cible}, contexte, questions, index_ids, resoudre_catalogue
+            {"noeud": cible},
+            contexte,
+            questions,
+            index_ids,
+            resoudre_catalogue,
+            _visites_renvoi,
         )
         return
     if "noeud" not in branche:
@@ -683,7 +703,12 @@ def _collecter_aval_si_chemin_unique(
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
                 _collecter_aval_si_chemin_unique(
-                    sb, contexte, questions, index_ids, resoudre_catalogue
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    _visites_renvoi,
                 )
                 break
         return
@@ -697,7 +722,12 @@ def _collecter_aval_si_chemin_unique(
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
                 _collecter_aval_si_chemin_unique(
-                    sb, contexte, questions, index_ids, resoudre_catalogue
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    _visites_renvoi,
                 )
                 break
         return
@@ -711,7 +741,12 @@ def _collecter_aval_si_chemin_unique(
         for sb in sous.get("branches", []):
             if evaluer_expression(sb.get("expression"), contexte):
                 _collecter_aval_si_chemin_unique(
-                    sb, contexte, questions, index_ids, resoudre_catalogue
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    _visites_renvoi,
                 )
                 break
 
@@ -724,6 +759,7 @@ def _collecter_aval_conditionnel(
     resoudre_catalogue=None,
     parent_champ: str = None,
     parent_valeur: Any = None,
+    _visites_renvoi: set[str] | None = None,
 ) -> None:
     """Comme `_collecter_aval_si_chemin_unique` mais pour le cas "1re
     question pas encore repondue" : on remonte les questions formulaire
@@ -747,9 +783,12 @@ def _collecter_aval_conditionnel(
     soit le nombre de noeuds traverses entre les deux. On ne descend en revanche
     pas au-dela de la 1re sous-question formulaire (les cascades a 2 niveaux de
     QC sont rares et alourdiraient le rendu)."""
+    if _visites_renvoi is None:
+        _visites_renvoi = set()
     # Branche `renvoi_vers` : on resout la cible (sous-arbre reutilisable) et on
-    # poursuit dedans, en conservant l'annotation parent.
-    cible = _resoudre_renvoi(branche, index_ids)
+    # poursuit dedans, en conservant l'annotation parent. `_visites_renvoi`
+    # coupe les cycles.
+    cible = _resoudre_renvoi(branche, index_ids, _visites_renvoi)
     if cible is not None:
         _collecter_aval_conditionnel(
             {"noeud": cible},
@@ -759,6 +798,7 @@ def _collecter_aval_conditionnel(
             resoudre_catalogue,
             parent_champ,
             parent_valeur,
+            _visites_renvoi,
         )
         return
     if "noeud" not in branche:
@@ -784,6 +824,7 @@ def _collecter_aval_conditionnel(
                     resoudre_catalogue,
                     parent_champ,
                     parent_valeur,
+                    _visites_renvoi,
                 )
                 break
         return
@@ -801,6 +842,7 @@ def _collecter_aval_conditionnel(
                     resoudre_catalogue,
                     parent_champ,
                     parent_valeur,
+                    _visites_renvoi,
                 )
                 break
         return

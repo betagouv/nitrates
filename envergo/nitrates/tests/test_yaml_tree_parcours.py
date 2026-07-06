@@ -1437,6 +1437,56 @@ def test_collecte_traverse_renvoi_vers_sous_arbre():
     assert "qc_reutilisable" in champs
 
 
+def test_collecte_renvoi_vers_cyclique_ne_boucle_pas():
+    """Garde-fou anti-cycle : deux QC qui se renvoient mutuellement via
+    `renvoi_vers` (q_a -> q_b -> q_a) ne doivent PAS provoquer de recursion
+    infinie lors de la collecte. Les arbres reels n'ont aucun cycle, mais un
+    futur editeur d'arbre pourrait en introduire un : la collecte doit terminer
+    proprement (le set `_visites_renvoi` coupe la boucle)."""
+    from envergo.nitrates.yaml_tree.parcours import _build_id_index
+
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_a",
+                "champ": "champ_a",
+                "texte": "A ?",
+                "branches": [
+                    # champ_a=go -> renvoi vers q_b (qui renverra vers q_a).
+                    {"valeur": "go", "renvoi_vers": "q_b"},
+                    # Branche d'indexation pour rendre q_b atteignable par l'index.
+                    {
+                        "valeur": "_idx",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_b",
+                            "champ": "champ_b",
+                            "texte": "B ?",
+                            "branches": [
+                                # champ_b=go -> renvoi vers q_a : cycle.
+                                {"valeur": "go", "renvoi_vers": "q_a"},
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    index = _build_id_index(arbre)
+    noeud = _noeud_racine(arbre)
+    # Les 2 reponses presentes forcent la descente a travers les 2 renvois : sans
+    # garde-fou, q_a -> q_b -> q_a -> ... boucle. Avec, ca termine.
+    questions = _collecter_questions(noeud, {"champ_a": "go", "champ_b": "go"}, index)
+    # Le test PASSE des lors qu'aucune RecursionError n'est levee. On verifie au
+    # passage que les 2 QC ont bien ete collectees une fois (dedup par champ).
+    champs = [q.champ for q in questions]
+    assert champs.count("champ_a") == 1
+    assert champs.count("champ_b") == 1
+
+
 # ─── collecter_qc_du_chemin ─────────────────────────────────────────────────
 
 
