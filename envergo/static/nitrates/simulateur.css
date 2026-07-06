@@ -137,6 +137,32 @@
   margin: 0;
 }
 
+/* Question reformatee cote front (#192, question_reformat.js) : intro en gras
+   + puces d'enumeration en graisse normale, pour aerer une question a rallonge
+   sans toucher au texte de l'arbre. */
+.form-question-text--reformatted {
+  font-weight: 400; /* la graisse 700 est portee par l'intro uniquement */
+}
+
+.form-question-text__intro {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.form-question-text__list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.form-question-text__list li {
+  margin-bottom: 4px;
+}
+
+.form-question-text__list li:last-child {
+  margin-bottom: 0;
+}
+
 /* fr-radio-group sans la marge DSFR par defaut, mais on garde un peu
    d'air entre options pour le confort de lecture (maquette). */
 .form-question-group .fr-radio-group {

@@ -59,6 +59,9 @@
   <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
   {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
   <script defer src="{% static 'nitrates/reset_form.js' %}"></script>
+  {# Reformatage cosmetique front-only de questions a rallonge (#192) : swap du #}
+  {# texte brut vers une version paragraphee, sans toucher a l'arbre. #}
+  <script defer src="{% static 'nitrates/question_reformat.js' %}"></script>
   {% if afficher_resultat %}
     <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
