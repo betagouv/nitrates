@@ -109,7 +109,37 @@ _POINTS = {
         "lng": "4.21806",
         "code_insee": "51046",
     },
+    # ─── Points PAR autres regions ───────────────────────────────────────────
+    # Un PAR regional s'active par region (pas par couche SIG) : ZV + region
+    # suffisent, le code_insee n'est pas requis (cf. par_grand_est/zar_grand_est).
+    # Verifie via le catalog moulinette (en_zone_vulnerable, region_code).
+    "par_hauts_de_france": {
+        # Saint-Quentin (02), Aisne : ZV oui, region 32 (Hauts-de-France),
+        # pas ZAR. Point PAR generique pour la region Hauts-de-France.
+        "lat": "49.8489",
+        "lng": "3.2865",
+        "code_insee": "",
+    },
 }
+
+# Mapping region_code -> cle _POINTS pour les PAR (scope region). Forward
+# compatible : ajouter une region = une ligne ici + son point dans _POINTS.
+# Grand Est (44) est notre reference historique, Hauts-de-France (32) le
+# prochain objectif operationnel.
+_POINT_PAR_REGION = {
+    "44": "par_grand_est",
+    "32": "par_hauts_de_france",
+}
+
+# Idem pour les ZAR (scope zar). Aujourd'hui seul le ZAR Grand Est existe ;
+# ce mapping est le point d'extension quand un ZAR d'une autre region sera
+# modelise (il faudra alors ajouter sa couche + son point ici). Tant qu'une
+# region n'a pas de point ZAR dedie, on retombe sur le ZAR Grand Est (aucun
+# autre ZAR n'existe -> pas de regression).
+_POINT_ZAR_REGION = {
+    "44": "zar_grand_est",
+}
+_POINT_ZAR_DEFAUT = "zar_grand_est"
 
 
 # ─── Resolveur SIG ──────────────────────────────────────────────────────────
@@ -425,16 +455,26 @@ def point_par_defaut_scope(scope: str, region_code: str = "") -> dict | None:
     se resout par commune (Zones Est). Sert de `point_override` (applique
     seulement si le chemin n'impose pas deja un point specifique).
 
-      - scope 'zar'                     -> point dans la couche ZAR Grand Est
-      - scope 'region' + region 44 (GE) -> point PAR Grand Est (ZV + region 44)
-      - autres                          -> None (resolution par le chemin)
+      - scope 'zar'          -> point dans la couche ZAR de la region
+                                (_POINT_ZAR_REGION, defaut = ZAR Grand Est)
+      - scope 'region'       -> point PAR de la region (_POINT_PAR_REGION),
+                                ex 44 -> Grand Est, 32 -> Hauts-de-France
+      - autres / region sans -> None (resolution par le chemin)
+        point connu
+
+    Sans ce mapping, un PAR hors Grand Est (ex HdF, region 32, sans couche
+    d'activation) retombait sur le fallback ZV national = un point Grand Est :
+    les liens preview d'un arbre HdF pointaient donc en Grand Est.
     """
     from envergo.nitrates.models import DecisionTree
 
     if scope == DecisionTree.SCOPE_ZAR:
-        return dict(_POINTS["zar_grand_est"])
-    if scope == DecisionTree.SCOPE_REGION and (region_code or "") == "44":
-        return dict(_POINTS["par_grand_est"])
+        point_name = _POINT_ZAR_REGION.get(region_code or "", _POINT_ZAR_DEFAUT)
+        return dict(_POINTS[point_name])
+    if scope == DecisionTree.SCOPE_REGION:
+        point_name = _POINT_PAR_REGION.get(region_code or "")
+        if point_name:
+            return dict(_POINTS[point_name])
     return None
 
 
