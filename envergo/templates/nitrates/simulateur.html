@@ -93,7 +93,18 @@
            style="display:flex;
                   justify-content:center">
         <div class="nitrates-hero-illustration">
-          <img src="{% static 'nitrates/illu_nitrates.png' %}" alt="">
+          {% comment %}
+            Deux variantes de l'illustration hero : la version claire (PNG) et
+            la version sombre (SVG, maquette #190). Le CSS masque l'une ou
+            l'autre selon data-fr-theme (cf. simulateur.css). Le décoratif ->
+            alt vide sur les deux.
+          {% endcomment %}
+          <img class="nitrates-hero-illustration__light"
+               src="{% static 'nitrates/illu_nitrates.png' %}"
+               alt="">
+          <img class="nitrates-hero-illustration__dark"
+               src="{% static 'nitrates/illu_nitrates_dark.svg' %}"
+               alt="">
         </div>
       </div>
     </div>

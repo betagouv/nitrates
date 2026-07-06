@@ -308,6 +308,21 @@ body {
   object-fit: contain;
 }
 
+/* Bascule illustration claire / sombre selon le thème (#190).
+   Par défaut (clair) : on montre la version PNG claire, on cache la SVG dark.
+   En dark : l'inverse. */
+.nitrates-hero-illustration__dark {
+  display: none;
+}
+
+[data-fr-theme="dark"] .nitrates-hero-illustration__light {
+  display: none;
+}
+
+[data-fr-theme="dark"] .nitrates-hero-illustration__dark {
+  display: block;
+}
+
 .nitrates-badges {
   display: flex;
   flex-wrap: wrap;
