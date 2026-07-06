@@ -13,6 +13,7 @@ from envergo.nitrates.bassins import (
     bassin_code_from_attributes,
     bassin_label_from_attributes,
 )
+from envergo.nitrates.form_backfill import backfill_form_fields
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
@@ -398,8 +399,16 @@ class MoulinetteView(View):
             "prairie_permanente",
         ]
 
+        # #175 : un lien direct peut piloter le parcours via les seuls champs
+        # backend (occupation_sol, sous_culture, type_fertilisant...) sans les
+        # champs FRONT de cascade (categorie_culture, sous_culture_form,
+        # categorie_fertilisant). Le resultat s'affiche alors, mais les radios
+        # du form restent vides. On reconstruit ces champs front A L'AFFICHAGE
+        # quand c'est non ambigu (cf. form_backfill). N'ecrase jamais l'existant.
+        data = backfill_form_fields(request.GET.dict(), referentiels)
+
         ctx = {
-            "data": request.GET,
+            "data": data,
             "codes_prescription": referentiels.get("codes_prescription", {}),
             "notes_referentiel": referentiels.get("notes", {}),
             "afficher_resultat": False,

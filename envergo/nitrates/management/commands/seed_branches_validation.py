@@ -32,6 +32,7 @@ from django.core.files import File
 from django.core.management.base import BaseCommand
 from ruamel.yaml import YAML
 
+from envergo.nitrates.form_backfill import _sous_culture_form_vers_categorie
 from envergo.nitrates.models import BrancheValidation
 from envergo.nitrates.yaml_tree.feuilles import enumerer_feuilles_culture_principale_v2
 from envergo.nitrates.yaml_tree.loader_db import load_active_tree, load_active_tree_raw
@@ -141,26 +142,6 @@ TYPE_FERTILISANT_MIRO_TO_YAML = {
 # le form on choisit Ia comme representant.
 TYPE_I_FALLBACK = "type_Ia"
 
-# Categorie de culture par defaut quand le mapping referentiel ne tranche
-# pas (le referentiel attache sous_culture_form -> sous_culture, mais pas
-# sous_culture_form -> categorie_culture). On code en dur les categories
-# parce qu'elles sont structurelles du formulaire, pas du parcours.
-SOUS_CULTURE_FORM_VERS_CATEGORIE = {
-    "colza": "culture_hiver",
-    "culture_principale_hiver_autre_que_colza": "culture_hiver",
-    "mais": "culture_printemps",
-    "culture_principale_printemps_autre_que_mais": "culture_printemps",
-    "luzerne": "prairies_ou_luzerne",
-    "prairie_plus_6_mois": "prairies_ou_luzerne",
-    "prairie_permanente": "prairies_ou_luzerne",
-    "prairie_moins_6_mois_printemps": "prairies_ou_luzerne",
-    "prairie_moins_6_mois_automne": "prairies_ou_luzerne",
-    "cultures_florales_aromatiques": "autres_cultures_principales",
-    "cultures_maraicheres_legumieres": "autres_cultures_principales",
-    "cultures_porte_graines": "autres_cultures_principales",
-    "cultures_perennes_vergers_vignes": "autres_cultures_principales",
-}
-
 
 def _build_form_mapping_from_referentiel() -> tuple[dict, dict]:
     """Derive deux dicts depuis `referentiels.yaml` (source de verite) :
@@ -178,22 +159,30 @@ def _build_form_mapping_from_referentiel() -> tuple[dict, dict]:
     from envergo.nitrates.yaml_tree.loader import load_referentiels
 
     ref = load_referentiels()
+    # sous_culture_form -> categorie_culture, derive du referentiel (source de
+    # verite : categories_cultures liste ses formes). Partage avec le backfill
+    # runtime #175 pour eviter la derive seed/vue.
+    form_vers_categorie = _sous_culture_form_vers_categorie(ref)
 
     sous_culture_vers_form: dict[str, tuple[str, str]] = {}
     for form_key, target in (
         ref.get("mapping_sous_culture_vers_branche") or {}
     ).items():
-        # On ne s'interesse qu'aux clefs qui mappent sur culture_principale
-        # avec un `sous_culture` direct ; le pre-remplissage couvert/luzerne
-        # passe par les memes champs.
+        # On garde les clefs qui mappent sur culture_principale OU
+        # couvert_intercultures avec un `sous_culture` direct (#175 : le couvert
+        # etait exclu -> liens PAR/ZAR couvert sans champs front -> form non
+        # re-coche). Le pre-remplissage passe par les memes champs.
         if not isinstance(target, dict):
             continue
-        if target.get("occupation_sol") != "culture_principale":
+        if target.get("occupation_sol") not in (
+            "culture_principale",
+            "couvert_intercultures",
+        ):
             continue
         sous_culture = target.get("sous_culture")
         if not sous_culture:
             continue
-        categorie = SOUS_CULTURE_FORM_VERS_CATEGORIE.get(form_key)
+        categorie = form_vers_categorie.get(form_key)
         if not categorie:
             continue
         # Preferer un form_key SANS flags (= cas "neutre" pour l'utilisateur).
