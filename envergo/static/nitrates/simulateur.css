@@ -668,6 +668,22 @@ body {
   background-color: #8585f6;
 }
 
+/* Bouton "Recommencer" en sombre = style SECONDARY (maquette #189) : la règle
+   générale ci-dessus le rendait plein violet comme un primaire. On le repasse
+   en secondaire (fond transparent + bordure + texte bleu clair) pour le
+   distinguer de l'action primaire. Ciblé par l'icône refresh, placé APRÈS la
+   règle générale pour la surcharger. */
+[data-fr-theme="dark"] .fr-container .fr-btn.fr-icon-refresh-line {
+  background-color: transparent;
+  color: #cacafb;
+  box-shadow: inset 0 0 0 1px #8585f6;
+}
+
+[data-fr-theme="dark"] .fr-container .fr-btn.fr-icon-refresh-line:hover {
+  background-color: rgb(133 133 246 / 12%);
+  color: #fff;
+}
+
 /* Bouton du bloc QC en sombre : sur le violet fonce #24244b, on veut un bouton
    qui ressort en clair (violet tres clair + texte fonce). Place APRES la regle
    generale pour la surcharger sur ce bloc precis. */
