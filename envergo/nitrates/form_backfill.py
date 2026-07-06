@@ -86,12 +86,18 @@ def backfill_form_fields(data, referentiels):
     out = dict(data)
     form_vers_categorie = _sous_culture_form_vers_categorie(referentiels)
 
+    def _txt(valeur):
+        # str(...) defensif : l'appelant passe request.GET.dict() (valeurs str),
+        # mais un futur appelant pourrait fournir un QueryDict/dict a valeurs
+        # non-str (liste, None) -> .strip() leverait AttributeError. On normalise.
+        return (str(valeur) if valeur is not None else "").strip()
+
     def manquant(champ):
-        return not (out.get(champ) or "").strip()
+        return not _txt(out.get(champ))
 
     # ── Culture ────────────────────────────────────────────────────────────
-    sous_culture = (out.get("sous_culture") or "").strip()
-    occupation_sol = (out.get("occupation_sol") or "").strip()
+    sous_culture = _txt(out.get("sous_culture"))
+    occupation_sol = _txt(out.get("occupation_sol"))
     if sous_culture and (
         manquant("sous_culture_form") or manquant("categorie_culture")
     ):

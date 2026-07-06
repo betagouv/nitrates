@@ -143,6 +143,21 @@ def test_backfill_data_vide_ne_plante_pas():
     assert backfill_form_fields({}, {}) == {}
 
 
+def test_backfill_valeurs_non_str_ne_plantent_pas():
+    """L'appelant reel passe request.GET.dict() (valeurs str), mais on blinde
+    contre un dict a valeurs non-str (liste facon QueryDict brut, None) :
+    `_txt` normalise via str(...) au lieu de lever AttributeError sur .strip()."""
+    data = {
+        "sous_culture": ["cine_apres_0101"],  # liste (QueryDict brut)
+        "occupation_sol": None,  # None
+        "categorie_culture": ["deja"],  # non vide -> pas ecrase, pas de crash
+    }
+    # Ne doit pas lever. On ne teste pas le contenu reconstruit (les cles-listes
+    # ne matchent pas le referentiel), juste l'absence de crash + preservation.
+    out = backfill_form_fields(data, REFERENTIELS)
+    assert out["categorie_culture"] == ["deja"]
+
+
 @pytest.mark.django_db
 def test_backfill_avec_referentiels_reels():
     """Integration : sur le vrai referentiel, un lien couvert casse se repare."""
