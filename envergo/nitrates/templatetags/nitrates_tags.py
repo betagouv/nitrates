@@ -187,6 +187,15 @@ _MOIS_LABELS = [
     "Jui",
 ]
 
+# Initiales, meme ordre agricole. Affichees a la place des labels 3 lettres
+# sur mobile (#177, cf. MOIS_AGRICOLES_COURTS cote JS) : sur petit ecran les
+# abreviations se chevauchaient. Exposees via l'attribut data-court, le CSS
+# bascule label <-> initiale selon la largeur.
+_MOIS_COURTS = [m[0] for m in _MOIS_LABELS]
+
+# Paires (label, initiale) pretes a boucler dans le template.
+_MOIS_PAIRES = list(zip(_MOIS_LABELS, _MOIS_COURTS))
+
 # Annee non bissextile : 365 jours. Cumul des jours au debut de chaque mois,
 # soit 0, 31, 59, 90, ... (utilise pour positionner les segments en pourcent).
 _DAYS_PER_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -522,7 +531,7 @@ def calendrier_epandage(regle):
     mixte) ; sinon on retombe sur le `type` global de la regle.
     """
     if regle is None:
-        return {"vide": True, "mois": _MOIS_LABELS}
+        return {"vide": True, "mois": _MOIS_PAIRES}
 
     regle_type = getattr(regle, "type", None) or ""
     periodes = getattr(regle, "periodes", None) or []
@@ -711,7 +720,7 @@ def calendrier_epandage(regle):
 
     return {
         "vide": False,
-        "mois": _MOIS_LABELS,
+        "mois": _MOIS_PAIRES,
         "fond": fond,
         "label": label,
         "segments": segments,

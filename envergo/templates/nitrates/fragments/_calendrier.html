@@ -24,7 +24,7 @@ Inputs (cf. templatetag calendrier_epandage) :
     <p class="calendrier-epandage__label">{{ label }}</p>
 
     <div class="calendrier-epandage__months">
-      {% for m in mois %}<span>{{ m }}</span>{% endfor %}
+      {% for label, court in mois %}<span data-court="{{ court }}">{{ label }}</span>{% endfor %}
     </div>
 
     <div class="calendrier-epandage__bar">

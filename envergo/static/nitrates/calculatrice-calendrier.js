@@ -50,6 +50,13 @@
     "Juil", "Aoû", "Sept", "Oct", "Nov", "Déc",
     "Jan", "Fév", "Mar", "Avr", "Mai", "Jui",
   ];
+  // Initiales, meme ordre agricole. Affichees a la place des labels 3 lettres
+  // sur mobile (#177) via .calendrier-epandage__months[data-court] en CSS :
+  // sur petit ecran les labels 3 lettres se chevauchaient.
+  const MOIS_AGRICOLES_COURTS = [
+    "J", "A", "S", "O", "N", "D",
+    "J", "F", "M", "A", "M", "J",
+  ];
   // Mois en toutes lettres, ordre agricole (juillet -> juin). Pour les dates
   // des periodes affichees sous le calendrier (#159 : "15 novembre", pas
   // "15 nov."). MOIS_AGRICOLES reste pour les 12 labels de colonnes de la barre.
@@ -758,7 +765,7 @@
     return `
       <div class="calendrier-epandage calendrier-epandage--vert">
         <div class="calendrier-epandage__months">
-          ${MOIS_AGRICOLES.map((m) => `<span>${m}</span>`).join("")}
+          ${MOIS_AGRICOLES.map((m, i) => `<span data-court="${MOIS_AGRICOLES_COURTS[i]}">${m}</span>`).join("")}
         </div>
         <div class="calendrier-epandage__bar" data-tooltip="Autorisé">
           ${zonesHtml}

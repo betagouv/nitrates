@@ -213,9 +213,11 @@ def test_calendrier_12_mois_annee_agricole():
     """L'ordre des mois suit l'annee agricole (juil debut, juin fin)."""
     ctx = calendrier_epandage(_regle())
     assert len(ctx["mois"]) == 12
-    # Labels alignes sur le calendrier dynamique (#134) : "Jui" pour juin.
-    assert ctx["mois"][0] == "Juil"
-    assert ctx["mois"][-1] == "Jui"
+    # Chaque entree est une paire (label 3 lettres, initiale) : l'initiale sert
+    # a l'affichage mobile 1 lettre (#177). Labels alignes sur le calendrier
+    # dynamique (#134) : "Jui" pour juin.
+    assert ctx["mois"][0] == ("Juil", "J")
+    assert ctx["mois"][-1] == ("Jui", "J")
 
 
 def test_calendrier_regime_mixte_par_periode():
