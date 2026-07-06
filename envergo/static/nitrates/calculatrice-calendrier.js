@@ -1576,6 +1576,11 @@
       const barRect = bar.getBoundingClientRect();
       const zonesEl = [...bar.querySelectorAll(".calendrier-epandage__zone")];
       for (const z of zonesEl) {
+        // Sauve les positions % d'origine AVANT de figer en px : au resize on
+        // les restaure instantanement pour que le fond suive la barre en direct
+        // (le re-snap px crisp arrive juste apres, en debounce). Cf. #177.
+        if (z.dataset.pctLeft === undefined) z.dataset.pctLeft = z.style.left;
+        if (z.dataset.pctWidth === undefined) z.dataset.pctWidth = z.style.width;
         const r = z.getBoundingClientRect();
         const dLeft = snapCss(r.left);
         const dRight = snapCss(r.right);
@@ -1876,12 +1881,27 @@
 
   render();
 
-  // Re-rendu au redimensionnement de la fenetre (#177). Le calendrier fait un
-  // pixel-snapping des zones et un anti-collision des labels de bornes calcules
-  // en PIXELS ABSOLUS d'apres la largeur reelle de la barre (cf. render() ->
-  // pixel-snap + layoutBornesRows). Apres un resize, ces valeurs deviennent
-  // obsoletes -> zones et traits desalignes. On regenere donc le calendrier,
-  // en debounce pour ne pas recalculer a chaque frame du drag.
+  // Re-rendu au redimensionnement de la fenetre (#177). Le calendrier fige les
+  // zones (fond colore) en PIXELS ABSOLUS pour un pixel-snapping crisp, et cale
+  // les traits de date (ticks, en %) dessus. Apres un resize, les zones px
+  // restent a leur ancienne largeur pendant que la barre et les ticks (en %)
+  // suivent -> fond et traits desalignes tant qu'on ne rafraichit pas.
+  //
+  // Deux temps pour un rendu qui "colle" sans thrasher le CPU :
+  //   1. A CHAQUE event resize : on restaure instantanement les positions %
+  //      d'origine des zones (stockees en data-pct*) -> le fond suit la barre
+  //      en direct, aligne avec les ticks pendant tout le drag.
+  //   2. En debounce (150ms apres l'arret) : re-render complet -> re-snap px
+  //      crisp + re-layout des labels de bornes a la nouvelle largeur.
+  function restaurerZonesPct() {
+    if (!mount) return;
+    const zones = mount.querySelectorAll(".calendrier-epandage__zone");
+    for (const z of zones) {
+      if (z.dataset.pctLeft !== undefined) z.style.left = z.dataset.pctLeft;
+      if (z.dataset.pctWidth !== undefined) z.style.width = z.dataset.pctWidth;
+    }
+  }
+
   let resizeTimer = null;
   let lastWidth = window.innerWidth;
   window.addEventListener("resize", () => {
@@ -1889,6 +1909,9 @@
     // se retracte) : seule la largeur impacte la geometrie du calendrier.
     if (window.innerWidth === lastWidth) return;
     lastWidth = window.innerWidth;
+    // 1. Suivi live : le fond repasse en % -> reste cale sur les ticks.
+    restaurerZonesPct();
+    // 2. Re-snap crisp une fois le drag termine.
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(render, 150);
   });
