@@ -55,6 +55,34 @@
     "effluent_peu_charge_elevage",
   ];
 
+  // Hidden derives produits par chaque champ cascade (cf. cascade.js). Quand on
+  // elague un champ cascade AVAL, on elague aussi les hidden qu'il derive, sinon
+  // l'URL garderait des valeurs orphelines incoherentes avec le nouveau parcours.
+  const HIDDEN_DERIVES_PAR_CHAMP = {
+    categorie_culture: [
+      "occupation_sol",
+      "sous_culture",
+      "culture_irriguee_type",
+      "prairie_permanente",
+    ],
+    sous_culture_form: [
+      "occupation_sol",
+      "sous_culture",
+      "culture_irriguee_type",
+      "prairie_permanente",
+    ],
+    categorie_fertilisant: [
+      "type_fertilisant",
+      "effluent_peu_charge",
+      "effluent_peu_charge_elevage",
+    ],
+    sous_fertilisant: [
+      "type_fertilisant",
+      "effluent_peu_charge",
+      "effluent_peu_charge_elevage",
+    ],
+  };
+
   // ─── Logique PURE (testable en Node) ────────────────────────────────────
   //
   // A partir d'un dict { cle: valeur } (etat courant du form), produit la
@@ -69,12 +97,62 @@
     return params.toString();
   }
 
+  // Elague l'AVAL d'un champ change, EN PARTANT de l'URL existante (#175).
+  //
+  // Principe (retour Max) : on ADJOINT / MET A JOUR sans ecraser l'existant.
+  // Concretement :
+  //   - on part de `searchInitial` (toutes les cles deja presentes survivent) ;
+  //   - `champChange` et ses hidden derives sont MIS A JOUR depuis `valeurs`
+  //     (etat courant du DOM re-resolu par cascade.js) ;
+  //   - tout champ STRICTEMENT APRES `champChange` dans `ordre` (radios cascade
+  //     ET reponses QC aval) est SUPPRIME, ainsi que les hidden qu'il derivait ;
+  //   - tout le reste (amont, localisation, params inconnus) est PRESERVE.
+  //
+  // `ordre` : liste des champs interactifs dans l'ordre du parcours (lu du DOM).
+  // `valeurs` : { champ: valeurCourante } pour champChange + ses hidden derives.
+  // `hiddenParChamp` : map champ cascade -> ses hidden derives (injectable pour
+  //   les tests ; defaut = HIDDEN_DERIVES_PAR_CHAMP).
+  function elaguerAvalDansUrl(
+    searchInitial,
+    ordre,
+    champChange,
+    valeurs,
+    hiddenParChamp
+  ) {
+    const map = hiddenParChamp || HIDDEN_DERIVES_PAR_CHAMP;
+    const params = new URLSearchParams(searchInitial || "");
+    const idx = ordre.indexOf(champChange);
+
+    // Champs a supprimer = ceux strictement APRES champChange + leurs hidden.
+    if (idx !== -1) {
+      const aval = ordre.slice(idx + 1);
+      for (const champ of aval) {
+        params.delete(champ);
+        for (const h of map[champ] || []) params.delete(h);
+      }
+    }
+
+    // Met a jour le champ change + ses hidden derives depuis l'etat courant.
+    // Une valeur vide => on supprime la cle (pas de cle=… vide dans l'URL).
+    const aEcrire = [champChange, ...(map[champChange] || [])];
+    for (const champ of aEcrire) {
+      const v = valeurs && valeurs[champ];
+      if (v === undefined) continue; // pas dans le DOM courant -> on n'y touche pas
+      if (v === "" || v === null) params.delete(champ);
+      else params.set(champ, String(v));
+    }
+
+    return params.toString();
+  }
+
   if (_isNode) {
     module.exports = {
       construireQueryString,
+      elaguerAvalDansUrl,
       CHAMPS_LOCALISATION,
       CHAMPS_CASCADE_VISIBLES,
       CHAMPS_HIDDEN_DERIVES,
+      HIDDEN_DERIVES_PAR_CHAMP,
     };
     return;
   }
@@ -190,6 +268,7 @@
 
   // Construit le dict (cles uniques) a partir du DOM. Lit chaque champ une
   // seule fois -> pas de doublon possible par construction.
+  // (Conserve pour compat tests jsdom : etat COMPLET courant du DOM.)
   function construireParamsDict() {
     const dict = {};
     for (const champ of CHAMPS_LOCALISATION) {
@@ -207,11 +286,87 @@
     return dict;
   }
 
-  function reconstruireUrl() {
-    const qs = construireQueryString(construireParamsDict());
+  // Ordre du parcours = ordre document des champs interactifs (radios cascade +
+  // reponses QC). Le serveur les rend deja dans l'ordre du parcours, donc le DOM
+  // est la source de verite synchrone (pas besoin de charger l'arbre).
+  function ordreParcoursDOM() {
+    const nodes = form.querySelectorAll("[data-cascade], [data-qc-champ]");
+    const ordre = [];
+    nodes.forEach((n) => {
+      const champ =
+        n.getAttribute("data-cascade") || n.getAttribute("data-qc-champ");
+      if (champ && !ordre.includes(champ)) ordre.push(champ);
+    });
+    return ordre;
+  }
+
+  // Valeur cochee du champ change (radio cascade OU reponse QC). A lire AVANT
+  // elaguerResultat (qui retire le bloc QC du DOM).
+  function valeurCocheePour(champChange) {
+    const coche = form.querySelector(`input[name="${champChange}"]:checked`);
+    return coche ? coche.value : "";
+  }
+
+  // Assemble les valeurs a ecrire : la valeur cochee (capturee avant elagage) +
+  // les hidden derives lus MAINTENANT (re-resolus par cascade.js au tick).
+  function valeursCourantesPour(champChange, valeurCocheePreCapturee) {
+    const valeurs = {};
+    valeurs[champChange] =
+      valeurCocheePreCapturee !== undefined
+        ? valeurCocheePreCapturee
+        : valeurCocheePour(champChange);
+    for (const h of HIDDEN_DERIVES_PAR_CHAMP[champChange] || []) {
+      valeurs[h] = valeurHidden(h);
+    }
+    return valeurs;
+  }
+
+  // Champs deja portes par le form (radios cascade coches + hidden officiels a
+  // id). Sert a ne PAS dupliquer une cle en hidden passthrough.
+  function champsDejaDansForm() {
+    const noms = new Set();
+    form
+      .querySelectorAll("input[name], select[name]")
+      .forEach((el) => noms.add(el.name));
+    return noms;
+  }
+
+  // Synchronise le form avec la query string : pour chaque cle de `qs` qui n'est
+  // PAS deja un champ du form (cascade / hidden officiel), on (re)cree un hidden
+  // passthrough. Ainsi la prochaine soumission GET (bouton « Lancer ») envoie
+  // EXACTEMENT l'etat de l'URL elaguee -- dont les reponses QC amont re-choisies
+  // (#175 : sans ca, une reponse QC re-flippee etait perdue a la resoumission
+  // car son input avait ete retire du DOM avec le bloc QC).
+  function synchroniserFormDepuisUrl(qs) {
+    const dejaLa = champsDejaDansForm();
+    const params = new URLSearchParams(qs);
+    for (const [cle, valeur] of params) {
+      if (dejaLa.has(cle)) continue; // porte par un champ existant
+      if (!valeur) continue;
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = cle;
+      input.value = valeur;
+      // Pas d'id -> considere passthrough, retire au prochain elagage.
+      form.appendChild(input);
+    }
+  }
+
+  // Met a jour l'URL : part de l'existant, met a jour le champ change + ses
+  // hidden derives, elague l'aval, preserve tout le reste (#175). Puis
+  // synchronise le form pour que la resoumission GET envoie ce meme etat.
+  // `ordre` et `valeurCochee` sont captures AVANT elagage par onChangeChamp.
+  function reconstruireUrl(champChange, ordre, valeurCochee) {
+    const qs = elaguerAvalDansUrl(
+      window.location.search,
+      ordre || ordreParcoursDOM(),
+      champChange,
+      valeursCourantesPour(champChange, valeurCochee)
+    );
     const nouvelle =
       window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
     window.history.replaceState(null, "", nouvelle);
+    synchroniserFormDepuisUrl(qs);
   }
 
   // ─── Branchement sur le change d'un champ du formulaire ────────────────
@@ -243,12 +398,21 @@
     const resultatFinal = document.querySelector(".result-col");
     if (qcBloc && qcBloc.contains(target) && !resultatFinal) return;
 
-    // Sinon : un champ AMONT (cascade) a change alors qu'un resultat / une QC
-    // est affiche -> on invalide le rendu serveur et on laisse la cascade
-    // reprendre. Laisse cascade.js finir son travail (tick suivant).
+    // Sinon : un champ (cascade AMONT, ou reponse QC recap) a change alors
+    // qu'un resultat / une QC est affiche -> on invalide le rendu serveur et on
+    // met a jour l'URL en n'elaguant que l'AVAL de CE champ (#175 : on preserve
+    // les reponses amont, dont celle qu'on vient de re-choisir). Laisse
+    // cascade.js finir son travail (tick suivant) avant de lire les hidden.
+    const champChange = target.name;
+    // On capture AVANT elagage (elaguerResultat retire le bloc QC du DOM) :
+    //  - l'ORDRE du parcours (pour savoir ce qui est en aval du champ change) ;
+    //  - la valeur cochee du champ change (une reponse QC recap vit dans
+    //    #qc-bloc, qui va etre retire).
+    const ordre = ordreParcoursDOM();
+    const valeurCochee = valeurCocheePour(champChange);
     setTimeout(() => {
       elaguerResultat();
-      reconstruireUrl();
+      reconstruireUrl(champChange, ordre, valeurCochee);
     }, 0);
   }
 
