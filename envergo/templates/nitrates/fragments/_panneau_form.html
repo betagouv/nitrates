@@ -41,6 +41,23 @@ dans les deux cas.
       </div>
 
       <div id="nitrates-map" class="nitrates-map"></div>
+
+      {% comment %}
+      Panneau de chargement de la localisation (Carte #154) : affiche pendant le
+      reverse-geocode (commune + parcelle + bornage). Barre de progression
+      "fake" (montee exponentielle) pilotee par simulator.js, pour rassurer sur
+      les connexions lentes sans afficher un spinner infini.
+      {% endcomment %}
+      <div id="nitrates-loc-loading"
+           class="nitrates-loc-loading"
+           hidden
+           role="status"
+           aria-live="polite">
+        <p class="nitrates-loc-loading__label">Chargement de votre localisation…</p>
+        <div class="nitrates-loc-loading__bar">
+          <div class="nitrates-loc-loading__fill"></div>
+        </div>
+      </div>
     </div>
 
     {# Affichage commune / dept / region (rempli par simulator.js) #}
@@ -98,7 +115,8 @@ dans les deux cas.
   data.lat / data.lng (utile sur rechargement avec params dans l'URL).
   {% endcomment %}
   {% if data.lat and data.lng %}
-    {% with form_locked=False %}{% endwith %}
+    {% with form_locked=False %}
+    {% endwith %}
   {% else %}
     <div id="form-locked-message" class="form-locked-message" role="status">
       <p>

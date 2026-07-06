@@ -51,26 +51,49 @@
     };
     {% endif %}
   </script>
-  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
-  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {# static_v : ?v=<mtime> en DEBUG pour casser le cache navigateur du JS (sinon #}
+  {# dev server + cache servent une version perimee malgre hard-refresh). #}
+  <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
+  {# Barre de progression du parcours, fixee top (#154). #}
+  <script defer src="{% static_v 'nitrates/progress.js' %}"></script>
   {# Saisie en 2 questions du type de couvert interculture longue (hack UI). #}
-  <script defer src="{% static 'nitrates/couvert_split.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/couvert_split.js' %}"></script>
   {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
-  <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/form_autoscroll.js' %}"></script>
   {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
-  <script defer src="{% static 'nitrates/reset_form.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/reset_form.js' %}"></script>
   {# Reformatage cosmetique front-only de questions a rallonge (#192) : swap du #}
   {# texte brut vers une version paragraphee, sans toucher a l'arbre. #}
-  <script defer src="{% static 'nitrates/question_reformat.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/question_reformat.js' %}"></script>
   {% if afficher_resultat %}
-    <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
+    <script defer src="{% static_v 'nitrates/subsidiaires_cascade.js' %}"></script>
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
     {# resultat final -> section Localisation/resultat en haut (#112). #}
-    <script defer src="{% static 'nitrates/scroll_resultat.js' %}"></script>
+    <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
   {% endif %}
 {% endblock %}
 
 {% block content %}
+  {% comment %}
+  Barre de progression du parcours (Carte #154), fixee en haut pleine largeur,
+  facon YouTube, violet DSFR. Pilotee par progress.js. Affichee UNIQUEMENT
+  pendant la selection (formulaire + QC en attente), PAS sur la page resultat
+  final (afficher_resultat sans QC en attente) : la progression n'a plus de sens
+  une fois le resultat calcule.
+  {% endcomment %}
+  {% if not afficher_resultat or qc_en_attente %}
+    <div id="nitrates-progress-bar"
+         class="nitrates-progress"
+         role="progressbar"
+         aria-label="Progression de votre simulation"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-valuenow="0">
+      <div class="nitrates-progress__fill"></div>
+    </div>
+  {% endif %}
+
   <div class="fr-container fr-py-4w">
 
     {# ─── Section hero (cf. maquette) ──────────────────────────────── #}

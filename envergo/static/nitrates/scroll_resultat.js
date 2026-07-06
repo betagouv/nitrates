@@ -19,12 +19,12 @@
   "use strict";
 
   // Cible + mode d'alignement vertical :
-  //   - QC en attente  -> block:"end" : le bloc QC se cale en BAS du viewport,
-  //     en laissant la fin du formulaire (Fertilisant, reponses precedentes)
-  //     visible AU-DESSUS. L'utilisateur voit ainsi que la QC est la suite
-  //     naturelle de ce qu'il remplissait (pas une page hors contexte).
-  //   - resultat final -> block:"start" : la section Localisation/resultat se
-  //     cale en HAUT du viewport (on saute le hero).
+  //   - QC en attente  -> on cale le BLOC "Questions complementaires" (avec son
+  //     titre) en HAUT du viewport (block:"start"). Avant on calait le BAS du
+  //     bloc (block:"end"), mais quand il etait plus haut que l'ecran la 1re
+  //     question passait au-dessus du viewport -> invisible (retour Max #154).
+  //   - resultat final -> block:"start" : la table Localisation/reglementation
+  //     en haut du viewport (on saute le hero).
   // Sous le breakpoint lg du DSFR (992px), les deux colonnes de .layout--split
   // s'empilent : le resultat passe SOUS le formulaire + la carte. Scroller vers
   // le HAUT de la .results-row ramenait alors sur le formulaire, pas sur le
@@ -33,13 +33,17 @@
   const LG_BREAKPOINT = 992;
 
   function cible() {
+    // QC en attente : on cale le BLOC "Questions complementaires" (avec son
+    // titre) en haut du viewport -> l'utilisateur voit le titre + la 1re
+    // question. (Cibler la question interne masquait le titre du bloc.)
     const qc = document.querySelector("#qc-bloc[data-qc-en-attente='true']");
-    if (qc) return { el: qc, block: "end" };
+    if (qc) return { el: qc, block: "start" };
 
     const empile = window.innerWidth < LG_BREAKPOINT;
     const resultCol = document.querySelector(".result-col");
 
-    // Colonnes empilees (mobile/tablette) : on cale la colonne resultat en haut.
+    // Colonnes empilees (mobile/tablette, #177) : on cale la colonne resultat
+    // en haut (sinon scroller le haut de la row ramene sur le formulaire).
     if (empile && resultCol) return { el: resultCol, block: "start" };
 
     // Desktop en 2 colonnes : le haut de la row (form + resultat alignes).
@@ -62,6 +66,22 @@
   // coller pile au bord (sensation de contenu coupe).
   const PADDING = 24;
 
+  // Hauteur des barres fixes en haut (bandeau "En construction" quand il est
+  // affiche + barre de progression) : sans cet offset, block:"start" cale le
+  // bloc pile sous ces barres qui le recouvrent -> scroll "imprecis". On mesure
+  // la hauteur reelle du bandeau construction s'il est visible.
+  function offsetHautFixe() {
+    let h = 0;
+    const bandeau = document.querySelector(".nitrates-construction__bar");
+    if (bandeau) {
+      const r = bandeau.getBoundingClientRect();
+      // visible = a l'ecran et non transparent (opacity geree en CSS au scroll)
+      const style = window.getComputedStyle(bandeau);
+      if (r.height > 0 && parseFloat(style.opacity) > 0.1) h = r.height;
+    }
+    return h;
+  }
+
   function scrollVers(comportement) {
     // block:"end" -> on cale le BAS du bloc PADDING px au-dessus du bas du
     // viewport (scrollIntoView ne gere pas d'offset, on calcule la position).
@@ -71,21 +91,33 @@
       window.scrollTo({ top: Math.max(0, y), behavior: comportement });
       return;
     }
-    // block:"start" -> bloc en haut, avec un peu d'air au-dessus.
+    // block:"start" -> haut du bloc juste sous les barres fixes, avec un peu
+    // d'air. On soustrait l'offset des barres fixes pour un cadrage precis.
     const rect = target.el.getBoundingClientRect();
-    const y = window.scrollY + rect.top - PADDING;
+    const y = window.scrollY + rect.top - PADDING - offsetHautFixe();
     window.scrollTo({ top: Math.max(0, y), behavior: comportement });
   }
 
   // Attend que document.body.scrollHeight reste stable sur 2 frames
   // consecutives (= layout pose, carte/images integrees) avant de scroller.
   // Garde-fou : on n'attend jamais plus de ~1.2s.
+  //
+  // PROBLEME OBSERVE (Carte #154) : meme apres "stabilite", la carte Leaflet /
+  // les images continuent de decaler la position de la cible APRES le scroll ->
+  // on atterrissait a cote (cible hors viewport). Correctif : apres le scroll
+  // initial, on programme des RE-SCROLLS correctifs a 150/500/1000 ms, et un
+  // dernier sur window.load, pour rattraper tout reflow tardif. scrollVers est
+  // idempotent (recalcule la position a chaque appel).
   function scrollQuandStable() {
     let lastHeight = -1;
     let stableFrames = 0;
     let elapsed = 0;
     const STEP = 80; // ms entre 2 mesures
     const MAX = 1200; // ms max d'attente
+
+    function corriger() {
+      scrollVers("auto");
+    }
 
     function tick() {
       const h = document.body.scrollHeight;
@@ -99,6 +131,11 @@
       if (stableFrames >= 2 || elapsed >= MAX) {
         // Position finale, animee.
         scrollVers(reduceMotion ? "auto" : "smooth");
+        // Re-scrolls correctifs pour rattraper les reflows tardifs (tuiles
+        // carte, images). Sans animation pour ne pas "sauter" visuellement.
+        setTimeout(corriger, 150);
+        setTimeout(corriger, 500);
+        setTimeout(corriger, 1000);
         return;
       }
       setTimeout(tick, STEP);

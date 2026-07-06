@@ -45,8 +45,15 @@
   border-bottom: none;
 }
 
-.ban-suggestions li:hover {
+.ban-suggestions li:hover,
+.ban-suggestions li.is-active {
   background: #f0f0f0;
+}
+
+/* Option surlignee au clavier (fleches haut/bas) : liseré bleu France a gauche
+   pour distinguer clairement le focus clavier (Carte #154, accessibilite). */
+.ban-suggestions li.is-active {
+  box-shadow: inset 3px 0 0 var(--border-action-high-blue-france, #000091);
 }
 
 /* Mode sombre (#83) : les suggestions avaient un fond blanc fixe + texte gris
@@ -63,8 +70,13 @@
   color: #f0f0f0;
 }
 
-[data-fr-theme="dark"] .ban-suggestions li:hover {
+[data-fr-theme="dark"] .ban-suggestions li:hover,
+[data-fr-theme="dark"] .ban-suggestions li.is-active {
   background: #3a3a3a;
+}
+
+[data-fr-theme="dark"] .ban-suggestions li.is-active {
+  box-shadow: inset 3px 0 0 #8585f6;
 }
 
 /* ─── Localisation read-only (commune / dept / region) ────────────── */
@@ -165,11 +177,40 @@
 
 /* fr-radio-group sans la marge DSFR par defaut, mais on garde un peu
    d'air entre options pour le confort de lecture (maquette). */
+
+/* Focus clavier (Carte #154, a11y) : le focus ring DSFR par defaut se dessine
+   sur le petit rond du radio -> effet moche et peu lisible au Tab, surtout
+   quand le label passe sur 2 lignes (rond DSFR ancre en haut-gauche du label,
+   l'anneau debordait). On etend le focus a TOUT le bloc option.
+
+   IMPORTANT : le rond DSFR est un background-image ancre sur le label, avec un
+   padding vertical (.75rem) deja integre. On ne touche donc PAS au
+   padding/margin horizontal du groupe (sinon on decale le rond). On se
+   contente d'un box-shadow qui epouse le groupe (respecte le border-radius,
+   coins nets — contrairement a outline) + un leger fond. `inset` sur l'ombre
+   evite tout debordement exterieur qui « bavait » sur les options voisines. */
 .form-question-group .fr-radio-group {
   margin: 0;
   min-height: unset;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  border-radius: 6px;
+  transition:
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.form-question-group .fr-radio-group:focus-within {
+  box-shadow: inset 0 0 0 2px var(--outline-color, #0a76f6);
+  background-color: rgb(10 118 246 / 6%);
+}
+
+.form-question-group .fr-radio-group input[type="radio"]:focus,
+.form-question-group .fr-radio-group input[type="radio"]:focus-visible {
+  outline: none;
+}
+
+[data-fr-theme="dark"] .form-question-group .fr-radio-group:focus-within {
+  box-shadow: inset 0 0 0 2px #8585f6;
+  background-color: rgb(133 133 246 / 14%);
 }
 
 /* Espacement entre 2 form-question-group consecutifs dans une section */
@@ -710,6 +751,22 @@ body {
   color: #fff;
 }
 
+/* Bouton desactive en sombre (Carte #154) : la regle ci-dessus force un bleu
+   franc + texte blanc pour TOUS les .fr-btn, ce qui masquait l'etat disabled
+   (le bouton "Lancer la simulation" paraissait actif tant que le form etait
+   incomplet). On redonne un rendu grise + curseur interdit quand disabled. */
+[data-fr-theme="dark"] .fr-container .fr-btn:disabled,
+[data-fr-theme="dark"] .fr-container .fr-btn[aria-disabled="true"] {
+  background-color: #3a3a4d;
+  color: #8a8a9e;
+  cursor: not-allowed;
+}
+
+[data-fr-theme="dark"] .fr-container .fr-btn:disabled:hover,
+[data-fr-theme="dark"] .fr-container .fr-btn[aria-disabled="true"]:hover {
+  background-color: #3a3a4d;
+}
+
 /* Bouton du bloc QC en sombre : sur le violet fonce #24244b, on veut un bouton
    qui ressort en clair (violet tres clair + texte fonce). Place APRES la regle
    generale pour la surcharger sur ce bloc precis. */
@@ -799,4 +856,118 @@ ul.periodes-liste {
   cursor: help;
   color: #000091;
   margin-left: 0.15rem;
+}
+
+/* ─── Focus clavier visible sur tous les boutons/liens d'action (Carte #154,
+   a11y) ────────────────────────────────────────────────────────────────────
+   Anneau bleu net et coherent au clavier (Tab) sur les .fr-btn de la page
+   simulateur : CTA hero "Voir les conditions d'epandage", "Lancer la
+   simulation", "Recommencer" de la page resultat. box-shadow (respecte le
+   border-radius) + offset via un 2e halo blanc pour detacher du fond. On ne
+   cible que :focus-visible -> pas d'anneau au clic souris, seulement clavier. */
+.fr-container .fr-btn:focus-visible,
+.fr-container a.fr-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px #0a76f6;
+}
+
+[data-fr-theme="dark"] .fr-container .fr-btn:focus-visible,
+[data-fr-theme="dark"] .fr-container a.fr-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px #1b1b1b,
+    0 0 0 4px #8585f6;
+}
+
+/* ─── Barre de progression du parcours (Carte #154) ──────────────────────────
+   Fine barre fixee en haut, pleine largeur, facon YouTube. Violet DSFR
+   (blue-france). Avance a mesure des reponses (progress.js). z-index au-dessus
+   du bandeau construction (2001) pour rester le fil le plus haut. Cachee tant
+   qu'aucune progression (page d'accueil), revelee via .is-visible. */
+.nitrates-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 3000;
+  background: transparent;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    top 0.35s ease;
+  pointer-events: none;
+}
+
+/* Quand le bandeau "En construction" est affiche (root public scrolle), on
+   cale la barre de progression JUSTE SOUS lui (Carte #154). Hauteur du bandeau
+   ~ min-height 1.25rem + padding 0.4rem*2 ~ 2.05rem. La transition sur `top`
+   accompagne l'apparition/disparition du bandeau. */
+html.nitrates-construction-visible .nitrates-progress {
+  top: 2.05rem;
+}
+
+.nitrates-progress.is-visible {
+  opacity: 1;
+}
+
+.nitrates-progress__fill {
+  height: 100%;
+  width: 0;
+  background: #6a6af5;
+
+  /* Montee douce facon YouTube : la largeur s'anime a chaque reponse. */
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 6px rgb(106 106 245 / 60%);
+}
+
+[data-fr-theme="dark"] .nitrates-progress__fill {
+  background: #8585f6;
+  box-shadow: 0 0 6px rgb(133 133 246 / 70%);
+}
+
+/* ─── Panneau de chargement de la localisation (Carte #154) ──────────────────
+   Affiche pendant le reverse-geocode. Barre "fake" a montee exponentielle
+   (largeur pilotee par simulator.js). Violet DSFR, coherent avec le reste. */
+.nitrates-loc-loading {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--background-alt-grey, #f6f6f6);
+  border-left: 3px solid #6a6af5;
+  border-radius: 2px;
+}
+
+.nitrates-loc-loading__label {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-title-grey);
+}
+
+.nitrates-loc-loading__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(106 106 245 / 18%);
+  overflow: hidden;
+}
+
+.nitrates-loc-loading__fill {
+  height: 100%;
+  width: 0;
+  background: #6a6af5;
+  border-radius: 3px;
+  transition: width 0.12s linear;
+}
+
+[data-fr-theme="dark"] .nitrates-loc-loading {
+  background: #2a2a33;
+}
+
+[data-fr-theme="dark"] .nitrates-loc-loading__bar {
+  background: rgb(133 133 246 / 22%);
+}
+
+[data-fr-theme="dark"] .nitrates-loc-loading__fill {
+  background: #8585f6;
 }

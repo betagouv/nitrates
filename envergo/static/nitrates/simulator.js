@@ -38,6 +38,11 @@
     const lockedMsg = document.getElementById("form-locked-message");
     if (formZone) formZone.hidden = false;
     if (lockedMsg) lockedMsg.hidden = true;
+    // Carte #154 : le form vient d'apparaitre, les questions cascade
+    // deviennent visibles mais non repondues. On notifie cascade.js pour qu'il
+    // (re)calcule l'etat du bouton « Lancer la simulation » (-> disabled tant
+    // que le parcours n'est pas complet).
+    document.dispatchEvent(new CustomEvent("nitrates:form-revealed"));
   }
 
   // ─── Carte #57 : bornage geographique ────────────────────────────────
@@ -72,10 +77,16 @@
     fermee.hidden = false;
   }
 
-  const map = L.map(mapEl, { attributionControl: false }).setView(
-    INITIAL_CENTER,
-    INITIAL_ZOOM
-  );
+  // keyboard: false (Carte #154, a11y) : par defaut Leaflet rend le conteneur
+  // carte focusable (tabindex=0) et capture les fleches pour paner. Resultat :
+  // au Tab, le focus se coincait sur la carte, les fleches ne naviguaient plus
+  // dans les radios du formulaire, et "Entree sur la carte" ne faisait rien.
+  // La carte s'opere a la souris / via la recherche : on la sort donc de
+  // l'ordre de tabulation et on libere les fleches pour les radios.
+  const map = L.map(mapEl, {
+    attributionControl: false,
+    keyboard: false,
+  }).setView(INITIAL_CENTER, INITIAL_ZOOM);
   L.control
     .attribution({
       prefix: '<a href="https://leafletjs.com" target="_blank">Leaflet</a>',
@@ -395,12 +406,56 @@
     }
   }
 
+  // ─── Panneau de chargement localisation "fake progress" (Carte #154) ──
+  // Le reverse-geocode (commune + parcelle + bornage) prend de 0.5 a plusieurs
+  // secondes selon la connexion. On affiche une barre qui monte de facon
+  // exponentielle vers ~90% (jamais 100% tant que ce n'est pas fini) : plus
+  // rassurant qu'un spinner infini, sans mentir sur une duree qu'on ignore.
+  const locLoadingEl = document.getElementById("nitrates-loc-loading");
+  const locFillEl = locLoadingEl
+    ? locLoadingEl.querySelector(".nitrates-loc-loading__fill")
+    : null;
+  let locLoadingTimer = null;
+
+  function demarrerChargementLoc() {
+    if (!locLoadingEl || !locFillEl) return;
+    clearInterval(locLoadingTimer);
+    locLoadingEl.hidden = false;
+    // Le panneau est SOUS la carte : si l'utilisateur a la carte plein ecran il
+    // ne le verrait pas. On l'amene dans le viewport pour que le chargement soit
+    // visible (Carte #154). block:"nearest" -> ne bouge que si necessaire.
+    requestAnimationFrame(() => {
+      locLoadingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    let pct = 0;
+    locFillEl.style.width = "0%";
+    // Approche asymptotique : a chaque tick on comble une fraction du chemin
+    // restant vers 90% -> vite au debut, puis ralentit (effet "fake" naturel).
+    locLoadingTimer = setInterval(() => {
+      pct += (90 - pct) * 0.12;
+      locFillEl.style.width = pct.toFixed(1) + "%";
+    }, 120);
+  }
+
+  function terminerChargementLoc() {
+    if (!locLoadingEl || !locFillEl) return;
+    clearInterval(locLoadingTimer);
+    // On finit a 100% puis on masque en douceur.
+    locFillEl.style.width = "100%";
+    setTimeout(() => {
+      locLoadingEl.hidden = true;
+      locFillEl.style.width = "0%";
+    }, 300);
+  }
+
   map.on("click", function (e) {
     const { lat, lng } = e.latlng;
 
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
+
+    demarrerChargementLoc();
 
     // Carte #57 : on NE devoile PAS le formulaire immediatement. On attend
     // la reponse localisation (DebugView) qui indique si le simulateur est
@@ -457,8 +512,12 @@
         // montagne (D113-14) sans charger les polygones communes.
         const codeInseeInput = document.getElementById("id_code_insee");
         if (codeInseeInput) codeInseeInput.value = communeInfo.code || "";
+        terminerChargementLoc();
       })
-      .catch((err) => renderError(err.message || String(err)));
+      .catch((err) => {
+        terminerChargementLoc();
+        renderError(err.message || String(err));
+      });
   });
 
   // Aucun lat/lng pre-rempli (arrivee sur `/` ou `/simulateur/` sans
@@ -474,6 +533,15 @@
   if (searchInput && searchList) {
     let searchTimer = null;
     let searchResults = [];
+    // Index de l'option surlignee au clavier (-1 = aucune). Sert a la
+    // navigation fleches haut/bas + a la validation Entree (Carte #154, a11y).
+    let activeIndex = -1;
+
+    // ARIA combobox : le champ pilote la liste #map-search-list (role listbox).
+    searchInput.setAttribute("role", "combobox");
+    searchInput.setAttribute("aria-expanded", "false");
+    searchInput.setAttribute("aria-autocomplete", "list");
+    searchInput.setAttribute("aria-controls", "map-search-list");
 
     async function searchCommune(q) {
       if (q.length < 2) {
@@ -493,15 +561,20 @@
 
     function renderSearch(features) {
       searchResults = features;
+      activeIndex = -1;
       searchList.innerHTML = "";
       if (!features.length) {
         closeSearch();
         return;
       }
-      features.forEach((f) => {
+      features.forEach((f, i) => {
         const li = document.createElement("li");
+        li.id = `map-search-opt-${i}`;
         li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", "false");
         li.textContent = f.properties.label;
+        // mousedown (pas click) : se declenche avant le blur du champ, evite
+        // que closeSearch (sur blur) ne vide la liste avant la selection.
         li.addEventListener("mousedown", (e) => {
           e.preventDefault();
           selectCommune(f);
@@ -509,18 +582,62 @@
         searchList.appendChild(li);
       });
       searchList.hidden = false;
+      searchInput.setAttribute("aria-expanded", "true");
     }
 
+    // Surligne l'option index (navigation clavier) : classe visuelle,
+    // aria-selected, aria-activedescendant sur le champ, et scroll into view.
+    function setActive(index) {
+      const items = searchList.querySelectorAll("li");
+      if (!items.length) return;
+      // wrap-around haut/bas
+      if (index < 0) index = items.length - 1;
+      if (index >= items.length) index = 0;
+      activeIndex = index;
+      items.forEach((li, i) => {
+        const on = i === index;
+        li.classList.toggle("is-active", on);
+        li.setAttribute("aria-selected", on ? "true" : "false");
+        if (on) li.scrollIntoView({ block: "nearest" });
+      });
+      searchInput.setAttribute("aria-activedescendant", `map-search-opt-${index}`);
+    }
+
+    // Selection d'une commune (clic, Entree, ou fleches+Entree) : on place
+    // TOUJOURS un point au centre de la commune EXACTEMENT comme un clic carte
+    // (marker + reverse-geocode parcelle + reveal form). L'utilisateur voit un
+    // point apparaitre et comprend qu'il peut recliquer ailleurs (Carte #154).
     function selectCommune(feature) {
+      // BAN municipality : coordinates = centre de la commune (centre-ville).
       const [lng, lat] = feature.geometry.coordinates;
       searchInput.value = feature.properties.label;
       closeSearch();
-      map.flyTo([lat, lng], 13);
+      // Une fois le form revele (apres le reverse-geocode async), on deplace le
+      // focus sur le 1er radio de la 1re question (Carte #154, a11y) : Max veut
+      // qu'apres selection d'une ville, Tab/Entree operent directement sur le
+      // formulaire sans re-cliquer. once:true -> ne se declenche que pour CETTE
+      // selection.
+      document.addEventListener(
+        "nitrates:form-revealed",
+        () => {
+          const premier = document.querySelector(
+            '[data-cascade="categorie_culture"] input[type="radio"]'
+          );
+          if (premier) premier.focus();
+        },
+        { once: true }
+      );
+      map.setView([lat, lng], 13);
+      // Rejoue toute la chaine du clic carte (cf. map.on("click")).
+      map.fire("click", { latlng: L.latLng(lat, lng) });
     }
 
     function closeSearch() {
       searchList.hidden = true;
       searchList.innerHTML = "";
+      activeIndex = -1;
+      searchInput.setAttribute("aria-expanded", "false");
+      searchInput.removeAttribute("aria-activedescendant");
     }
 
     searchInput.addEventListener("input", () => {
@@ -533,5 +650,63 @@
     searchInput.addEventListener("blur", () =>
       setTimeout(closeSearch, 150)
     );
+
+    // Navigation clavier complete dans le champ de recherche (Carte #154, a11y) :
+    //  - Fleche bas / haut : parcourt les suggestions (avec wrap-around).
+    //  - Entree : selectionne l'option surlignee (ou la 1re si aucune), ce qui
+    //    place le point. On preventDefault dans TOUS les cas ou une suggestion
+    //    existe, pour ne jamais laisser le submit natif du <form> se declencher
+    //    depuis ce champ (bug d'origine : auto-scroll + question fantome).
+    //  - Echap : ferme la liste sans selectionner.
+    searchInput.addEventListener("keydown", (e) => {
+      const q = searchInput.value.trim();
+      const ouvert = !searchList.hidden && searchResults.length > 0;
+      if (e.key === "ArrowDown") {
+        if (!searchResults.length) return;
+        e.preventDefault();
+        setActive(activeIndex + 1);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        if (!searchResults.length) return;
+        e.preventDefault();
+        setActive(activeIndex - 1);
+        return;
+      }
+      // Tab quand le volet de suggestions est ouvert (Carte #154, a11y) : Max
+      // veut que Tab parcoure les options COMME les fleches, au lieu de sortir
+      // du champ. Tab = descendre, Shift+Tab = remonter. On ne laisse Tab
+      // quitter le champ que si aucune suggestion n'est ouverte.
+      if (e.key === "Tab" && ouvert) {
+        e.preventDefault();
+        setActive(activeIndex + (e.shiftKey ? -1 : 1));
+        return;
+      }
+      if (e.key === "Escape") {
+        closeSearch();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (q.length < 2) return;
+        if (searchResults.length) {
+          // Option surlignee, sinon la premiere de la liste.
+          const idx = activeIndex >= 0 ? activeIndex : 0;
+          selectCommune(searchResults[idx]);
+          return;
+        }
+        // Pas encore de suggestions (frappe trop rapide) : requete a la volee.
+        clearTimeout(searchTimer);
+        fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&type=municipality&limit=1`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            const feature = (data.features || [])[0];
+            if (feature) selectCommune(feature);
+          })
+          .catch(() => {});
+      }
+    });
   }
 })();

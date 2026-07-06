@@ -29,6 +29,14 @@
     // deplacait le header observe -> boucle de retroaction. La barre est
     // en position:fixed, elle n'a pas besoin de reserver d'espace dans le flux.
     root.classList.toggle("scrolled", on);
+    // Miroir sur <html> (Carte #154) : la barre de progression du simulateur
+    // est ailleurs dans le DOM (avant le bandeau) -> pas de selecteur frere
+    // possible. On expose l'etat sur <html> pour qu'elle se cale SOUS le
+    // bandeau construction quand il est affiche.
+    document.documentElement.classList.toggle(
+      "nitrates-construction-visible",
+      on
+    );
   }
 
   function setScrolled(on) {
