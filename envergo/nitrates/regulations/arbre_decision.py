@@ -207,7 +207,11 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         # interne (genre zone_note_5), on resout via SIG et on relance.
         for _ in range(MAX_ITERATIONS_CATALOGUE):
             try:
-                res = parcours(arbre, contexte)
+                res = parcours(
+                    arbre,
+                    contexte,
+                    resoudre_catalogue=self._resoudre_catalogue_pour_collecte,
+                )
             except ParcoursError as exc:
                 # No-match : la valeur du contexte n'a pas de branche dans CET
                 # arbre. Pour un PAR non couvrant, c'est normal -> on signale a
@@ -320,12 +324,20 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         reference (resolveur absent, dataset SIG manquant, source non
         geree). L'evaluator bascule alors en RESULTS.non_disponible.
         """
-        if besoin.source != "sig":
+        return self._resoudre_ref_catalogue(besoin.source, besoin.reference)
+
+    def _resoudre_ref_catalogue(self, source: str, reference):
+        """Coeur de la resolution catalogue par (source, reference).
+
+        Partage entre le routage reel (via BesoinCatalogue) et l'aplatissement
+        du sous-arbre pour la collecte des QC (callback `resoudre_catalogue`
+        passe a parcours(), cf. #187)."""
+        if source != "sig":
             # source `mapping_referentiel` ou `calcul` : pas dans le scope
             # du MVP, on ne sait pas resoudre.
             return _CATALOGUE_NON_RESOLVABLE
 
-        resolver = get_resolver(besoin.reference)
+        resolver = get_resolver(reference)
         if resolver is None:
             return _CATALOGUE_NON_RESOLVABLE
 
@@ -335,6 +347,24 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             lng_lat=self.catalog.get("lng_lat"),
         )
         return resolver.resolve(ctx)
+
+    def _resoudre_catalogue_pour_collecte(self, noeud: dict):
+        """Callback fourni a parcours() pour aplatir le sous-arbre lors de la
+        collecte des questions complementaires : resout un noeud catalogue SIG
+        rencontre entre deux QC via son (source, reference). Retourne None si
+        irresolvable (source non-sig, dataset absent) -> la collecte s'arrete
+        proprement sur ce noeud et le front retombe sur un submit. Ne leve
+        jamais : la collecte QC est best-effort, elle ne doit pas casser le
+        rendu."""
+        try:
+            valeur = self._resoudre_ref_catalogue(
+                noeud.get("source", ""), noeud.get("reference")
+            )
+        except Exception:
+            return None
+        if valeur is _CATALOGUE_NON_RESOLVABLE:
+            return None
+        return valeur
 
     # ─── Application du resultat ───────────────────────────────────────────
 

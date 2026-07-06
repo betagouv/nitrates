@@ -1200,6 +1200,243 @@ def test_collecte_aval_traverse_catalogue_parametre():
     assert "detail" in champs
 
 
+def _arbre_qc_apres_catalogue() -> dict:
+    """Arbre : QC parent (plan_epandage) NON repondue, dont une branche mene a
+    un catalogue SIG (resolu dans le contexte) puis a une QC descendante.
+
+    Reproduit le bug #187 : quand la 1re QC n'est pas encore repondue, la
+    collecte conditionnelle doit traverser le catalogue intermediaire pour
+    prefetcher la QC en aval (sinon l'utilisateur doit relancer)."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_plan",
+                "champ": "plan_epandage",
+                "texte": "Plan d'epandage ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "noeud": {
+                            "type_noeud": "catalogue",
+                            "id": "n_zone_sig",
+                            "champ": "zone_note_5",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "complement",
+                                        "id": "q_apres_sig",
+                                        "champ": "detail_apres_sig",
+                                        "texte": "Detail apres SIG ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {
+                                                    "id": "r_fin",
+                                                    "type": "libre",
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "valeur": "autre",
+                        "regle": {"id": "r_autre", "type": "libre"},
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_collecte_conditionnelle_traverse_catalogue_sig(recwarn):
+    """Bug #187 : la 1re QC n'est pas repondue mais le catalogue SIG en aval
+    EST resolu dans le contexte (par la moulinette). La collecte conditionnelle
+    doit traverser le catalogue pour prefetcher la QC descendante.
+
+    Avant le fix, `_collecter_aval_conditionnel` s'arretait sur tout noeud
+    non-`formulaire` -> `detail_apres_sig` manquait du batch."""
+    noeud = _noeud_racine(_arbre_qc_apres_catalogue())
+    # plan_epandage PAS dans le contexte (QC a poser), mais zone_note_5 resolu.
+    questions = _collecter_questions(noeud, {"zone_note_5": True}, {})
+    champs = [q.champ for q in questions]
+    assert "plan_epandage" in champs  # la QC bloquante elle-meme
+    assert "detail_apres_sig" in champs  # la QC descendante, via le catalogue
+    # Annotee comme conditionnelle a la reponse parente icpe_a.
+    q_aval = next(q for q in questions if q.champ == "detail_apres_sig")
+    assert q_aval.parent_champ == "plan_epandage"
+    assert q_aval.parent_valeur == "icpe_a"
+
+
+def test_collecte_conditionnelle_catalogue_sig_non_resolu_sans_callback_s_arrete():
+    """Sans callback de resolution et catalogue SIG absent du contexte, on ne
+    peut pas savoir quelle branche prendre -> on s'arrete proprement (pas de QC
+    descendante hallucinee). C'est le fallback submit."""
+    noeud = _noeud_racine(_arbre_qc_apres_catalogue())
+    questions = _collecter_questions(noeud, {}, {})
+    champs = [q.champ for q in questions]
+    assert "plan_epandage" in champs
+    assert "detail_apres_sig" not in champs
+
+
+def test_collecte_conditionnelle_catalogue_sig_resolu_par_callback():
+    """Coeur du fix #187 : le catalogue SIG n'est PAS dans le contexte, mais un
+    `resoudre_catalogue` (geo-deterministe) le resout A LA VOLEE -> le sous-arbre
+    s'aplatit et la QC descendante est prefetchee, sans relance. Generique :
+    marche pour tout arbre des lors que le SIG est resolvable au chargement."""
+
+    appels = []
+
+    def resolveur(noeud):
+        # Simule la moulinette : resout zone_note_5 via geo (ici True).
+        appels.append(noeud.get("champ"))
+        if noeud.get("champ") == "zone_note_5":
+            return True
+        return None
+
+    noeud = _noeud_racine(_arbre_qc_apres_catalogue())
+    # Contexte SANS zone_note_5 : c'est le callback qui doit le fournir.
+    questions = _collecter_questions(noeud, {}, {}, resoudre_catalogue=resolveur)
+    champs = [q.champ for q in questions]
+    assert "plan_epandage" in champs
+    assert "detail_apres_sig" in champs  # prefetchee grace au callback SIG
+    assert "zone_note_5" in appels  # le callback a bien ete sollicite
+    q_aval = next(q for q in questions if q.champ == "detail_apres_sig")
+    assert q_aval.parent_champ == "plan_epandage"
+    assert q_aval.parent_valeur == "icpe_a"
+
+
+def test_collecte_conditionnelle_callback_irresolvable_s_arrete():
+    """Garde-fou : si le callback ne sait pas resoudre le SIG (retourne None,
+    ex dataset absent), la collecte s'arrete proprement sur ce noeud -> fallback
+    submit, pas de crash ni de QC hallucinee."""
+
+    def resolveur(noeud):
+        return None  # irresolvable
+
+    noeud = _noeud_racine(_arbre_qc_apres_catalogue())
+    questions = _collecter_questions(noeud, {}, {}, resoudre_catalogue=resolveur)
+    champs = [q.champ for q in questions]
+    assert "plan_epandage" in champs
+    assert "detail_apres_sig" not in champs
+
+
+def test_bug_187_qc_prefetchee_a_travers_catalogue_sur_pan(arbre_pan):
+    """Non-regression #187 sur le VRAI arbre PAN : le motif de la carte est
+    plan_epandage (QC) -> catalogue_parametre effluent_peu_charge -> fertilisant_iaa
+    (QC). Au moment ou plan_epandage n'est pas encore repondu, fertilisant_iaa
+    doit etre prefetchee dans le batch (annotee comme conditionnelle a la reponse
+    parente), pour eviter que l'utilisateur relance la simulation.
+
+    On cible le noeud plan_epandage du chemin cine_apres_0101 / type_II (celui
+    de l'URL de la carte)."""
+    from envergo.nitrates.yaml_tree.parcours import _build_id_index
+
+    index = _build_id_index(arbre_pan)
+
+    def _trouver_par_id(noeud, cible_id):
+        if noeud.get("id") == cible_id:
+            return noeud
+        for b in noeud.get("branches", []):
+            sous = b.get("noeud")
+            if sous:
+                r = _trouver_par_id(sous, cible_id)
+                if r:
+                    return r
+        return None
+
+    racine = arbre_pan["arbre"]["noeud"]
+    noeud_plan = _trouver_par_id(racine, "q_cine_apres_0101_type_II_icpe")
+    assert noeud_plan is not None, "noeud plan_epandage du chemin carte introuvable"
+    assert noeud_plan["champ"] == "plan_epandage"
+
+    # plan_epandage NON repondu et zone_note_5 ABSENT du contexte (etat reel au
+    # chargement) : c'est le callback SIG qui doit le resoudre a la volee pour
+    # aplatir le sous-arbre et prefetcher fertilisant_iaa. On simule la moulinette
+    # (zone_note_5 = False pour ce point).
+    def resolveur(noeud):
+        if noeud.get("reference") == "zone_note_5":
+            return False
+        return None
+
+    questions = _collecter_questions(
+        noeud_plan,
+        {"en_zone_vulnerable": True},
+        index,
+        resoudre_catalogue=resolveur,
+    )
+    champs = {q.champ for q in questions}
+    assert "plan_epandage" in champs
+    assert "fertilisant_iaa" in champs, (
+        "fertilisant_iaa (Q6) non prefetchee : le batch s'est arrete sur le "
+        "catalogue intermediaire (bug #187)"
+    )
+    q_aval = next(q for q in questions if q.champ == "fertilisant_iaa")
+    assert q_aval.parent_champ == "plan_epandage"
+
+
+def test_collecte_traverse_renvoi_vers_sous_arbre():
+    """La collecte QC suit une branche `renvoi_vers` pointant vers un sous-arbre
+    reutilisable (formulaire) pour prefetcher la QC descendante. Vaut pour le
+    chemin amorce (`_collecter_aval_si_chemin_unique`) : la 1re question est
+    repondue dans l'URL, la branche prise est un renvoi_vers."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "sous_culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "colza",
+                        "renvoi_vers": "q_reutilisable",
+                    }
+                ],
+            }
+        },
+        # Sous-arbre reutilisable, hors branche directe, atteint via renvoi_vers.
+        "regles_partagees": [
+            {
+                "regle": {"id": "r_bidon", "type": "libre"},
+            }
+        ],
+    }
+    # Injecte le noeud reutilisable dans l'arbre (indexe par _build_id_index via
+    # _walk_for_index -> il faut qu'il soit accessible depuis la racine ; on
+    # l'accroche donc comme un noeud a part que l'index trouvera).
+    arbre["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": "_indexation",
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_reutilisable",
+                "champ": "qc_reutilisable",
+                "texte": "QC reutilisable ?",
+                "branches": [
+                    {"valeur": "x", "regle": {"id": "r_fin", "type": "libre"}}
+                ],
+            },
+        }
+    )
+    from envergo.nitrates.yaml_tree.parcours import _build_id_index
+
+    index = _build_id_index(arbre)
+    noeud = _noeud_racine(arbre)
+    # occupation_sol=colza -> branche renvoi_vers q_reutilisable.
+    questions = _collecter_questions(noeud, {"occupation_sol": "colza"}, index)
+    champs = [q.champ for q in questions]
+    assert "qc_reutilisable" in champs
+
+
 # ─── collecter_qc_du_chemin ─────────────────────────────────────────────────
 
 

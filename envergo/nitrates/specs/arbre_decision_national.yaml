@@ -1000,7 +1000,7 @@ arbre:
                           label_court: destruction
                           placeholder: 01/11
                         code_prescription: pc4
-                      valeur: Non
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia
@@ -1644,7 +1644,7 @@ arbre:
                         periodes:
                         - au: 15/01
                           du: 15/12
-                      valeur: Non
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_0
@@ -1790,7 +1790,7 @@ arbre:
                           label_court: destruction
                           placeholder: 15/01
                         code_prescription: pc4
-                      valeur: Non
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia

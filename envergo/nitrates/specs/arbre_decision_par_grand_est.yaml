@@ -546,7 +546,7 @@ arbre:
                         code_prescription:
                         - pc4
                         - pc12
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
@@ -733,7 +733,7 @@ arbre:
                               libelle: non
                               expression: sous_fertilisant !='effluents_peu_charges_elevage'
                             type_noeud: catalogue_parametre
-                          valeur: icpe_autre
+                          valeur: non_concerne
                           libelle: Non concerné
                         type_noeud: formulaire
                       valeur: 'False'
@@ -843,7 +843,7 @@ arbre:
                         code_prescription:
                         - pc13
                         - pc4
-                      valeur: autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
@@ -1080,7 +1080,7 @@ arbre:
                           valeur: pas_effluent_peu_charge_issus_elevage
                           expression: sous_fertilisant != 'effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_II

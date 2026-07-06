@@ -136,3 +136,125 @@ def test_draft_id_inconnu_fallback_actif(actif_et_draft):
         }
     )
     assert rid == "r_actif"
+
+
+def _arbre_qc_apres_catalogue_sig():
+    """Arbre : ZVN -> QC1 (plan_epandage) -> catalogue SIG zone_note_5 -> QC2
+    (detail). zone_note_5 est resolu par la moulinette (pas dans l'URL).
+    Reproduit le motif du bug #187 pour le panneau recap gauche."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q_plan",
+                            "champ": "plan_epandage",
+                            "niveau": "complement",
+                            "texte": "Plan d'epandage ?",
+                            "branches": [
+                                {
+                                    "valeur": "icpe_a",
+                                    "noeud": {
+                                        "type_noeud": "catalogue",
+                                        "id": "n_zn5",
+                                        "champ": "zone_note_5",
+                                        "source": "sig",
+                                        "reference": "zone_note_5",
+                                        "branches": [
+                                            {
+                                                "valeur": True,
+                                                "noeud": {
+                                                    "type_noeud": "formulaire",
+                                                    "id": "q_detail",
+                                                    "champ": "detail_apres_sig",
+                                                    "niveau": "complement",
+                                                    "texte": "Detail ?",
+                                                    "branches": [
+                                                        {
+                                                            "valeur": "x",
+                                                            "regle": {
+                                                                "id": "r_fin",
+                                                                "type": "libre",
+                                                            },
+                                                        }
+                                                    ],
+                                                },
+                                            },
+                                            {
+                                                "valeur": False,
+                                                "noeud": {
+                                                    "type_noeud": "formulaire",
+                                                    "id": "q_detail_bis",
+                                                    "champ": "detail_apres_sig",
+                                                    "niveau": "complement",
+                                                    "texte": "Detail ?",
+                                                    "branches": [
+                                                        {
+                                                            "valeur": "x",
+                                                            "regle": {
+                                                                "id": "r_fin_bis",
+                                                                "type": "libre",
+                                                            },
+                                                        }
+                                                    ],
+                                                },
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_bug_187_recap_qc_resolu_par_callback_sig(actif_et_draft):
+    """#187 : le panneau recap gauche doit voir la QC descendante (detail_apres_sig)
+    meme quand un catalogue SIG (zone_note_5) la separe de la QC parente. Le
+    catalogue SIG n'est pas dans l'URL : le callback `_resoudre_catalogue_pour_collecte`
+    de l'evaluateur le resout a la volee (geo-deterministe) pour aplatir le
+    sous-arbre. C'est le cablage reel de la vue."""
+    from envergo.nitrates.yaml_tree import collecter_qc_du_chemin
+
+    actif, _ = actif_et_draft
+    actif.contenu = _arbre_qc_apres_catalogue_sig()
+    actif.save()
+
+    data = {
+        "lng": LNG_REIMS,
+        "lat": LAT_REIMS,
+        "plan_epandage": "icpe_a",
+    }
+    m = MoulinetteNitrates(form_kwargs={"data": data})
+    if not m.is_evaluated():
+        m.evaluate()
+    ev = list(list(m.regulations)[0].criteria.all())[0]._evaluator
+    arbre = ev.arbre_courant
+
+    # SANS callback : contexte = GET brut, zone_note_5 absent -> la descente
+    # s'arrete au catalogue SIG, detail_apres_sig invisible (symptome du bug).
+    ctx_url = dict(data)
+    ctx_url.setdefault("en_zone_vulnerable", True)
+    champs_url = {q.champ for q in collecter_qc_du_chemin(arbre, ctx_url)}
+    assert "detail_apres_sig" not in champs_url
+
+    # AVEC le callback de l'evaluateur (comme la vue) : zone_note_5 est resolu a
+    # la volee via code_insee/geo -> le catalogue devient transparent et la QC
+    # descendante est prefetchee, sans que zone_note_5 soit dans l'URL.
+    resoudre = ev._resoudre_catalogue_pour_collecte
+    champs_fix = {
+        q.champ for q in collecter_qc_du_chemin(arbre, dict(ctx_url), resoudre)
+    }
+    assert "plan_epandage" in champs_fix
+    assert "detail_apres_sig" in champs_fix

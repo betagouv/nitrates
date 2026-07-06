@@ -198,14 +198,26 @@ class ParcoursError(Exception):
 
 
 def parcours(
-    arbre: dict, contexte: dict[str, Any]
+    arbre: dict,
+    contexte: dict[str, Any],
+    resoudre_catalogue=None,
 ) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
-    """Point d'entree principal. Descend l'arbre depuis la racine."""
+    """Point d'entree principal. Descend l'arbre depuis la racine.
+
+    `resoudre_catalogue` (optionnel) : callback `(noeud_catalogue) -> valeur`
+    fourni par l'evaluateur, capable de resoudre un noeud catalogue SIG a la
+    demande (via code_insee / geo). Il n'est PAS utilise pour le routage reel
+    (l'evaluateur gere ca via BesoinCatalogue), mais UNIQUEMENT pour aplatir le
+    sous-arbre au moment de collecter les questions complementaires en batch :
+    les noeuds SIG/catalogue_parametre intercales entre deux QC sont resolus a
+    la volee pour que la QC descendante soit prefetchee sans aller-retour
+    (cf. #187). Retourne None si irresolvable -> la collecte s'arrete
+    proprement sur ce noeud (fallback submit)."""
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
         raise ParcoursError("arbre sans noeud racine")
     index_ids = _build_id_index(arbre)
-    return _descendre(racine, contexte, [], index_ids)
+    return _descendre(racine, contexte, [], index_ids, resoudre_catalogue)
 
 
 # ─── Descente ───────────────────────────────────────────────────────────────
@@ -216,6 +228,7 @@ def _descendre(
     contexte: dict[str, Any],
     chemin: list[str],
     index_ids: dict[str, dict],
+    resoudre_catalogue=None,
 ) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
     """Descend un noeud. Recursif sur les sous-noeuds atteints."""
     chemin = chemin + [noeud["id"]]
@@ -228,14 +241,18 @@ def _descendre(
     # avant la lecture de `valeur` car `champ` n'est ici qu'un nom logique de
     # sortie (trace), pas une cle de routage.
     if type_noeud == "catalogue_parametre":
-        return _resoudre_catalogue_parametre(noeud, contexte, chemin, index_ids)
+        return _resoudre_catalogue_parametre(
+            noeud, contexte, chemin, index_ids, resoudre_catalogue
+        )
 
     valeur = contexte.get(champ)
 
     if valeur is None:
         # Reponse manquante : on s'arrete et on retourne ce qu'il faut
         if type_noeud == "formulaire":
-            questions = _collecter_questions(noeud, contexte, index_ids)
+            questions = _collecter_questions(
+                noeud, contexte, index_ids, resoudre_catalogue
+            )
             return QuestionsSubsidiaires(
                 questions=questions, chemin_partiel=chemin[:-1]
             )
@@ -249,7 +266,7 @@ def _descendre(
         )
 
     branche = _choisir_branche(noeud, valeur)
-    return _descendre_branche(branche, contexte, chemin, index_ids)
+    return _descendre_branche(branche, contexte, chemin, index_ids, resoudre_catalogue)
 
 
 def _descendre_branche(
@@ -257,6 +274,7 @@ def _descendre_branche(
     contexte: dict[str, Any],
     chemin: list[str],
     index_ids: dict[str, dict],
+    resoudre_catalogue=None,
 ) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Une fois la branche choisie, on suit ce qu'elle pointe."""
     if branche.get("feuille_vide"):
@@ -269,7 +287,9 @@ def _descendre_branche(
             f"pas de regle ici, fallback vers l'arbre inferieur."
         )
     if "noeud" in branche:
-        return _descendre(branche["noeud"], contexte, chemin, index_ids)
+        return _descendre(
+            branche["noeud"], contexte, chemin, index_ids, resoudre_catalogue
+        )
     if "regle" in branche:
         return _faire_resultat(branche["regle"], chemin, index_ids)
     if "renvoi_arbre" in branche:
@@ -297,7 +317,7 @@ def _descendre_branche(
             "catalogue",
             "catalogue_parametre",
         ):
-            res = _descendre(cible, contexte, new_chemin, index_ids)
+            res = _descendre(cible, contexte, new_chemin, index_ids, resoudre_catalogue)
         else:
             res = _faire_resultat(cible, new_chemin, index_ids)
         # Patch optionnel : remappe les codes de prescription sur la feuille
@@ -317,6 +337,7 @@ def _resoudre_catalogue_parametre(
     contexte: dict[str, Any],
     chemin: list[str],
     index_ids: dict[str, dict],
+    resoudre_catalogue=None,
 ) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue:
     """Resout un noeud `catalogue_parametre` (issue #128).
 
@@ -339,7 +360,9 @@ def _resoudre_catalogue_parametre(
             # (debug, mini-app de validation). N'influe pas sur le routage.
             if "valeur" in branche:
                 contexte[champ] = branche["valeur"]
-            return _descendre_branche(branche, contexte, chemin, index_ids)
+            return _descendre_branche(
+                branche, contexte, chemin, index_ids, resoudre_catalogue
+            )
 
     expressions = [b.get("expression") for b in noeud.get("branches", [])]
     raise ParcoursError(
@@ -518,7 +541,10 @@ def _appliquer_patch(res: "Resultat", patch: dict) -> None:
 
 
 def _collecter_questions(
-    noeud_formulaire: dict, contexte: dict[str, Any], index_ids: dict[str, dict]
+    noeud_formulaire: dict,
+    contexte: dict[str, Any],
+    index_ids: dict[str, dict],
+    resoudre_catalogue=None,
 ) -> list[QuestionFormulaire]:
     """A partir d'un noeud formulaire bloquant, retourne la liste des
     questions a poser en BATCH **sur la branche en cours uniquement**.
@@ -555,7 +581,9 @@ def _collecter_questions(
         # uniquement la branche choisie, sans questions conditionnelles.
         for branche in noeud_formulaire.get("branches", []):
             if _valeurs_egales(branche.get("valeur"), valeur):
-                _collecter_aval_si_chemin_unique(branche, contexte, questions)
+                _collecter_aval_si_chemin_unique(
+                    branche, contexte, questions, index_ids, resoudre_catalogue
+                )
                 break
     else:
         # Cas standard : on explore toutes les sous-branches du noeud
@@ -565,6 +593,8 @@ def _collecter_questions(
                 branche,
                 contexte,
                 questions,
+                index_ids,
+                resoudre_catalogue,
                 parent_champ=noeud_formulaire["champ"],
                 parent_valeur=branche.get("valeur"),
             )
@@ -572,14 +602,72 @@ def _collecter_questions(
     return questions
 
 
+def _resoudre_renvoi(branche: dict, index_ids: dict[str, dict]) -> dict | None:
+    """Si la branche est un `renvoi_vers` pointant vers un noeud traversable
+    (formulaire / catalogue / catalogue_parametre), retourne ce noeud pour
+    poursuivre la collecte des QC dedans. Retourne None sinon (branche normale,
+    renvoi vers une regle terminale, ou id introuvable) : le prefetch QC
+    n'a rien a collecter au-dela d'une feuille."""
+    cible_id = branche.get("renvoi_vers")
+    if not cible_id:
+        return None
+    cible = index_ids.get(cible_id)
+    if cible and cible.get("type_noeud") in (
+        "formulaire",
+        "catalogue",
+        "catalogue_parametre",
+    ):
+        return cible
+    return None
+
+
+def _valeur_catalogue(noeud: dict, contexte: dict[str, Any], resoudre_catalogue):
+    """Valeur d'un noeud catalogue (SIG) pour la collecte QC.
+
+    On lit d'abord le contexte (catalogue deja resolu par un tour precedent ou
+    par la moulinette). Si absente ET qu'un `resoudre_catalogue` est fourni, on
+    resout le noeud A LA VOLEE (via code_insee/geo) et on ecrit la valeur dans le
+    contexte -> le sous-arbre s'aplatit : tout noeud SIG intercale entre deux QC
+    devient transparent, quel que soit l'arbre (cf. #187). Les SIG etant
+    geo-deterministes (fixes des le chargement, independants des reponses QC),
+    cette resolution anticipee ne change aucun routage : elle le devance juste.
+
+    Retourne None si irresolvable (pas de callback, dataset absent) -> la
+    collecte s'arrete proprement sur ce noeud (fallback submit)."""
+    valeur = contexte.get(noeud["champ"])
+    if valeur is not None:
+        return valeur
+    if resoudre_catalogue is None:
+        return None
+    try:
+        valeur = resoudre_catalogue(noeud)
+    except Exception:
+        return None
+    if valeur is None:
+        return None
+    contexte[noeud["champ"]] = valeur
+    return valeur
+
+
 def _collecter_aval_si_chemin_unique(
     branche: dict,
     contexte: dict[str, Any],
     questions: list[QuestionFormulaire],
+    index_ids: dict[str, dict],
+    resoudre_catalogue=None,
 ) -> None:
     """Suit la branche en cours et collecte les noeuds formulaire en aval
     tant qu'on peut identifier le chemin (valeurs presentes dans le
     contexte ou catalogue resolu)."""
+    # Branche `renvoi_vers` : sous-arbre reutilisable (cf. _descendre_branche).
+    # On resout la cible et on continue la collecte dedans, sinon la QC en aval
+    # d'un renvoi n'est jamais prefetchee.
+    cible = _resoudre_renvoi(branche, index_ids)
+    if cible is not None:
+        _collecter_aval_si_chemin_unique(
+            {"noeud": cible}, contexte, questions, index_ids, resoudre_catalogue
+        )
+        return
     if "noeud" not in branche:
         return
     sous = branche["noeud"]
@@ -594,20 +682,23 @@ def _collecter_aval_si_chemin_unique(
             return
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
-                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                _collecter_aval_si_chemin_unique(
+                    sb, contexte, questions, index_ids, resoudre_catalogue
+                )
                 break
         return
 
     if type_noeud == "catalogue":
-        # Catalogue : pas de question utilisateur. On descend uniquement si
-        # la valeur est dans le contexte (catalogue deja resolu par la
-        # moulinette ou par un tour precedent).
-        valeur = contexte.get(sous["champ"])
+        # Catalogue SIG : pas de question utilisateur. On resout (contexte ou
+        # callback SIG) pour le rendre transparent et continuer vers la QC aval.
+        valeur = _valeur_catalogue(sous, contexte, resoudre_catalogue)
         if valeur is None:
             return
         for sb in sous.get("branches", []):
             if _valeurs_egales(sb.get("valeur"), valeur):
-                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                _collecter_aval_si_chemin_unique(
+                    sb, contexte, questions, index_ids, resoudre_catalogue
+                )
                 break
         return
 
@@ -619,7 +710,9 @@ def _collecter_aval_si_chemin_unique(
         # parcours reel.
         for sb in sous.get("branches", []):
             if evaluer_expression(sb.get("expression"), contexte):
-                _collecter_aval_si_chemin_unique(sb, contexte, questions)
+                _collecter_aval_si_chemin_unique(
+                    sb, contexte, questions, index_ids, resoudre_catalogue
+                )
                 break
 
 
@@ -627,8 +720,10 @@ def _collecter_aval_conditionnel(
     branche: dict,
     contexte: dict[str, Any],
     questions: list[QuestionFormulaire],
-    parent_champ: str,
-    parent_valeur: Any,
+    index_ids: dict[str, dict],
+    resoudre_catalogue=None,
+    parent_champ: str = None,
+    parent_valeur: Any = None,
 ) -> None:
     """Comme `_collecter_aval_si_chemin_unique` mais pour le cas "1re
     question pas encore repondue" : on remonte les questions formulaire
@@ -643,13 +738,73 @@ def _collecter_aval_conditionnel(
     cf. culture_irriguee_type=mais quand on a clique 'Mais' en sous-culture),
     on ne la propose pas : c'est de la redondance UX.
 
-    On ne descend pas les catalogues internes (resolus serveur uniquement)
-    ni les sous-branches conditionnelles a 2 niveaux (rare en pratique,
-    et ca alourdirait inutilement le rendu)."""
+    Les noeuds catalogue (SIG) et catalogue_parametre intermediaires sont
+    TRAVERSES (pas listes : ils ne posent pas de question a l'utilisateur)
+    pour atteindre la QC descendante (bug #187). Le catalogue SIG est resolu a
+    la volee via `resoudre_catalogue` (geo-deterministe) pour rendre le noeud
+    transparent. On garde l'annotation `parent_champ`/`parent_valeur` d'origine :
+    la QC en aval reste conditionnelle a la reponse de la QC parente, quel que
+    soit le nombre de noeuds traverses entre les deux. On ne descend en revanche
+    pas au-dela de la 1re sous-question formulaire (les cascades a 2 niveaux de
+    QC sont rares et alourdiraient le rendu)."""
+    # Branche `renvoi_vers` : on resout la cible (sous-arbre reutilisable) et on
+    # poursuit dedans, en conservant l'annotation parent.
+    cible = _resoudre_renvoi(branche, index_ids)
+    if cible is not None:
+        _collecter_aval_conditionnel(
+            {"noeud": cible},
+            contexte,
+            questions,
+            index_ids,
+            resoudre_catalogue,
+            parent_champ,
+            parent_valeur,
+        )
+        return
     if "noeud" not in branche:
         return
     sous = branche["noeud"]
     type_noeud = sous.get("type_noeud")
+
+    if type_noeud == "catalogue":
+        # Catalogue SIG : resolu par la moulinette, pas par l'utilisateur. On le
+        # resout (contexte ou callback SIG geo-deterministe) pour le rendre
+        # transparent et suivre la bonne branche vers la QC aval. Sinon (pas de
+        # callback / irresolvable) on s'arrete : fallback submit.
+        valeur = _valeur_catalogue(sous, contexte, resoudre_catalogue)
+        if valeur is None:
+            return
+        for sb in sous.get("branches", []):
+            if _valeurs_egales(sb.get("valeur"), valeur):
+                _collecter_aval_conditionnel(
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    parent_champ,
+                    parent_valeur,
+                )
+                break
+        return
+
+    if type_noeud == "catalogue_parametre":
+        # Catalogue parametre : branche choisie par expression (premiere vraie),
+        # comme dans le parcours reel. Pas de question, on traverse.
+        for sb in sous.get("branches", []):
+            if evaluer_expression(sb.get("expression"), contexte):
+                _collecter_aval_conditionnel(
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    parent_champ,
+                    parent_valeur,
+                )
+                break
+        return
+
     if type_noeud != "formulaire":
         return
     # Skip si la sous-question est deja resolue par le contexte (pre-fill).
@@ -729,7 +884,7 @@ def _walk_for_index(noeud: dict, index: dict[str, dict]) -> None:
 
 
 def collecter_qc_du_chemin(
-    arbre: dict, contexte: dict[str, Any]
+    arbre: dict, contexte: dict[str, Any], resoudre_catalogue=None
 ) -> list[QuestionFormulaire]:
     """Retourne TOUTES les questions complementaires (niveau formulaire =
     'complement') qui se trouvent sur le chemin actuel d'apres `contexte`,
@@ -738,13 +893,24 @@ def collecter_qc_du_chemin(
     Sert au rendu du panneau gauche : on doit reafficher chaque QC en cours
     avec ses choix REELS issus de l'arbre (pas une table hardcodee), y compris
     pour les QC en aval qui n'ont pas encore ete repondues.
+
+    `resoudre_catalogue` : meme callback qu'`parcours()` -> les noeuds catalogue
+    SIG intercales sont resolus a la volee (geo-deterministe) pour ne pas
+    bloquer la descente (cf. #187).
     """
     qc: list[QuestionFormulaire] = []
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
         return qc
     index_ids = _build_id_index(arbre)
-    _suivre_chemin_pour_qc(racine, contexte, index_ids, qc, visites=set())
+    _suivre_chemin_pour_qc(
+        racine,
+        contexte,
+        index_ids,
+        qc,
+        visites=set(),
+        resoudre_catalogue=resoudre_catalogue,
+    )
     return qc
 
 
@@ -754,6 +920,7 @@ def _suivre_chemin_pour_qc(
     index_ids: dict[str, dict],
     qc: list[QuestionFormulaire],
     visites: set[str],
+    resoudre_catalogue=None,
 ) -> None:
     """Descend un noeud en suivant la branche dictee par `contexte`. Collecte
     les QC de niveau complement croisees. S'arrete si la valeur du champ
@@ -776,7 +943,12 @@ def _suivre_chemin_pour_qc(
             if evaluer_expression(branche.get("expression"), contexte):
                 if "noeud" in branche:
                     _suivre_chemin_pour_qc(
-                        branche["noeud"], contexte, index_ids, qc, visites
+                        branche["noeud"],
+                        contexte,
+                        index_ids,
+                        qc,
+                        visites,
+                        resoudre_catalogue,
                     )
                 elif "renvoi_vers" in branche:
                     cible = index_ids.get(branche["renvoi_vers"])
@@ -785,7 +957,14 @@ def _suivre_chemin_pour_qc(
                         "catalogue",
                         "catalogue_parametre",
                     ):
-                        _suivre_chemin_pour_qc(cible, contexte, index_ids, qc, visites)
+                        _suivre_chemin_pour_qc(
+                            cible,
+                            contexte,
+                            index_ids,
+                            qc,
+                            visites,
+                            resoudre_catalogue,
+                        )
                 return
         return
 
@@ -793,7 +972,12 @@ def _suivre_chemin_pour_qc(
     if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
         _ajouter_question(qc, noeud)
 
-    valeur = contexte.get(champ) if champ else None
+    # Noeud catalogue SIG : resolu a la volee (contexte ou callback) pour ne pas
+    # bloquer la descente vers les QC en aval.
+    if type_noeud == "catalogue":
+        valeur = _valeur_catalogue(noeud, contexte, resoudre_catalogue)
+    else:
+        valeur = contexte.get(champ) if champ else None
     if valeur is None:
         # On ne peut pas continuer plus loin sans reponse. Cas typique :
         # 1ere QC pas repondue -> on s'arrete ici. Pour les noeuds non-QC
@@ -805,11 +989,19 @@ def _suivre_chemin_pour_qc(
     if branche is None:
         return
     if "noeud" in branche:
-        _suivre_chemin_pour_qc(branche["noeud"], contexte, index_ids, qc, visites)
+        _suivre_chemin_pour_qc(
+            branche["noeud"], contexte, index_ids, qc, visites, resoudre_catalogue
+        )
     elif "renvoi_vers" in branche:
         cible = index_ids.get(branche["renvoi_vers"])
-        if cible and cible.get("type_noeud") in ("formulaire", "catalogue"):
-            _suivre_chemin_pour_qc(cible, contexte, index_ids, qc, visites)
+        if cible and cible.get("type_noeud") in (
+            "formulaire",
+            "catalogue",
+            "catalogue_parametre",
+        ):
+            _suivre_chemin_pour_qc(
+                cible, contexte, index_ids, qc, visites, resoudre_catalogue
+            )
 
 
 def _choisir_branche_safe(noeud: dict, valeur) -> dict | None:

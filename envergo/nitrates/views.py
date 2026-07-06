@@ -478,10 +478,12 @@ class MoulinetteView(View):
         # (peut etre un PAR/ZAR, pas le PAN). Sinon le panel gauche ne
         # retrouverait pas les QC du ZAR (le PAN ne les a pas).
         arbre_actif = None
+        evaluateur_actif = None
         for e in regulations_evaluees:
             ac = getattr(e["evaluator"], "arbre_courant", None)
             if ac:
                 arbre_actif = ac
+                evaluateur_actif = e["evaluator"]
                 break
         if arbre_actif is None:
             # Fallback (pas d'eval arbre, ex preview draft ou hors ZV).
@@ -493,28 +495,29 @@ class MoulinetteView(View):
                     arbre_actif = load_active_tree()
             else:
                 arbre_actif = load_active_tree()
-        contexte_courant = dict(request.GET.items())
-        # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
-        # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
-        # a collecter_qc_du_chemin de descendre l'arbre, on force
-        # en_zone_vulnerable=True (par definition si on a une QC sur le chemin,
-        # on est dans la branche ZV) et on remonte les autres champs catalogue
-        # depuis la moulinette si dispo.
+        # Contexte de descente pour collecter les QC (panneau gauche). On PART
+        # du contexte final de l'evaluateur (`.contexte`) quand il existe : le
+        # dict mute par le parcours, deja porteur des catalogues SIG resolus au
+        # fil de la cascade. On complete par les params d'URL (les reponses
+        # recentes priment sur l'etat fige), en ignorant les valeurs vides pour
+        # ne pas ecraser un catalogue deja resolu.
+        contexte_courant = {}
+        if evaluateur_actif is not None:
+            contexte_courant.update(getattr(evaluateur_actif, "contexte", None) or {})
+        for cle, valeur in request.GET.items():
+            if valeur != "" or cle not in contexte_courant:
+                contexte_courant[cle] = valeur
         contexte_courant.setdefault("en_zone_vulnerable", True)
-        try:
-            cat = getattr(moulinette, "catalog", None) or {}
-            for k in (
-                "zone_note_5",
-                "zone_montagne_d113_14",
-                "zonage_montagne_regional",
-                "zonage_prairie_III",
-            ):
-                if k in cat and k not in contexte_courant:
-                    contexte_courant[k] = cat[k]
-        except Exception:
-            pass
+        # Callback SIG : resout a la volee tout catalogue intercale sur le chemin
+        # (geo-deterministe) pour que la descente ne bute pas dessus. Generique
+        # (registre catalogue_refs), aucun champ en dur -> vaut pour tout arbre.
+        resoudre_catalogue = getattr(
+            evaluateur_actif, "_resoudre_catalogue_pour_collecte", None
+        )
         qc_repondues = []
-        for q in collecter_qc_du_chemin(arbre_actif, contexte_courant):
+        for q in collecter_qc_du_chemin(
+            arbre_actif, contexte_courant, resoudre_catalogue
+        ):
             if q.champ in qc_actifs:
                 # Deja en cours de saisie dans le panneau resultat (a droite),
                 # on ne le redouble pas a gauche.
