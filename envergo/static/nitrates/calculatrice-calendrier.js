@@ -1875,4 +1875,21 @@
   }
 
   render();
+
+  // Re-rendu au redimensionnement de la fenetre (#177). Le calendrier fait un
+  // pixel-snapping des zones et un anti-collision des labels de bornes calcules
+  // en PIXELS ABSOLUS d'apres la largeur reelle de la barre (cf. render() ->
+  // pixel-snap + layoutBornesRows). Apres un resize, ces valeurs deviennent
+  // obsoletes -> zones et traits desalignes. On regenere donc le calendrier,
+  // en debounce pour ne pas recalculer a chaque frame du drag.
+  let resizeTimer = null;
+  let lastWidth = window.innerWidth;
+  window.addEventListener("resize", () => {
+    // Ignore les resize purement verticaux (clavier mobile, barre d'URL qui
+    // se retracte) : seule la largeur impacte la geometrie du calendrier.
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 150);
+  });
 })();

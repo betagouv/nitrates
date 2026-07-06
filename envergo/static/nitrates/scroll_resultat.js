@@ -25,15 +25,29 @@
   //     naturelle de ce qu'il remplissait (pas une page hors contexte).
   //   - resultat final -> block:"start" : la section Localisation/resultat se
   //     cale en HAUT du viewport (on saute le hero).
+  // Sous le breakpoint lg du DSFR (992px), les deux colonnes de .layout--split
+  // s'empilent : le resultat passe SOUS le formulaire + la carte. Scroller vers
+  // le HAUT de la .results-row ramenait alors sur le formulaire, pas sur le
+  // resultat -> l'auto-scroll semblait "ne pas marcher" en mobile (#177). On
+  // vise donc directement la colonne resultat quand les colonnes sont empilees.
+  const LG_BREAKPOINT = 992;
+
   function cible() {
     const qc = document.querySelector("#qc-bloc[data-qc-en-attente='true']");
     if (qc) return { el: qc, block: "end" };
+
+    const empile = window.innerWidth < LG_BREAKPOINT;
+    const resultCol = document.querySelector(".result-col");
+
+    // Colonnes empilees (mobile/tablette) : on cale la colonne resultat en haut.
+    if (empile && resultCol) return { el: resultCol, block: "start" };
+
+    // Desktop en 2 colonnes : le haut de la row (form + resultat alignes).
     const row = document.querySelector(".results-row.layout--split");
     if (row) return { el: row, block: "start" };
-    // Resultat sans split (mobile) : la colonne resultat ou la row simple.
-    const fallback =
-      document.querySelector(".result-col") ||
-      document.querySelector(".results-row");
+
+    // Filets : colonne resultat, sinon row simple.
+    const fallback = resultCol || document.querySelector(".results-row");
     return fallback ? { el: fallback, block: "start" } : null;
   }
 
