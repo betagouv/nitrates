@@ -15,25 +15,29 @@
 }
 
 /* ====================================================================
-   RUBAN 45deg coin haut-gauche (etat repos)
+   RUBAN 45deg coin haut-DROIT (etat repos)
    ==================================================================== */
 .nitrates-construction__ribbon {
   /* Methode canonique du "corner ribbon" : on ancre le CENTRE de la bande
-     sur un point (d, d) de la diagonale du coin, puis on tourne de -45deg
+     sur un point (d, d) de la diagonale du coin, puis on tourne de +45deg
      autour de ce centre. Comme le point d'ancrage est sur la diagonale et
-     que la bande est centree dessus (translate -50%/-50%), ses deux
-     extremites depassent symetriquement des bords haut et gauche -> le
+     que la bande est centree dessus (translate 50%/-50%), ses deux
+     extremites depassent symetriquement des bords haut et droit -> le
      texte tombe pile au centre du triangle visible. d pilote a quelle
-     distance du coin passe la bande (plus grand = plus bas/droite). */
+     distance du coin passe la bande (plus grand = plus bas/gauche).
+
+     #194 : ancre a DROITE (et non plus a gauche) pour ne plus barrer le
+     logo Marianne, place dans le coin haut-gauche du header. Sur les
+     ecrans etroits, le ruban gauche recouvrait la Marianne. */
   --ribbon-d: 4.5rem;
   --ribbon-w: 26rem;
 
   position: fixed;
   top: var(--ribbon-d);
-  left: var(--ribbon-d);
+  right: var(--ribbon-d);
   z-index: 1000;
   width: var(--ribbon-w);
-  transform: translate(-50%, -50%) rotate(-45deg);
+  transform: translate(50%, -50%) rotate(45deg);
   transform-origin: center;
   display: flex;
   align-items: center;
