@@ -875,3 +875,45 @@ ul.calc-cal__recap-list {
 .contenu-rich p {
   margin: 0 0 0.5rem;
 }
+
+/* ====================================================================
+   RESPONSIVE MOBILE (#177)
+   Breakpoint aligne sur le md DSFR (48em = 768px). En dessous = mobile.
+   ==================================================================== */
+@media (width <= 47.99em) {
+  /* Mois du calendrier : les abreviations 3 lettres (Juil/Sept/...) se
+     chevauchent sur petit ecran -> on affiche l'initiale (data-court).
+     On masque le texte du <span> et on injecte l'initiale en ::before. */
+  .calendrier-epandage__months span {
+    font-size: 11px;
+
+    /* cache le label long sans le retirer du DOM (accessibilite : le
+       ::before porte l'initiale visible, le texte reste lisible aux ATs
+       via le contenu d'origine du span). */
+    text-indent: -9999px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .calendrier-epandage__months span::before {
+    content: attr(data-court);
+    position: absolute;
+    inset: 0;
+    text-indent: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Champs dates semis / destruction : de 2 colonnes cote a cote a 1 seule
+     colonne, chaque champ en pleine largeur, l'un sous l'autre. */
+  .calc-cal__form {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .calc-cal__field {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}

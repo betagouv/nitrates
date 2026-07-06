@@ -175,6 +175,33 @@
    se contente de recouvrir le haut du contenu (deja scrolle a ce moment-la),
    ce qui est acceptable pour un simple bandeau d'avertissement. */
 
+/* ====================================================================
+   RESPONSIVE MOBILE (#177)
+   Le ruban a une largeur fixe (--ribbon-w: 26rem) taillee pour desktop.
+   Sur petit ecran il debordait / rendait mal : on le rapproche du coin
+   (d plus petit) et on reduit sa largeur + sa typo pour qu'il reste un
+   coin discret et lisible.
+   ==================================================================== */
+@media (width <= 47.99em) {
+  .nitrates-construction__ribbon {
+    --ribbon-d: 3rem;
+    --ribbon-w: 18rem;
+
+    min-height: 1.6rem;
+  }
+
+  .nitrates-construction__ribbon-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Barre sticky : padding et typo un cran plus compacts sur mobile. */
+  .nitrates-construction__bar {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+  }
+}
+
 /* Respecte prefers-reduced-motion : pas de glissement, juste l'opacite. */
 @media (prefers-reduced-motion: reduce) {
   .nitrates-construction__ribbon,
