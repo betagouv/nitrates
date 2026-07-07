@@ -243,6 +243,36 @@
   overflow: hidden;
 }
 
+/* ─── Carte panoramique en mode saisie (Carte #193) ──────────────────────────
+   Demande maquette : en mode saisie (pas de resultat), la carte s'elargit en
+   panorama (plus large que le formulaire, qui reste etroit dessous), tout en
+   gardant de bons buffers gauche/droite. En mode resultat (layout--split), la
+   carte RESTE petite dans la colonne etroite (largeur + hauteur reduites).
+
+   Technique : la .form-col fait ~58% et est centree ; on fait DEBORDER la
+   .map-container au-dela de cette colonne, symetriquement, via des marges
+   negatives calculees. On plafonne l'elargissement pour conserver des buffers
+   lateraux (le panorama ne colle jamais aux bords de l'ecran). */
+@media (width >= 992px) {
+  .results-row:not(.layout--split) .map-container {
+    /* Deborde de part et d'autre de la colonne form (58.33%) pour viser une
+       largeur ~ 90% du container, centree. Le facteur (90/58.33 - 1)/2 ~ 0.272
+       de la largeur de la colonne, applique en marge negative de chaque cote. */
+    width: auto;
+    margin-left: calc(-27% + 0px);
+    margin-right: calc(-27% + 0px);
+  }
+
+  .results-row:not(.layout--split) .nitrates-map {
+    height: 460px; /* un peu plus haut en panorama */
+  }
+}
+
+/* Mode resultat : carte petite (largeur = colonne etroite, hauteur reduite). */
+.results-row.layout--split .nitrates-map {
+  height: 300px;
+}
+
 /* Filet de securite global : on garantit qu'aucun overflow horizontal
    inattendu ne squeeze le viewport. */
 html,

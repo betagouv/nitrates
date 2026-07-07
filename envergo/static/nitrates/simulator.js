@@ -116,7 +116,9 @@
 
   const planLayer = wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png");
   const photoLayer = wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg");
-  planLayer.addTo(map);
+  // Carte #193 : fond par defaut = Photo aerienne (ortho), pas le Plan IGN
+  // (choix maquette : plus parlant pour reperer sa parcelle).
+  photoLayer.addTo(map);
 
   // Cadastre IGN (parcellaire express) : layer principal pour
   // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
@@ -167,7 +169,8 @@
       .catch((err) => console.error("ZV GeoJSON load failed:", err));
   }
   zvLayer.on("add", loadZvIfNeeded);
-  zvLayer.addTo(map);
+  // Carte #193 : Zones vulnerables DECOCHEES par defaut (l'utilisateur peut
+  // les activer via la tickbox). On ne fait donc plus zvLayer.addTo(map).
 
   // Carte #34 : overlay ZAR (Zone d'Action Renforcée). Couvre toutes les ZAR
   // chargées (potentiellement plusieurs régions ; aujourd'hui le Grand Est).
@@ -221,10 +224,8 @@
     )
     .addTo(map);
 
-  // Affiche la couche ZAR par défaut (debug) : un overlay présent sur la carte
-  // a sa tickbox cochée d'office dans le L.control.layers. L'évènement "add"
-  // déclenche le chargement paresseux du GeoJSON.
-  zarLayer.addTo(map);
+  // Carte #193 : ZAR DECOCHEE par defaut (l'utilisateur peut l'activer via la
+  // tickbox). On ne fait donc plus zarLayer.addTo(map) au chargement.
 
   let marker = null;
 
@@ -277,6 +278,7 @@
       <dl>
         <dt>Coordonnées</dt><dd>${data.lng.toFixed(5)}, ${data.lat.toFixed(5)}</dd>
         <dt>Commune</dt><dd>${communeHtml}</dd>
+        <dt>Code postal</dt><dd>${ci.codePostal || "—"}</dd>
         <dt>Département</dt><dd>${data.department_code || "hors métropole"}</dd>
         <dt>Région</dt><dd>${
           data.region_code
@@ -324,16 +326,24 @@
   // montagne (D113-14) sans avoir a charger les polygones de communes.
   async function fetchCommuneInfo(lat, lng) {
     try {
+      // Carte #193 : on demande aussi codesPostaux (utile dans le panel debug).
+      // Pas de requete supplementaire : c'est un champ de plus sur le meme appel.
       const r = await fetch(
-        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom,code&format=json`
+        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lng}&fields=nom,code,codesPostaux&format=json`
       );
       const arr = await r.json();
       if (Array.isArray(arr) && arr.length) {
-        return { nom: arr[0].nom || null, code: arr[0].code || null };
+        const c = arr[0];
+        return {
+          nom: c.nom || null,
+          code: c.code || null,
+          // Une commune peut avoir plusieurs codes postaux -> on les joint.
+          codePostal: (c.codesPostaux || []).join(", ") || null,
+        };
       }
-      return { nom: null, code: null };
+      return { nom: null, code: null, codePostal: null };
     } catch {
-      return { nom: null, code: null };
+      return { nom: null, code: null, codePostal: null };
     }
   }
 
@@ -559,6 +569,27 @@
       }
     }
 
+    // Carte #193 : libelle de suggestion desambiguise pour les homonymes
+    // (ex plusieurs "Saint-Martin"). L'API BAN renvoie `postcode` (code postal)
+    // et un `context` du type "65, Hautes-Pyrenees, Occitanie". On affiche
+    // "Nom — CP (Departement)" : le CP leve l'ambiguite, le departement aide a
+    // choisir d'un coup d'oeil. On degrade proprement si un champ manque.
+    function libelleSuggestion(props) {
+      const nom = props.label || props.name || props.city || "";
+      const cp = props.postcode || "";
+      // Departement = 2e segment du context ("65, Hautes-Pyrenees, Occitanie").
+      let departement = "";
+      if (props.context) {
+        const parts = props.context.split(",").map((s) => s.trim());
+        if (parts.length >= 2) departement = parts[1];
+      }
+      let suffixe = "";
+      if (cp && departement) suffixe = ` — ${cp} (${departement})`;
+      else if (cp) suffixe = ` — ${cp}`;
+      else if (departement) suffixe = ` (${departement})`;
+      return nom + suffixe;
+    }
+
     function renderSearch(features) {
       searchResults = features;
       activeIndex = -1;
@@ -572,7 +603,9 @@
         li.id = `map-search-opt-${i}`;
         li.setAttribute("role", "option");
         li.setAttribute("aria-selected", "false");
-        li.textContent = f.properties.label;
+        // Carte #193 : libelle desambiguise "Nom — CP (Departement)" pour les
+        // homonymes (donnees deja presentes dans la reponse BAN).
+        li.textContent = libelleSuggestion(f.properties || {});
         // mousedown (pas click) : se declenche avant le blur du champ, evite
         // que closeSearch (sur blur) ne vide la liste avant la selection.
         li.addEventListener("mousedown", (e) => {
@@ -610,7 +643,9 @@
     function selectCommune(feature) {
       // BAN municipality : coordinates = centre de la commune (centre-ville).
       const [lng, lat] = feature.geometry.coordinates;
-      searchInput.value = feature.properties.label;
+      // Dans le champ, on garde le libelle desambiguise : l'utilisateur voit
+      // exactement quelle commune (parmi les homonymes) a ete retenue.
+      searchInput.value = libelleSuggestion(feature.properties || {});
       closeSearch();
       // Une fois le form revele (apres le reverse-geocode async), on deplace le
       // focus sur le 1er radio de la 1re question (Carte #154, a11y) : Max veut
