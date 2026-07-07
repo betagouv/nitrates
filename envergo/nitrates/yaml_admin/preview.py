@@ -109,26 +109,78 @@ _POINTS = {
         "lng": "4.21806",
         "code_insee": "51046",
     },
-    # ─── Points PAR autres regions ───────────────────────────────────────────
-    # Un PAR regional s'active par region (pas par couche SIG) : ZV + region
-    # suffisent, le code_insee n'est pas requis (cf. par_grand_est/zar_grand_est).
-    # Verifie via le catalog moulinette (en_zone_vulnerable, region_code).
-    "par_hauts_de_france": {
-        # Saint-Quentin (02), Aisne : ZV oui, region 32 (Hauts-de-France),
-        # pas ZAR. Point PAR generique pour la region Hauts-de-France.
-        "lat": "49.8489",
-        "lng": "3.2865",
-        "code_insee": "",
+    # ─── Points PAR par region (metropole) ───────────────────────────────────
+    # Un PAR regional s'active par region (ZV + region), et son point de preview
+    # doit tomber DANS la region de l'arbre (accuracy demandee). Points generes
+    # par scripts/generate_region_points.py : commune reelle en ZV, centre
+    # officiel geo.api.gouv.fr, profil (ZV, region) verifie via le catalog
+    # moulinette. Grand Est garde son point historique (par_grand_est, 51046).
+    # Regions sans point ici (76 Occitanie, 93 PACA) : couvertes plus tard quand
+    # un PAR y sera actif -- elles retombent alors sur le fallback (None -> chemin).
+    "par_region_11": {
+        # Achères-la-Forêt (77001), Ile-de-France : ZV, hors ZAR.
+        "lat": "48.347600",
+        "lng": "2.565300",
+        "code_insee": "77001",
+    },
+    "par_region_24": {
+        # Achères (18001), Centre-Val de Loire : ZV, hors ZAR.
+        "lat": "47.282800",
+        "lng": "2.460100",
+        "code_insee": "18001",
+    },
+    "par_region_27": {
+        # Agencourt (21001), Bourgogne-Franche-Comte : ZV, hors ZAR.
+        "lat": "47.125600",
+        "lng": "4.988300",
+        "code_insee": "21001",
+    },
+    "par_region_28": {
+        # Les Trois Lacs (27676), Normandie : ZV, hors ZAR.
+        "lat": "49.213400",
+        "lng": "1.332600",
+        "code_insee": "27676",
+    },
+    "par_region_32": {
+        # Abbécourt (02001), Hauts-de-France : ZV, hors ZAR.
+        "lat": "49.599700",
+        "lng": "3.182400",
+        "code_insee": "02001",
+    },
+    "par_region_53": {
+        # Allineuc (22001), Bretagne : ZV, hors ZAR.
+        "lat": "48.314700",
+        "lng": "-2.869300",
+        "code_insee": "22001",
+    },
+    "par_region_75": {
+        # Les Adjots (16002), Nouvelle-Aquitaine : ZV, hors ZAR.
+        "lat": "46.078100",
+        "lng": "0.202800",
+        "code_insee": "16002",
+    },
+    "par_region_84": {
+        # Ambérieux-en-Dombes (01005), Auvergne-Rhone-Alpes : ZV, hors ZAR.
+        "lat": "45.999200",
+        "lng": "4.911900",
+        "code_insee": "01005",
     },
 }
 
 # Mapping region_code -> cle _POINTS pour les PAR (scope region). Forward
-# compatible : ajouter une region = une ligne ici + son point dans _POINTS.
-# Grand Est (44) est notre reference historique, Hauts-de-France (32) le
-# prochain objectif operationnel.
+# compatible : ajouter une region = une ligne ici + son point dans _POINTS
+# (via scripts/generate_region_points.py). Grand Est (44) garde son point
+# historique ; Hauts-de-France (32) est le prochain objectif operationnel.
 _POINT_PAR_REGION = {
-    "44": "par_grand_est",
-    "32": "par_hauts_de_france",
+    "11": "par_region_11",  # Ile-de-France
+    "24": "par_region_24",  # Centre-Val de Loire
+    "27": "par_region_27",  # Bourgogne-Franche-Comte
+    "28": "par_region_28",  # Normandie
+    "32": "par_region_32",  # Hauts-de-France
+    "44": "par_grand_est",  # Grand Est (point historique 51046)
+    "53": "par_region_53",  # Bretagne
+    "75": "par_region_75",  # Nouvelle-Aquitaine
+    "84": "par_region_84",  # Auvergne-Rhone-Alpes
 }
 
 # Idem pour les ZAR (scope zar). Aujourd'hui seul le ZAR Grand Est existe ;
