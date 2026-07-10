@@ -384,10 +384,26 @@
     const du = parseBorne(p.du, valeurs);
     const au = parseBorne(p.au, valeurs);
     if (du.jourRaw === null || au.jourRaw === null) return false;
-    // Intervalle lu dans le sens AVANT (du -> au), bornes alignées sur la même
-    // ancre : s'il est VIDE (au passe avant du), la fenêtre est inversée.
-    const auAligne = _alignerSurAncre(au.jourRaw, du.jourRaw);
-    const inverse = auAligne < du.jourRaw;
+    // Détection d'inversion (`au` tombe avant `du`), en deux régimes selon que
+    // l'une des bornes FRANCHIT réellement l'année agricole (jourRaw hors
+    // [0, 365) : un event±offset qui déborde du 1er juillet ou du 30 juin) :
+    //
+    //   - Aucun franchissement (les 2 jourRaw ∈ [0, 365)) : on compare les
+    //     index agricoles NATIFS bornés. C'est le repère fidèle à la barre
+    //     dessinée. `_alignerSurAncre` est PROSCRIT ici : il replierait une
+    //     fenêtre longue mais parfaitement valide vers une pseudo-inversion —
+    //     p.ex. `du: destruction-20j (12/10) au: 30/06` avec une destruction
+    //     au 01/11 aligne 30/06 sur -1 et neutralise à tort l'interdit (bug
+    //     signalé : l'interdit démarrait au 15/10 au lieu du 12/10).
+    //   - Un franchissement d'année : là l'index natif MENT (le modulo replie
+    //     la borne débordante du mauvais côté), on repasse par l'alignement
+    //     continu autour de l'ancre pour retrouver l'ordre réel (ex `du: 01/07
+    //     au: semis-15j` avec un semis précoce -> semis-15j = 29/06, jourRaw
+    //     négatif, réellement AVANT le 01/07).
+    const franchit = (b) => b.jourRaw < 0 || b.jourRaw >= TOTAL_JOURS;
+    const inverse = franchit(du) || franchit(au)
+      ? _alignerSurAncre(au.jourRaw, du.jourRaw) < du.jourRaw
+      : au.jour < du.jour;
     if (!inverse) return false;
     // Une inversion est DÉGÉNÉRÉE (donnée incohérente -> on neutralise la
     // période, sinon elle wrappe et peint quasi toute l'année) quand au moins

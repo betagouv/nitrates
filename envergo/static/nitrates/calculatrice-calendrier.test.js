@@ -235,6 +235,33 @@ test("BUG inversion : semis saisi APRÈS destruction (du=semis au=destruction) -
   );
 });
 
+test("BUG borne dynamique ignorée : du=destruction-20j (antérieur au 15/10) au=30/06 étend l'interdit vers l'amont", () => {
+  // Cas validation staging (PAR/ICPE-A digestats, r_cine_avant_3112_type_II_icpe_a_digestats) :
+  // deux interdits jusqu'au 30/06, l'un fixe `du: 15/10`, l'autre dynamique
+  // `du: destruction-20j`. Avec destruction 01/11 -> destruction-20j = 12/10,
+  // ANTÉRIEUR au 15/10 : l'interdit doit démarrer au 12/10 (la borne dynamique
+  // étend vers l'amont), pas au 15/10.
+  //
+  // Régression corrigée : `_alignerSurAncre` repliait `au: 30/06` (idx 364)
+  // sur -1, jugeait la fenêtre `12/10 -> 30/06` inversée et neutralisait toute
+  // la période dynamique -> l'interdit démarrait à tort au 15/10.
+  const periodes = [
+    { au: "date_semis_couvert-15jours", du: "01/07", regime: "interdiction",
+      condition: "01/07 < date_semis_couvert-15jours" },
+    { au: "30/06", du: "date_destruction_couvert-20jours", regime: "interdiction" },
+    { au: "30/06", du: "15/10", regime: "interdiction" },
+  ];
+  cal.setData({ type: "calculatrice", periodes });
+  const r = computeRegimePerDay(periodes, {
+    date_semis_couvert: "15/08", date_destruction_couvert: "01/11",
+  });
+  assert.strictEqual(r[J("11/10")], "libre", "veille de destruction-20j : encore autorisé");
+  assert.strictEqual(r[J("12/10")], "interdiction", "destruction-20j : l'interdit dynamique démarre ici");
+  assert.strictEqual(r[J("14/10")], "interdiction", "entre 12/10 et 15/10 : interdit par la borne dynamique");
+  assert.strictEqual(r[J("15/10")], "interdiction");
+  assert.strictEqual(r[J("30/06")], "interdiction");
+});
+
 // ─── conditionToText : justification métier couvert (#159, retour Emma) ──────
 // La phrase remplace l'entièreté de l'ancien "(annotation) — car ...". Format :
 // "Car interdit jusqu'à / à partir de <N unités> avant/après
