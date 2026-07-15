@@ -92,6 +92,51 @@ def _is_valid_date_or_event(val: str) -> bool:
     return bool(BORNE_EVENT_OFFSET_RE.match(val))
 
 
+# Composant reserve aux regles type=calculatrice (calendrier dynamique couvert).
+# Les autres composants (ex luzerne_post_coupe) sont legitimes pour type=mixte.
+COMPOSANT_CALCULATRICE = "calendrier_dynamique_couvert"
+
+
+def _purger_champs_calculatrice_hors_nature(new_data: dict) -> None:
+    """Purge in place les champs propres a la nature calculatrice quand le
+    type final n'est plus calculatrice (#218).
+
+    Le formulaire masque ces champs en display:none au changement de nature,
+    mais display:none NE retire PAS l'input du DOM -> il reste poste avec son
+    ancienne valeur, et survit comme residu. On les remet a zero ici, seule
+    source de verite du save reussi (to_new_data -> editor.update_regle).
+
+    Le marqueur du residu = presence du composant calendrier couvert
+    (`calendrier_dynamique_couvert`) sur une nature non calculatrice. On purge
+    alors les champs qui n'ont de sens que pour ce calendrier :
+    - `composant` couvert lui-meme,
+    - `inputs_requis` (dates de semis/destruction),
+    - `condition` / `masque` des periodes (grammaire specifique calculatrice).
+
+    ATTENTION : d'autres composants sont LEGITIMES hors calculatrice, ex
+    `luzerne_post_coupe` sur type=mixte, avec leurs propres `inputs_requis`
+    voulus. On ne touche donc RIEN si le composant n'est pas le calendrier
+    couvert -- sinon on effacerait les inputs_requis legitimes de la luzerne.
+
+    `texte_condition` n'est PAS purge ici : c'est une justification metier
+    legitime pour interdiction / ASC / plafond (rendue en tooltip ⓘ, cf. les
+    13 justifications volontaires du PAR HdF). Son nettoyage en cas de
+    transition calculatrice->autre est gere cote vue, ou l'ancien type est
+    connu.
+    """
+    if new_data.get("type") == "calculatrice":
+        return
+    # Seul le composant calendrier couvert declenche la purge (les autres
+    # composants + leurs inputs_requis sont legitimes, ex luzerne_post_coupe).
+    if new_data.get("composant") != COMPOSANT_CALCULATRICE:
+        return
+    new_data["composant"] = None
+    new_data["inputs_requis"] = []
+    for p in new_data.get("periodes") or []:
+        p.pop("condition", None)
+        p.pop("masque", None)
+
+
 class _BaseYamlForm(forms.Form):
     """Base : `to_new_data()` retourne le dict consommable par editor."""
 
@@ -402,4 +447,5 @@ class RegleForm(_BaseYamlForm):
         if plafond is not None:
             new_data["plafond_azote_kg_n_ha"] = float(plafond)
         new_data["a_completer"] = bool(cd.get("a_completer"))
+        _purger_champs_calculatrice_hors_nature(new_data)
         return new_data
