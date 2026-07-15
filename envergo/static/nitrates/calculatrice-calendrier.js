@@ -590,6 +590,7 @@
       jourAgricoleToJJMM,
       conditionToText,
       justificationInterdiction,
+      annoterBorne,
       jourAgricoleToLisible,
       TOTAL_JOURS,
       setData: (d) => {
@@ -819,22 +820,23 @@
     return REGIME_VERBE[segment.regime] || segment.regime;
   }
 
-  // Genere « a partir de N jours apres semis » (mode=du) ou « jusqu'a
-  // N jours apres semis » (mode=au), seulement pour les bornes event+offset.
+  // Annotation de survol d'une borne event+offset. La DIRECTION ne depend que
+  // du role de la borne dans la periode (#215) :
+  //   - mode "du" = la periode COMMENCE a cette borne -> "à partir de" ;
+  //   - mode "au" = la periode FINIT a cette borne     -> "jusqu'à".
+  // Le SIGNE de l'offset ne joue QUE sur "avant/après" (prep), jamais sur la
+  // direction. Auparavant la direction dependait aussi du signe, ce qui
+  // inversait le wording pour les offsets negatifs (bug #215 : "à partir de
+  // 15 jours avant le semis" affiche au lieu de "jusqu'à ...", et
+  // symetriquement pour destruction-20j). Les offsets positifs (ex semis+4sem)
+  // etaient corrects par coincidence et le restent.
   // Pour les bornes event nu (sans offset), pas d'annotation.
   function annoterBorne(part, mode, inputById) {
     if (!part.isEvent || !part.eventId || !part.offsetN) return null;
     const inp = inputById[part.eventId];
     const lc = inp ? deduireLabelCourt(inp) : part.eventId;
     const prep = part.offsetSign === "+" ? "après" : "avant";
-    const direction =
-      mode === "du"
-        ? part.offsetSign === "+"
-          ? "à partir de"
-          : "jusqu'à"
-        : part.offsetSign === "+"
-          ? "jusqu'à"
-          : "à partir de";
+    const direction = mode === "du" ? "à partir de" : "jusqu'à";
     return `${direction} ${part.offsetN} ${part.offsetUnit} ${prep} ${lc}`;
   }
 

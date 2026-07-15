@@ -367,3 +367,50 @@ test("#214 : periode nulle / sans borne dyn -> null (robustesse)", () => {
   assert.strictEqual(justif(null), null);
   assert.strictEqual(justif({ du: "01/07", au: "30/06", regime: "interdiction" }), null);
 });
+
+// ─── annoterBorne (#215) : tooltip de survol de la BARRE. La direction depend ─
+// du ROLE de la borne (du=debut -> "a partir de", au=fin -> "jusqu'a"), JAMAIS
+// du signe de l'offset (qui ne joue que sur avant/apres).
+const annote = cal.annoterBorne;
+const IBID = {
+  date_semis_couvert: { id: "date_semis_couvert", label_court: "semis" },
+  date_destruction_couvert: { id: "date_destruction_couvert", label_court: "destruction" },
+};
+const borne = (eventId, sign, n, unit) => ({
+  isEvent: true, eventId, offsetSign: sign, offsetN: n, offsetUnit: unit,
+});
+
+test("#215 : au=semis-15j -> 'jusqu'a 15 jours avant semis' (etait 'a partir de')", () => {
+  assert.strictEqual(
+    annote(borne("date_semis_couvert", "-", 15, "jours"), "au", IBID),
+    "jusqu'à 15 jours avant semis"
+  );
+});
+
+test("#215 : du=destruction-20j -> 'a partir de 20 jours avant destruction' (etait 'jusqu'a')", () => {
+  assert.strictEqual(
+    annote(borne("date_destruction_couvert", "-", 20, "jours"), "du", IBID),
+    "à partir de 20 jours avant destruction"
+  );
+});
+
+test("#215 non-reg : offset positif inchange (au=semis+4sem -> 'jusqu'a ... apres semis')", () => {
+  assert.strictEqual(
+    annote(borne("date_semis_couvert", "+", 4, "semaines"), "au", IBID),
+    "jusqu'à 4 semaines après semis"
+  );
+});
+
+test("#215 non-reg : offset positif inchange (du=semis+15j -> 'a partir de ... apres semis')", () => {
+  assert.strictEqual(
+    annote(borne("date_semis_couvert", "+", 15, "jours"), "du", IBID),
+    "à partir de 15 jours après semis"
+  );
+});
+
+test("#215 : borne event nu (sans offset) -> pas d'annotation", () => {
+  assert.strictEqual(
+    annote({ isEvent: true, eventId: "date_semis_couvert", offsetN: null }, "du", IBID),
+    null
+  );
+});
