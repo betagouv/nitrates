@@ -302,3 +302,68 @@ test("conditionToText : condition vide/nulle -> null", () => {
   assert.strictEqual(cal.conditionToText(""), null);
   assert.strictEqual(cal.conditionToText(null), null);
 });
+
+// ─── justificationInterdiction (#214) : (i) derive des BORNES, pas de la ─────
+// condition. Pilote desormais l'affichage du ⓘ sur les periodes d'interdiction.
+const justif = cal.justificationInterdiction;
+
+test("#214.1 : interdiction du=destruction-20j (SANS condition) -> (i) 'a partir de'", () => {
+  // Cas signale : la periode d'interdiction destruction-20j -> 15/01 n'a pas de
+  // champ condition, donc l'ancien conditionToText ne produisait AUCUN (i).
+  assert.strictEqual(
+    justif({ du: "date_destruction_couvert-20jours", au: "15/01", regime: "interdiction" }),
+    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+  );
+});
+
+test("#214.3 : interdiction au=semis-15j -> (i) 'jusqu'a 15 jours avant l'implantation'", () => {
+  assert.strictEqual(
+    justif({ du: "01/07", au: "date_semis_couvert-15jours", regime: "interdiction" }),
+    "Car interdit jusqu’à 15 jours avant l’implantation du couvert"
+  );
+});
+
+test("#214.4 : wording 'a partir de' quand l'interdiction DEMARRE a la borne dyn", () => {
+  // du = event => l'interdiction commence a cette borne => "a partir de"
+  // (et non "jusqu'a" comme le produisait l'ancien conditionToText via la
+  // condition de l'ASC voisine `destruction-20j > 15/11`).
+  assert.strictEqual(
+    justif({ du: "date_destruction_couvert-20jours", au: "15/01", regime: "interdiction" }),
+    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+  );
+});
+
+test("#214 non-reg : masque au=semis+4sem conserve 'jusqu'a ... apres l'implantation'", () => {
+  // Cas qui affichait DEJA le bon (i) via la condition : la nouvelle logique
+  // (derivee de au) doit produire le meme texte.
+  assert.strictEqual(
+    justif({ du: "15/11", au: "date_semis_couvert+4semaines", masque: true, regime: "interdiction" }),
+    "Car interdit jusqu’à 4 semaines après l’implantation du couvert"
+  );
+});
+
+test("#214 non-reg : interdiction du=semis+15j conserve 'a partir de ... apres l'implantation'", () => {
+  assert.strictEqual(
+    justif({ du: "date_semis_couvert+15jours", au: "15/01", regime: "interdiction" }),
+    "Car interdit à partir de 15 jours après l’implantation du couvert"
+  );
+});
+
+test("#214 : interdiction a bornes FIXES -> pas de (i) (rien de dynamique a expliquer)", () => {
+  assert.strictEqual(
+    justif({ du: "15/12", au: "15/01", regime: "interdiction" }),
+    null
+  );
+});
+
+test("#214 : deux bornes event -> le DEBUT (du) prime", () => {
+  assert.strictEqual(
+    justif({ du: "date_destruction_couvert-20jours", au: "date_destruction_couvert", regime: "interdiction" }),
+    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+  );
+});
+
+test("#214 : periode nulle / sans borne dyn -> null (robustesse)", () => {
+  assert.strictEqual(justif(null), null);
+  assert.strictEqual(justif({ du: "01/07", au: "30/06", regime: "interdiction" }), null);
+});

@@ -589,6 +589,7 @@
       _alignerSurAncre,
       jourAgricoleToJJMM,
       conditionToText,
+      justificationInterdiction,
       jourAgricoleToLisible,
       TOTAL_JOURS,
       setData: (d) => {
@@ -1313,6 +1314,35 @@
     return `car ${gauche} est ${tournure} ${droite}`;
   }
 
+  // Justification metier (#214) d'une periode d'INTERDICTION, derivee de ses
+  // bornes `du`/`au` (et NON de son champ `condition`, qui est une garde de
+  // CALCUL, pas une justification -- beaucoup de periodes d'interdiction en sont
+  // depourvues alors qu'elles ont une borne dynamique a expliquer, cf. #214.1 /
+  // #214.3, 48 periodes concernees sur l'arbre).
+  //
+  // Regle (validee sur les cas existants qui affichaient deja le bon (i)) :
+  //   - `du` = event couvert (semis/destruction ± offset) -> l'interdiction
+  //     DEMARRE a cette borne -> "Car interdit a partir de <point>" (#214.4).
+  //   - sinon `au` = event couvert -> l'interdiction FINIT a cette borne
+  //     -> "Car interdit jusqu'a <point>".
+  //   - les deux events (rare, 1 cas) : le DEBUT prime (a partir de).
+  //   - aucune borne dynamique (interdiction a dates fixes) -> null (rien a
+  //     expliquer, la date est deja lisible sur la puce).
+  //
+  // Ne s'applique QU'aux periodes d'interdiction (#214.2, decision produit :
+  // tous les (i) "car interdit" sur les interdictions). L'appelant filtre.
+  function justificationInterdiction(periode) {
+    if (!periode) return null;
+    // termeCouvertToText ne reconnait QUE les events couvert (semis/destruction
+    // ± offset) et retourne null pour une date fixe -> il fait office de test
+    // "est-ce une borne dynamique couvert ?" sans dependre des valeurs saisies.
+    const evDu = termeCouvertToText(periode.du);
+    if (evDu) return `Car interdit à partir de ${evDu}`;
+    const evAu = termeCouvertToText(periode.au);
+    if (evAu) return `Car interdit jusqu’à ${evAu}`;
+    return null;
+  }
+
   // Trouve la periode active dont la fenetre EFFECTIVE recouvre ce segment,
   // pour recuperer ses annotations (event+offset) et sa condition. On prefere
   // la periode du meme regime que le segment, et celle dont la fenetre
@@ -1366,13 +1396,13 @@
       const auStr = jourAgricoleToLisible(seg.au);
       let ligne = `du ${duStr} au ${auStr}`;
 
-      const src = periodeSourcePourSegment(seg, actives);
-      if (src) {
-        // #159 (retour Emma) : la justification metier remplace l'ENTIERETE de
-        // l'ancien "(annotation) — car ..." (l'annotation event+offset entre
-        // parentheses N'EST PLUS affichee separement). On ne garde qu'un picto
-        // ⓘ dont le tooltip porte la phrase complete "(car interdit jusqu'a...)".
-        const condTxt = conditionToText(src.condition, inputById);
+      // Justification ⓘ (#214) : uniquement sur les periodes d'INTERDICTION
+      // (#214.2), et derivee de la borne dynamique de la periode source (et non
+      // de son champ `condition`, cf. justificationInterdiction -- corrige les
+      // (i) manquants #214.1/#214.3 et le wording "a partir de" #214.4).
+      if (regime === "interdiction") {
+        const src = periodeSourcePourSegment(seg, actives);
+        const condTxt = justificationInterdiction(src);
         if (condTxt) {
           ligne += ` <span class="calc-cal__recap-info" tabindex="0" role="img" aria-label="${escapeHtml(condTxt)}" data-tooltip="${escapeHtml(condTxt)}">ⓘ</span>`;
         }
