@@ -171,24 +171,27 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
-          Code prescription : libelle long resolu via referentiels.
-          On ne l'affiche QUE si la regle n'a pas deja un `message` narratif :
-          le `texte_court` du PC est volontairement minimaliste (ex pc5
-          "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
-          avec un message regle qui dit deja la meme chose en plus contextuel.
+          Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
+          (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
+          PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
+          DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
+
+          Regle d'anti-doublon (#216) : le contenu riche `blocs` s'affiche
+          TOUJOURS -- c'est une vraie fiche (ex PC15 = detail du plafond 70 kg
+          N/ha), jamais redondante avec le message narratif de la regle. Seul le
+          fallback `texte_court` est masque quand la regle a deja un `message` :
+          ce texte_court est volontairement lapidaire (ex pc5 "Apport d'engrais
+          mineraux autorise.") et ferait doublon avec le message.
+          Avant #216, la condition `not message` sautait TOUT le bloc PC, y
+          compris les blocs riches -> la PC15 d'une regle avec message
+          (ex CIE courte types 0/I/II) ne s'affichait pas.
           {% endcomment %}
-          {% comment %}
-            Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
-            (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
-            PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
-            DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
-          {% endcomment %}
-          {% if ev.regle.codes_prescription and not ev.regle.message %}
+          {% if ev.regle.codes_prescription %}
             {% for cp in ev.regle.codes_prescription %}
               {% with pc=codes_prescription|get_item:cp %}
                 {% if pc.blocs %}
                   <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
-                {% elif pc %}
+                {% elif pc and not ev.regle.message %}
                   <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
                   {% if pc.texte_court %}
                     <p>
@@ -200,7 +203,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                       {% endif %}
                     </p>
                   {% endif %}
-                {% else %}
+                {% elif not pc and not ev.regle.message %}
                   <p class="fr-text--sm">
                     <strong>Code prescription :</strong> {{ cp }}
                   </p>
