@@ -453,14 +453,26 @@ def periodes_par_section(regle) -> list[dict]:
             }
         )
 
+    # Tri des periodes d'un meme regime par jour agricole de debut (#224) :
+    # sans ca, plusieurs periodes du meme regime (ex 2 interdictions d'une regle
+    # mixte) s'affichaient dans l'ordre du YAML, pas dans l'ordre du calendrier
+    # (juillet->juin). On ordonne sur l'index agricole du `du` ; une borne non
+    # parsable (event sans date_calendrier) est repoussee en fin (float inf).
+    def _rang_agricole(p) -> float:
+        jjmm = _parse_jjmm(p.get("du", ""))
+        return _day_of_year(*jjmm) if jjmm else float("inf")
+
     for regime in _ORDRE_REGIME:
+        periodes_regime = sorted(
+            (p for p in periodes if (p.get("regime") or regle_type) == regime),
+            key=_rang_agricole,
+        )
         puces = [
             {
                 "phrase": periode_phrase(p),
                 "justification": justification,
             }
-            for p in periodes
-            if (p.get("regime") or regle_type) == regime
+            for p in periodes_regime
         ]
         if puces:
             sections.append({"titre": _SECTION_TITRE[regime], "periodes": puces})

@@ -200,3 +200,27 @@ def test_periodes_par_section_sans_texte_condition():
 
 def test_periodes_par_section_regle_none():
     assert periodes_par_section(None) == []
+
+
+def test_periodes_par_section_ordre_agricole_regime_mixte():
+    """#224 : plusieurs periodes d'un meme regime (ex 2 interdictions d'une
+    regle mixte) doivent s'afficher dans l'ordre de l'annee agricole
+    (juillet->juin), pas dans l'ordre du YAML.
+    """
+    # Interdictions listees dans le desordre : 15/10 avant 01/07 dans le YAML.
+    r = _regle(
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "14/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+            {"du": "01/07", "au": "14/08", "regime": "interdiction"},
+        ],
+    )
+    sections = periodes_par_section(r)
+    interdiction = next(s for s in sections if s["titre"] == "Période d’interdiction")
+    phrases = [p["phrase"] for p in interdiction["periodes"]]
+    # 01/07 (index agricole 0) doit precéder 15/10 (index ~106).
+    assert phrases == [
+        "du 1er juillet au 14 août",
+        "du 15 octobre au 31 janvier",
+    ], phrases
