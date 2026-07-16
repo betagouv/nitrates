@@ -1,9 +1,13 @@
-"""Seed initial des référentiels depuis referentiels.yaml au déploiement.
+"""Seed initial historique des référentiels au déploiement.
 
-Idempotent : si déjà appliqué, n'écrit rien.
-Best-effort : si le YAML est introuvable (env CI sans bind-mount), on
-log et on no-op. La commande `seed_referentiels` permet de re-tenter
-manuellement après coup.
+Best-effort : si la source de seed est introuvable, on log et on no-op.
+Cette migration a été appliquée sur les bases existantes (prod/staging/dev)
+quand elle lisait `referentiels.yaml`. Depuis #226 ce YAML a été supprimé
+au profit d'une fixture (`fixtures/initial_referentiels.json`) chargée par
+la commande `seed_referentiels`. Sur une base à jour cette migration ne se
+rejoue pas ; sur une base neuve elle no-op (YAML absent) et le seed se fait
+via `python manage.py seed_referentiels`. Le corps est laissé intact (avec
+son garde `exists()`) pour ne pas altérer l'historique de migration.
 """
 
 import sys
@@ -24,9 +28,9 @@ def forwards(apps, schema_editor):
     yaml_path = Path(settings.NITRATES_SPECS_DIR) / "referentiels.yaml"
     if not yaml_path.exists():
         sys.stderr.write(
-            f"[migration nitrates 0012] {yaml_path} introuvable, "
-            f"seed sauté. Lancer plus tard via "
-            f"`python manage.py seed_referentiels`.\n"
+            f"[migration nitrates 0012] {yaml_path} introuvable (attendu "
+            f"depuis #226), seed initial sauté. Peupler via "
+            f"`python manage.py seed_referentiels` (fixture).\n"
         )
         return
 

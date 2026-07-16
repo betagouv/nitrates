@@ -1,6 +1,8 @@
 """Référentiels métier nitrates en base.
 
-Migré depuis `envergo/nitrates/specs/referentiels.yaml` (cf. carte #61).
+Migré depuis un YAML historique en base (cf. carte #61). Depuis #226, le
+seed initial provient de la fixture `fixtures/initial_referentiels.json`
+(commande `seed_referentiels`), plus d'aucun YAML de référentiels.
 Les juristes peuvent éditer ces tables via l'admin Django sans
 intervention dev :
 
@@ -27,10 +29,37 @@ from envergo.nitrates.constants import (
     TypeFertilisant,
 )
 
+# ─── Support clefs naturelles (seed fixture idempotent, #226) ─────────────────
+#
+# Tous les modèles référentiel ont un `identifiant` unique. On l'expose comme
+# clef naturelle pour que la fixture de seed (dumpdata --natural-primary,
+# chargée par `seed_referentiels`) fasse un upsert SUR L'IDENTIFIANT plutôt que
+# sur la PK auto-incrémentée. Sans ça, un re-seed sur une base dont les PK ont
+# divergé (ex après suppression/réinsertion d'une ligne en admin) collisionne
+# sur la contrainte unique `identifiant`.
+
+
+class _IdentifiantNaturalKeyManager(models.Manager):
+    def get_by_natural_key(self, identifiant):
+        return self.get(identifiant=identifiant)
+
+
+class _NaturalKeyByIdentifiant(models.Model):
+    """Mixin abstrait : clef naturelle = (identifiant,)."""
+
+    objects = _IdentifiantNaturalKeyManager()
+
+    class Meta:
+        abstract = True
+
+    def natural_key(self):
+        return (self.identifiant,)
+
+
 # ─── Cultures ────────────────────────────────────────────────────────────────
 
 
-class GroupeCultureUI(models.Model):
+class GroupeCultureUI(_NaturalKeyByIdentifiant):
     """Groupe de cultures affiché au 1er niveau de la cascade formulaire
     (ex 'Culture d'hiver', 'Prairies ou luzerne').
 
@@ -65,7 +94,7 @@ class GroupeCultureUI(models.Model):
         return self.libelle_public
 
 
-class BrancheCulturale(models.Model):
+class BrancheCulturale(_NaturalKeyByIdentifiant):
     """Branche de l'arbre de décision sur le nœud formulaire/sous_culture.
 
     Une `BrancheCulturale` est référencée par les arbres YAML comme
@@ -97,7 +126,7 @@ class BrancheCulturale(models.Model):
         return self.identifiant
 
 
-class Culture(models.Model):
+class Culture(_NaturalKeyByIdentifiant):
     """Culture utilisateur du formulaire (ex 'Colza', 'Maïs', 'Luzerne').
 
     Une Culture est rattachée à :
@@ -149,7 +178,7 @@ class Culture(models.Model):
 # ─── Fertilisants ────────────────────────────────────────────────────────────
 
 
-class Fertilisant(models.Model):
+class Fertilisant(_NaturalKeyByIdentifiant):
     """Fertilisant précis affiché au 2e niveau de la cascade formulaire
     (ex 'Boues de papeterie', 'Fientes de volailles').
 
@@ -218,7 +247,7 @@ class Fertilisant(models.Model):
 # ─── Codes prescription + notes ──────────────────────────────────────────────
 
 
-class NoteReglementaire(models.Model):
+class NoteReglementaire(_NaturalKeyByIdentifiant):
     """Note de bas de page conditionnelle (note_1 à note_13).
 
     Deux usages :
@@ -254,7 +283,7 @@ class NoteReglementaire(models.Model):
         return f"{self.identifiant} — {self.libelle_court}"
 
 
-class CodePrescription(models.Model):
+class CodePrescription(_NaturalKeyByIdentifiant):
     """Code de prescription PC (pc1 à pc16) référencé par les feuilles
     de l'arbre de décision."""
 
@@ -319,7 +348,7 @@ _JJMM_VALIDATOR = RegexValidator(
 )
 
 
-class EvenementPhenologique(models.Model):
+class EvenementPhenologique(_NaturalKeyByIdentifiant):
     """Événement phénologique utilisé comme borne flottante d'une
     période d'épandage (ex 'brunissement_des_soies' pour le maïs,
     'derniere_coupe_luzerne' pour la luzerne).
