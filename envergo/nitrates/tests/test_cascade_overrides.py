@@ -245,6 +245,210 @@ def test_renvoi_arbre_zar_vers_par(cascade_renvoi):
     assert _regle_id("prairie") == "r_par_prairie"
 
 
+# ─── renvoi_arbre AVEC remap_contexte (issue #227) ─────────────────────────
+
+
+def _pan_deux_cultures():
+    """PAN : racine ZV -> occupation_sol -> sous_culture (2 branches :
+    autres_cultures et culture_printemps), chacune -> type_fertilisant.
+    Modele minimal du PAN reel : la branche culture_printemps type_II est la
+    cible du renvoi remappe depuis le PAR HdF legumes."""
+
+    def _sous_culture_node():
+        return {
+            "type_noeud": "formulaire",
+            "id": "q_sous_culture",
+            "champ": "sous_culture",
+            "niveau": "sous_culture",
+            "texte": "Culture ?",
+            "branches": [
+                {
+                    "valeur": "culture_printemps",
+                    "noeud": {
+                        "type_noeud": "formulaire",
+                        "id": "q_printemps_fert",
+                        "champ": "type_fertilisant",
+                        "niveau": "type_fertilisant",
+                        "texte": "Fertilisant ?",
+                        "branches": [
+                            _regle("r_pan_printemps_type_II", "type_II"),
+                            _regle("r_pan_printemps_type_III", "type_III"),
+                        ],
+                    },
+                },
+            ],
+        }
+
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q_occupation_sol",
+                            "champ": "occupation_sol",
+                            "niveau": "culture",
+                            "texte": "Occupation ?",
+                            "branches": [
+                                {
+                                    "valeur": "culture_principale",
+                                    "noeud": _sous_culture_node(),
+                                }
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+
+
+def _par_legumes_renvoi(remap=None):
+    """PAR HdF simplifie : racine ZV -> occupation_sol=culture_principale ->
+    sous_culture=autres_cultures -> type_fertilisant. La branche type_II fait un
+    renvoi_arbre vers le PAN, avec (ou sans) remap_contexte."""
+    branche_type_ii = {"valeur": "type_II", "renvoi_arbre": "national"}
+    if remap is not None:
+        branche_type_ii["remap_contexte"] = remap
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "reference": "zone_vulnerable_nitrates",
+                "branches": [
+                    {
+                        "valeur": True,
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "id": "q_occupation_sol",
+                            "champ": "occupation_sol",
+                            "niveau": "culture",
+                            "texte": "Occupation ?",
+                            "branches": [
+                                {
+                                    "valeur": "culture_principale",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "id": "q_sous_culture",
+                                        "champ": "sous_culture",
+                                        "niveau": "sous_culture",
+                                        "texte": "Culture ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "autres_cultures",
+                                                "noeud": {
+                                                    "type_noeud": "formulaire",
+                                                    "id": "q_legumes_fert",
+                                                    "champ": "type_fertilisant",
+                                                    "niveau": "type_fertilisant",
+                                                    "texte": "Fertilisant ?",
+                                                    "branches": [branche_type_ii],
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+
+
+def _poser_pan_et_par_renvoi(remap):
+    """Pose PAN (2 sous-cultures) + PAR HdF legumes qui renvoie au PAN sur
+    type_II avec le remap donne. Region 44 (Reims) pour matcher le PAR."""
+    _poser_geo_et_criterion()
+    DecisionTree.objects.create(
+        name="pan",
+        status=DecisionTree.STATUS_ACTIVE,
+        weight=1,
+        contenu=_pan_deux_cultures(),
+    )
+    DecisionTree.objects.create(
+        name="par",
+        status=DecisionTree.STATUS_ACTIVE,
+        scope=DecisionTree.SCOPE_REGION,
+        region_code="44",
+        weight=10,
+        contenu=_par_legumes_renvoi(remap),
+    )
+
+
+@pytest.fixture
+def cascade_remap(db):
+    """PAR legumes (sous_culture=autres_cultures) renvoie au PAN avec un
+    remap_contexte {sous_culture: culture_printemps, type_fertilisant: type_II}.
+    Le PAN doit alors atteindre r_pan_printemps_type_II (et NON tomber en
+    no-match faute de branche autres_cultures)."""
+    _poser_pan_et_par_renvoi(
+        {"sous_culture": "culture_printemps", "type_fertilisant": "type_II"}
+    )
+
+
+@pytest.fixture
+def cascade_remap_absent(db):
+    """Meme scenario SANS remap_contexte : le contexte cumulatif garde
+    sous_culture=autres_cultures, que le PAN ne connait pas -> no-match ->
+    non_disponible (preuve que sans remap le comportement est INCHANGE)."""
+    _poser_pan_et_par_renvoi(None)
+
+
+def test_renvoi_arbre_avec_remap_atteint_la_bonne_feuille_pan(cascade_remap):
+    """Le remap transforme sous_culture=autres_cultures -> culture_printemps et
+    pose type_fertilisant=type_II AVANT le re-parcours PAN : on atteint
+    r_pan_printemps_type_II (branche que le contexte HdF d'origine ne matchait
+    pas)."""
+    ev = _evaluateur(
+        occupation_sol="culture_principale",
+        sous_culture="autres_cultures",
+        type_fertilisant="type_II",
+    )
+    assert ev.regle is not None
+    assert ev.regle.regle_id == "r_pan_printemps_type_II"
+
+
+def test_renvoi_arbre_sans_remap_reste_no_match(cascade_remap_absent):
+    """Non-regression : sans remap_contexte, le contexte n'est pas transforme.
+    sous_culture=autres_cultures n'a pas de branche PAN -> no-match ->
+    non_disponible. Prouve que le mecanisme remap est purement additif."""
+    from envergo.evaluations.models import RESULTS
+
+    ev = _evaluateur(
+        occupation_sol="culture_principale",
+        sous_culture="autres_cultures",
+        type_fertilisant="type_II",
+    )
+    assert ev.regle is None
+    assert ev._result == RESULTS.non_disponible
+
+
+def test_remap_ne_pollue_pas_le_contexte_expose(cascade_remap):
+    """Le remap doit s'appliquer sur une COPIE : apres resolution, le contexte
+    final expose reflete bien les valeurs remappees (pour l'arbre cible), sans
+    avoir mute le contexte d'un autre arbre. On verifie au moins que le contexte
+    final porte la valeur remappee, coherente avec la feuille atteinte."""
+    ev = _evaluateur(
+        occupation_sol="culture_principale",
+        sous_culture="autres_cultures",
+        type_fertilisant="type_II",
+    )
+    assert ev.contexte.get("sous_culture") == "culture_printemps"
+    assert ev.contexte.get("type_fertilisant") == "type_II"
+
+
 # ─── Helpers communs aux fixtures cascade (geo + criterion) ────────────────
 
 

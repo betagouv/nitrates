@@ -174,6 +174,17 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
                     self._result_code = RESULTS.non_disponible
                     self._result = RESULTS.non_disponible
                     return
+                # REMAP de contexte (issue #227) : si le renvoi porte un
+                # remap_contexte, on remplace les champs cibles AVANT de
+                # re-parcourir l'arbre cible. Le contexte etant partage/mute par
+                # toute la cascade, on bascule sur une COPIE remappee pour ne pas
+                # polluer les arbres deja parcourus ni les suivants (le remap ne
+                # concerne QUE le sous-parcours de l'arbre cible). Sans remap :
+                # contexte inchange (retro-compat stricte).
+                if issue.remap_contexte:
+                    contexte = dict(contexte)
+                    contexte.update(issue.remap_contexte)
+                    self._contexte = contexte
                 restants = [a for a in restants if a.scope != issue.scope_cible]
                 restants.insert(0, cible)
                 continue

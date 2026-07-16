@@ -936,6 +936,40 @@ def test_renvoi_arbre_retourne_renvoi_arbre():
     assert isinstance(res, RenvoiArbre)
     assert res.scope_cible == "region"
     assert "renvoi_arbre:region" in res.chemin_partiel
+    # Sans remap_contexte : le champ reste vide (retro-compat).
+    assert res.remap_contexte == {}
+
+
+def test_renvoi_arbre_porte_le_remap_contexte():
+    """Une branche `renvoi_arbre` + `remap_contexte` remonte le remap dans le
+    RenvoiArbre pour que l'evaluateur transforme le contexte avant le
+    re-parcours de l'arbre cible (cf. #227, legumes PAR HdF -> PAN printemps)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "id": "q_x",
+                "champ": "avant_le_1er_juin",
+                "branches": [
+                    {
+                        "valeur": "type_II",
+                        "renvoi_arbre": "national",
+                        "remap_contexte": {
+                            "sous_culture": "culture_printemps",
+                            "type_fertilisant": "type_II",
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    res = parcours(arbre, {"avant_le_1er_juin": "type_II"})
+    assert isinstance(res, RenvoiArbre)
+    assert res.scope_cible == "national"
+    assert res.remap_contexte == {
+        "sous_culture": "culture_printemps",
+        "type_fertilisant": "type_II",
+    }
 
 
 # ─── _valeurs_egales : int YAML vs string numerique ─────────────────────────

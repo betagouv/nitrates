@@ -249,6 +249,17 @@ BRANCHE_SCHEMA = {
         },
         # Renvoi explicite vers un autre arbre de la cascade (region|national).
         "renvoi_arbre": {"type": "string"},
+        # Remap de contexte optionnel accompagnant un `renvoi_arbre` (cf. #227) :
+        # champs a forcer dans le contexte AVANT le re-parcours de l'arbre cible.
+        # Sert aux renvois cross-arbre ou le contexte accumule ne matche pas la
+        # branche visee (ex legumes PAR HdF -> PAN culture de printemps :
+        # {sous_culture: culture_printemps, type_fertilisant: type_II}). Valeurs
+        # scalaires (string / bool / int). N'a de sens qu'avec `renvoi_arbre`.
+        "remap_contexte": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {"type": ["string", "boolean", "integer"]},
+        },
         # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.
         # validator). Rend la branche cliquable ; au runtime = no-match/fallback.
         "feuille_vide": {"type": "boolean"},

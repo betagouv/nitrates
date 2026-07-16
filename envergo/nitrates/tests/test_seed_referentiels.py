@@ -58,7 +58,10 @@ def test_seed_produit_volumes_attendus():
     # 2 ex-branches interculture_longue/interculture_courte.
     assert GroupeCultureUI.objects.count() == 7
     assert BrancheCulturale.objects.count() == 12
-    assert Culture.objects.count() == 19
+    # 20 depuis la séparation verger/vigne (#228) : cultures_perennes_vergers
+    # + cultures_perennes_vignes remplacent l'ex-fusionnée
+    # cultures_perennes_vergers_vignes.
+    assert Culture.objects.count() == 20
     # 33 : 30 (carte #98) + 3 options "Autre digestat de type Ia/Ib/II"
     # ajoutées sous la catégorie Digestats depuis l'export Miro "Types de
     # fertilisants" (options "Autre de type X" de la colonne Digestats).

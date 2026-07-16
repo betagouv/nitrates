@@ -79,6 +79,7 @@ def validate_arbre(
     ids_definis = _collect_ids(arbre)
     errors.extend(_check_ids_uniques(ids_definis))
     errors.extend(_check_renvois_vers(arbre, ids_definis))
+    errors.extend(_check_remap_contexte(arbre))
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
     errors.extend(_check_regimes_coherents(arbre))
@@ -234,6 +235,23 @@ def _check_renvois_vers(arbre: dict, ids: dict[str, list[str]]) -> list[str]:
             errors.append(
                 f"[renvoi_vers] '{cible}' (depuis branche valeur="
                 f"{branche.get('valeur')!r}) ne pointe vers aucun id existant"
+            )
+    return errors
+
+
+def _check_remap_contexte(arbre: dict) -> list[str]:
+    """Un `remap_contexte` n'a de sens qu'accompagne d'un `renvoi_arbre` (cf.
+    #227) : il transforme le contexte AVANT le re-parcours de l'arbre cible. Sur
+    une branche sans renvoi_arbre il serait inerte (jamais applique) -> on le
+    signale comme erreur de conception plutot que de le laisser passer
+    silencieusement. Le schema garantit deja le type (dict scalaire non vide)."""
+    errors: list[str] = []
+    for branche in _walk_branches(arbre):
+        if "remap_contexte" in branche and "renvoi_arbre" not in branche:
+            errors.append(
+                f"[remap_contexte] la branche valeur={branche.get('valeur')!r} "
+                f"porte un remap_contexte sans renvoi_arbre : il ne serait jamais "
+                f"applique. remap_contexte n'a de sens qu'avec renvoi_arbre."
             )
     return errors
 

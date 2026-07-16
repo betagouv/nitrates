@@ -186,10 +186,19 @@ class RenvoiArbre:
     `scope_cible` designe l'arbre vise par son scope (region / national).
     L'evaluateur, qui connait la liste des arbres actifs pour ce point, bascule
     sur l'arbre candidat de ce scope et le re-parcourt depuis sa racine avec le
-    meme contexte cumulatif."""
+    meme contexte cumulatif.
+
+    `remap_contexte` (optionnel) : dict de champs a FORCER dans le contexte AVANT
+    le re-parcours de l'arbre cible. Sert aux renvois cross-arbre ou le contexte
+    accumule ne matche pas la branche visee dans l'arbre cible : on remappe des
+    champs (ex sous_culture=culture_printemps, type_fertilisant=type_II) pour
+    atteindre la bonne feuille. Vide/None = comportement historique (contexte
+    inchange). L'evaluateur applique le remap sur une COPIE du contexte de facon
+    a ne pas polluer les autres arbres de la cascade (cf. arbre_decision)."""
 
     scope_cible: str  # "region" | "national" | "zar"
     chemin_partiel: list[str] = field(default_factory=list)
+    remap_contexte: dict[str, Any] = field(default_factory=dict)
 
 
 class ParcoursError(Exception):
@@ -296,9 +305,15 @@ def _descendre_branche(
         # Renvoi explicite vers un autre arbre de la cascade (ex ZAR -> PAR).
         # L'evaluateur resout le scope cible et re-parcourt cet arbre.
         scope_cible = branche["renvoi_arbre"]
+        # remap_contexte optionnel : champs a forcer dans le contexte avant le
+        # re-parcours de l'arbre cible (ex renvoi legumes HdF -> PAN culture de
+        # printemps : sous_culture=culture_printemps, type_fertilisant=type_II).
+        # Absent = contexte inchange (retro-compat).
+        remap = branche.get("remap_contexte") or {}
         return RenvoiArbre(
             scope_cible=scope_cible,
             chemin_partiel=chemin + [f"renvoi_arbre:{scope_cible}"],
+            remap_contexte=dict(remap),
         )
     if "renvoi_vers" in branche:
         cible_id = branche["renvoi_vers"]
