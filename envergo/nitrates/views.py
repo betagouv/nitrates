@@ -292,14 +292,21 @@ class DebugView(View):
         )
 
 
-@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class ReferentielsView(View):
-    """Expose les listes fermees du YAML referentiels (types fertilisants,
+    """Expose les listes fermees du referentiel (types fertilisants,
     cultures, codes prescription, notes...) en JSON pour le front.
 
     Permet a la cascade JS d'afficher les bons libelles (libelle_public)
     et de filtrer les options en fonction des choix precedents
     (mapping_sous_fertilisant_vers_type).
+
+    PAS de cache_page HTTP (#228) : `load_referentiels()` porte deja un cache
+    process-local (LRU) invalide sur ecriture ORM (signaux post_save/delete,
+    cf. loader.invalider_cache_referentiels). Un cache_page HTTP en plus n'etait
+    invalide par AUCUN signal -> apres l'ajout d'une culture en base, l'API
+    continuait de servir l'ancien JSON pendant 1h (bug : 5 cultures en DB, 4
+    rendues au formulaire). Le cout de (re)serialisation d'un petit dict est
+    negligeable, le LRU couvre le seul cout reel (_build_referentiels).
 
     Cache 1h : ce fichier ne change qu'au rythme de la reglementation.
     """
