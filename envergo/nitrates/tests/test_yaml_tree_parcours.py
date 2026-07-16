@@ -1542,6 +1542,108 @@ def test_collecter_qc_du_chemin_remonte_les_complements():
     assert valeurs == {True, False}
 
 
+def test_collecter_qc_type_fertilisant_intermediaire_apres_complement():
+    """#223 : une QC de niveau `type_fertilisant` rencontree APRES un complement
+    (QC de raffinement intermediaire, ex legumes PAR HdF) doit etre collectee
+    pour le rendu du panneau. Sans ca, le moteur la posait mais le formulaire
+    ne l'affichait jamais. Un type_fertilisant NORMAL (avant tout complement)
+    ne doit PAS etre collecte (c'est la cascade principale)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "Culture ?",
+                "branches": [
+                    {
+                        "valeur": "legumes",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_interm",
+                            "champ": "implante_avant_juin",
+                            "texte": "Avant le 1er juin ?",
+                            "branches": [
+                                {
+                                    "valeur": "avant",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "type_fertilisant",
+                                        "id": "q_fert",
+                                        "champ": "type_fertilisant",
+                                        "texte": "Type fertilisant ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "type_0",
+                                                "regle": {"id": "r_f", "type": "libre"},
+                                            }
+                                        ],
+                                    },
+                                },
+                                {
+                                    "valeur": "apres",
+                                    "regle": {"id": "r_ap", "type": "libre"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    # QC complement repondue -> la QC type_fertilisant INTERMEDIAIRE doit etre
+    # collectee (elle vient apres le complement).
+    qc = collecter_qc_du_chemin(
+        arbre, {"occupation_sol": "legumes", "implante_avant_juin": "avant"}
+    )
+    champs = [q.champ for q in qc]
+    assert "implante_avant_juin" in champs  # la QC complement
+    assert "type_fertilisant" in champs, (
+        "la QC type_fertilisant intermediaire (apres complement) doit etre "
+        "collectee pour le rendu"
+    )
+
+
+def test_collecter_qc_type_fertilisant_normal_pas_collecte():
+    """#223 non-regression : un type_fertilisant de cascade PRINCIPALE (sans
+    complement en amont) n'est PAS collecte comme QC."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "Culture ?",
+                "branches": [
+                    {
+                        "valeur": "colza",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "type_fertilisant",
+                            "id": "q_fert",
+                            "champ": "type_fertilisant",
+                            "texte": "Type ?",
+                            "branches": [
+                                {
+                                    "valeur": "type_0",
+                                    "regle": {"id": "r_c", "type": "libre"},
+                                }
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {"occupation_sol": "colza"})
+    assert [
+        q.champ for q in qc
+    ] == [], "un type_fertilisant de cascade principale ne doit pas etre collecte"
+
+
 def test_collecter_qc_traverse_catalogue_parametre():
     """collecter_qc_du_chemin traverse un catalogue_parametre (pas une QC)
     via l'expression vraie pour atteindre les QC en aval (lignes 760-775)."""

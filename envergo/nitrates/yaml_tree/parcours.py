@@ -963,11 +963,20 @@ def _suivre_chemin_pour_qc(
     qc: list[QuestionFormulaire],
     visites: set[str],
     resoudre_catalogue=None,
+    apres_complement: bool = False,
 ) -> None:
     """Descend un noeud en suivant la branche dictee par `contexte`. Collecte
     les QC de niveau complement croisees. S'arrete si la valeur du champ
     courant n'est pas dans le contexte (= QC bloquante atteinte ; on l'ajoute
     AVEC ses choix arbre puis on stop).
+
+    `apres_complement` : vrai une fois qu'un noeud de niveau `complement` a ete
+    croise sur ce chemin. Sert a collecter aussi les QC de niveau
+    `type_fertilisant` INTERMEDIAIRES (une QC de raffinement complement suivie
+    d'un type_fertilisant, ex legumes PAR HdF, cf. grammaire assouplie #223) :
+    sans ca, cette 2e question n'etait jamais collectee pour le rendu du panneau
+    -> elle n'apparaissait pas a l'utilisateur (le moteur parcours() la posait
+    pourtant bien).
     """
     if "id" in noeud and noeud["id"] in visites:
         return
@@ -991,6 +1000,7 @@ def _suivre_chemin_pour_qc(
                         qc,
                         visites,
                         resoudre_catalogue,
+                        apres_complement,
                     )
                 elif "renvoi_vers" in branche:
                     cible = index_ids.get(branche["renvoi_vers"])
@@ -1006,13 +1016,23 @@ def _suivre_chemin_pour_qc(
                             qc,
                             visites,
                             resoudre_catalogue,
+                            apres_complement,
                         )
                 return
         return
 
-    # QC = formulaire de niveau complement. On les collecte (repondues ou pas).
-    if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
+    # QC = formulaire de niveau complement (repondues ou pas). #223 : on collecte
+    # AUSSI un `type_fertilisant` INTERMEDIAIRE, c.-a-d. rencontre APRES un
+    # complement sur ce chemin (QC de raffinement legumes PAR HdF). Un
+    # type_fertilisant "normal" (cascade principale, avant tout complement) n'est
+    # PAS collecte ici : il est gere par la cascade principale du formulaire.
+    niveau = noeud.get("niveau")
+    if type_noeud == "formulaire" and (
+        niveau == "complement" or (niveau == "type_fertilisant" and apres_complement)
+    ):
         _ajouter_question(qc, noeud)
+    if niveau == "complement":
+        apres_complement = True
 
     # Noeud catalogue SIG : resolu a la volee (contexte ou callback) pour ne pas
     # bloquer la descente vers les QC en aval.
@@ -1032,7 +1052,13 @@ def _suivre_chemin_pour_qc(
         return
     if "noeud" in branche:
         _suivre_chemin_pour_qc(
-            branche["noeud"], contexte, index_ids, qc, visites, resoudre_catalogue
+            branche["noeud"],
+            contexte,
+            index_ids,
+            qc,
+            visites,
+            resoudre_catalogue,
+            apres_complement,
         )
     elif "renvoi_vers" in branche:
         cible = index_ids.get(branche["renvoi_vers"])
@@ -1042,7 +1068,13 @@ def _suivre_chemin_pour_qc(
             "catalogue_parametre",
         ):
             _suivre_chemin_pour_qc(
-                cible, contexte, index_ids, qc, visites, resoudre_catalogue
+                cible,
+                contexte,
+                index_ids,
+                qc,
+                visites,
+                resoudre_catalogue,
+                apres_complement,
             )
 
 
