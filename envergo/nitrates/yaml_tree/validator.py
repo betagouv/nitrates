@@ -842,19 +842,29 @@ def _check_niveau_ajout(
     if niveau not in NIVEAUX_FORMULAIRE_ORDRE:
         return None  # le schema l'aurait deja attrape
     idx_nouveau = NIVEAUX_FORMULAIRE_ORDRE.index(niveau)
-    # Convention 2026-05-12 : `complement` est le dernier niveau autorise.
-    # Une fois entre dans une chaine de complements, on ne peut PAS revenir
-    # vers culture / sous_culture / type_fertilisant. Donc des qu'un
-    # complement apparait dans le chemin, tout niveau suivant doit etre
-    # complement aussi.
-    if any(n == "complement" for n, _ in chemin) and niveau != "complement":
+    # Convention 2026-05-12, assouplie #223 : apres une QC `complement`, on
+    # autorise UNIQUEMENT de redescendre vers `type_fertilisant` (QC de
+    # raffinement intermediaire, ex "legumes implantes avant/apres le 1er juin ?"
+    # entre la culture et le fertilisant, cf. PAR HdF). Tout autre retour
+    # (culture / sous_culture apres complement) reste interdit : ce sont de vrais
+    # non-sens de cascade. Le moteur de parcours gere deja ce pattern (la QC est
+    # posee puis la cascade type_fertilisant descend) -- seul ce validateur le
+    # bloquait.
+    if any(n == "complement" for n, _ in chemin) and niveau not in (
+        "complement",
+        "type_fertilisant",
+    ):
         return (
             f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
             f"'complement' dans le chemin (retour en arriere interdit)"
         )
     for prec_niveau, prec_champ in chemin:
         idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec_niveau)
-        if idx_nouveau < idx_prec:
+        # Exception #223 : type_fertilisant apres un complement est autorise
+        # (QC intermediaire). On ne le traite donc pas comme un retour arriere.
+        if idx_nouveau < idx_prec and not (
+            niveau == "type_fertilisant" and prec_niveau == "complement"
+        ):
             return (
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
                 f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"

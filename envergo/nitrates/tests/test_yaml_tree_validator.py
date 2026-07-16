@@ -268,6 +268,89 @@ def test_niveau_formulaire_retour_arriere_echoue():
     assert any("retour" in e or "niveau" in e for e in exc.value.errors)
 
 
+def test_niveau_complement_puis_type_fertilisant_autorise():
+    """#223 : une QC complement intermediaire suivie de type_fertilisant est
+    AUTORISEE (ex : "legumes implantes avant/apres le 1er juin ?" entre la
+    culture et le fertilisant, PAR HdF). Le moteur de parcours gere ce pattern ;
+    la grammaire ne doit plus le bloquer."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_interm",
+                "champ": "implante_avant_juin",
+                "texte": "Implanté avant le 1er juin ?",
+                "branches": [
+                    {
+                        "valeur": "avant",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "type_fertilisant",  # apres complement : OK #223
+                            "id": "q_fert",
+                            "champ": "type_fertilisant",
+                            "texte": "?",
+                            "branches": [
+                                {
+                                    "valeur": "type_0",
+                                    "regle": {"id": "r_f", "type": "libre"},
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "valeur": "apres",
+                        "regle": {"id": "r_apres", "type": "libre"},
+                    },
+                ],
+            },
+        }
+    )
+    # Ne doit PAS lever : c'est le cas assoupli.
+    validate_arbre(a)
+
+
+def test_niveau_complement_puis_culture_toujours_interdit():
+    """#223 non-regression : l'assouplissement n'autorise QUE type_fertilisant
+    apres complement. Un retour vers culture reste un non-sens interdit."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_interm2",
+                "champ": "x",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "x",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "culture",  # retour a culture : toujours interdit
+                            "id": "q_back_culture",
+                            "champ": "occupation_sol",
+                            "texte": "?",
+                            "branches": [
+                                {
+                                    "valeur": "z",
+                                    "regle": {"id": "r_z2", "type": "libre"},
+                                }
+                            ],
+                        },
+                    }
+                ],
+            },
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("retour" in e or "niveau" in e for e in exc.value.errors)
+
+
 def test_niveau_formulaire_doublon_strict_meme_champ_echoue():
     """Doublon strict (meme niveau ET meme champ) interdit -- on ne pose
     pas deux fois la meme question."""
