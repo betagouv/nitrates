@@ -371,22 +371,6 @@
 {
   "model": "nitrates.culture",
   "fields": {
-    "identifiant": "cultures_perennes_vergers_vignes",
-    "libelle_public": "Cultures pérennes (vergers, vignes)",
-    "categorie": [
-      "autres_cultures_principales"
-    ],
-    "branche_culturale": [
-      "autres_cultures"
-    ],
-    "occupation_sol": "culture_principale",
-    "champs_prefill": {},
-    "ordre_affichage": 3
-  }
-},
-{
-  "model": "nitrates.culture",
-  "fields": {
     "identifiant": "couvert_courte_recolte",
     "libelle_public": "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)",
     "categorie": [
@@ -478,6 +462,38 @@
     "occupation_sol": "couvert_intercultures",
     "champs_prefill": {},
     "ordre_affichage": 3
+  }
+},
+{
+  "model": "nitrates.culture",
+  "fields": {
+    "identifiant": "cultures_perennes_vergers",
+    "libelle_public": "Cultures pérennes (vergers)",
+    "categorie": [
+      "autres_cultures_principales"
+    ],
+    "branche_culturale": [
+      "autres_cultures"
+    ],
+    "occupation_sol": "culture_principale",
+    "champs_prefill": {},
+    "ordre_affichage": 3
+  }
+},
+{
+  "model": "nitrates.culture",
+  "fields": {
+    "identifiant": "cultures_perennes_vignes",
+    "libelle_public": "Cultures pérennes (vignes)",
+    "categorie": [
+      "autres_cultures_principales"
+    ],
+    "branche_culturale": [
+      "autres_cultures"
+    ],
+    "occupation_sol": "culture_principale",
+    "champs_prefill": {},
+    "ordre_affichage": 4
   }
 },
 {
@@ -1032,6 +1048,54 @@
     "regions_concernees": [],
     "departements_concernes": [],
     "ordre_affichage": 12
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "semis",
+    "libelle_public": "Semis",
+    "date_calendrier": "15/04"
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "implantation_couvert",
+    "libelle_public": "Implantation du couvert",
+    "date_calendrier": "15/08"
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "destruction_couvert",
+    "libelle_public": "Destruction du couvert",
+    "date_calendrier": "15/03"
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "recolte",
+    "libelle_public": "Récolte",
+    "date_calendrier": "15/09"
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "brunissement_des_soies",
+    "libelle_public": "Brunissement des soies (maïs)",
+    "date_calendrier": "15/08"
+  }
+},
+{
+  "model": "nitrates.evenementphenologique",
+  "fields": {
+    "identifiant": "derniere_coupe_luzerne",
+    "libelle_public": "Dernière coupe de la luzerne",
+    "date_calendrier": "20/12"
   }
 },
 {
@@ -2880,54 +2944,6 @@
     "toujours_affiche": false,
     "note_reglementaire": null,
     "ordre_affichage": 16
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "semis",
-    "libelle_public": "Semis",
-    "date_calendrier": "15/04"
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "implantation_couvert",
-    "libelle_public": "Implantation du couvert",
-    "date_calendrier": "15/08"
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "destruction_couvert",
-    "libelle_public": "Destruction du couvert",
-    "date_calendrier": "15/03"
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "recolte",
-    "libelle_public": "Récolte",
-    "date_calendrier": "15/09"
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "brunissement_des_soies",
-    "libelle_public": "Brunissement des soies (maïs)",
-    "date_calendrier": "15/08"
-  }
-},
-{
-  "model": "nitrates.evenementphenologique",
-  "fields": {
-    "identifiant": "derniere_coupe_luzerne",
-    "libelle_public": "Dernière coupe de la luzerne",
-    "date_calendrier": "20/12"
   }
 }
 ]
