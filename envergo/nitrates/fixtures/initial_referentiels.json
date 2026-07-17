@@ -468,7 +468,7 @@
   "model": "nitrates.culture",
   "fields": {
     "identifiant": "cultures_perennes_vergers",
-    "libelle_public": "Cultures pérennes (vergers)",
+    "libelle_public": "Vergers",
     "categorie": [
       "autres_cultures_principales"
     ],
@@ -484,7 +484,7 @@
   "model": "nitrates.culture",
   "fields": {
     "identifiant": "cultures_perennes_vignes",
-    "libelle_public": "Cultures pérennes (vignes)",
+    "libelle_public": "Vignes",
     "categorie": [
       "autres_cultures_principales"
     ],
