@@ -445,7 +445,43 @@ def compute_simulator_params(
             if cat:
                 params["categorie_fertilisant"] = cat
 
+        # Meme probleme quand un catalogue_parametre discrimine sur
+        # `sous_culture_form` (ex PAR HdF : un noeud intercale entre la culture
+        # et le type_fertilisant, `sous_culture_form == 'cultures_perennes_vignes'`).
+        # La cascade form a pu poser le 1er sous_culture_form du groupe (florales)
+        # qui ne satisfait PAS l'expression -> la fleche preview atterrissait sur
+        # la mauvaise culture (voire ParcoursError). On derive le sous_culture_form
+        # qui satisfait l'expression et on l'impose. N'affecte QUE l'URL de preview
+        # admin (compute_simulator_params n'est pas utilise par le parcours runtime).
+        scf = _sous_culture_form_satisfaisant(expressions_a_satisfaire, params)
+        if scf:
+            params["sous_culture_form"] = scf
+
     return params
+
+
+def _sous_culture_form_satisfaisant(expressions: list[str], params: dict) -> str | None:
+    """Retourne un slug `sous_culture_form` qui rend vraies les `expressions`
+    portant sur ce champ (catalogue_parametre discriminant par sous_culture_form,
+    ex PAR HdF vignes/legumes). On teste chaque valeur declaree au referentiel
+    avec le contexte courant. Retourne None si aucune expression ne mentionne
+    sous_culture_form, ou si aucune candidate ne satisfait -> l'appelant garde le
+    defaut de la cascade form. Symetrique de `_sous_fertilisant_satisfaisant`."""
+    pertinentes = [e for e in expressions if e and "sous_culture_form" in e]
+    if not pertinentes:
+        return None
+    from envergo.nitrates.yaml_tree.expression import evaluer_expression
+
+    ref = _load_ref()
+    candidats: list[str] = []
+    for cat in (ref or {}).get("categories_cultures", {}).values():
+        candidats.extend(cat.get("sous_cultures") or [])
+    for scf in candidats:
+        contexte = dict(params)
+        contexte["sous_culture_form"] = scf
+        if all(evaluer_expression(expr, contexte) for expr in pertinentes):
+            return scf
+    return None
 
 
 def _sous_fertilisant_satisfaisant(

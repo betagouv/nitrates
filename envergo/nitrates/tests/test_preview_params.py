@@ -672,3 +672,63 @@ def test_point_override_prime_sur_resolveur_sig(arbre_minimal):
     )
     assert params["lat"] == "49.5"
     assert params["lng"] == "4.2"
+
+
+def test_catalogue_parametre_sur_sous_culture_form_derive_la_bonne_culture(db):
+    """#222 : un catalogue_parametre intercalé qui discrimine sur
+    `sous_culture_form` (ex PAR HdF vignes/légumes) doit faire poser à la flèche
+    preview le sous_culture_form qui satisfait l'expression de la branche visée,
+    et non le défaut de la cascade (1er du groupe). Sinon la flèche atterrit sur
+    la mauvaise culture (voire ParcoursError).
+    """
+    from django.core.management import call_command
+
+    call_command("seed_referentiels")
+    expr_vignes = "sous_culture_form=='cultures_perennes_vignes'"
+    _regle_v = {"valeur": "type_II", "regle": {"id": "r_v", "type": "interdiction"}}
+    _q_fert = {
+        "type_noeud": "formulaire",
+        "niveau": "type_fertilisant",
+        "id": "q_v_fert",
+        "champ": "type_fertilisant",
+        "branches": [_regle_v],
+    }
+    _n_autres = {
+        "type_noeud": "catalogue_parametre",
+        "id": "n_autres",
+        "champ": "detail_autres",
+        "branches": [{"valeur": "Vignes", "expression": expr_vignes, "noeud": _q_fert}],
+    }
+    _q_sc = {
+        "type_noeud": "formulaire",
+        "niveau": "sous_culture",
+        "id": "q_sc",
+        "champ": "sous_culture",
+        "branches": [{"valeur": "autres_cultures", "noeud": _n_autres}],
+    }
+    _occ = {
+        "type_noeud": "formulaire",
+        "niveau": "culture",
+        "id": "q_occ",
+        "champ": "occupation_sol",
+        "branches": [{"valeur": "culture_principale", "noeud": _q_sc}],
+    }
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "catalogue",
+                "id": "n_zvn",
+                "champ": "en_zone_vulnerable",
+                "source": "sig",
+                "branches": [{"valeur": True, "noeud": _occ}],
+            }
+        }
+    }
+    path = ("n_zvn", "q_occ", "q_sc", "n_autres", "q_v_fert")
+    params = compute_simulator_params(
+        arbre, path, leaf_branch=("type_fertilisant", "type_II")
+    )
+    # La flèche doit poser cultures_perennes_vignes (satisfait l'expression),
+    # pas le défaut de la cascade.
+    assert params.get("sous_culture_form") == "cultures_perennes_vignes"
+    assert params.get("type_fertilisant") == "type_II"
