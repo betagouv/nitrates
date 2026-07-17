@@ -268,6 +268,57 @@ def test_niveau_formulaire_retour_arriere_echoue():
     assert any("retour" in e or "niveau" in e for e in exc.value.errors)
 
 
+def test_champ_type_fertilisant_branches_type_mais_mauvais_champ_rejete():
+    """#222 : un noeud formulaire dont les branches sont des type_* mais dont
+    le champ n'est pas 'type_fertilisant' (bug PAR HdF legumes) est rejete."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "type_fertilisant",
+                "id": "q_mauvais_champ",
+                "champ": "avant_le_1er_juin",  # devrait etre type_fertilisant
+                "texte": "?",
+                "branches": [
+                    {"valeur": "type_Ia", "regle": {"id": "r_a", "type": "libre"}},
+                    {"valeur": "type_II", "regle": {"id": "r_b", "type": "libre"}},
+                ],
+            },
+        }
+    )
+    with pytest.raises(ValidationError) as exc:
+        validate_arbre(a)
+    assert any("champ" in e for e in exc.value.errors)
+
+
+def test_champ_type_fertilisant_occupation_sol_epargne():
+    """#222 non-regression : un noeud niveau=culture / champ=occupation_sol
+    (legitime, universel) ne doit PAS etre signale -- ses branches ne sont pas
+    des type_*."""
+    a = _arbre_minimal_valide()
+    a["arbre"]["noeud"]["branches"].append(
+        {
+            "valeur": True,
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "?",
+                "branches": [
+                    {
+                        "valeur": "culture_principale",
+                        "regle": {"id": "r_cp", "type": "libre"},
+                    },
+                ],
+            },
+        }
+    )
+    validate_arbre(a)  # ne doit pas lever
+
+
 def test_niveau_complement_puis_type_fertilisant_autorise():
     """#223 : une QC complement intermediaire suivie de type_fertilisant est
     AUTORISEE (ex : "legumes implantes avant/apres le 1er juin ?" entre la

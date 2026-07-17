@@ -82,6 +82,7 @@ def validate_arbre(
     errors.extend(_check_remap_contexte(arbre))
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
+    errors.extend(_check_champ_type_fertilisant(arbre))
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
@@ -833,6 +834,54 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     racine = arbre.get("arbre", {}).get("noeud")
     if racine:
         _walk_paths(racine, [], errors)
+    return errors
+
+
+# Valeurs de branche caracteristiques d'un choix de TYPE de fertilisant.
+_VALEURS_TYPE_FERTILISANT = {
+    "type_0",
+    "type_Ia",
+    "type_Ib",
+    "type_I",
+    "type_II",
+    "type_III",
+}
+
+
+def _check_champ_type_fertilisant(arbre: dict) -> list[str]:
+    """Un noeud formulaire dont les BRANCHES portent des valeurs de type de
+    fertilisant (type_0 / type_Ia / type_Ib / type_II / type_III) DOIT avoir
+    `champ: type_fertilisant`. Sinon la reponse du formulaire (qui remplit
+    `type_fertilisant`) ne correspond pas au champ attendu par le noeud ->
+    le parcours re-pose la question comme QC parasite (bug PAR HdF legumes :
+    un noeud `champ: avant_le_1er_juin` avec des branches type_Ia/Ib/II/III).
+
+    On ne se base PAS sur "champ == niveau" (occupation_sol a legitimement
+    niveau=culture / champ=occupation_sol) : le marqueur fiable est la presence
+    de valeurs de branche type_*.
+    """
+    errors = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict):
+            continue
+        if obj.get("type_noeud") != "formulaire":
+            continue
+        champ = obj.get("champ")
+        if champ == "type_fertilisant":
+            continue
+        valeurs = {
+            b.get("valeur")
+            for b in obj.get("branches", []) or []
+            if isinstance(b, dict)
+        }
+        if valeurs & _VALEURS_TYPE_FERTILISANT:
+            errors.append(
+                f"[champ] noeud '{obj.get('id')}' : ses branches portent des "
+                f"valeurs de type de fertilisant (type_*), il doit donc avoir "
+                f"`champ: type_fertilisant` (trouve : {champ!r}). Sinon la "
+                f"reponse du formulaire n'est pas reconnue et la question est "
+                f"reposee en question complementaire."
+            )
     return errors
 
 
