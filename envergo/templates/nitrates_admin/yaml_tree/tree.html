@@ -74,24 +74,6 @@
               </a>
             {% endfor %}
           </nav>
-
-          {% comment %}Recherche plein-texte cote client : filtre l'arbre deja
-             rendu sur TOUS les textes du YAML (texte, libelle, message, aide,
-             texte_condition, source_juridique, note, id, valeur...). Masque les
-             branches sans correspondance, garde les ancetres des matchs et les
-          deplie. Instantane, sans round-trip serveur.{% endcomment %}
-          <div class="yaml-admin__search" data-tree-search>
-            <span class="yaml-admin__label">🔎 Chercher :</span>
-            <input type="search"
-                   class="yaml-admin__search-input"
-                   data-tree-search-input
-                   placeholder="texte, id, condition… (tout le YAML)"
-                   aria-label="Rechercher dans tous les textes de l'arbre"
-                   autocomplete="off">
-            <span class="yaml-admin__search-count"
-                  data-tree-search-count
-                  aria-live="polite"></span>
-          </div>
         </div>
 
         <nav class="yaml-admin__toolbar" aria-label="Vues et fold">
@@ -439,110 +421,6 @@
             el = descId ? document.getElementById(descId.id) : null;
           }
           if (el) highlight(el);
-        });
-      })();
-    </script>
-
-    {# Recherche plein-texte cote client sur tout le texte de l'arbre rendu. #}
-    <script>
-      (function () {
-        const box = document.querySelector('[data-tree-search]');
-        const input = document.querySelector('[data-tree-search-input]');
-        const countEl = document.querySelector('[data-tree-search-count]');
-        const tree = document.querySelector('ul.yaml-tree[role="tree"]');
-        if (!box || !input || !tree) return;
-
-        // Texte "propre" d'un item = son contenu textuel PROPRE (hors items
-        // descendants), pour eviter qu'un parent matche juste parce qu'un
-        // enfant contient le terme. On somme le texte des noeuds de la ligne
-        // (summary / blocs regle-branche) sans redescendre dans les <li>.
-        function texteProdre(li) {
-          let out = '';
-          const walk = (node) => {
-            node.childNodes.forEach((c) => {
-              if (c.nodeType === Node.TEXT_NODE) {
-                out += ' ' + c.textContent;
-              } else if (c.nodeType === Node.ELEMENT_NODE) {
-                // On ne descend PAS dans un <li> imbrique : c'est un autre item,
-                // il porte son propre texte. On capte aussi les title=""
-                // (tooltips ⓘ) car texte_condition peut y vivre.
-                if (c.tagName === 'LI') return;
-                const t = c.getAttribute && c.getAttribute('title');
-                if (t) out += ' ' + t;
-                walk(c);
-              }
-            });
-          };
-          walk(li);
-          return out.toLowerCase();
-        }
-
-        // Re-query a chaque passe : le DOM est reconstruit par les swaps htmx,
-        // un tableau fige garderait des <li> detaches.
-        function getItems() {
-          return Array.from(tree.querySelectorAll('li.yaml-tree__item'));
-        }
-        // Cache du texte propre (invalide quand le DOM change via htmx).
-        let cache = new WeakMap();
-        function getTexte(li) {
-          let v = cache.get(li);
-          if (v === undefined) { v = texteProdre(li); cache.set(li, v); }
-          return v;
-        }
-
-        function reset() {
-          getItems().forEach((li) => { li.style.display = ''; });
-          box.classList.remove('is-searching');
-          if (countEl) countEl.textContent = '';
-        }
-
-        function appliquer(q) {
-          q = (q || '').trim().toLowerCase();
-          if (!q) { reset(); return; }
-          box.classList.add('is-searching');
-          let nb = 0;
-          const items = getItems();
-          const visibles = new Set();
-          // 1) Match direct sur le texte propre de chaque item.
-          items.forEach((li) => {
-            if (getTexte(li).includes(q)) {
-              nb += 1;
-              visibles.add(li);
-              // 2) Rendre visibles + deplier tous les ancetres.
-              let p = li.parentElement;
-              while (p && p !== tree) {
-                if (p.tagName === 'LI' && p.classList.contains('yaml-tree__item')) {
-                  visibles.add(p);
-                  const det = p.querySelector(':scope > details');
-                  if (det) det.open = true;
-                }
-                p = p.parentElement;
-              }
-            }
-          });
-          // 3) Affiche seulement les items retenus (match ou ancetre de match).
-          items.forEach((li) => {
-            li.style.display = visibles.has(li) ? '' : 'none';
-          });
-          if (countEl) {
-            countEl.textContent = nb ? `${nb} résultat${nb > 1 ? 's' : ''}` : 'aucun résultat';
-          }
-        }
-
-        let deb;
-        input.addEventListener('input', () => {
-          clearTimeout(deb);
-          deb = setTimeout(() => appliquer(input.value), 120);
-        });
-        // Echap = vide la recherche.
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') { input.value = ''; reset(); }
-        });
-        // Le DOM peut etre reconstruit par un swap htmx : on invalide le cache
-        // et on re-applique la recherche courante.
-        document.addEventListener('htmx:afterSettle', () => {
-          cache = new WeakMap();
-          if (input.value.trim()) appliquer(input.value);
         });
       })();
     </script>
