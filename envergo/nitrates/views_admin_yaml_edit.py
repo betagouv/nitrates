@@ -1448,6 +1448,12 @@ def _build_content_data(
         data["renvoi_vers"] = post.get("c_renvoi_vers", "").strip()
     elif kind == "renvoi_arbre":
         data["renvoi_arbre"] = post.get("c_renvoi_arbre", "").strip()
+        # noeud_cible optionnel (#222 renvoi cross-arbre cible) : ou atterrir
+        # dans l'arbre cible. Vide = re-parcours depuis la racine (on n'ecrit
+        # alors pas la cle, pour garder l'arbre propre).
+        noeud_cible = post.get("c_noeud_cible", "").strip()
+        if noeud_cible:
+            data["noeud_cible"] = noeud_cible
     elif kind == "feuille_vide":
         data["feuille_vide"] = True
     return data
@@ -1749,6 +1755,12 @@ class ChangeBranchContentView(View):
         form_data = {
             k: v for k, v in request.GET.items() if k not in ("path", "kind", "valeur")
         }
+        # Pre-remplissage depuis la branche existante pour un renvoi_arbre :
+        # scope cible + noeud_cible (#222), afin que la re-edition affiche les
+        # valeurs actuelles et que le selecteur de noeud se re-peuple dessus.
+        if kind == "renvoi_arbre":
+            form_data.setdefault("c_renvoi_arbre", branche.get("renvoi_arbre", ""))
+            form_data.setdefault("c_noeud_cible", branche.get("noeud_cible", ""))
         return _render_change_content_form(
             request, tree, parent_path, valeur, kind, form_data=form_data
         )
