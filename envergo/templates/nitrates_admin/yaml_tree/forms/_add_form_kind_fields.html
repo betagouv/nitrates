@@ -280,44 +280,18 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       sans re-poser les questions déjà répondues.
     </small>
   </div>
-  <script>
-    (function () {
-      var root = document.currentScript.closest("form") || document;
-      var scopeSel = root.querySelector("[data-renvoi-arbre-scope]");
-      var cibleSel = root.querySelector("[data-noeud-cible]");
-      if (!scopeSel || !cibleSel) return;
-      var urlBase = cibleSel.getAttribute("data-noeuds-url-base");
-      var selected = cibleSel.getAttribute("data-selected") || "";
-
-      function peupler(scope) {
-        // Reset (garde l'option "racine par défaut").
-        cibleSel.length = 1;
-        if (!scope) return;
-        var url = urlBase.replace("SCOPE", encodeURIComponent(scope));
-        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-          .then(function (r) { return r.ok ? r.json() : { noeuds: [] }; })
-          .then(function (data) {
-            (data.noeuds || []).forEach(function (n) {
-              var opt = document.createElement("option");
-              opt.value = n.id;
-              opt.textContent = n.label;
-              if (n.id === selected) opt.selected = true;
-              cibleSel.appendChild(opt);
-            });
-          })
-          .catch(function () { /* silencieux : le select garde son défaut */ });
-      }
-
-      scopeSel.addEventListener("change", function () { peupler(scopeSel.value); });
-      // Peuplement initial si un scope est déjà sélectionné (édition).
-      if (scopeSel.value) peupler(scopeSel.value);
-    })();
-  </script>
+  {% comment %}
+    Le peuplement live du select (fetch API noeuds-cibles selon le scope) est
+    gere par un handler DELEGUE au niveau document dans base.html, PAS par un
+    <script> inline ici : htmx 2.x n'execute pas les <script> inseres via swap,
+    donc ce fragment ne peut pas embarquer sa propre logique. Le handler se
+    branche sur [data-noeud-cible] a chaque htmx:afterSettle.
+{% endcomment %}
 
 {% elif kind == "feuille_vide" %}
-  <p class="yaml-tree__form-help">
-    Réponse explicite sans règle : rend cette branche sélectionnable dans le
-    formulaire, mais ne produit aucun résultat — l'évaluation retombe sur
-    l'arbre inférieur (PAR puis PAN). Réservée aux PAR/ZAR. Aucun champ à saisir.
-  </p>
+<p class="yaml-tree__form-help">
+Réponse explicite sans règle : rend cette branche sélectionnable dans le
+formulaire, mais ne produit aucun résultat — l'évaluation retombe sur
+l'arbre inférieur (PAR puis PAN). Réservée aux PAR/ZAR. Aucun champ à saisir.
+</p>
 {% endif %}

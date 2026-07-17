@@ -39,7 +39,7 @@ Variables : tree, parent_path_str, valeur, zone_id, allowed_kinds,
                 hx-trigger="change"
                 hx-target="#{{ zone_id }}"
                 hx-swap="outerHTML"
-                hx-include="[name='c_renvoi_vers'],[name='c_renvoi_arbre'],[name='c_type']">
+                hx-include="[name='c_renvoi_vers'],[name='c_renvoi_arbre'],[name='c_noeud_cible'],[name='c_type']">
           {% for k in allowed_kinds %}
             <option value="{{ k }}" {% if k == selected_kind %}selected{% endif %}>{{ k|kind_label }}</option>
           {% endfor %}

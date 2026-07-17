@@ -206,6 +206,59 @@
       }
       document.addEventListener('showToast', _handleShowToast);
       document.body.addEventListener('showToast', _handleShowToast);
+
+      {% comment %}
+        Peuplement du select "noeud cible" (#222) des forms renvoi_arbre.
+        Delegue au niveau document car htmx 2.x N'EXECUTE PAS les <script>
+        inline inseres via swap : la logique ne peut pas vivre dans le
+        fragment. On (re)peuple a chaque settle htmx et au load initial.
+{% endcomment %}
+      function _peuplerNoeudCible(cibleSel) {
+        if (!cibleSel) return;
+        const form = cibleSel.closest('form') || document;
+        const scopeSel = form.querySelector('[data-renvoi-arbre-scope]');
+        const urlBase = cibleSel.getAttribute('data-noeuds-url-base');
+        const selected = cibleSel.getAttribute('data-selected') || '';
+        if (!scopeSel || !urlBase) return;
+        const scope = scopeSel.value;
+        // Reset (garde l'option "racine par defaut" en position 0).
+        cibleSel.length = 1;
+        if (!scope) return;
+        const url = urlBase.replace('SCOPE', encodeURIComponent(scope));
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then((r) => (r.ok ? r.json() : { noeuds: [] }))
+          .then((data) => {
+            (data.noeuds || []).forEach((n) => {
+              const opt = document.createElement('option');
+              opt.value = n.id;
+              opt.textContent = n.label;
+              if (n.id === selected) opt.selected = true;
+              cibleSel.appendChild(opt);
+            });
+          })
+          .catch(() => { /* silencieux : garde le defaut */ });
+      }
+      function _bindOneNoeudCible(cibleSel) {
+        if (!cibleSel || cibleSel.dataset.ncBound === '1') return;
+        cibleSel.dataset.ncBound = '1';
+        const form = cibleSel.closest('form') || document;
+        const scopeSel = form.querySelector('[data-renvoi-arbre-scope]');
+        if (scopeSel) {
+          scopeSel.addEventListener('change', () => _peuplerNoeudCible(cibleSel));
+        }
+        _peuplerNoeudCible(cibleSel);
+      }
+      function _bindNoeudCible(root) {
+        // Le fragment swappe peut etre le select lui-meme, un conteneur, ou
+        // un element frere : on scanne toujours le document (bornage par
+        // ncBound => idempotent, pas de double-binding).
+        if (root && root.matches && root.matches('[data-noeud-cible]')) {
+          _bindOneNoeudCible(root);
+        }
+        document.querySelectorAll('[data-noeud-cible]').forEach(_bindOneNoeudCible);
+      }
+      document.addEventListener('DOMContentLoaded', () => _bindNoeudCible(document));
+      document.body.addEventListener('htmx:afterSettle', (evt) => _bindNoeudCible(evt.target));
       // Overlay global "en cours" pendant les requetes htmx mutatives
       // (sauf forms d'edition inline qui ont leur propre spinner).
       // Visibilite minimale de 400ms. Si la reponse declenche un reload
@@ -356,7 +409,7 @@
           wireToggles();
         });
       })();
-    </script>
-    {% block extra_js %}{% endblock %}
-  </body>
+</script>
+{% block extra_js %}{% endblock %}
+</body>
 </html>

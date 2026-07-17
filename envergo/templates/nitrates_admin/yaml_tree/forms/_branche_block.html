@@ -82,6 +82,23 @@ Variables : branche, is_editing, tree (en mode edit), parent_path, valeur.{% end
         <span class="yaml-tag__label">renvoi arbre</span>
       </span>
       <code class="yaml-tree__renvoi-target">→ {{ branche.renvoi_arbre }}</code>
+      {% comment %}
+      Noeud cible (#222) : rend visible, meme hors mode edition, qu'il s'agit
+      d'un renvoi CIBLE vers un noeud precis de l'autre arbre (et non du
+      re-parcours par defaut depuis la racine). Sans ca, une branche renvoi_arbre
+      ciblee est indistinguable d'un renvoi simple.
+      {% endcomment %}
+      {% if branche.noeud_cible %}
+        <code class="yaml-tree__renvoi-target"
+              title="Atterrissage direct à ce nœud dans l'arbre cible (renvoi ciblé)">
+        @ {{ branche.noeud_cible }}</code>
+      {% endif %}
+      {% if branche.remap_contexte %}
+        <span class="yaml-tag tag-renvoi"
+              title="Remappe des champs du contexte avant le renvoi : {% for k, v in branche.remap_contexte.items %}{{ k }}={{ v }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+          <span class="yaml-tag__label">remap</span>
+        </span>
+      {% endif %}
     </div>
   {% endif %}
 
