@@ -1576,12 +1576,12 @@ def test_collecter_qc_du_chemin_remonte_les_complements():
     assert valeurs == {True, False}
 
 
-def test_collecter_qc_type_fertilisant_intermediaire_apres_complement():
-    """#223 : une QC de niveau `type_fertilisant` rencontree APRES un complement
-    (QC de raffinement intermediaire, ex legumes PAR HdF) doit etre collectee
-    pour le rendu du panneau. Sans ca, le moteur la posait mais le formulaire
-    ne l'affichait jamais. Un type_fertilisant NORMAL (avant tout complement)
-    ne doit PAS etre collecte (c'est la cascade principale)."""
+def test_collecter_qc_type_fertilisant_intermediaire_pas_collecte():
+    """#222 : un noeud type_fertilisant intercale APRES un complement (ex legumes
+    PAR HdF) n'est PAS une question complementaire : il est fourni par la cascade
+    principale du formulaire. Seule la QC complement (implante_avant_juin) est
+    collectee -- le type_fertilisant ne doit PAS apparaitre dans le panneau QC
+    (sinon il s'affiche a tort comme une 2e question, retour Max)."""
     arbre = {
         "arbre": {
             "noeud": {
@@ -1627,16 +1627,16 @@ def test_collecter_qc_type_fertilisant_intermediaire_apres_complement():
             }
         }
     }
-    # QC complement repondue -> la QC type_fertilisant INTERMEDIAIRE doit etre
-    # collectee (elle vient apres le complement).
+    # QC complement repondue : SEULE la QC complement est collectee ; le
+    # type_fertilisant intercale n'est PAS une QC (cascade principale).
     qc = collecter_qc_du_chemin(
         arbre, {"occupation_sol": "legumes", "implante_avant_juin": "avant"}
     )
     champs = [q.champ for q in qc]
-    assert "implante_avant_juin" in champs  # la QC complement
-    assert "type_fertilisant" in champs, (
-        "la QC type_fertilisant intermediaire (apres complement) doit etre "
-        "collectee pour le rendu"
+    assert "implante_avant_juin" in champs  # la QC complement, elle, est bien la
+    assert "type_fertilisant" not in champs, (
+        "le type_fertilisant intercale ne doit PAS etre collecte comme QC : il "
+        "est fourni par la cascade principale, sinon il s'affiche en double"
     )
 
 
