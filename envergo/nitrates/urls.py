@@ -54,6 +54,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditRawYamlView,
     EditRegleView,
     InsertParentView,
+    NoeudsCiblesView,
     ReorderBranchesView,
     RestoreRevisionView,
     UndoLastView,
@@ -106,6 +107,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/",
         YamlTreeView.as_view(),
         name="nitrates_admin_yaml_tree",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/noeuds-cibles/<str:scope>/",
+        NoeudsCiblesView.as_view(),
+        name="nitrates_admin_noeuds_cibles",
     ),
     path(
         "admin/nitrates/arbre-decision/draft/nouveau/",

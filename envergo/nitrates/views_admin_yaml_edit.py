@@ -19,7 +19,7 @@ import re
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
@@ -2393,3 +2393,67 @@ class CancelEditNodeView(View):
                 "tags": get_tags("noeud", node),
             },
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class NoeudsCiblesView(View):
+    """GET : liste les noeuds de l'arbre ACTIF d'un scope donne (national /
+    region / zar), en JSON, pour peupler le selecteur `noeud_cible` d'un
+    renvoi_arbre dans l'editeur (#222 renvoi cross-arbre cible).
+
+    L'utilisateur choisit l'arbre cible par scope ; on lui propose alors les
+    noeuds de l'arbre ACTIF de ce scope (celui qui sera reellement parcouru au
+    runtime), charges EN LIVE. Pour region/zar il peut y avoir plusieurs arbres
+    actifs (par region_code) : on les agrege tous.
+
+    Reponse : {"noeuds": [{"id": ..., "label": ...}, ...]} triee par label.
+    """
+
+    def get(self, request, scope):
+        from envergo.nitrates.models import DecisionTree
+
+        scopes_valides = {
+            DecisionTree.SCOPE_NATIONAL,
+            DecisionTree.SCOPE_REGION,
+            DecisionTree.SCOPE_ZAR,
+        }
+        if scope not in scopes_valides:
+            return JsonResponse({"error": f"scope invalide : {scope!r}"}, status=400)
+        trees = DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=scope
+        )
+        noeuds: dict[str, str] = {}  # id -> label (dedup inter-arbres)
+        for tree in trees:
+            _collecter_noeuds(tree.contenu, noeuds)
+        data = [
+            {"id": nid, "label": label}
+            for nid, label in sorted(noeuds.items(), key=lambda kv: kv[1].lower())
+        ]
+        return JsonResponse({"noeuds": data})
+
+
+def _collecter_noeuds(contenu: dict, out: dict) -> None:
+    """Remplit `out` {id: label} avec tous les noeuds (formulaire / catalogue /
+    catalogue_parametre) de l'arbre. Le label combine l'id et le texte de la
+    question quand il existe, pour que le selecteur soit lisible."""
+
+    def walk(node):
+        if isinstance(node, dict):
+            nid = node.get("id")
+            type_noeud = node.get("type_noeud")
+            # On ne propose que les vrais noeuds (pas les regles feuilles) :
+            # on ne peut atterrir que sur un noeud, pas une regle.
+            if nid and type_noeud in (
+                "formulaire",
+                "catalogue",
+                "catalogue_parametre",
+            ):
+                texte = (node.get("texte") or "").strip()
+                out[nid] = f"{nid} — {texte}" if texte else nid
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for it in node:
+                walk(it)
+
+    walk(contenu.get("arbre", {}).get("noeud"))
