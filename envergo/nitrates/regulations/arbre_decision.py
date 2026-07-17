@@ -131,6 +131,14 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         self._candidats = list(arbres)  # liste ArbreCandidat (ordre de poids)
         self._cascade_trace: list[dict] = []
         self._arbre_matche = None  # l'ArbreCandidat qui a produit le resultat
+        # Arbres REELLEMENT parcourus par la cascade, dans l'ordre (le plus
+        # specifique d'abord) : liste de (contenu, noeud_depart). Sert a la
+        # restitution : les QC repondues dans un arbre ABANDONNE (feuille_vide
+        # / no-match / renvoi_arbre) doivent rester visibles dans le recap meme
+        # si c'est un arbre inferieur (PAN) qui a produit le resultat final.
+        # `noeud_depart` = id d'atterrissage pour un arbre atteint via renvoi
+        # cible (la collecte des QC doit demarrer la, pas a la racine).
+        self._arbres_traverses: list[tuple[dict, str | None]] = []
 
         # CASCADE d'overrides (cf. plan LOT 1b) : les arbres sont tries par
         # poids decroissant [ZAR, PAR, PAN]. On tente le plus specifique
@@ -155,6 +163,8 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             # s'en sert pour re-collecter les QC + le lien admin.
             self._arbre_courant = candidat.contenu
             self._arbre_courant_candidat = candidat
+            if not any(c is candidat.contenu for c, _ in self._arbres_traverses):
+                self._arbres_traverses.append((candidat.contenu, noeud_depart_prochain))
             issue = self._evaluer_un_arbre(
                 candidat.contenu, contexte, noeud_depart=noeud_depart_prochain
             )
@@ -487,6 +497,17 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         PAR/ZAR, pas le PAN). La vue s'en sert pour re-collecter les questions
         complementaires du bon arbre (sinon le PAN n'a pas les QC du ZAR)."""
         return getattr(self, "_arbre_courant", None)
+
+    @property
+    def arbres_traverses(self):
+        """Liste de (contenu, noeud_depart) des arbres reellement parcourus
+        par la cascade, dans l'ordre (le plus specifique d'abord, l'arbre
+        gagnant en dernier). `noeud_depart` != None pour un arbre atteint via
+        renvoi cross-arbre cible. Sert a la restitution : les QC repondues
+        dans un arbre abandonne (feuille_vide / no-match / renvoi_arbre)
+        restent visibles dans le recap meme si le resultat vient d'un arbre
+        inferieur."""
+        return getattr(self, "_arbres_traverses", [])
 
     @property
     def arbre_matche(self):

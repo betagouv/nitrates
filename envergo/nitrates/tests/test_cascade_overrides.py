@@ -546,6 +546,35 @@ def test_feuille_vide_zar_reporte_sur_pan(cascade_feuille_vide):
     assert _regle_id("prairie") == "r_pan_prairie"
 
 
+def test_arbres_traverses_apres_feuille_vide(cascade_feuille_vide):
+    """La cascade expose TOUS les arbres parcourus (ZAR abandonne via
+    feuille_vide PUIS PAN gagnant) : la restitution s'en sert pour reafficher
+    les QC repondues dans l'arbre abandonne (elles expliquent le switch)."""
+    ev = _evaluateur(occupation_sol="prairie")
+    traverses = ev.arbres_traverses
+    assert len(traverses) == 2
+    # Ordre : le plus specifique (ZAR) d'abord, le gagnant (PAN) en dernier.
+    # Aucun n'a ete atteint via renvoi cible -> noeud_depart None partout.
+    assert [depart for _, depart in traverses] == [None, None]
+    assert traverses[-1][0] is ev.arbre_courant
+
+
+def test_arbres_traverses_noeud_depart_du_renvoi_cible(cascade_noeud_cible):
+    """#222 : l'arbre atteint via renvoi_arbre + noeud_cible est memorise AVEC
+    son noeud d'atterrissage -> la collecte des QC du recap demarre a ce noeud
+    (une descente racine divergerait du parcours reel)."""
+    ev = _evaluateur(
+        occupation_sol="culture_principale",
+        sous_culture="autres_cultures",
+        type_fertilisant="type_II",
+    )
+    assert ev.regle is not None
+    traverses = ev.arbres_traverses
+    assert len(traverses) == 2
+    assert traverses[0][1] is None  # PAR parcouru depuis sa racine
+    assert traverses[1][1] == "q_printemps_fert"  # PAN atteint au noeud cible
+
+
 # ─── Axe 2 : questions subsidiaires de l'arbre prioritaire priment ─────────
 
 

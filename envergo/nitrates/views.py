@@ -530,10 +530,25 @@ class MoulinetteView(View):
         resoudre_catalogue = getattr(
             evaluateur_actif, "_resoudre_catalogue_pour_collecte", None
         )
+        # Arbres sur lesquels collecter les QC : TOUS les arbres traverses par
+        # la cascade (le plus specifique d'abord), pas seulement l'arbre
+        # gagnant. Une QC repondue dans un PAR/ZAR qui a ensuite bascule vers
+        # le PAN (feuille_vide, no-match ou renvoi_arbre cible) doit rester
+        # visible dans le recap : c'est elle qui explique le switch d'arbre.
+        # Dedup par champ : la version de l'arbre le plus specifique prime.
+        arbres_pour_qc = list(getattr(evaluateur_actif, "arbres_traverses", None) or [])
+        if not any(a is arbre_actif for a, _ in arbres_pour_qc):
+            arbres_pour_qc.append((arbre_actif, None))
+        qc_collectees = []
+        for arbre_qc, depart_qc in arbres_pour_qc:
+            for q in collecter_qc_du_chemin(
+                arbre_qc, contexte_courant, resoudre_catalogue, noeud_depart=depart_qc
+            ):
+                if any(x.champ == q.champ for x in qc_collectees):
+                    continue
+                qc_collectees.append(q)
         qc_repondues = []
-        for q in collecter_qc_du_chemin(
-            arbre_actif, contexte_courant, resoudre_catalogue
-        ):
+        for q in qc_collectees:
             if q.champ in qc_actifs:
                 # Deja en cours de saisie dans le panneau resultat (a droite),
                 # on ne le redouble pas a gauche.

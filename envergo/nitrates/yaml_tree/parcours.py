@@ -962,7 +962,10 @@ def _walk_for_index(noeud: dict, index: dict[str, dict]) -> None:
 
 
 def collecter_qc_du_chemin(
-    arbre: dict, contexte: dict[str, Any], resoudre_catalogue=None
+    arbre: dict,
+    contexte: dict[str, Any],
+    resoudre_catalogue=None,
+    noeud_depart: str | None = None,
 ) -> list[QuestionFormulaire]:
     """Retourne TOUTES les questions complementaires (niveau formulaire =
     'complement') qui se trouvent sur le chemin actuel d'apres `contexte`,
@@ -975,14 +978,23 @@ def collecter_qc_du_chemin(
     `resoudre_catalogue` : meme callback qu'`parcours()` -> les noeuds catalogue
     SIG intercales sont resolus a la volee (geo-deterministe) pour ne pas
     bloquer la descente (cf. #187).
+
+    `noeud_depart` : id du noeud par lequel demarrer la descente (arbre atteint
+    via renvoi cross-arbre cible, cf. parcours(noeud_depart=...)). La descente
+    depuis la racine divergerait du parcours reel. Id inconnu -> racine.
     """
     qc: list[QuestionFormulaire] = []
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
         return qc
     index_ids = _build_id_index(arbre)
+    depart = racine
+    if noeud_depart:
+        candidat = index_ids.get(noeud_depart)
+        if isinstance(candidat, dict) and "champ" in candidat:
+            depart = candidat
     _suivre_chemin_pour_qc(
-        racine,
+        depart,
         contexte,
         index_ids,
         qc,

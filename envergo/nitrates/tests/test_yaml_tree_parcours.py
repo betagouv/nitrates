@@ -1576,6 +1576,56 @@ def test_collecter_qc_du_chemin_remonte_les_complements():
     assert valeurs == {True, False}
 
 
+def test_collecter_qc_noeud_depart_demarre_au_noeud_cible():
+    """#222 : pour un arbre atteint via renvoi cross-arbre cible, la collecte
+    des QC demarre AU noeud d'atterrissage (comme parcours(noeud_depart=...)).
+    Une descente racine bloquerait sur le champ racine absent du contexte et
+    manquerait les QC sous le noeud cible."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "culture",
+                "id": "q_occ",
+                "champ": "occupation_sol",
+                "texte": "Culture ?",
+                "branches": [
+                    {
+                        "valeur": "printemps",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_cible",
+                            "champ": "irrigation_printemps",
+                            "texte": "Irriguee ?",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "regle": {"id": "r_oui", "type": "libre"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "regle": {"id": "r_non", "type": "libre"},
+                                },
+                            ],
+                        },
+                    }
+                ],
+            }
+        }
+    }
+    # Contexte SANS occupation_sol (le renvoi a atterri apres ce niveau).
+    contexte = {"irrigation_printemps": True}
+    # Depuis la racine : bloque sur occupation_sol (niveau culture, pas une
+    # QC) -> rien de collecte.
+    assert collecter_qc_du_chemin(arbre, contexte) == []
+    # Depuis le noeud cible : la QC est collectee.
+    qc = collecter_qc_du_chemin(arbre, contexte, noeud_depart="q_cible")
+    assert [q.champ for q in qc] == ["irrigation_printemps"]
+    # Id inconnu -> fallback racine (pas d'explosion).
+    assert collecter_qc_du_chemin(arbre, contexte, noeud_depart="q_inconnu") == []
+
+
 def test_collecter_qc_type_fertilisant_intermediaire_pas_collecte():
     """#222 : un noeud type_fertilisant intercale APRES un complement (ex legumes
     PAR HdF) n'est PAS une question complementaire : il est fourni par la cascade
