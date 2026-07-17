@@ -254,6 +254,16 @@ def _check_remap_contexte(arbre: dict) -> list[str]:
                 f"porte un remap_contexte sans renvoi_arbre : il ne serait jamais "
                 f"applique. remap_contexte n'a de sens qu'avec renvoi_arbre."
             )
+        # noeud_cible : idem, n'a de sens qu'avec renvoi_arbre. La cible etant
+        # dans un AUTRE arbre (charge a la volee par l'evaluateur), on ne peut
+        # pas verifier ici que l'id existe -- seulement qu'il accompagne bien un
+        # renvoi_arbre.
+        if "noeud_cible" in branche and "renvoi_arbre" not in branche:
+            errors.append(
+                f"[noeud_cible] la branche valeur={branche.get('valeur')!r} "
+                f"porte un noeud_cible sans renvoi_arbre : il ne serait jamais "
+                f"applique. noeud_cible n'a de sens qu'avec renvoi_arbre."
+            )
     return errors
 
 

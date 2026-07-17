@@ -141,6 +141,10 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         restants = list(arbres)
         par_scope = {a.scope: a for a in arbres}
         dernier_no_match = None
+        # Noeud d'atterrissage pour le PROCHAIN arbre evalue : pose par un
+        # renvoi_arbre porteur d'un noeud_cible (renvoi cross-arbre cible). Sinon
+        # None -> l'arbre est parcouru depuis sa racine.
+        noeud_depart_prochain = None
 
         for _ in range(MAX_ITERATIONS_CASCADE):
             if not restants:
@@ -151,7 +155,12 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
             # s'en sert pour re-collecter les QC + le lien admin.
             self._arbre_courant = candidat.contenu
             self._arbre_courant_candidat = candidat
-            issue = self._evaluer_un_arbre(candidat.contenu, contexte)
+            issue = self._evaluer_un_arbre(
+                candidat.contenu, contexte, noeud_depart=noeud_depart_prochain
+            )
+            # Consomme le noeud_depart : il ne vaut que pour l'arbre qu'on vient
+            # d'evaluer.
+            noeud_depart_prochain = None
 
             if issue is _NO_MATCH:
                 self._cascade_trace.append({"candidat": candidat, "statut": "no-match"})
@@ -185,6 +194,10 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
                     contexte = dict(contexte)
                     contexte.update(issue.remap_contexte)
                     self._contexte = contexte
+                # noeud_cible (renvoi cross-arbre cible) : l'arbre cible sera
+                # parcouru A PARTIR de ce noeud (pas de sa racine) au prochain
+                # tour de boucle.
+                noeud_depart_prochain = issue.noeud_cible
                 restants = [a for a in restants if a.scope != issue.scope_cible]
                 restants.insert(0, cible)
                 continue
@@ -200,8 +213,11 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         self._result_code = RESULTS.non_disponible
         self._result = RESULTS.non_disponible
 
-    def _evaluer_un_arbre(self, arbre: dict, contexte: dict):
+    def _evaluer_un_arbre(self, arbre: dict, contexte: dict, noeud_depart=None):
         """Parcourt UN arbre (avec resolution des catalogues internes).
+
+        `noeud_depart` (optionnel) : id du noeud par lequel demarrer la descente
+        (renvoi cross-arbre cible). None = depuis la racine.
 
         Retourne :
           - `_NO_MATCH` si le parcours bute sur un no-match (ParcoursError)
@@ -222,6 +238,7 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
                     arbre,
                     contexte,
                     resoudre_catalogue=self._resoudre_catalogue_pour_collecte,
+                    noeud_depart=noeud_depart,
                 )
             except ParcoursError as exc:
                 # No-match : la valeur du contexte n'a pas de branche dans CET

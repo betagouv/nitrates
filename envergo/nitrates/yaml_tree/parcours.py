@@ -199,6 +199,10 @@ class RenvoiArbre:
     scope_cible: str  # "region" | "national" | "zar"
     chemin_partiel: list[str] = field(default_factory=list)
     remap_contexte: dict[str, Any] = field(default_factory=dict)
+    # Noeud d'atterrissage optionnel (id) DANS l'arbre cible : au lieu de
+    # re-parcourir depuis la racine, l'evaluateur descend directement a ce noeud.
+    # None = comportement historique (re-parcours depuis la racine).
+    noeud_cible: str | None = None
 
 
 class ParcoursError(Exception):
@@ -210,6 +214,7 @@ def parcours(
     arbre: dict,
     contexte: dict[str, Any],
     resoudre_catalogue=None,
+    noeud_depart: str | None = None,
 ) -> Resultat | QuestionsSubsidiaires | BesoinCatalogue | RenvoiArbre:
     """Point d'entree principal. Descend l'arbre depuis la racine.
 
@@ -221,11 +226,23 @@ def parcours(
     les noeuds SIG/catalogue_parametre intercales entre deux QC sont resolus a
     la volee pour que la QC descendante soit prefetchee sans aller-retour
     (cf. #187). Retourne None si irresolvable -> la collecte s'arrete
-    proprement sur ce noeud (fallback submit)."""
+    proprement sur ce noeud (fallback submit).
+
+    `noeud_depart` (optionnel) : id d'un noeud de l'arbre par lequel DEMARRER la
+    descente (au lieu de la racine). Sert au renvoi cross-arbre cible
+    (renvoi_arbre + noeud_cible) : on saute directement au noeud d'atterrissage
+    dans l'arbre cible. Leve ParcoursError si l'id est introuvable."""
+    index_ids = _build_id_index(arbre)
+    if noeud_depart is not None:
+        depart = index_ids.get(noeud_depart)
+        if depart is None:
+            raise ParcoursError(
+                f"noeud_depart '{noeud_depart}' introuvable dans l'arbre cible"
+            )
+        return _descendre(depart, contexte, [], index_ids, resoudre_catalogue)
     racine = arbre.get("arbre", {}).get("noeud")
     if not racine:
         raise ParcoursError("arbre sans noeud racine")
-    index_ids = _build_id_index(arbre)
     return _descendre(racine, contexte, [], index_ids, resoudre_catalogue)
 
 
@@ -310,10 +327,14 @@ def _descendre_branche(
         # printemps : sous_culture=culture_printemps, type_fertilisant=type_II).
         # Absent = contexte inchange (retro-compat).
         remap = branche.get("remap_contexte") or {}
+        # noeud_cible optionnel : id du noeud d'atterrissage DANS l'arbre cible.
+        # Absent = re-parcours depuis la racine de l'arbre cible.
+        noeud_cible = branche.get("noeud_cible") or None
         return RenvoiArbre(
             scope_cible=scope_cible,
             chemin_partiel=chemin + [f"renvoi_arbre:{scope_cible}"],
             remap_contexte=dict(remap),
+            noeud_cible=noeud_cible,
         )
     if "renvoi_vers" in branche:
         cible_id = branche["renvoi_vers"]

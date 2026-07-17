@@ -249,6 +249,15 @@ BRANCHE_SCHEMA = {
         },
         # Renvoi explicite vers un autre arbre de la cascade (region|national).
         "renvoi_arbre": {"type": "string"},
+        # Noeud d'atterrissage optionnel dans l'arbre cible d'un `renvoi_arbre`.
+        # Sans lui, l'arbre cible est re-parcouru depuis SA RACINE. Avec lui, le
+        # parcours saute DIRECTEMENT a ce noeud (par son id) dans l'arbre cible,
+        # avec le contexte (eventuellement remappe). Permet un renvoi cross-arbre
+        # cible (ex : PAR HdF legumes -> PAN, noeud q_culture_printemps_type_ii)
+        # sans re-poser les questions deja repondues en amont. N'a de sens
+        # qu'avec `renvoi_arbre`. La cible etant dans un AUTRE arbre, sa validite
+        # ne peut pas etre verifiee localement (cf. validator).
+        "noeud_cible": {"type": "string"},
         # Remap de contexte optionnel accompagnant un `renvoi_arbre` (cf. #227) :
         # champs a forcer dans le contexte AVANT le re-parcours de l'arbre cible.
         # Sert aux renvois cross-arbre ou le contexte accumule ne matche pas la
