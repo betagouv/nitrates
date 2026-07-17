@@ -634,7 +634,20 @@
           // sinon ordre par defaut. Le parent form doit etre flex-column.
           const formEl = typeSelect.closest('form');
           if (formEl) formEl.classList.toggle('yaml-tree__inline-form--calc', calculatrice);
-          if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
+          // Texte conditionne (texte_condition) : editable pour tous les types
+          // qui portent une justification/condition remontee dans la bulle ⓘ du
+          // simulateur -- pas seulement autorisation_sous_condition. Le PAR HdF
+          // met des texte_condition sur des interdiction/mixte (allongement
+          // regional). On l'expose donc aussi la, sinon impossible d'editer le
+          // texte conditionne d'une interdiction. Exclu : calculatrice (la
+          // condition se pose par periode), non_applicable/libre (verdict simple).
+          const avecCondition = new Set([
+            'interdiction',
+            'autorisation_sous_condition',
+            'mixte',
+            'plafonnement',
+          ]);
+          if (conditionRow) conditionRow.style.display = avecCondition.has(t) ? '' : 'none';
           // fieldsets et rows marques avec data-type-fieldset/row
           fieldsets.forEach(el => {
             const allowed = el.dataset.typeFieldset.split(',');

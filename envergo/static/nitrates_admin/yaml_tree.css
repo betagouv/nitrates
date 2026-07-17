@@ -901,6 +901,35 @@ button.yaml-admin__btn {
   text-transform: none;
 }
 
+/* Recherche plein-texte de l'arbre : barre sous les filtres rapides. */
+.yaml-admin__search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.yaml-admin__search-input {
+  flex: 0 1 22rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid #b9c2cc;
+  border-radius: 4px;
+}
+
+.yaml-admin__search.is-searching .yaml-admin__search-input {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 1px #81c784 inset;
+}
+
+.yaml-admin__search-count {
+  font-size: 0.78rem;
+  color: #557;
+  white-space: nowrap;
+}
+
 .yaml-admin__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1406,6 +1435,32 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__source {
   color: #777;
+}
+
+/* Texte conditionne (texte_condition) : rendu en tag precis dans le viewer,
+   teinte verte coherente avec .yaml-tree__periode-flag--condition et la bulle
+   ⓘ du simulateur. L'icone ⓘ signale que c'est CE texte qui remonte dans le
+   tooltip cote public. */
+.yaml-tree__condition-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  color: #2e7d32;
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+  border-radius: 4px;
+}
+
+.yaml-tree__condition-tag .yaml-tag__icon {
+  flex: 0 0 auto;
+  font-size: 0.95em;
+}
+
+.yaml-tree__condition-text {
+  white-space: normal;
 }
 
 .yaml-tree__todo {
