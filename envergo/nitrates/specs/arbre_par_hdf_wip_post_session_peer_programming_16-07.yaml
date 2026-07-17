@@ -1,0 +1,293 @@
+arbre:
+  noeud:
+    id: n_en_zone_vulnerable
+    champ: en_zone_vulnerable
+    source: sig
+    branches:
+    - regle:
+        id: r_racine
+        type: non_applicable
+        message: La parcelle n'est pas en zone vulnérable aux nitrates. La réglementation nitrates ne s'applique pas.
+      valeur: false
+      libelle: Non
+    - noeud:
+        id: q_occupation_sol
+        champ: occupation_sol
+        texte: Est-ce que la culture en place est une culture principale ou un couvert végétal d'interculture ?
+        niveau: culture
+        branches:
+        - noeud:
+            id: q_sous_culture
+            champ: sous_culture
+            texte: Quelle est la culture principale ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_culture_hiver
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_culture_hiver_type_III
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - noeud:
+                        id: q_false
+                        champ: 'false'
+                        texte: 'Votre culture est-elle un:'
+                        niveau: complement
+                        branches:
+                        - valeur: Orge d'hiver, escourgeon ou lin d'hiver.
+                          libelle: Orge d'hiver, escourgeon ou lin d'hiver.
+                          feuille_vide: true
+                        - regle:
+                            id: r_culture_hiver_type_iii_false_autre
+                            type: interdiction
+                            periodes:
+                            - au: 14/02
+                              du: 01/07
+                            inputs_requis: []
+                          valeur: Autre
+                          libelle: Autre
+                        type_noeud: formulaire
+                      valeur: false
+                      libelle: 'False'
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: culture_hiver_hors_colza
+              libelle: Culture d'hiver autre que colza
+            - noeud:
+                id: q_colza
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_colza_type_III
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - regle:
+                        id: r_colza_type_III
+                        type: mixte
+                        periodes:
+                        - au: 14/10
+                          du: 01/09
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 15/10
+                          regime: interdiction
+                        - au: 14/08
+                          du: 01/07
+                          regime: interdiction
+                        inputs_requis: []
+                        texte_condition: 'Allongement régional : interdiction du 1er juillet au 14 août inclus, en plus de la période nationale (du 1er septembre au 31 janvier, apport possible sous conditions du 1er septembre au 15 octobre).'
+                        source_juridique: Article 2-I 1° du PAR Hauts-de-France (allongement des périodes d'interdiction d'épandage)
+                        code_prescription: pc11
+                      valeur: false
+                      libelle: Pas concerné par la note 5
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: colza
+              libelle: Colza
+            - noeud:
+                id: n_autres_cultures_vigne
+                champ: detail_autres_cultures_hdf
+                branches:
+                - noeud:
+                    id: q_autres_cultures_vigne
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - regle:
+                        id: r_autres_cultures_vigne_type_II
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/07
+                        source_juridique: Article 2-I 1° du PAR Hauts-de-France (allongement des périodes d'interdiction d'épandage)
+                      valeur: type_II
+                      libelle: Type II
+                    - regle:
+                        id: r_autres_cultures_vigne_type_III
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/07
+                        source_juridique: Article 2-I 1° du PAR Hauts-de-France (allongement des périodes d'interdiction d'épandage)
+                      valeur: type_III
+                      libelle: Type III
+                    type_noeud: formulaire
+                  valeur: Vignes
+                  libelle: Vignes
+                  expression: sous_culture_form=='cultures_perennes_vignes'
+                - noeud:
+                    id: q_legumes
+                    aide: ''
+                    champ: legumes_wip
+                    texte: 'Vos légumes ont-ils été implantés :'
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_avant_le_1er_juin
+                        champ: type_fertilisant
+                        texte: Avant le 1er juin
+                        niveau: type_fertilisant
+                        branches:
+                        - regle:
+                            id: r_legumes_wip_avant_le_1er_juin_type_ia
+                            type: interdiction
+                            periodes:
+                            - au: 31/08
+                              du: 01/07
+                            - au: 15/01
+                              du: 15/11
+                            inputs_requis: []
+                          valeur: type_Ia
+                          libelle: Type_Ia
+                        - regle:
+                            id: r_legumes_wip_avant_le_1er_juin_type_ib
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 01/07
+                            inputs_requis: []
+                          valeur: type_Ib
+                          libelle: Type_Ib
+                        - valeur: type_II
+                          libelle: "Type_II — renvoi PAN culture de printemps type II (légumes implantés avant le 1er juin, non régis par le PAR)"
+                          renvoi_arbre: national
+                          noeud_cible: q_printemps_fertilisant
+                        - valeur: type_III
+                          libelle: "Type_III — renvoi PAN culture de printemps type III"
+                          renvoi_arbre: national
+                          noeud_cible: q_printemps_fertilisant
+                        type_noeud: formulaire
+                      valeur: Avant le 1er juin
+                      libelle: Avant le 1er juin
+                    - noeud:
+                        id: q_a_compte_du_1er_juin
+                        champ: type_fertilisant
+                        texte: Quel type de fertilisant est utilisé ?
+                        niveau: type_fertilisant
+                        branches:
+                        - regle:
+                            id: r_legumes_wip_a_compte_du_1er_juin_type_ia
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                            inputs_requis: []
+                          valeur: type_Ia
+                          libelle: Type_Ia
+                        - regle:
+                            id: r_legumes_wip_a_compte_du_1er_juin_type_ib
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 15/11
+                            inputs_requis: []
+                          valeur: type_Ib
+                          libelle: Type_Ib
+                        - regle:
+                            id: r_legumes_wip_a_compte_du_1er_juin_type_ii
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 01/10
+                            inputs_requis: []
+                          valeur: type_II
+                          libelle: Type_II
+                        - regle:
+                            id: r_legumes_wip_a_compte_du_1er_juin_type_iii
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 01/11
+                            inputs_requis: []
+                          valeur: type_III
+                          libelle: Type_III
+                        type_noeud: formulaire
+                      valeur: A compter du 1er juin
+                      libelle: A compter du 1er juin
+                    type_noeud: formulaire
+                  valeur: Légumes
+                  libelle: Légumes
+                  expression: sous_culture_form=='cultures_maraicheres_legumieres'
+                type_noeud: catalogue_parametre
+              valeur: autres_cultures
+              libelle: Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)
+            type_noeud: formulaire
+          valeur: culture_principale
+          libelle: Culture principale
+        - noeud:
+            id: q_sous_culture_2
+            champ: sous_culture
+            texte: Quel type de couvert d'interculture ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_cine_apres_0101
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cine_apres_0101_type_ia_especes
+                    aide: "Le couvert est composé d'espèces à développement rapide : avoine fourragère, phacélie, navette fourragère, seigle, moutarde, colza d'hiver, radis fourrager et radis anti-nématodes, trèfle d'Alexandrie, vesce de printemps — le mélange de légumineuses entre elles est exclu ; d'autres espèces peuvent entrer dans un mélange d'espèces à développement rapide dans la limite de 20 % en masse."
+                    champ: couvert_especes_developpement_rapide
+                    texte: Le couvert d'interculture est-il composé d'espèces à développement rapide (avoine fourragère, phacélie, navette fourragère, seigle, moutarde, colza d'hiver, radis fourrager ou anti-nématodes, trèfle d'Alexandrie, vesce de printemps — hors mélange de légumineuses entre elles, autres espèces limitées à 20 % en masse du mélange) ?
+                    niveau: complement
+                    branches:
+                    - valeur: true
+                      libelle: Oui
+                      feuille_vide: true
+                    - regle:
+                        id: r_cine_apres_0101_type_ia_hors_especes_rapides
+                        type: interdiction
+                        message: Épandage interdit toute l'année sur ce couvert.
+                        periodes:
+                        - au: 30/06
+                          du: 01/07
+                        texte_condition: "L'épandage de fertilisants azotés organiques de type I ou II sur un couvert d'interculture non exporté est autorisé uniquement pour les espèces à développement rapide (art. 2-II A) : couvert hors liste, épandage interdit. Tout épandage de fertilisants azotés est interdit sur les repousses."
+                        source_juridique: "Article 2-II A du PAR Hauts-de-France (épandage de fertilisants azotés organiques de type I ou II sur couvert d'interculture non exporté : autorisé uniquement pour les espèces à développement rapide)"
+                      valeur: false
+                      libelle: Non
+                    type_noeud: formulaire
+                  valeur: type_I
+                  libelle: Type I
+                - valeur: type_II
+                  libelle: Type_II
+                  renvoi_vers: q_cine_apres_0101_type_ia_especes
+                type_noeud: formulaire
+              valeur: cine_apres_0101
+              libelle: CINE détruit après le 01/01
+            - valeur: cine_courte
+              libelle: Cie_courte
+              renvoi_vers: q_cine_apres_0101
+            - valeur: cie_avant_3112
+              libelle: Cie_avant_3112
+              renvoi_vers: q_cine_apres_0101
+            type_noeud: formulaire
+          valeur: couvert_intercultures
+          libelle: Couvert végétal d'interculture
+        type_noeud: formulaire
+      valeur: true
+      libelle: Oui
+    reference: zone_vulnerable_nitrates
+    type_noeud: catalogue
+metadata:
+  scope: region
+  region: '32'
+  source: Transpilation arrêté PAR7 Hauts-de-France (docx consolidé) — skill text2yaml v10.1
+  version: 0.1.0-draft
+  source_juridique: "Arrêté établissant le programme d'actions régional en vue de la protection des eaux contre la pollution par les nitrates d'origine agricole en Hauts-de-France (entrée en vigueur 1er août 2024) — article 2 (I : périodes d'interdiction ; II-A : condition d'épandage sur couvert non exporté).\n"
