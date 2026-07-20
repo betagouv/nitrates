@@ -24,6 +24,7 @@ from envergo.nitrates.management.commands.validate_arbres_actifs import (
     scope_from_filename,
 )
 from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.tests.test_import_decision_tree import ARBRE_VALIDE_YAML
 
 pytestmark = pytest.mark.django_db
 
@@ -132,6 +133,76 @@ def test_validate_arbres_actifs_refuse_yaml_casse(tmp_path):
     )
     with pytest.raises(CommandError):
         call_command("validate_arbres_actifs", dir=str(tmp_path), stdout=StringIO())
+
+
+# ─── load_arbres_actifs (reload CD : draft->active, jamais override) ─────────
+#
+# Le reload passe par import_decision_tree qui VALIDE l'arbre (referentiels +
+# scope) : on part donc d'un arbre réellement valide (ARBRE_VALIDE_YAML), pas
+# du fixture minimal des tests de dump.
+
+
+def _make_active_national_valide(settings, tmp_path):
+    """Importe l'arbre national valide en actif, retourne le tree."""
+    settings.NITRATES_SPECS_DIR = str(tmp_path)
+    src = tmp_path / "src.yaml"
+    src.write_text(ARBRE_VALIDE_YAML, encoding="utf-8")
+    call_command(
+        "import_decision_tree", str(src), mode="force-active", name="pan_v1",
+        stdout=StringIO(), stderr=StringIO(),
+    )
+    return DecisionTree.objects.get(
+        scope=DecisionTree.SCOPE_NATIONAL, status=DecisionTree.STATUS_ACTIVE
+    )
+
+
+def test_load_arbres_actifs_cree_nouvelle_version_active(settings, tmp_path):
+    """Reload d'un arbre canonique -> nouvelle version active, ancienne archivée.
+
+    Le CD se comporte comme un éditeur humain : jamais d'UPDATE in-place.
+    """
+    ancien = _make_active_national_valide(settings, tmp_path)
+    specs = tmp_path / "specs"
+    call_command(
+        "dump_active_trees", dir=str(specs), stdout=StringIO(), stderr=StringIO()
+    )
+
+    call_command(
+        "load_arbres_actifs",
+        dir=str(specs),
+        only="national",
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    actifs = DecisionTree.objects.filter(
+        scope=DecisionTree.SCOPE_NATIONAL, status=DecisionTree.STATUS_ACTIVE
+    )
+    assert actifs.count() == 1, "un seul actif par zone"
+    nouvel_actif = actifs.first()
+    assert nouvel_actif.pk != ancien.pk, "une NOUVELLE version, pas un override"
+    ancien.refresh_from_db()
+    assert ancien.status == DecisionTree.STATUS_ARCHIVE, "l'ancien passe en archive"
+
+
+def test_load_arbres_actifs_skip_si_identique(settings, tmp_path):
+    """--skip-si-identique ne recharge pas un arbre inchangé (pas de doublon)."""
+    _make_active_national_valide(settings, tmp_path)
+    specs = tmp_path / "specs"
+    call_command(
+        "dump_active_trees", dir=str(specs), stdout=StringIO(), stderr=StringIO()
+    )
+
+    avant = DecisionTree.objects.filter(scope=DecisionTree.SCOPE_NATIONAL).count()
+    call_command(
+        "load_arbres_actifs",
+        dir=str(specs),
+        skip_si_identique=True,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+    apres = DecisionTree.objects.filter(scope=DecisionTree.SCOPE_NATIONAL).count()
+    assert apres == avant, "aucune version créée si le contenu est identique"
 
 
 # ─── dump_referentiels ────────────────────────────────────────────────────────
