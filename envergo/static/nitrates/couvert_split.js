@@ -87,7 +87,15 @@
         input.name = name;
         input.id = "id_" + name + "__" + opt.val;
         input.value = opt.val;
+        // Carte #154 (a11y) : meme modele clavier que le form principal
+        // (cascade.js). Sans ca, les radios du split (construits ici) gardaient
+        // le comportement natif : Tab sautait tout le groupe et Entree ne
+        // cochait pas -> seule la fleche marchait.
+        input.tabIndex = 0;
         input.addEventListener("change", onSplitChange);
+        input.addEventListener("keydown", function (e) {
+          onSplitRadioKeydown(e, input, name);
+        });
         var label = document.createElement("label");
         label.className = "fr-label";
         label.htmlFor = input.id;
@@ -108,7 +116,7 @@
     );
     wrap.appendChild(
       groupe(
-        "Est-il encore en place après l'hiver ?",
+        "Est-il encore en place après le 1er janvier ?",
         AXE_PRESENCE,
         "couvert_split_presence"
       )
@@ -122,6 +130,84 @@
       'input[type="radio"][name="' + name + '"]:checked'
     );
     return r ? r.value : "";
+  }
+
+  // Ordre des 2 sous-questions du split (pour le saut Entree "groupe suivant").
+  var SPLIT_NAMES = ["couvert_split_recolte", "couvert_split_presence"];
+
+  function radiosSplit(name) {
+    return Array.prototype.slice.call(
+      document.querySelectorAll('input[type="radio"][name="' + name + '"]')
+    );
+  }
+
+  // Modele clavier des radios du split (Carte #154, a11y), aligne sur cascade.js :
+  //  - Entree : coche + saut au 1er radio de la sous-question suivante ; si
+  //    c'etait la derniere (presence), les 2 axes sont repondus -> onSplitChange
+  //    a coche le vrai radio et revele le fertilisant : on focus son 1er radio
+  //    (ou le bouton si rien en aval).
+  //  - Tab / fleches : navigation dans la sous-question courante.
+  function onSplitRadioKeydown(e, input, name) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!input.checked) {
+        input.checked = true;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      Promise.resolve().then(function () {
+        var idx = SPLIT_NAMES.indexOf(name);
+        var suivantName = SPLIT_NAMES[idx + 1];
+        if (suivantName) {
+          var rs = radiosSplit(suivantName);
+          if (rs.length) {
+            rs[0].focus();
+            return;
+          }
+        }
+        // Derniere sous-question repondue : le fertilisant vient d'etre revele
+        // par cascade.js (via onSplitChange). On lui passe le focus.
+        focusApresSplit();
+      });
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Tab") {
+      var radios = radiosSplit(name);
+      var i = radios.indexOf(input);
+      if (i === -1) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        radios[(i + 1) % radios.length].focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        radios[(i - 1 + radios.length) % radios.length].focus();
+      } else if (e.key === "Tab") {
+        if (e.shiftKey) {
+          if (i > 0) {
+            e.preventDefault();
+            radios[i - 1].focus();
+          }
+        } else if (i < radios.length - 1) {
+          e.preventDefault();
+          radios[i + 1].focus();
+        }
+      }
+    }
+  }
+
+  // Apres le split complet : focus sur le 1er radio du fertilisant (revele par
+  // la cascade), sinon sur le bouton "Lancer".
+  function focusApresSplit() {
+    var fert = document.querySelector(
+      '[data-cascade="categorie_fertilisant"] input[type="radio"]'
+    );
+    if (fert && fert.offsetParent !== null) {
+      fert.focus();
+      return;
+    }
+    var btn = document.querySelector(
+      "#form-submit-row button[type=submit]"
+    );
+    if (btn && !btn.disabled) btn.focus();
   }
 
   // Quand les 2 axes sont repondus : recompose la valeur, coche le vrai radio

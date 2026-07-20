@@ -139,3 +139,10 @@ RUNSERVER_PLUS_EXCLUDE_PATTERNS = [
 # ------------------------------------------------------------------------------
 
 ENV_NAME = "local"
+
+# F1 : en local, pas de ProConnect -> on REOUVRE le form mot de passe de
+# /admin/login/ (le defaut secure-by-default de base.py est True). Sinon
+# l'admin local serait inaccessible. Surchargeable par env si besoin.
+ADMIN_PASSWORD_LOGIN_DISABLED = env.bool(
+    "DJANGO_ADMIN_PASSWORD_LOGIN_DISABLED", default=False
+)

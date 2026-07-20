@@ -70,3 +70,7 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 ENV_NAME = "test"
 LANGUAGE_CODE = "en-us"  # TODO: I force it in english because I can't achieve to run it in french in the github CI
+
+# F1 : base.py ferme le form mot de passe par defaut. En CI on le REOUVRE
+# (les tests ciblant le 403 posent le flag a True explicitement).
+ADMIN_PASSWORD_LOGIN_DISABLED = False

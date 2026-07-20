@@ -12,6 +12,7 @@ from envergo.nitrates.templatetags.nitrates_tags import (
     periode_autorisation_phrase,
     periode_phrase,
     periodes_datees,
+    periodes_par_section,
 )
 
 
@@ -26,22 +27,24 @@ pytestmark = pytest.mark.django_db
 
 
 def test_periode_phrase_bornes_fixes():
-    # Format date lisible unifie "15 juil." (#85), plus de JJ/MM.
-    assert periode_phrase({"du": "15/07", "au": "15/02"}) == "du 15 juil. au 15 fév."
+    # Format date lisible : mois en toutes lettres (#159), plus de JJ/MM.
+    assert (
+        periode_phrase({"du": "15/07", "au": "15/02"}) == "du 15 juillet au 15 février"
+    )
 
 
 def test_periode_phrase_borne_pheno_debut_resout_libelle():
     # `derniere_coupe_luzerne` -> "Dernière coupe de la luzerne", minuscule
     # initiale car insere en milieu de phrase. Plus aucun slug ni guillemet.
     phrase = periode_phrase({"du": "derniere_coupe_luzerne", "au": "15/01"})
-    assert phrase == "de dernière coupe de la luzerne au 15 jan."
+    assert phrase == "de dernière coupe de la luzerne au 15 janvier"
     assert "_" not in phrase
     assert "«" not in phrase
 
 
 def test_periode_phrase_borne_pheno_fin_resout_libelle():
     phrase = periode_phrase({"du": "15/07", "au": "brunissement_des_soies"})
-    assert phrase == "du 15 juil. au brunissement des soies (maïs)"
+    assert phrase == "du 15 juillet au brunissement des soies (maïs)"
     assert "_" not in phrase
 
 
@@ -61,16 +64,17 @@ def test_minuscule_initiale():
 
 
 def test_date_lisible_format_unifie():
-    assert _date_lisible(15, 7) == "15 juil."
-    assert _date_lisible(1, 2) == "1er fév."  # 1er du mois
-    assert _date_lisible(30, 6) == "30 juin"  # juin en entier (vs juil.)
-    assert _date_lisible(31, 8) == "31 aoû."
+    # Mois en toutes lettres (#159).
+    assert _date_lisible(15, 7) == "15 juillet"
+    assert _date_lisible(1, 2) == "1er février"  # 1er du mois
+    assert _date_lisible(30, 6) == "30 juin"
+    assert _date_lisible(31, 8) == "31 août"
 
 
 def test_autorisation_interdiction_simple_wrap():
     # Interdit 15/10 -> 31/01 (wrap annee) -> autorise le reste 01/02 -> 14/10.
     r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
-    assert periode_autorisation_phrase(r) == "du 1er fév. au 14 oct."
+    assert periode_autorisation_phrase(r) == "du 1er février au 14 octobre"
 
 
 def test_autorisation_toute_lannee_interdite_vide():
@@ -117,8 +121,9 @@ def test_autorisation_regle_none_vide():
 # ─── periodes_datees : ordre des puces (#85) ────────────────────────────────
 
 
-def test_periodes_datees_ordre_interdiction_asc_autorisation():
-    # Ordre attendu : interdiction d'abord, puis ASC, puis autorisation pure.
+def test_periodes_datees_ordre_asc_interdiction():
+    # Ordre (deprecated) suit _ORDRE_REGIME du moins au plus restrictif : ASC,
+    # puis interdiction. L'autorisation pure (complement) ferme la liste.
     r = _regle(
         type="mixte",
         periodes=[
@@ -132,8 +137,8 @@ def test_periodes_datees_ordre_interdiction_asc_autorisation():
     )
     labels = [p["label"] for p in periodes_datees(r)]
     assert labels == [
-        "Interdiction",
         "Autorisé sous conditions",
+        "Interdiction",
         "Période d'autorisation",
     ]
 
@@ -148,3 +153,74 @@ def test_periodes_datees_interdiction_simple_sans_regime():
 
 def test_periodes_datees_regle_none():
     assert periodes_datees(None) == []
+
+
+# ─── periodes_par_section : regroupement par section + justification (#159) ──
+
+
+def test_periodes_par_section_groupe_et_ordonne():
+    # interdiction + ASC -> 3 sections (interdiction, ASC, autorisation pure).
+    r = _regle(
+        type="mixte",
+        texte_condition="Interdit du 15/12 au 15/01.",
+        periodes=[
+            {"du": "15/12", "au": "15/01", "regime": "interdiction"},
+            {
+                "du": "derniere_coupe_luzerne",
+                "au": "15/01",
+                "regime": "autorisation_sous_condition",
+            },
+        ],
+    )
+    sections = periodes_par_section(r)
+    titres = [s["titre"] for s in sections]
+    # Ordre du moins au plus restrictif : autorisation pure d'abord, puis
+    # autorisation sous condition, interdiction en dernier.
+    assert titres == [
+        "Période d’autorisation",
+        "Période d’autorisation sous condition",
+        "Période d’interdiction",
+    ]
+    # Mois en toutes lettres dans les phrases (section interdiction en dernier).
+    assert sections[-1]["periodes"][0]["phrase"] == "du 15 décembre au 15 janvier"
+    # La justification (texte_condition) est portee par les sections non-libres.
+    assert sections[-1]["periodes"][0]["justification"] == "Interdit du 15/12 au 15/01."
+    # L'autorisation pure (premiere section) n'a pas de justification.
+    assert sections[0]["titre"] == "Période d’autorisation"
+    assert sections[0]["periodes"][0]["justification"] is None
+
+
+def test_periodes_par_section_sans_texte_condition():
+    # Pas de texte_condition -> justification None (pas de ⓘ cote template).
+    r = _regle(type="interdiction", periodes=[{"du": "15/10", "au": "31/01"}])
+    sections = periodes_par_section(r)
+    interdiction = next(s for s in sections if s["titre"] == "Période d’interdiction")
+    assert interdiction["periodes"][0]["justification"] is None
+
+
+def test_periodes_par_section_regle_none():
+    assert periodes_par_section(None) == []
+
+
+def test_periodes_par_section_ordre_agricole_regime_mixte():
+    """#224 : plusieurs periodes d'un meme regime (ex 2 interdictions d'une
+    regle mixte) doivent s'afficher dans l'ordre de l'annee agricole
+    (juillet->juin), pas dans l'ordre du YAML.
+    """
+    # Interdictions listees dans le desordre : 15/10 avant 01/07 dans le YAML.
+    r = _regle(
+        type="mixte",
+        periodes=[
+            {"du": "01/09", "au": "14/10", "regime": "autorisation_sous_condition"},
+            {"du": "15/10", "au": "31/01", "regime": "interdiction"},
+            {"du": "01/07", "au": "14/08", "regime": "interdiction"},
+        ],
+    )
+    sections = periodes_par_section(r)
+    interdiction = next(s for s in sections if s["titre"] == "Période d’interdiction")
+    phrases = [p["phrase"] for p in interdiction["periodes"]]
+    # 01/07 (index agricole 0) doit precéder 15/10 (index ~106).
+    assert phrases == [
+        "du 1er juillet au 14 août",
+        "du 15 octobre au 31 janvier",
+    ], phrases

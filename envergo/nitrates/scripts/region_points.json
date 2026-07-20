@@ -1,0 +1,339 @@
+{
+  "11": {
+    "zv": {
+      "code_insee": "77001",
+      "department_code": "77",
+      "lat": "48.347600",
+      "lng": "2.565300",
+      "nom": "Achères-la-Forêt",
+      "profil": "zv",
+      "region_code": "11"
+    }
+  },
+  "24": {
+    "hors_zv": {
+      "code_insee": "18083",
+      "department_code": "18",
+      "lat": "46.541900",
+      "lng": "2.353400",
+      "nom": "Culan",
+      "profil": "hors_zv",
+      "region_code": "24"
+    },
+    "zv": {
+      "code_insee": "18001",
+      "department_code": "18",
+      "lat": "47.282800",
+      "lng": "2.460100",
+      "nom": "Achères",
+      "profil": "zv",
+      "region_code": "24"
+    }
+  },
+  "27": {
+    "hors_zv": {
+      "code_insee": "21009",
+      "department_code": "21",
+      "lat": "47.190000",
+      "lng": "4.425600",
+      "nom": "Allerey",
+      "profil": "hors_zv",
+      "region_code": "27"
+    },
+    "hors_zv__montagne_note_6": {
+      "code_insee": "21083",
+      "department_code": "21",
+      "lat": "47.177500",
+      "lng": "4.239700",
+      "nom": "Blanot",
+      "profil": "hors_zv__montagne_note_6",
+      "region_code": "27"
+    },
+    "zv": {
+      "code_insee": "21001",
+      "department_code": "21",
+      "lat": "47.125600",
+      "lng": "4.988300",
+      "nom": "Agencourt",
+      "profil": "zv",
+      "region_code": "27"
+    },
+    "zv__montagne_note_6": {
+      "code_insee": "25004",
+      "department_code": "25",
+      "lat": "47.426300",
+      "lng": "6.919500",
+      "nom": "Abbévillers",
+      "profil": "zv__montagne_note_6",
+      "region_code": "27"
+    }
+  },
+  "28": {
+    "hors_zv": {
+      "code_insee": "14001",
+      "department_code": "14",
+      "lat": "49.400700",
+      "lng": "0.280600",
+      "nom": "Ablon",
+      "profil": "hors_zv",
+      "region_code": "28"
+    },
+    "zv": {
+      "code_insee": "27676",
+      "department_code": "27",
+      "lat": "49.213400",
+      "lng": "1.332600",
+      "nom": "Les Trois Lacs",
+      "profil": "zv",
+      "region_code": "28"
+    }
+  },
+  "32": {
+    "zv": {
+      "code_insee": "02001",
+      "department_code": "02",
+      "lat": "49.599700",
+      "lng": "3.182400",
+      "nom": "Abbécourt",
+      "profil": "zv",
+      "region_code": "32"
+    }
+  },
+  "44": {
+    "hors_zv": {
+      "code_insee": "08011",
+      "department_code": "08",
+      "lat": "49.925500",
+      "lng": "4.661800",
+      "nom": "Anchamps",
+      "profil": "hors_zv",
+      "region_code": "44"
+    },
+    "hors_zv__montagne_note_6": {
+      "code_insee": "54017",
+      "department_code": "54",
+      "lat": "48.504300",
+      "lng": "6.979900",
+      "nom": "Angomont",
+      "profil": "hors_zv__montagne_note_6",
+      "region_code": "44"
+    },
+    "zv": {
+      "code_insee": "08001",
+      "department_code": "08",
+      "lat": "49.491500",
+      "lng": "4.326900",
+      "nom": "Acy-Romance",
+      "profil": "zv",
+      "region_code": "44"
+    },
+    "zv__montagne_note_6": {
+      "code_insee": "57619",
+      "department_code": "57",
+      "lat": "48.986600",
+      "lng": "7.351000",
+      "nom": "Saint-Louis-lès-Bitche",
+      "profil": "zv__montagne_note_6",
+      "region_code": "44"
+    }
+  },
+  "53": {
+    "zv": {
+      "code_insee": "22001",
+      "department_code": "22",
+      "lat": "48.314700",
+      "lng": "-2.869300",
+      "nom": "Allineuc",
+      "profil": "zv",
+      "region_code": "53"
+    }
+  },
+  "75": {
+    "hors_zv": {
+      "code_insee": "16001",
+      "department_code": "16",
+      "lat": "46.099900",
+      "lng": "0.717400",
+      "nom": "Abzac",
+      "profil": "hors_zv",
+      "region_code": "75"
+    },
+    "hors_zv__montagne_note_6": {
+      "code_insee": "19001",
+      "department_code": "19",
+      "lat": "45.511100",
+      "lng": "1.761900",
+      "nom": "Affieux",
+      "profil": "hors_zv__montagne_note_6",
+      "region_code": "75"
+    },
+    "hors_zv__note5": {
+      "code_insee": "24001",
+      "department_code": "24",
+      "lat": "45.582500",
+      "lng": "0.765500",
+      "nom": "Abjat-sur-Bandiat",
+      "profil": "hors_zv__note5",
+      "region_code": "75"
+    },
+    "hors_zv__note5__montagne_note_7": {
+      "code_insee": "64006",
+      "department_code": "64",
+      "lat": "42.921600",
+      "lng": "-0.599300",
+      "nom": "Accous",
+      "profil": "hors_zv__note5__montagne_note_7",
+      "region_code": "75"
+    },
+    "zv": {
+      "code_insee": "16002",
+      "department_code": "16",
+      "lat": "46.078100",
+      "lng": "0.202800",
+      "nom": "Les Adjots",
+      "profil": "zv",
+      "region_code": "75"
+    },
+    "zv__montagne_note_6": {
+      "code_insee": "23013",
+      "department_code": "23",
+      "lat": "46.027400",
+      "lng": "2.501100",
+      "nom": "Auzances",
+      "profil": "zv__montagne_note_6",
+      "region_code": "75"
+    },
+    "zv__note5": {
+      "code_insee": "24007",
+      "department_code": "24",
+      "lat": "45.288600",
+      "lng": "0.295100",
+      "nom": "Allemans",
+      "profil": "zv__note5",
+      "region_code": "75"
+    },
+    "zv__note5__montagne_note_7": {
+      "code_insee": "64339",
+      "department_code": "64",
+      "lat": "43.125000",
+      "lng": "-0.212400",
+      "nom": "Lestelle-Bétharram",
+      "profil": "zv__note5__montagne_note_7",
+      "region_code": "75"
+    }
+  },
+  "76": {
+    "hors_zv__note5": {
+      "code_insee": "09002",
+      "department_code": "09",
+      "lat": "42.999600",
+      "lng": "1.878100",
+      "nom": "Aigues-Vives",
+      "profil": "hors_zv__note5",
+      "region_code": "76"
+    },
+    "hors_zv__note5__montagne_note_7": {
+      "code_insee": "09003",
+      "department_code": "09",
+      "lat": "42.910200",
+      "lng": "1.903500",
+      "nom": "L'Aiguillon",
+      "profil": "hors_zv__note5__montagne_note_7",
+      "region_code": "76"
+    },
+    "zv__note5": {
+      "code_insee": "09019",
+      "department_code": "09",
+      "lat": "43.145600",
+      "lng": "1.448000",
+      "nom": "Artigat",
+      "profil": "zv__note5",
+      "region_code": "76"
+    },
+    "zv__note5__montagne_note_7": {
+      "code_insee": "09001",
+      "department_code": "09",
+      "lat": "43.050200",
+      "lng": "1.471000",
+      "nom": "Aigues-Juntes",
+      "profil": "zv__note5__montagne_note_7",
+      "region_code": "76"
+    }
+  },
+  "84": {
+    "hors_zv": {
+      "code_insee": "69149",
+      "department_code": "69",
+      "lat": "45.708000",
+      "lng": "4.811200",
+      "nom": "Oullins-Pierre-Bénite",
+      "profil": "hors_zv",
+      "region_code": "84"
+    },
+    "hors_zv__montagne_note_6": {
+      "code_insee": "01002",
+      "department_code": "01",
+      "lat": "46.007100",
+      "lng": "5.424700",
+      "nom": "L'Abergement-de-Varey",
+      "profil": "hors_zv__montagne_note_6",
+      "region_code": "84"
+    },
+    "zv": {
+      "code_insee": "01005",
+      "department_code": "01",
+      "lat": "45.999200",
+      "lng": "4.911900",
+      "nom": "Ambérieux-en-Dombes",
+      "profil": "zv",
+      "region_code": "84"
+    },
+    "zv__montagne_note_6": {
+      "code_insee": "03045",
+      "department_code": "03",
+      "lat": "46.058000",
+      "lng": "3.513900",
+      "nom": "Busset",
+      "profil": "zv__montagne_note_6",
+      "region_code": "84"
+    }
+  },
+  "93": {
+    "hors_zv__note5": {
+      "code_insee": "04034",
+      "department_code": "04",
+      "lat": "43.930000",
+      "lng": "5.882200",
+      "nom": "La Brillanne",
+      "profil": "hors_zv__note5",
+      "region_code": "93"
+    },
+    "hors_zv__note5__montagne_note_7": {
+      "code_insee": "04001",
+      "department_code": "04",
+      "lat": "44.063200",
+      "lng": "6.141300",
+      "nom": "Aiglun",
+      "profil": "hors_zv__note5__montagne_note_7",
+      "region_code": "93"
+    },
+    "zv__note5": {
+      "code_insee": "04094",
+      "department_code": "04",
+      "lat": "43.762800",
+      "lng": "5.859700",
+      "nom": "Gréoux-les-Bains",
+      "profil": "zv__note5",
+      "region_code": "93"
+    },
+    "zv__note5__montagne_note_7": {
+      "code_insee": "04004",
+      "department_code": "04",
+      "lat": "43.792100",
+      "lng": "6.025700",
+      "nom": "Allemagne-en-Provence",
+      "profil": "zv__note5__montagne_note_7",
+      "region_code": "93"
+    }
+  }
+}

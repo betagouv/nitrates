@@ -79,8 +79,29 @@ class RequireLoginEverywhere:
             return True
         # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
         # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.
-        if path == "/" and getattr(settings, "NITRATES_ROOT_OUVERT", False):
-            return True
+        if getattr(settings, "NITRATES_ROOT_OUVERT", False):
+            if path == "/":
+                return True
+            # La page racine charge sa carte SIG en fetch() sur ces endpoints
+            # de DONNEES PUBLIQUES read-only (zones reglementaires ZV/ZAR issues
+            # des sources SIG officielles, referentiels de l'arbre). Sans cet
+            # exempt, l'anonyme est redirige vers le login admin et le fetch
+            # recoit du HTML au lieu de JSON -> carte vide + "Unexpected token
+            # 'C', Connexion... is not valid JSON" (issue #197 suite). On ouvre
+            # donc les memes donnees que la racine, rien de plus (ni /simulateur/
+            # ni /api/arbre/ qui restent fermes).
+            if path.startswith("/geojson/") or path.startswith("/api/referentiels/"):
+                return True
+            # /simulateur/debug/ (mal nomme : ce n'est PAS un panneau debug mais
+            # l'endpoint de GEOLOCALISATION appele au clic sur la carte, carte
+            # #57). Sa reponse porte `simulateur_ouvert` qui pilote l'affichage
+            # du formulaire sur le root public. Sans cet exempt, le clic carte
+            # est redirige vers le login (302 suivi en silence par fetch -> HTML
+            # au lieu de JSON), `simulateur_ouvert` est absent et le formulaire
+            # ne s'affiche JAMAIS (symptome : "cliquez sur la carte" fige). On
+            # l'exempte AVANT le prefixe /simulateur/ (qui, lui, reste ferme).
+            if path.startswith("/simulateur/debug/"):
+                return True
         return False
 
     def __call__(self, request):

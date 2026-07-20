@@ -15,25 +15,29 @@
 }
 
 /* ====================================================================
-   RUBAN 45deg coin haut-gauche (etat repos)
+   RUBAN 45deg coin haut-DROIT (etat repos)
    ==================================================================== */
 .nitrates-construction__ribbon {
   /* Methode canonique du "corner ribbon" : on ancre le CENTRE de la bande
-     sur un point (d, d) de la diagonale du coin, puis on tourne de -45deg
+     sur un point (d, d) de la diagonale du coin, puis on tourne de +45deg
      autour de ce centre. Comme le point d'ancrage est sur la diagonale et
-     que la bande est centree dessus (translate -50%/-50%), ses deux
-     extremites depassent symetriquement des bords haut et gauche -> le
+     que la bande est centree dessus (translate 50%/-50%), ses deux
+     extremites depassent symetriquement des bords haut et droit -> le
      texte tombe pile au centre du triangle visible. d pilote a quelle
-     distance du coin passe la bande (plus grand = plus bas/droite). */
+     distance du coin passe la bande (plus grand = plus bas/gauche).
+
+     #194 : ancre a DROITE (et non plus a gauche) pour ne plus barrer le
+     logo Marianne, place dans le coin haut-gauche du header. Sur les
+     ecrans etroits, le ruban gauche recouvrait la Marianne. */
   --ribbon-d: 4.5rem;
   --ribbon-w: 26rem;
 
   position: fixed;
   top: var(--ribbon-d);
-  left: var(--ribbon-d);
+  right: var(--ribbon-d);
   z-index: 1000;
   width: var(--ribbon-w);
-  transform: translate(-50%, -50%) rotate(-45deg);
+  transform: translate(50%, -50%) rotate(45deg);
   transform-origin: center;
   display: flex;
   align-items: center;
@@ -107,7 +111,11 @@
   color: var(--nitrates-chantier-fonce);
   font-size: 0.875rem;
   font-weight: 600;
-  line-height: 0.25;
+
+  /* line-height normal : le texte du disclaimer peut passer sur PLUSIEURS
+     lignes (surtout mobile ou la largeur est faible). Un line-height ecrase
+     (< 1) faisait se chevaucher les lignes -> texte illisible (#177). */
+  line-height: 1.3;
   text-align: center;
 
   /* cachee par defaut : hors-ecran vers le haut + transparente */
@@ -170,6 +178,42 @@
    section header au scroll/zoom lent. La barre etant en position:fixed, elle
    se contente de recouvrir le haut du contenu (deja scrolle a ce moment-la),
    ce qui est acceptable pour un simple bandeau d'avertissement. */
+
+/* ====================================================================
+   RESPONSIVE MOBILE (#177)
+   Le ruban a une largeur fixe (--ribbon-w: 26rem) taillee pour desktop.
+   Sur petit ecran il debordait / rendait mal : on le rapproche du coin
+   (d plus petit) et on reduit sa largeur + sa typo pour qu'il reste un
+   coin discret et lisible.
+   ==================================================================== */
+@media (width <= 47.99em) {
+  .nitrates-construction__ribbon {
+    --ribbon-d: 3rem;
+    --ribbon-w: 18rem;
+
+    min-height: 1.6rem;
+  }
+
+  .nitrates-construction__ribbon-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Barre sticky : padding et typo un cran plus compacts sur mobile. Le texte
+     du disclaimer passe sur 2-3 lignes sur mobile -> on garde align-items en
+     haut pour que le picto reste au niveau de la 1re ligne, et on empeche le
+     picto de retrecir. */
+  .nitrates-construction__bar {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+    align-items: flex-start;
+  }
+
+  .nitrates-construction__bar .nitrates-construction__icon {
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+}
 
 /* Respecte prefers-reduced-motion : pas de glissement, juste l'opacite. */
 @media (prefers-reduced-motion: reduce) {

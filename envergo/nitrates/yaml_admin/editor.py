@@ -724,6 +724,12 @@ def _apply_set_branch_content(
     for key in ("noeud", "regle", "renvoi_vers", "renvoi_arbre", "feuille_vide"):
         if key != storage_key and key in branche:
             del branche[key]
+    # Compagnons d'un renvoi_arbre (noeud_cible, remap_contexte) : on les nettoie
+    # systematiquement avant de reecrire, pour ne pas laisser trainer un ancien
+    # noeud_cible/remap quand on change le renvoi (ou quand on passe a un autre
+    # kind). Ils seront re-poses ci-dessous si content_data les fournit.
+    for compagnon in ("noeud_cible", "remap_contexte"):
+        branche.pop(compagnon, None)
     # Clefs SCALAIRES (string/bool) : le builder renvoie {key: valeur}, on
     # stocke la valeur brute (le schema attend une string / un bool, pas un
     # dict). Les clefs structurelles (noeud/regle) stockent le dict tel quel.
@@ -731,6 +737,13 @@ def _apply_set_branch_content(
         content_data, dict
     ):
         branche[storage_key] = content_data.get(storage_key)
+        # Renvoi cross-arbre cible (#222) : le builder peut joindre noeud_cible
+        # et/ou remap_contexte a cote du renvoi_arbre. On les persiste ici (le
+        # storage_key seul ne suffirait pas -- ce sont des cles compagnes).
+        if storage_key == "renvoi_arbre":
+            for compagnon in ("noeud_cible", "remap_contexte"):
+                if content_data.get(compagnon):
+                    branche[compagnon] = content_data[compagnon]
     else:
         branche[storage_key] = content_data
 

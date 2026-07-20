@@ -1,4 +1,4 @@
-{% load static %}
+{% load static nitrates_tags %}
 
 {% comment %}
   Bandeau "site en construction" (issue #113), affiche uniquement quand
@@ -20,9 +20,9 @@
   <div class="nitrates-construction__bar" role="note">
     <span class="nitrates-construction__icon" aria-hidden="true">🚧</span>
     Ce site est en cours de construction&nbsp;: il peut encore contenir des
-    erreurs sur l'interprétation de la directive nitrates.
+    erreurs sur l'interprétation de la réglementation nitrates.
   </div>
 </div>
 
-<link href="{% static 'nitrates/construction.css' %}" rel="stylesheet">
-<script defer src="{% static 'nitrates/construction.js' %}"></script>
+<link href="{% static_v 'nitrates/construction.css' %}" rel="stylesheet">
+<script defer src="{% static_v 'nitrates/construction.js' %}"></script>

@@ -1,8 +1,8 @@
-"""Tests de la commande `seed_referentiels` (cf. carte #61).
+"""Tests de la commande `seed_referentiels` (cf. carte #61, #226).
 
 Valide :
-  - le seed produit le bon volume (counts) depuis le YAML packagé
-  - la commande est idempotente (2e passage = 0 created, X updated)
+  - le seed produit le bon volume (counts) depuis la fixture packagée
+  - la commande est idempotente (2e passage = mêmes counts, pas de doublon)
   - les FK Culture→GroupeCultureUI / BrancheCulturale sont cohérentes
   - le dédoublonnage brunissement_soies → brunissement_des_soies
   - le mapping mais → champs_prefill {culture_irriguee_type: mais}
@@ -51,20 +51,23 @@ def _reset():
 def test_seed_produit_volumes_attendus():
     _reset()
     _seed()
-    # Volumes attendus selon le YAML packagé actuel.
+    # Volumes attendus selon la fixture packagée (initial_referentiels.json,
+    # dumpdata de l'état DB de référence, cf. #226).
     # BrancheCulturale = 12 depuis l'aplatissement des couverts
     # (spec_refactor_couverts) : les 6 variantes cie/cine remplacent les
     # 2 ex-branches interculture_longue/interculture_courte.
     assert GroupeCultureUI.objects.count() == 7
     assert BrancheCulturale.objects.count() == 12
-    assert Culture.objects.count() == 19
+    # 20 depuis la séparation verger/vigne (#228) : cultures_perennes_vergers
+    # + cultures_perennes_vignes remplacent l'ex-fusionnée
+    # cultures_perennes_vergers_vignes.
+    assert Culture.objects.count() == 20
     # 33 : 30 (carte #98) + 3 options "Autre digestat de type Ia/Ib/II"
     # ajoutées sous la catégorie Digestats depuis l'export Miro "Types de
     # fertilisants" (options "Autre de type X" de la colonne Digestats).
     assert Fertilisant.objects.count() == 33
     assert NoteReglementaire.objects.count() == 13
-    assert CodePrescription.objects.count() == 16
-    # 7 dans le YAML mais on retire brunissement_soies (doublon).
+    assert CodePrescription.objects.count() == 17
     assert EvenementPhenologique.objects.count() == 6
 
 
@@ -74,12 +77,33 @@ def test_seed_produit_volumes_attendus():
 def test_seed_idempotent():
     _reset()
     _seed()
-    count_first = GroupeCultureUI.objects.count()
-    out = _seed()
-    count_second = GroupeCultureUI.objects.count()
-    assert count_first == count_second
-    # Le 2e passage doit dire "X mis à jour", pas "X créés"
-    assert "0 créé(s), 7 mis à jour" in out
+    counts_first = {
+        m.__name__: m.objects.count()
+        for m in (
+            GroupeCultureUI,
+            BrancheCulturale,
+            Culture,
+            Fertilisant,
+            NoteReglementaire,
+            CodePrescription,
+            EvenementPhenologique,
+        )
+    }
+    _seed()
+    counts_second = {
+        m.__name__: m.objects.count()
+        for m in (
+            GroupeCultureUI,
+            BrancheCulturale,
+            Culture,
+            Fertilisant,
+            NoteReglementaire,
+            CodePrescription,
+            EvenementPhenologique,
+        )
+    }
+    # loaddata avec PK explicites = upsert : 2e passage sans doublon.
+    assert counts_first == counts_second
 
 
 # ─── FK Culture cohérentes ───────────────────────────────────────────────────

@@ -28,6 +28,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
               action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
               class="vd-form vd-form--edit">
           {% csrf_token %}
+          {% include "nitrates_admin/validation/_hidden_filtres.html" %}
           <label class="vd-edit-label">
             Note de vérification (éditable — vidée = flag levé)
             <textarea name="note_verif" rows="2" class="vd-edit-input">{{ branche.note_verif }}</textarea>
@@ -63,179 +64,23 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
     </div>
 
     <div class="vd-grid">
-      {# 1. Miro #}
-      <div class="vd-col">
-        <h2>📐 Miro juriste</h2>
-        {% if branche.miro_widget_id %}
-          <p class="vd-miro-link">
-            <a href="https://miro.com/app/board/{{ miro_board_id }}/?moveToWidget={{ branche.miro_widget_id }}&cot=14"
-               target="_blank"
-               rel="noopener">↗ Ouvrir la feuille dans le board Miro</a>
-            <span class="vd-miro-id">(widget {{ branche.miro_widget_id }})</span>
-          </p>
-        {% else %}
-          <p style="color:#999">
-            Pas de lien Miro. Coller l'id du widget ci-dessous
-            (board → clic droit sur la box → « Copy link to widget »,
-            l'id est la valeur de <code>moveToWidget=</code>).
-          </p>
-        {% endif %}
-        {% if branche.screenshot_miro %}
-          <img src="{{ branche.screenshot_miro.url }}"
-               alt="Miro"
-               class="vd-img vc-clickable"
-               data-lightbox
-               data-src="{{ branche.screenshot_miro.url }}">
-        {% else %}
-          <p style="color:#999">Aucun screenshot Miro.</p>
-        {% endif %}
-        {% if branche.resultat_miro %}
-          <p class="vd-resultat">
-            <strong>Attendu :</strong> {{ branche.resultat_miro }}
-            {% if branche.code_pc_miro %}<span class="vc-pc">{{ branche.code_pc_miro }}</span>{% endif %}
-          </p>
-        {% endif %}
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
-              class="vd-form vd-form--edit">
-          {% csrf_token %}
-          <label class="vd-edit-label">
-            Résultat attendu (texte juriste)
-            <textarea name="resultat_miro" rows="2" class="vd-edit-input">{{ branche.resultat_miro }}</textarea>
-          </label>
-          <label class="vd-edit-label">
-            Code PC
-            <input type="text"
-                   name="code_pc_miro"
-                   value="{{ branche.code_pc_miro }}"
-                   class="vd-edit-input"
-                   maxlength="20">
-          </label>
-          <label class="vd-edit-label">
-            Id widget Miro (moveToWidget)
-            <input type="text"
-                   name="miro_widget_id"
-                   value="{{ branche.miro_widget_id }}"
-                   class="vd-edit-input"
-                   placeholder="3458764674736757749"
-                   maxlength="40">
-          </label>
-          <button type="submit" class="vc-btn">Enregistrer texte Miro</button>
-        </form>
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_upload_miro' pk=branche.pk %}"
-              enctype="multipart/form-data"
-              class="vd-form">
-          {% csrf_token %}
-          <input type="file" name="screenshot_miro" accept="image/*">
-          <button type="submit" class="vc-btn">Override Miro</button>
-        </form>
-      </div>
+      {# 1. Miro — colonne en auto-save htmx (cf. _col_miro.html) #}
+      {% include "nitrates_admin/validation/_col_miro.html" %}
 
-      {# 2. YAML codé #}
-      <div class="vd-col">
-        <h2>📝 YAML codé</h2>
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
-              class="vd-form vd-form--edit">
-          {% csrf_token %}
-          <textarea name="yaml_snapshot" rows="14" class="vd-edit-textarea-yaml">{{ branche.yaml_snapshot }}</textarea>
-          <button type="submit" class="vc-btn">Enregistrer YAML</button>
-        </form>
-      </div>
+      {# 2. YAML codé — auto-save htmx #}
+      {% include "nitrates_admin/validation/_col_yaml.html" %}
 
-      {# 3. Admin YAML viewer #}
-      <div class="vd-col">
-        <h2>🌳 YAML viewer</h2>
-        {% if branche.screenshot_yaml_viewer %}
-          <img src="{{ branche.screenshot_yaml_viewer.url }}"
-               alt="YAML viewer"
-               class="vd-img vc-clickable"
-               data-lightbox
-               data-src="{{ branche.screenshot_yaml_viewer.url }}">
-        {% else %}
-          <p style="color:#999">Pas de capture admin viewer.</p>
-        {% endif %}
-        <p style="font-size:0.8rem;">
-          <a href="{% url 'nitrates_admin_yaml_tree' %}#regle={{ branche.regle_id }}"
-             target="_blank">Ouvrir le viewer ↗</a>
-        </p>
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_upload_yaml_viewer' pk=branche.pk %}"
-              enctype="multipart/form-data"
-              class="vd-form">
-          {% csrf_token %}
-          <input type="file" name="screenshot_yaml_viewer" accept="image/*">
-          <button type="submit" class="vc-btn">Uploader viewer</button>
-        </form>
-      </div>
+      {# 3. Admin YAML viewer — auto-save htmx #}
+      {% include "nitrates_admin/validation/_col_viewer.html" %}
 
-      {# 4. Admin YAML form (cas tricky) #}
-      <div class="vd-col">
-        <h2>✏️ YAML form (édition)</h2>
-        {% if branche.screenshot_yaml_form %}
-          <img src="{{ branche.screenshot_yaml_form.url }}"
-               alt="YAML form"
-               class="vd-img vc-clickable"
-               data-lightbox
-               data-src="{{ branche.screenshot_yaml_form.url }}">
-        {% else %}
-          <p style="color:#999">Optionnel — uploader si cas tricky.</p>
-        {% endif %}
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_upload_yaml_form' pk=branche.pk %}"
-              enctype="multipart/form-data"
-              class="vd-form">
-          {% csrf_token %}
-          <input type="file" name="screenshot_yaml_form" accept="image/*">
-          <button type="submit" class="vc-btn">Uploader form</button>
-        </form>
-      </div>
+      {# 4. Admin YAML form (cas tricky) — auto-save htmx #}
+      {% include "nitrates_admin/validation/_col_form.html" %}
 
-      {# 5. Simulateur deeplink #}
-      <div class="vd-col">
-        <h2>🌍 Simulateur</h2>
-        {% if branche.url_simulateur %}
-          <p>
-            <a href="{{ branche.url_simulateur }}" target="_blank" class="vc-btn">Ouvrir simulateur ↗</a>
-          </p>
-        {% endif %}
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
-              class="vd-form vd-form--edit">
-          {% csrf_token %}
-          <label class="vd-edit-label">
-            URL simulateur (corrigeable manuellement)
-            <textarea name="url_simulateur"
-                      rows="4"
-                      class="vd-edit-input vd-edit-input--mono">{{ branche.url_simulateur }}</textarea>
-          </label>
-          <button type="submit" class="vc-btn">Enregistrer URL</button>
-        </form>
-      </div>
+      {# 5. Simulateur deeplink — auto-save htmx #}
+      {% include "nitrates_admin/validation/_col_simulateur.html" %}
 
-      {# 6. Playwright simulateur #}
-      <div class="vd-col">
-        <h2>📸 Playwright simulateur</h2>
-        {% if branche.screenshot_playwright %}
-          <img src="{{ branche.screenshot_playwright.url }}"
-               alt="Playwright"
-               class="vd-img vc-clickable"
-               data-lightbox
-               data-src="{{ branche.screenshot_playwright.url }}">
-          <p style="font-size:0.75rem; color:#666;">Capturé le {{ branche.playwright_run_at|date:"d/m/Y H:i" }}</p>
-        {% else %}
-          <p style="color:#999">Pas de capture Playwright.</p>
-        {% endif %}
-        <form method="post"
-              action="{% url 'nitrates_admin_validation_upload_playwright' pk=branche.pk %}"
-              enctype="multipart/form-data"
-              class="vd-form">
-          {% csrf_token %}
-          <input type="file" name="screenshot_playwright" accept="image/*">
-          <button type="submit" class="vc-btn">Uploader Playwright</button>
-        </form>
-      </div>
+      {# 6. Playwright simulateur — auto-save htmx #}
+      {% include "nitrates_admin/validation/_col_playwright.html" %}
     </div>
 
     {# Validation #}
@@ -311,7 +156,7 @@ Page de lecture/validation : pas de mutation htmx globale -> on vide l'overlay
     </div>
   </div>
 
-  {% include "nitrates_admin/validation/_lightbox.html" %}
+  {% include "nitrates_admin/validation/_lightbox.html" with mode="compare" %}
 
   <style>
     .vd-flag {

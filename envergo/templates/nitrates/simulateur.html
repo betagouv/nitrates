@@ -22,6 +22,10 @@
     window.NITRATES_ZAR_GEOJSON_URL = "{% url 'nitrates_zar_geojson' %}";
     window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";
     window.NITRATES_REFERENTIELS_URL = "{% url 'nitrates_referentiels' %}";
+    // Ouverture geographique appliquee sur cette page ? True sur `/` (public),
+    // False sur `/simulateur` (interne). Pilote l'envoi du flag geo a l'appel
+    // debug (cf. simulator.js) -> bypass de l'allowlist departement en interne.
+    window.NITRATES_GEO_APPLIQUEE = {% if geo_appliquee %}true{% else %}false{% endif %};
     window.NITRATES_INITIAL_DATA = {
       categorie_culture: "{{ data.categorie_culture|default:'' }}",
       sous_culture_form: "{{ data.sous_culture_form|default:'' }}",
@@ -47,40 +51,67 @@
     };
     {% endif %}
   </script>
-  <script defer src="{% static 'nitrates/simulator.js' %}"></script>
-  <script defer src="{% static 'nitrates/cascade.js' %}"></script>
+  {# static_v : ?v=<mtime> en DEBUG pour casser le cache navigateur du JS (sinon #}
+  {# dev server + cache servent une version perimee malgre hard-refresh). #}
+  <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
+  {# Barre de progression du parcours, fixee top (#154). #}
+  <script defer src="{% static_v 'nitrates/progress.js' %}"></script>
   {# Saisie en 2 questions du type de couvert interculture longue (hack UI). #}
-  <script defer src="{% static 'nitrates/couvert_split.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/couvert_split.js' %}"></script>
   {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
-  <script defer src="{% static 'nitrates/form_autoscroll.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/form_autoscroll.js' %}"></script>
+  {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
+  <script defer src="{% static_v 'nitrates/reset_form.js' %}"></script>
+  {# Reformatage cosmetique front-only de questions a rallonge (#192) : swap du #}
+  {# texte brut vers une version paragraphee, sans toucher a l'arbre. #}
+  <script defer src="{% static_v 'nitrates/question_reformat.js' %}"></script>
   {% if afficher_resultat %}
-    <script defer src="{% static 'nitrates/subsidiaires_cascade.js' %}"></script>
+    <script defer src="{% static_v 'nitrates/subsidiaires_cascade.js' %}"></script>
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
     {# resultat final -> section Localisation/resultat en haut (#112). #}
-    <script defer src="{% static 'nitrates/scroll_resultat.js' %}"></script>
+    <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
   {% endif %}
 {% endblock %}
 
 {% block content %}
+  {% comment %}
+  Barre de progression du parcours (Carte #154), fixee en haut pleine largeur,
+  facon YouTube, violet DSFR. Pilotee par progress.js. Affichee UNIQUEMENT
+  pendant la selection (formulaire + QC en attente), PAS sur la page resultat
+  final (afficher_resultat sans QC en attente) : la progression n'a plus de sens
+  une fois le resultat calcule.
+  {% endcomment %}
+  {% if not afficher_resultat or qc_en_attente %}
+    <div id="nitrates-progress-bar"
+         class="nitrates-progress"
+         role="progressbar"
+         aria-label="Progression de votre simulation"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-valuenow="0">
+      <div class="nitrates-progress__fill"></div>
+    </div>
+  {% endif %}
+
   <div class="fr-container fr-py-4w">
 
     {# ─── Section hero (cf. maquette) ──────────────────────────────── #}
     <div class="fr-grid-row fr-grid-row--gutters fr-grid-row--middle fr-mb-4w">
       <div class="fr-col-12 fr-col-lg-7">
-        <h1 class="fr-h1">Les règles d'épandage qui s'appliquent à votre exploitation, en clair.</h1>
+        <h1 class="fr-h1">Les conditions d'épandage sur votre parcelle, en un coup d'œil.</h1>
 
         <div class="nitrates-badges">
           <p class="fr-badge fr-badge--blue-ecume">🗺️ Zone vulnérable</p>
           <p class="fr-badge fr-badge--blue-ecume">🗓️ Périodes autorisées</p>
           <p class="fr-badge fr-badge--blue-ecume">🌱 Cultures et fertilisants</p>
-          <p class="fr-badge fr-badge--blue-ecume">📊 Plafonds réglementaires</p>
         </div>
 
         <p class="fr-text--lead fr-mt-2w">
-          Nitrates est un service public gratuit. Renseignez votre localisation et votre type de projet : obtenez une lecture claire de la réglementation applicable.
+          Indiquez votre parcelle et votre situation pour savoir si l'épandage est autorisé, soumis à conditions ou interdit selon la réglementation nitrates en vigueur.
         </p>
         <div class="fr-mt-4w">
-          <a class="fr-btn" href="#section-localisation">Voir les règles qui s'appliquent à mes parcelles</a>
+          <a class="fr-btn" href="#section-localisation">Voir les conditions d'épandage sur ma parcelle</a>
         </div>
         <p class="fr-text--sm fr-text-mention--grey fr-mt-2w" style="color:#666">*Champs obligatoires</p>
       </div>
@@ -88,7 +119,18 @@
            style="display:flex;
                   justify-content:center">
         <div class="nitrates-hero-illustration">
-          <img src="{% static 'nitrates/illu_nitrates.png' %}" alt="">
+          {% comment %}
+            Deux variantes de l'illustration hero : la version claire (PNG) et
+            la version sombre (SVG, maquette #190). Le CSS masque l'une ou
+            l'autre selon data-fr-theme (cf. simulateur.css). Le décoratif ->
+            alt vide sur les deux.
+          {% endcomment %}
+          <img class="nitrates-hero-illustration__light"
+               src="{% static 'nitrates/illu_nitrates.png' %}"
+               alt="">
+          <img class="nitrates-hero-illustration__dark"
+               src="{% static 'nitrates/illu_nitrates_dark.svg' %}"
+               alt="">
         </div>
       </div>
     </div>

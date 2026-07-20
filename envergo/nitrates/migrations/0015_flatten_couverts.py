@@ -12,11 +12,14 @@ deviennent orphelines et sont supprimees, ainsi que d'eventuels doublons de
 Culture dont l'identifiant est un slug de variante (artefacts d'experimentation).
 
 Idempotent : rejouable sans effet de bord (update_or_create + filtrage).
-Best-effort : si le YAML referentiels est introuvable (CI sans bind-mount),
-on no-op proprement -- la commande `seed_referentiels` re-tentera.
+Best-effort : si le YAML referentiels est introuvable, on no-op proprement.
 
-Le mapping cible est lu depuis referentiels.yaml (deja aplati) pour rester
-la source unique, plutot que de hardcoder ici.
+Contexte #226 : `referentiels.yaml` a ete supprime depuis. Cette migration
+a deja ete appliquee sur les bases existantes quand le YAML etait present ;
+sur une base a jour elle ne se rejoue pas. Sur une base neuve, le garde
+`exists()` la fait no-op (le YAML est absent) et la fixture chargee par
+`seed_referentiels` porte deja l'etat aplati -- l'aplatissement est donc
+sans objet. Le corps est laisse intact pour ne pas alterer l'historique.
 """
 
 import sys
@@ -37,9 +40,9 @@ def forwards(apps, schema_editor):
     yaml_path = Path(settings.NITRATES_SPECS_DIR) / "referentiels.yaml"
     if not yaml_path.exists():
         sys.stderr.write(
-            f"[migration nitrates 0015] {yaml_path} introuvable, "
-            f"aplatissement couverts saute. Lancer "
-            f"`python manage.py seed_referentiels` puis nettoyer manuellement.\n"
+            f"[migration nitrates 0015] {yaml_path} introuvable (attendu "
+            f"depuis #226), aplatissement couverts saute. La fixture chargee "
+            f"par `seed_referentiels` porte deja l'etat aplati.\n"
         )
         return
 

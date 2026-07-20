@@ -61,8 +61,8 @@ test.describe('Simulateur nitrates : page formulaire', () => {
     await page.goto('/simulateur/');
 
     await expect(page).toHaveTitle(/Simulateur/);
-    // Note 2026-05-12 : h1 changee en phrase narrative UX-friendly.
-    await expect(page.locator('h1')).toContainText("règles d'épandage");
+    // Note #160 : h1 mise a jour vers le texte Figma.
+    await expect(page.locator('h1')).toContainText("conditions d'épandage");
 
     // Carte Leaflet presente
     const map = page.locator('#nitrates-map');
@@ -208,6 +208,33 @@ test.describe('Simulateur nitrates : cascade radios', () => {
     await expect(page.locator('#sous_culture_form-wrapper')).toBeVisible();
     // Le label colza est rendu (l'input lui-meme est masque par DSFR).
     await expect(page.locator('label[for="id_sous_culture_form__colza"]')).toBeVisible();
+  });
+
+  test('titre section Fertilisant cache tant que le niveau n est pas atteint (#160)', async ({
+    page,
+  }) => {
+    // Regression : quand la cascade Culture n'est pas finie, le titre
+    // « Fertilisant » s'affichait seul (titre orphelin au-dessus du bouton).
+    await page.goto('/simulateur/');
+    await waitForCascadeReady(page);
+
+    // Etat initial (aucune culture choisie) : section Fertilisant cachee.
+    await expect(page.locator('#section-fertilisant')).toBeHidden();
+
+    // On choisit une culture SANS aller jusqu'au fertilisant (couvert court :
+    // sous_culture_form s'affiche mais categorie_fertilisant pas encore).
+    await clickCascadeRadio(page, 'categorie_culture', 'couvert_intercultures_courte');
+    await expect(page.locator('#sous_culture_form-wrapper')).toBeVisible();
+    // La section Fertilisant reste cachee (pas de titre orphelin).
+    await expect(page.locator('#section-fertilisant')).toBeHidden();
+
+    // sol_non_cultive saute le niveau 2 -> la section Fertilisant apparait.
+    await clickCascadeRadio(page, 'categorie_culture', 'sol_non_cultive');
+    await expect(page.locator('#section-fertilisant')).toBeVisible();
+
+    // Retour sur couvert court -> la section Fertilisant se recache.
+    await clickCascadeRadio(page, 'categorie_culture', 'couvert_intercultures_courte');
+    await expect(page.locator('#section-fertilisant')).toBeHidden();
   });
 
   test('cascade culture_hiver + colza -> occupation_sol + sous_culture remplis', async ({

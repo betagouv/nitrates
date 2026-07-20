@@ -40,7 +40,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
   {% if not moulinette.catalog.en_zone_vulnerable %}
     <div class="fr-alert fr-alert--info fr-mt-3w">
       <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
-      <p>La directive nitrates ne s'applique pas à cette parcelle.</p>
+      <p>La réglementation nitrates ne s'applique pas à cette parcelle.</p>
     </div>
   {% else %}
 
@@ -113,26 +113,34 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
 
           {% comment %}
-          Liste UNIQUE des periodes datees, en puces (#85), ordre (du plus au
-          moins restrictif, cf. tag periodes_datees) : interdiction, plafond,
-          autorisation sous condition, puis la periode d'autorisation pure
-          (vert) en dernier. L'autorisation pure = jours ni interdits ni sous
-          condition (complement, fusion des plages), affichee meme sans
-          periode YAML (cas "libre" = autorise toute l'annee).
-          Vaut pour mixte ET non-mixte. Les regles calculatrice (couverts) ont
-          leur propre recap cote JS, on n'en met pas ici (pas de doublon).
+          Recap des periodes GROUPE PAR SECTION (#159, maquette) : une section
+          par regime present (Interdiction / Autorisé sous conditions /
+          Autorisé), chacune avec une liste a puces des periodes datees (mois
+          en toutes lettres). La justification (texte_condition de la regle)
+          n'est plus affichee en clair : elle passe dans un tooltip ⓘ (title
+          natif, cf. calendrier statique). Ordre du plus au moins restrictif ;
+          l'autorisation pure ferme la liste. Les regles calculatrice
+          (couverts) ont leur propre recap cote JS, pas de doublon ici.
           {% endcomment %}
           {% if ev.regle.type != "calculatrice" %}
-            {% periodes_datees ev.regle as puces_periodes %}
-            {% if puces_periodes %}
+            {% periodes_par_section ev.regle as sections_periodes %}
+            {% for section in sections_periodes %}
+              <p class="periodes-section-titre">{{ section.titre }} :</p>
               <ul class="fr-mb-0 periodes-liste">
-                {% for puce in puces_periodes %}
+                {% for puce in section.periodes %}
                   <li>
-                    <strong>{{ puce.label }} :</strong> {{ puce.phrase }}
+                    {{ puce.phrase }}
+                    {% if puce.justification %}
+                      <span class="periodes-info"
+                            tabindex="0"
+                            role="img"
+                            aria-label="{{ puce.justification }}"
+                            title="{{ puce.justification }}">ⓘ</span>
+                    {% endif %}
                   </li>
                 {% endfor %}
               </ul>
-            {% endif %}
+            {% endfor %}
           {% endif %}
 
           {% comment %}
@@ -163,24 +171,27 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
-          Code prescription : libelle long resolu via referentiels.
-          On ne l'affiche QUE si la regle n'a pas deja un `message` narratif :
-          le `texte_court` du PC est volontairement minimaliste (ex pc5
-          "Apport d'engrais mineraux autorise.") et fait doublon lapidaire
-          avec un message regle qui dit deja la meme chose en plus contextuel.
+          Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
+          (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
+          PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
+          DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
+
+          Regle d'anti-doublon (#216) : le contenu riche `blocs` s'affiche
+          TOUJOURS -- c'est une vraie fiche (ex PC15 = detail du plafond 70 kg
+          N/ha), jamais redondante avec le message narratif de la regle. Seul le
+          fallback `texte_court` est masque quand la regle a deja un `message` :
+          ce texte_court est volontairement lapidaire (ex pc5 "Apport d'engrais
+          mineraux autorise.") et ferait doublon avec le message.
+          Avant #216, la condition `not message` sautait TOUT le bloc PC, y
+          compris les blocs riches -> la PC15 d'une regle avec message
+          (ex CIE courte types 0/I/II) ne s'affichait pas.
           {% endcomment %}
-          {% comment %}
-            Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
-            (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
-            PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
-            DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
-          {% endcomment %}
-          {% if ev.regle.codes_prescription and not ev.regle.message %}
+          {% if ev.regle.codes_prescription %}
             {% for cp in ev.regle.codes_prescription %}
               {% with pc=codes_prescription|get_item:cp %}
                 {% if pc.blocs %}
                   <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
-                {% elif pc %}
+                {% elif pc and not ev.regle.message %}
                   <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
                   {% if pc.texte_court %}
                     <p>
@@ -192,7 +203,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                       {% endif %}
                     </p>
                   {% endif %}
-                {% else %}
+                {% elif not pc and not ev.regle.message %}
                   <p class="fr-text--sm">
                     <strong>Code prescription :</strong> {{ cp }}
                   </p>
@@ -301,9 +312,11 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
 
   {% endif %}
 
-  {# Bouton Recommencer : redirige vers la home /simulateur/ sans params #}
+  {# Bouton Recommencer : repart a vide sur la PAGE COURANTE (request.path), pas #}
+  {# sur /simulateur/ en dur -> sinon depuis le root public `/` ca pointe vers #}
+  {# une URL fermee par le lockdown (redirect login). #}
   <div class="fr-mt-4w">
-    <a href="{% url 'nitrates_simulateur' %}"
+    <a href="{{ request.path }}"
        class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
   </div>
 

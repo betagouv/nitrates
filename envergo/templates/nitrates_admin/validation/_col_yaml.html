@@ -1,0 +1,20 @@
+{% comment %}
+Colonne « YAML codé » en auto-save htmx. Textarea unique (yaml_snapshot) qui
+s'enregistre au change (blur+modif). Re-rend #vd-col-yaml. Cf. _col_miro.html.
+{% endcomment %}
+<div class="vd-col" id="vd-col-yaml">
+  <h2>📝 YAML codé</h2>
+  <form class="vd-form vd-form--edit vd-autosave"
+        hx-post="{% url 'nitrates_admin_validation_edit_meta' pk=branche.pk %}"
+        hx-target="#vd-col-yaml"
+        hx-swap="outerHTML"
+        hx-trigger="change">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="yaml">
+    <textarea name="yaml_snapshot" rows="14" class="vd-edit-textarea-yaml">{{ branche.yaml_snapshot }}</textarea>
+    <noscript>
+      <button type="submit" class="vc-btn">Enregistrer YAML</button>
+    </noscript>
+  </form>
+</div>

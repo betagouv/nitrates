@@ -91,9 +91,47 @@ def test_point_par_defaut_scope_region_44():
 
 
 def test_point_par_defaut_scope_national_none():
-    """PAN (ou region != 44) : pas de point de scope -> resolution par chemin."""
+    """PAN : pas de point de scope -> resolution par le chemin. Idem pour une
+    region metropolitaine sans point PAR connu (ex 76 Occitanie / 93 PACA, pas
+    encore de PAR actif) -> None, on retombe sur le chemin."""
     assert point_par_defaut_scope("national") is None
-    assert point_par_defaut_scope("region", "11") is None
+    assert point_par_defaut_scope("region", "76") is None
+    assert point_par_defaut_scope("region", "99") is None  # region bidon
+
+
+def test_point_par_defaut_scope_region_32_hauts_de_france():
+    """PAR Hauts-de-France (region 32) : point PAR DANS la region 32, PAS le
+    point Grand Est. Regression : avant, region != 44 -> None -> fallback ZV
+    national = un point Grand Est ; les liens d'un arbre HdF pointaient en GE."""
+    point = point_par_defaut_scope("region", "32")
+    assert point == _POINTS["par_region_32"]
+    assert point != _POINTS["par_grand_est"]
+    assert point["code_insee"].startswith("02")  # Aisne (HdF)
+
+
+def test_point_par_defaut_scope_regionalise_toutes_regions():
+    """Forward compatibility : chaque region metropolitaine ayant un point PAR
+    renvoie un point DISTINCT (accuracy : le point tombe dans SA region), jamais
+    le fallback national. Grand Est garde son point historique."""
+    from envergo.nitrates.yaml_admin.preview import _POINT_PAR_REGION
+
+    points = {}
+    for region, name in _POINT_PAR_REGION.items():
+        p = point_par_defaut_scope("region", region)
+        assert p is not None, f"region {region} devrait avoir un point PAR"
+        assert p == _POINTS[name]
+        points[region] = (p["lat"], p["lng"])
+    # Les points sont distincts d'une region a l'autre (pas de copie GE partout).
+    assert len(set(points.values())) == len(points)
+    assert point_par_defaut_scope("region", "44") == _POINTS["par_grand_est"]
+
+
+def test_point_par_defaut_scope_zar_region_inconnue_reste_grand_est():
+    """Forward compat ZAR : le seul ZAR existant est Grand Est. Une region ZAR
+    sans point dedie retombe sur le ZAR Grand Est (pas de regression), et un
+    ZAR region 44 explicite donne bien le point Grand Est."""
+    assert point_par_defaut_scope("zar", "44") == _POINTS["zar_grand_est"]
+    assert point_par_defaut_scope("zar", "32") == _POINTS["zar_grand_est"]
 
 
 def test_chemin_zge_prime_sur_override_scope():

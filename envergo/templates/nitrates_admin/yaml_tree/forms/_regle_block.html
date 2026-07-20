@@ -84,6 +84,17 @@
     {% endif %}
     {% if regle.message %}<span class="yaml-tree__message">{{ regle.message }}</span>{% endif %}
     {% if regle.texte %}<span class="yaml-tree__texte">{{ regle.texte }}</span>{% endif %}
+    {% comment %}Texte conditionne (texte_condition) : la justification/condition
+       rendue dans les bulles ⓘ du simulateur. Rendue ici en tag precis pour
+       qu'elle soit visible dans le viewer YAML (avant : invisible en lecture,
+    seulement editable). Meme contenu que le tooltip cote public.{% endcomment %}
+    {% if regle.texte_condition %}
+      <span class="yaml-tree__condition-tag"
+            title="Texte conditionné : justification/condition rendue dans la bulle ⓘ du simulateur">
+        <span class="yaml-tag__icon" aria-hidden="true">ⓘ</span>
+        <span class="yaml-tree__condition-text">{{ regle.texte_condition }}</span>
+      </span>
+    {% endif %}
     {% if regle.source_juridique %}<span class="yaml-tree__source"><em>{{ regle.source_juridique }}</em></span>{% endif %}
     {% if regle.a_completer %}<span class="yaml-tree__todo">⚠ à compléter</span>{% endif %}
 

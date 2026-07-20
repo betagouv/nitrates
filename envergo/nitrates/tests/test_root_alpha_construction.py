@@ -60,6 +60,67 @@ def test_simulateur_reste_ferme_meme_si_root_ouvert(client, settings, nitrates_s
     assert "/login/" in resp["Location"]
 
 
+@pytest.mark.parametrize(
+    "path", ["/geojson/zv/", "/geojson/zar/", "/api/referentiels/"]
+)
+def test_donnees_carte_exemptees_si_root_ouvert(client, settings, nitrates_site, path):
+    """La page racine ouverte charge sa carte SIG en fetch() sur les endpoints
+    de donnees publiques : ils doivent etre exemptes du lockdown, sinon
+    l'anonyme est redirige vers le login et le fetch recoit du HTML (carte
+    vide, "... is not valid JSON"). Regression carte SIG staging."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get(path)
+
+    # Pas de redirection login (le middleware laisse passer). La vue peut
+    # repondre 200 (donnees) sans jamais 302 vers /login/.
+    assert resp.status_code != 302
+
+
+def test_geoloc_clic_carte_exemptee_si_root_ouvert(client, settings, nitrates_site):
+    """Le clic sur la carte du root public fetch /simulateur/debug/ (endpoint
+    de GEOLOCALISATION, pas un panneau debug) : sa reponse porte
+    `simulateur_ouvert` qui pilote l'affichage du formulaire. Doit etre exempte
+    du lockdown, sinon le clic est redirige vers le login, le form ne s'affiche
+    JAMAIS ("cliquez sur la carte" fige)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get("/simulateur/debug/?lng=4.03&lat=48.30&geo=1")
+
+    # Pas de redirection login : la vue repond (JSON), le form pourra s'ouvrir.
+    assert resp.status_code != 302
+    assert resp.status_code == 200
+    assert "simulateur_ouvert" in resp.json()
+
+
+def test_geoloc_clic_carte_fermee_si_root_ferme(client, settings, nitrates_site):
+    """Root ferme : l'endpoint geoloc reste protege (exemption conditionnee)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = False
+
+    resp = client.get("/simulateur/debug/?lng=4.03&lat=48.30&geo=1")
+
+    assert resp.status_code == 302
+    assert "/login/" in resp["Location"]
+
+
+@pytest.mark.parametrize(
+    "path", ["/geojson/zv/", "/geojson/zar/", "/api/referentiels/"]
+)
+def test_donnees_carte_fermees_si_root_ferme(client, settings, nitrates_site, path):
+    """Root ferme : les endpoints de donnees restent proteges par le lockdown
+    (l'exemption est conditionnee a NITRATES_ROOT_OUVERT)."""
+    settings.LOCKDOWN_BEHIND_LOGIN = True
+    settings.NITRATES_ROOT_OUVERT = False
+
+    resp = client.get(path)
+
+    assert resp.status_code == 302
+    assert "/login/" in resp["Location"]
+
+
 # --- Bandeau "en construction" + debug off sur le root ----------------------
 
 
@@ -101,6 +162,32 @@ def test_simulateur_pas_de_bandeau_ni_building(client, settings, nitrates_site):
     assert resp.status_code == 200
     assert resp.context["is_building"] is False
     assert "data-nitrates-construction" not in resp.content.decode()
+
+
+# --- Ouverture geographique : appliquee sur / public, pas sur /simulateur ----
+
+
+def test_root_applique_ouverture_geographique(client, settings, nitrates_site):
+    """`/` (public) -> geo_appliquee True, injecte geo=1 cote front."""
+    settings.LOCKDOWN_BEHIND_LOGIN = False
+    settings.NITRATES_ROOT_OUVERT = True
+
+    resp = client.get("/")
+
+    assert resp.status_code == 200
+    assert resp.context["geo_appliquee"] is True
+    assert "window.NITRATES_GEO_APPLIQUEE = true" in resp.content.decode()
+
+
+def test_simulateur_bypass_ouverture_geographique(client, settings, nitrates_site):
+    """`/simulateur/` (interne) -> geo_appliquee False, pas de restriction."""
+    settings.LOCKDOWN_BEHIND_LOGIN = False
+
+    resp = client.get("/simulateur/")
+
+    assert resp.status_code == 200
+    assert resp.context["geo_appliquee"] is False
+    assert "window.NITRATES_GEO_APPLIQUEE = false" in resp.content.decode()
 
 
 def test_simulateur_debug_suit_le_flag(client, settings, nitrates_site):

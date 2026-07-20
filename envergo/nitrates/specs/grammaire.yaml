@@ -391,3 +391,24 @@ exemple_override:
             - du: "01/09"
               au: "15/02"
           code_prescription: "pc4"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAMPS META `_*` (hors-grammaire applicative, ignorés au runtime)
+# ─────────────────────────────────────────────────────────────────────────────
+# Convention transverse : tout champ dont le nom commence par un underscore
+# `_` est un champ META TECHNIQUE LIBRE. Il est toléré par la grammaire
+# (patternProperties `^_` sur les schémas règle / branche / période) mais
+# n'a AUCUNE sémantique applicative : le simulateur l'ignore au runtime, le
+# validateur ne l'interprète pas. Le reste des champs demeure strict
+# (additionalProperties: false).
+#
+# Usage : tracer des métadonnées d'outillage (provenance, confiance, debug)
+# sans polluer la grammaire métier. Exemples produits par le pipeline
+# Miro→YAML :
+#   _certitude:         <float|string>   # niveau de confiance de la dérivation
+#   _certitude_raison:  <string>         # justification / source de l'incertitude
+#
+# Ces champs n'apparaissent jamais dans la logique de décision ; ils sont
+# destinés à être retirés ou conservés selon le contexte d'export, sans impact
+# sur la validité de l'arbre.

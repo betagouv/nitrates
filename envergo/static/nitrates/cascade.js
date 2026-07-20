@@ -87,12 +87,28 @@
     if (wrapper) wrapper.hidden = true;
   }
 
+  // Section entiere (titre + questions) : cachee tant qu'aucune de ses
+  // questions n'est visible, sinon un titre orphelin s'affiche seul (#160).
+  function montrerSection(id) {
+    const s = document.getElementById(id);
+    if (s) s.hidden = false;
+  }
+  function cacherSection(id) {
+    const s = document.getElementById(id);
+    if (s) s.hidden = true;
+  }
+
   function viderContainer(champ) {
     const c = containers[champ];
     if (!c) return;
     c.innerHTML = "";
     c.hidden = true;
     cacherWrapper(champ);
+    // Vider categorie_fertilisant = la section Fertilisant n'a plus aucune
+    // question a montrer -> on cache aussi son titre (#160).
+    if (champ === "categorie_fertilisant") {
+      cacherSection("section-fertilisant");
+    }
   }
 
   function slug(s) {
@@ -111,7 +127,16 @@
     input.name = champ;
     input.value = String(valeur);
     if (checked) input.checked = true;
-    input.addEventListener("change", () => onChangeChamp(champ));
+    // Carte #154 (a11y) : chaque radio est un arret de tabulation a lui seul
+    // (tabindex=0), au lieu du comportement natif "un seul stop par groupe,
+    // fleches pour naviguer". Max veut Tab pour parcourir CHAQUE option, et
+    // Entree pour selectionner + sauter au groupe suivant.
+    input.tabIndex = 0;
+    input.addEventListener("change", () => {
+      onChangeChamp(champ);
+      mettreAJourBoutonSubmit();
+    });
+    input.addEventListener("keydown", (e) => onRadioKeydown(e, input, champ));
     const label = document.createElement("label");
     label.className = "fr-label";
     label.htmlFor = id;
@@ -119,6 +144,89 @@
     wrapper.appendChild(input);
     wrapper.appendChild(label);
     container.appendChild(wrapper);
+  }
+
+  // Modele clavier des radios (Carte #154, a11y) :
+  //  - Entree : coche le radio focalise + declenche la cascade, puis deplace
+  //    le focus sur le 1er radio du GROUPE DE QUESTIONS SUIVANT (ex Culture ->
+  //    Fertilisant), une fois celui-ci revele.
+  //  - Fleches haut/bas : parcourent les radios du meme groupe (sans les
+  //    cocher : Max veut la selection uniquement a Entree). On garde ce confort
+  //    en plus de Tab.
+  function onRadioKeydown(e, input, champ) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!input.checked) {
+        input.checked = true;
+        // dispatch change -> onChangeChamp + gating bouton + revele la suite.
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      // La cascade vient de reveler (ou pas) un groupe suivant. On donne le
+      // focus a son 1er radio, au tick suivant (le DOM est deja a jour ici,
+      // mais on securise l'ordre avec un microtask).
+      Promise.resolve().then(() => focusPremierRadioGroupeSuivant(champ));
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const radios = radiosVisiblesDuGroupe(champ);
+      const idx = radios.indexOf(input);
+      if (idx === -1) return;
+      let next = e.key === "ArrowDown" ? idx + 1 : idx - 1;
+      if (next < 0) next = radios.length - 1;
+      if (next >= radios.length) next = 0;
+      radios[next].focus();
+      return;
+    }
+    // Tab (Carte #154, a11y) : nativement, les radios d'un meme name forment UN
+    // seul arret de tabulation -> Tab quitte tout le groupe. Max veut que Tab
+    // s'arrete sur CHAQUE radio. On gere donc Tab a la main : deplacement au
+    // radio suivant/precedent DANS le groupe ; au bord du groupe, on laisse le
+    // comportement natif (Tab sort vers l'element suivant / precedent de la page).
+    if (e.key === "Tab") {
+      const radios = radiosVisiblesDuGroupe(champ);
+      const idx = radios.indexOf(input);
+      if (idx === -1) return;
+      if (e.shiftKey) {
+        // Shift+Tab : radio precedent du groupe ; si on est au 1er, sortie native.
+        if (idx > 0) {
+          e.preventDefault();
+          radios[idx - 1].focus();
+        }
+      } else {
+        // Tab : radio suivant du groupe ; si on est au dernier, sortie native
+        // (vers le groupe suivant / le bouton, deja dans l'ordre du DOM).
+        if (idx < radios.length - 1) {
+          e.preventDefault();
+          radios[idx + 1].focus();
+        }
+      }
+    }
+  }
+
+  function radiosVisiblesDuGroupe(champ) {
+    const container = containers[champ];
+    if (!container) return [];
+    return [...container.querySelectorAll('input[type="radio"]')];
+  }
+
+  // Apres selection d'un radio, focus sur le 1er radio du prochain groupe
+  // VISIBLE en aval dans l'ordre de cascade. Si aucun groupe suivant n'est
+  // visible (parcours complet), on met le focus sur le bouton "Lancer".
+  function focusPremierRadioGroupeSuivant(champActuel) {
+    const idx = FIELDS.indexOf(champActuel);
+    for (let i = idx + 1; i < FIELDS.length; i++) {
+      const container = containers[FIELDS[i]];
+      if (container && container.offsetParent !== null) {
+        const first = container.querySelector('input[type="radio"]');
+        if (first) {
+          first.focus();
+          return;
+        }
+      }
+    }
+    // Plus de question en aval : si le parcours est complet, focus le bouton.
+    if (submitBtn && !submitBtn.disabled) submitBtn.focus();
   }
 
   // ─── Rendu de chaque niveau ───────────────────────────────────────────
@@ -176,6 +284,7 @@
     const container = containers.categorie_fertilisant;
     container.innerHTML = "";
     container.hidden = false;
+    montrerSection("section-fertilisant");
     montrerWrapper("categorie_fertilisant");
     const cats = (referentiels || {}).categories_fertilisants || {};
     for (const [cle, meta] of Object.entries(cats)) {
@@ -214,6 +323,53 @@
       );
     }
   }
+
+  // ─── Gating du bouton de soumission (Carte #154) ──────────────────────
+  //
+  // Le bouton « Lancer la simulation » ne doit pas etre cliquable tant que
+  // toutes les questions actuellement visibles du parcours ne sont pas
+  // repondues : soumettre un form incomplet menait a une page d'erreur.
+  // C'est aussi la brique de base de l'accessibilite clavier (on ne veut pas
+  // qu'un submit clavier parte sur un parcours a moitie rempli).
+  //
+  // Critere : chaque wrapper cascade actuellement VISIBLE doit avoir un radio
+  // coche. Un wrapper cache (niveau pas encore atteint, ou branche
+  // court-circuitee comme sol_non_cultive) n'est pas exige. On se base sur la
+  // visibilite du container [data-cascade] plutot que sur les hidden inputs
+  // pour rester robuste aux branches (ex. sol_non_cultive n'a pas de
+  // sous_culture_form mais reste complet).
+  const submitBtn = document.querySelector("#form-submit-row button[type=submit]");
+
+  function estVisible(el) {
+    // hidden porte soit sur le container [data-cascade], soit sur son wrapper
+    // parent (#<champ>-wrapper) ou sa section. offsetParent === null couvre
+    // tous les cas (display:none / hidden en cascade), sauf position:fixed
+    // (non utilise ici).
+    return el && el.offsetParent !== null;
+  }
+
+  function parcoursComplet() {
+    for (const champ of FIELDS) {
+      const container = containers[champ];
+      if (!estVisible(container)) continue;
+      if (!currentValue(champ)) return false;
+    }
+    return true;
+  }
+
+  function mettreAJourBoutonSubmit() {
+    if (!submitBtn) return;
+    const complet = parcoursComplet();
+    submitBtn.disabled = !complet;
+    submitBtn.setAttribute("aria-disabled", String(!complet));
+  }
+
+  // Le form « Culture / Fertilisant » est masque tant que la localisation
+  // n'est pas faite (simulator.js le devoile au clic carte). A ce moment,
+  // categorie_culture devient visible et non repondue -> on recalcule pour
+  // desactiver le bouton (sinon il apparait actif a tort, offsetParent etant
+  // null tant que le form etait cache).
+  document.addEventListener("nitrates:form-revealed", mettreAJourBoutonSubmit);
 
   // ─── Resolution des hidden inputs ─────────────────────────────────────
 
@@ -290,6 +446,11 @@
   function initialiser() {
     rendreCategoriesCultures();
     if (initial.categorie_culture) onChangeChamp("categorie_culture", false);
+    // Etat initial du bouton : desactive tant que le parcours n'est pas
+    // complet (au 1er chargement, seule categorie_culture est visible et non
+    // repondue -> bouton disabled). En replay (params URL), si tout est deja
+    // repondu, le bouton est actif.
+    mettreAJourBoutonSubmit();
   }
 
   // `userDriven` distingue un click utilisateur (true) d'un replay au

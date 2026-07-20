@@ -45,6 +45,10 @@ _CATALOGUE_TAG = Tag("catalogue", "tag-catalogue", "🌍")
 _CATALOGUE_PARAMETRE_TAG = Tag("catalogue paramétré", "tag-catalogue-parametre", "🧮")
 _RENVOI_TAG = Tag("renvoi", "tag-renvoi", "↪️")
 _A_COMPLETER_TAG = Tag("a completer", "tag-a-completer", "⚠️")
+# Filtre "regles portant un texte_condition" (la justification/condition rendue
+# dans les bulles ⓘ du simulateur). Nom du champ mal choisi historiquement,
+# mais on garde le libelle explicite cote bouton.
+_TEXTE_CONDITION_TAG = Tag("texte condition", "tag-texte-condition", "ⓘ")
 
 
 # Liste des filtres rapides exposes en barre d'outils (ordre = ordre d'affichage).
@@ -60,6 +64,7 @@ QUICK_FILTERS: list[tuple[str, Tag]] = [
     ("libre", _REGLE_TYPES["libre"]),
     ("non_applicable", _REGLE_TYPES["non_applicable"]),
     ("calculatrice", _REGLE_TYPES["calculatrice"]),
+    ("texte_condition", _TEXTE_CONDITION_TAG),
     ("renvoi", _RENVOI_TAG),
     ("a_completer", _A_COMPLETER_TAG),
 ]
@@ -131,6 +136,8 @@ def matches_filter(filtre: str, kind: str, data: dict) -> bool:
         return kind == "regle" and data.get("type") == "non_applicable"
     if filtre == "calculatrice":
         return kind == "regle" and data.get("type") == "calculatrice"
+    if filtre == "texte_condition":
+        return kind == "regle" and bool((data.get("texte_condition") or "").strip())
     if filtre == "renvoi":
         return kind == "renvoi_vers"
     return False

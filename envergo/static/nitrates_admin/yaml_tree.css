@@ -1408,6 +1408,32 @@ details[open] > summary.yaml-tree__row::before {
   color: #777;
 }
 
+/* Texte conditionne (texte_condition) : rendu en tag precis dans le viewer,
+   teinte verte coherente avec .yaml-tree__periode-flag--condition et la bulle
+   ⓘ du simulateur. L'icone ⓘ signale que c'est CE texte qui remonte dans le
+   tooltip cote public. */
+.yaml-tree__condition-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0;
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  color: #2e7d32;
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+  border-radius: 4px;
+}
+
+.yaml-tree__condition-tag .yaml-tag__icon {
+  flex: 0 0 auto;
+  font-size: 0.95em;
+}
+
+.yaml-tree__condition-text {
+  white-space: normal;
+}
+
 .yaml-tree__todo {
   color: var(--tag-fg-warn);
   font-weight: 600;
@@ -1541,6 +1567,12 @@ details[open] > summary.yaml-tree__row::before {
 .tag-a-completer {
   background: var(--tag-bg-warn);
   color: var(--tag-fg-warn);
+}
+
+/* Filtre "texte condition" : meme teinte verte que le tag ⓘ en lecture. */
+.tag-texte-condition {
+  background: #e8f5e9;
+  color: #2e7d32;
 }
 
 .tag-source-sig,

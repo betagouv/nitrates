@@ -47,11 +47,11 @@
     {% if not moulinette.catalog.en_zone_vulnerable %}
       <div class="fr-alert fr-alert--info fr-mt-3w">
         <h3 class="fr-alert__title">Hors zone vulnérable nitrates</h3>
-        <p>La directive nitrates ne s'applique pas à cette parcelle.</p>
+        <p>La réglementation nitrates ne s'applique pas à cette parcelle.</p>
       </div>
     {% else %}
       {% if regulations_evaluees %}
-        <h2 class="fr-mt-3w">Directive nitrates</h2>
+        <h2 class="fr-mt-3w">Réglementation nitrates</h2>
 
         {% for entry in regulations_evaluees %}
           {% with regulation=entry.regulation criterion=entry.criterion ev=entry.evaluator %}

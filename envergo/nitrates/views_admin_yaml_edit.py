@@ -19,7 +19,7 @@ import re
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
@@ -501,7 +501,58 @@ def _regle_from_post(regle_orig: dict, post, form: RegleForm) -> dict:
     # periodes + inputs_requis : reparse via le form (deja fait dans clean()).
     out["periodes"] = form.periodes
     out["inputs_requis"] = form.inputs_requis
+    _purger_champs_hors_nature(out, regle_orig)
     return out
+
+
+# Champs qui n'ont de sens QUE pour une regle type=calculatrice (calendrier
+# dynamique couvert). Le formulaire les masque en display:none quand on change
+# la nature, mais display:none NE retire PAS l'input du DOM -> il reste poste,
+# et `out = {**regle_orig}` conserve l'ancienne valeur. Sans purge explicite au
+# save, ces champs survivent comme residus et fuient a l'affichage (ex: la bulle
+# ⓘ texte_condition sur une regle passee en interdiction pure -- #218).
+COMPOSANT_CALCULATRICE = "calendrier_dynamique_couvert"
+
+
+def _purger_champs_hors_nature(out: dict, regle_orig: dict) -> None:
+    """Nettoie in place les champs calculatrice orphelins quand la nature
+    finale n'est plus calculatrice.
+
+    - `composant` : purge SEULEMENT s'il vaut le composant calendrier couvert.
+      Les autres composants (ex luzerne_post_coupe) sont legitimes pour type
+      mixte -- on ne les touche pas.
+    - `inputs_requis` : purge (dates de semis/destruction, inutiles hors calc).
+    - `condition` / `masque` des periodes : purge (grammaire specifique calc).
+    - `texte_condition` : purge UNIQUEMENT dans la transition calculatrice ->
+      autre nature. Hors calculatrice, texte_condition est une justification
+      metier LEGITIME (rendue en tooltip ⓘ sur interdiction/ASC/plafond, cf.
+      periodes_par_section) : on ne l'efface pas sur la seule base du type,
+      seulement s'il s'agit d'un residu herite d'une ancienne calculatrice.
+    """
+    if out.get("type") == "calculatrice":
+        return  # nature calculatrice : tous ces champs sont a leur place.
+
+    # Marqueur du residu = composant calendrier couvert sur nature non calc.
+    # Les autres composants (ex luzerne_post_coupe/mixte) + leurs inputs_requis
+    # sont legitimes -> on ne touche rien.
+    if out.get("composant") != COMPOSANT_CALCULATRICE:
+        # texte_condition peut quand meme etre un residu de calculatrice si
+        # l'ancienne regle en etait une (transition calc -> autre nature).
+        if (regle_orig or {}).get("type") == "calculatrice":
+            out["texte_condition"] = None
+        return
+
+    out["composant"] = None
+    out["inputs_requis"] = []
+    for p in out.get("periodes") or []:
+        p.pop("condition", None)
+        p.pop("masque", None)
+
+    # texte_condition : residu SEULEMENT si la regle etait calculatrice avant
+    # (le texte datait du calendrier dynamique, pas d'une justification voulue).
+    etait_calculatrice = (regle_orig or {}).get("type") == "calculatrice"
+    if etait_calculatrice:
+        out["texte_condition"] = None
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -590,6 +641,15 @@ class EditRegleView(View):
                 status=422,
             )
         new_data = form.to_new_data()
+        # #218 : purge du texte_condition RESIDUEL herite d'une ancienne
+        # calculatrice. to_new_data() a deja purge les champs strictement
+        # calculatrice (composant couvert, inputs_requis, condition/masque de
+        # periode). texte_condition, lui, est une justification legitime hors
+        # calculatrice -> on ne l'efface QUE dans la transition
+        # calculatrice -> autre nature (ici on connait l'ancien type).
+        etait_calculatrice = branche["regle"].get("type") == "calculatrice"
+        if etait_calculatrice and new_data.get("type") != "calculatrice":
+            new_data["texte_condition"] = None
         # Si la règle d'origine n'avait pas de périodes et que l'utilisateur
         # n'en a pas saisies, on retire `periodes` de new_data : pas la peine
         # de pousser une liste vide qui retirerait une clé déjà absente.
@@ -1388,6 +1448,12 @@ def _build_content_data(
         data["renvoi_vers"] = post.get("c_renvoi_vers", "").strip()
     elif kind == "renvoi_arbre":
         data["renvoi_arbre"] = post.get("c_renvoi_arbre", "").strip()
+        # noeud_cible optionnel (#222 renvoi cross-arbre cible) : ou atterrir
+        # dans l'arbre cible. Vide = re-parcours depuis la racine (on n'ecrit
+        # alors pas la cle, pour garder l'arbre propre).
+        noeud_cible = post.get("c_noeud_cible", "").strip()
+        if noeud_cible:
+            data["noeud_cible"] = noeud_cible
     elif kind == "feuille_vide":
         data["feuille_vide"] = True
     return data
@@ -1689,6 +1755,12 @@ class ChangeBranchContentView(View):
         form_data = {
             k: v for k, v in request.GET.items() if k not in ("path", "kind", "valeur")
         }
+        # Pre-remplissage depuis la branche existante pour un renvoi_arbre :
+        # scope cible + noeud_cible (#222), afin que la re-edition affiche les
+        # valeurs actuelles et que le selecteur de noeud se re-peuple dessus.
+        if kind == "renvoi_arbre":
+            form_data.setdefault("c_renvoi_arbre", branche.get("renvoi_arbre", ""))
+            form_data.setdefault("c_noeud_cible", branche.get("noeud_cible", ""))
         return _render_change_content_form(
             request, tree, parent_path, valeur, kind, form_data=form_data
         )
@@ -2333,3 +2405,67 @@ class CancelEditNodeView(View):
                 "tags": get_tags("noeud", node),
             },
         )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class NoeudsCiblesView(View):
+    """GET : liste les noeuds de l'arbre ACTIF d'un scope donne (national /
+    region / zar), en JSON, pour peupler le selecteur `noeud_cible` d'un
+    renvoi_arbre dans l'editeur (#222 renvoi cross-arbre cible).
+
+    L'utilisateur choisit l'arbre cible par scope ; on lui propose alors les
+    noeuds de l'arbre ACTIF de ce scope (celui qui sera reellement parcouru au
+    runtime), charges EN LIVE. Pour region/zar il peut y avoir plusieurs arbres
+    actifs (par region_code) : on les agrege tous.
+
+    Reponse : {"noeuds": [{"id": ..., "label": ...}, ...]} triee par label.
+    """
+
+    def get(self, request, scope):
+        from envergo.nitrates.models import DecisionTree
+
+        scopes_valides = {
+            DecisionTree.SCOPE_NATIONAL,
+            DecisionTree.SCOPE_REGION,
+            DecisionTree.SCOPE_ZAR,
+        }
+        if scope not in scopes_valides:
+            return JsonResponse({"error": f"scope invalide : {scope!r}"}, status=400)
+        trees = DecisionTree.objects.filter(
+            status=DecisionTree.STATUS_ACTIVE, scope=scope
+        )
+        noeuds: dict[str, str] = {}  # id -> label (dedup inter-arbres)
+        for tree in trees:
+            _collecter_noeuds(tree.contenu, noeuds)
+        data = [
+            {"id": nid, "label": label}
+            for nid, label in sorted(noeuds.items(), key=lambda kv: kv[1].lower())
+        ]
+        return JsonResponse({"noeuds": data})
+
+
+def _collecter_noeuds(contenu: dict, out: dict) -> None:
+    """Remplit `out` {id: label} avec tous les noeuds (formulaire / catalogue /
+    catalogue_parametre) de l'arbre. Le label combine l'id et le texte de la
+    question quand il existe, pour que le selecteur soit lisible."""
+
+    def walk(node):
+        if isinstance(node, dict):
+            nid = node.get("id")
+            type_noeud = node.get("type_noeud")
+            # On ne propose que les vrais noeuds (pas les regles feuilles) :
+            # on ne peut atterrir que sur un noeud, pas une regle.
+            if nid and type_noeud in (
+                "formulaire",
+                "catalogue",
+                "catalogue_parametre",
+            ):
+                texte = (node.get("texte") or "").strip()
+                out[nid] = f"{nid} — {texte}" if texte else nid
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for it in node:
+                walk(it)
+
+    walk(contenu.get("arbre", {}).get("noeud"))

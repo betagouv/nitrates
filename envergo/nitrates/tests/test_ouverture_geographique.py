@@ -68,12 +68,59 @@ def test_helper_inconnu_ferme():
 
 
 def test_debug_view_expose_simulateur_ouvert(client):
-    # Sans département résolu (point en mer), simulateur_ouvert doit être False.
-    r = client.get("/simulateur/debug/?lng=-30&lat=30")
+    # Avec geo=1 (ouverture appliquée, contexte root public) et sans département
+    # résolu (point en mer), simulateur_ouvert doit être False.
+    r = client.get("/simulateur/debug/?lng=-30&lat=30&geo=1")
     assert r.status_code == 200
     data = r.json()
     assert "simulateur_ouvert" in data
     assert data["simulateur_ouvert"] is False
+
+
+def test_debug_view_geo_non_appliquee_tout_ouvert(client):
+    # Sans geo=1 (contexte /simulateur interne) : l'ouverture géographique
+    # n'est PAS appliquée -> simulateur_ouvert True même hors zone ouverte
+    # (ici point en mer, aucun département).
+    r = client.get("/simulateur/debug/?lng=-30&lat=30")
+    assert r.status_code == 200
+    assert r.json()["simulateur_ouvert"] is True
+
+
+@pytest.mark.django_db
+def test_debug_view_geo_appliquee_departement_ferme(client):
+    # geo=1 + département fermé (75, hors Grand Est seedé) -> fermé.
+    from django.contrib.gis.geos import MultiPolygon, Polygon
+
+    from envergo.geodata.models import Department
+
+    Department.objects.create(
+        department="75",
+        geometry=MultiPolygon(Polygon.from_bbox((2.2, 48.8, 2.5, 48.9))),
+    )
+    r = client.get("/simulateur/debug/?lng=2.35&lat=48.85&geo=1")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["department_code"] == "75"
+    assert data["simulateur_ouvert"] is False
+
+
+@pytest.mark.django_db
+def test_debug_view_geo_non_appliquee_departement_ferme_reste_ouvert(client):
+    # MÊME département fermé (75), mais SANS geo=1 (/simulateur interne) :
+    # le bypass rend simulateur_ouvert True malgré l'allowlist.
+    from django.contrib.gis.geos import MultiPolygon, Polygon
+
+    from envergo.geodata.models import Department
+
+    Department.objects.create(
+        department="75",
+        geometry=MultiPolygon(Polygon.from_bbox((2.2, 48.8, 2.5, 48.9))),
+    )
+    r = client.get("/simulateur/debug/?lng=2.35&lat=48.85")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["department_code"] == "75"
+    assert data["simulateur_ouvert"] is True
 
 
 # ─── Admin ──────────────────────────────────────────────────────────────────

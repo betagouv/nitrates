@@ -1,0 +1,30 @@
+{% comment %}
+Colonne « YAML form (édition) » en auto-save htmx : capture optionnelle (upload
+auto au change). Re-rend #vd-col-form. Cf. _col_miro.html.
+{% endcomment %}
+<div class="vd-col" id="vd-col-form">
+  <h2>✏️ YAML form (édition)</h2>
+  {% if branche.screenshot_yaml_form %}
+    <img src="{{ branche.screenshot_yaml_form.url }}?v={{ branche.updated_at|date:'U' }}"
+         alt="YAML form"
+         class="vd-img vc-clickable"
+         data-lightbox
+         data-src="{{ branche.screenshot_yaml_form.url }}?v={{ branche.updated_at|date:'U' }}">
+  {% else %}
+    <p style="color:#999">Optionnel — uploader si cas tricky.</p>
+  {% endif %}
+  <form hx-post="{% url 'nitrates_admin_validation_upload_yaml_form' pk=branche.pk %}"
+        hx-target="#vd-col-form"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        hx-trigger="change"
+        class="vd-form vd-autosave">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="form">
+    <input type="file" name="screenshot_yaml_form" accept="image/*">
+    <noscript>
+      <button type="submit" class="vc-btn">Uploader form</button>
+    </noscript>
+  </form>
+</div>

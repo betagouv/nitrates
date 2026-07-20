@@ -185,6 +185,22 @@ def test_matches_filter_renvoi():
 def test_matches_filter_a_completer():
     assert matches_filter("a_completer", "regle", {"a_completer": True})
     assert not matches_filter("a_completer", "regle", {"a_completer": False})
+
+
+def test_matches_filter_texte_condition():
+    # Regle portant un texte_condition non vide -> match.
+    assert matches_filter(
+        "texte_condition",
+        "regle",
+        {"type": "interdiction", "texte_condition": "Allongement régional"},
+    )
+    # Vide / absent / blancs -> pas de match.
+    assert not matches_filter("texte_condition", "regle", {"type": "interdiction"})
+    assert not matches_filter(
+        "texte_condition", "regle", {"type": "interdiction", "texte_condition": "  "}
+    )
+    # Ne s'applique qu'aux regles (pas aux noeuds).
+    assert not matches_filter("texte_condition", "noeud", {"texte_condition": "x"})
     assert not matches_filter("a_completer", "regle", {"id": "x"})
 
 
@@ -222,6 +238,7 @@ def test_quick_filter_keys_complete():
         "libre",
         "non_applicable",
         "calculatrice",
+        "texte_condition",
         "renvoi",
         "a_completer",
     }

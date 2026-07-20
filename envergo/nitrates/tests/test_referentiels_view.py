@@ -77,3 +77,48 @@ def test_arbre_endpoint_renvoie_json(client, nitrates_site):
     data = response.json()
     assert "arbre" in data
     assert data["arbre"]["noeud"]["id"] == "n_zvn"
+
+
+def test_ajout_culture_visible_immediatement_sans_vider_cache(client, nitrates_site):
+    """Regression #228 : ajouter une culture en base doit se refleter
+    IMMEDIATEMENT sur /api/referentiels/, sans cache_page HTTP qui servirait
+    l'ancienne reponse (bug : 5 cultures en DB, 4 rendues pendant 1h).
+
+    On ne vide AUCUN cache manuellement : le signal post_save du modele doit
+    suffire (invalide le LRU), et l'absence de cache_page HTTP garantit que
+    l'endpoint recalcule.
+    """
+    from envergo.nitrates.models_referentiels import (
+        BrancheCulturale,
+        Culture,
+        GroupeCultureUI,
+    )
+
+    groupe = GroupeCultureUI.objects.first()
+    assert groupe is not None
+    branche = BrancheCulturale.objects.first()
+    assert branche is not None
+
+    # 1er appel : etat courant (peut amorcer un eventuel cache)
+    avant = client.get("/api/referentiels/").json()
+    sous_avant = avant["categories_cultures"][groupe.identifiant]["sous_cultures"]
+
+    # Ajout d'une culture NOUVELLE dans ce groupe (declenche post_save).
+    Culture.objects.create(
+        identifiant="culture_test_228",
+        libelle_public="Culture test #228",
+        categorie=groupe,
+        branche_culturale=branche,
+        occupation_sol="culture_principale",
+        ordre_affichage=999,
+    )
+
+    # 2e appel SANS vider de cache : la nouvelle culture doit apparaitre.
+    apres = client.get("/api/referentiels/").json()
+    sous_apres = apres["categories_cultures"][groupe.identifiant]["sous_cultures"]
+
+    assert "culture_test_228" not in sous_avant
+    assert "culture_test_228" in sous_apres, (
+        "la culture ajoutee n'apparait pas immediatement : cache_page HTTP "
+        "non invalide (bug #228)"
+    )

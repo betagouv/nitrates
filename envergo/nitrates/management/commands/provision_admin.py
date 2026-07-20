@@ -99,11 +99,13 @@ class Command(BaseCommand):
             user.is_superuser = True
         user.is_active = True
 
-        # Pas de password utilisable : la connexion passe forcement par ProConnect.
-        # On ne touche au password que si le compte est nouveau ou n'a deja
-        # pas de password utilisable (preserve un eventuel acces emergency).
-        if created or not user.has_usable_password():
-            user.set_unusable_password()
+        # Pas de password utilisable : la connexion passe FORCEMENT par
+        # ProConnect. On neutralise INCONDITIONNELLEMENT le password (faille
+        # pentest F2, 2026-06-18) : l'ancienne exception « preserve un acces
+        # emergency » laissait un compte re-provisionne garder un mot de passe
+        # utilisable -> vecteur de login qui contourne ProConnect (cf. F1). Un
+        # admin provisionne ici ne doit JAMAIS avoir de mot de passe.
+        user.set_unusable_password()
 
         user.save()
 

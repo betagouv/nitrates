@@ -188,7 +188,7 @@ def test_regle_a_completer_force_non_disponible(monkeypatch, setup):
         a_completer=True,  # ... mais a_completer force non_disponible
     )
 
-    def fake_parcours(arbre, contexte):
+    def fake_parcours(arbre, contexte, **kw):
         return fake_resultat
 
     monkeypatch.setattr(arbre_decision, "parcours", fake_parcours)
@@ -260,7 +260,7 @@ def test_catalogue_source_non_sig_non_disponible(monkeypatch, setup):
         reference="ref_x",
         chemin_partiel=["n_zvn", "n_calc"],
     )
-    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx, **kw: besoin)
 
     mou = _moulinette()
     ev = _evaluator(mou)
@@ -281,7 +281,7 @@ def test_catalogue_sig_sans_resolveur_non_disponible(monkeypatch, setup):
         source="sig",
         reference="reference_sans_resolveur",  # pas dans CATALOGUE_RESOLVERS
     )
-    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx, **kw: besoin)
 
     mou = _moulinette()
     ev = _evaluator(mou)
@@ -294,7 +294,7 @@ def test_resultat_inattendu_force_non_disponible(monkeypatch, setup):
     inattendu doit declencher le filet non_disponible (defense)."""
     from envergo.nitrates.regulations import arbre_decision
 
-    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: object())
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx, **kw: object())
 
     mou = _moulinette()
     ev = _evaluator(mou)
@@ -311,7 +311,7 @@ def test_boucle_catalogue_garde_fou(monkeypatch, setup):
     besoin = BesoinCatalogue(
         noeud_id="n_loop", champ="boucle", source="sig", reference="r"
     )
-    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: besoin)
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx, **kw: besoin)
     # Le catalogue se resout toujours (valeur arbitraire) -> la boucle ne
     # s'arrete que sur le garde-fou d'iterations.
     monkeypatch.setattr(
@@ -430,7 +430,7 @@ def test_mixte_resolu_sur_regime_le_plus_restrictif(monkeypatch, setup):
             {"du": "15/10", "au": "15/01", "regime": "interdiction"},
         ],
     )
-    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx: res)
+    monkeypatch.setattr(arbre_decision, "parcours", lambda arbre, ctx, **kw: res)
 
     mou = _moulinette()
     ev = _evaluator(mou)

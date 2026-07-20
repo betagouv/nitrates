@@ -187,6 +187,15 @@ _MOIS_LABELS = [
     "Jui",
 ]
 
+# Initiales, meme ordre agricole. Affichees a la place des labels 3 lettres
+# sur mobile (#177, cf. MOIS_AGRICOLES_COURTS cote JS) : sur petit ecran les
+# abreviations se chevauchaient. Exposees via l'attribut data-court, le CSS
+# bascule label <-> initiale selon la largeur.
+_MOIS_COURTS = [m[0] for m in _MOIS_LABELS]
+
+# Paires (label, initiale) pretes a boucler dans le template.
+_MOIS_PAIRES = list(zip(_MOIS_LABELS, _MOIS_COURTS))
+
 # Annee non bissextile : 365 jours. Cumul des jours au debut de chaque mois,
 # soit 0, 31, 59, 90, ... (utilise pour positionner les segments en pourcent).
 _DAYS_PER_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -266,27 +275,29 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
 # Abreviations de mois alignees sur le calendrier dynamique (JS
 # calculatrice-calendrier.js : MOIS_AGRICOLES). Format "15 juil.", "15 aoû.".
 # Index = mois civil 1..12 -> abreviation. On unifie ce format partout (#85).
-_MOIS_ABREV = {
-    1: "jan.",
-    2: "fév.",
-    3: "mar.",
-    4: "avr.",
+# Mois en toutes lettres (#159, maquette designeuse) : les dates de periode
+# sous le calendrier sont ecrites en clair ("15 novembre"), pas en abrege.
+_MOIS_COMPLET = {
+    1: "janvier",
+    2: "février",
+    3: "mars",
+    4: "avril",
     5: "mai",
-    6: "juin",  # "juin" en entier pour le distinguer de "juil." (juillet)
-    7: "juil.",
-    8: "aoû.",
-    9: "sept.",
-    10: "oct.",
-    11: "nov.",
-    12: "déc.",
+    6: "juin",
+    7: "juillet",
+    8: "août",
+    9: "septembre",
+    10: "octobre",
+    11: "novembre",
+    12: "décembre",
 }
 
 
 def _date_lisible(jour: int, mois: int) -> str:
-    """(jour, mois) civil -> "15 juil." (jour + mois abrege, format unifie).
-    Le 1er du mois est rendu "1er" (ex "1er fév.")."""
+    """(jour, mois) civil -> "15 novembre" (jour + mois en toutes lettres, #159).
+    Le 1er du mois est rendu "1er" (ex "1er février")."""
     jour_fmt = "1er" if jour == 1 else str(jour)
-    return f"{jour_fmt} {_MOIS_ABREV.get(mois, str(mois))}"
+    return f"{jour_fmt} {_MOIS_COMPLET.get(mois, str(mois))}"
 
 
 def _jour_agricole_to_date(j: int) -> tuple[int, int]:
@@ -391,25 +402,89 @@ _LABEL_PERIODE = {
     "interdiction": "Interdiction",
     "plafonnement": "Plafond",
 }
-# Ordre d'affichage des puces (du plus au moins restrictif) : interdiction,
-# plafond, autorisation sous condition. L'autorisation pure (vert) ferme la
-# liste, geree a part.
-_ORDRE_REGIME = ["interdiction", "plafonnement", "autorisation_sous_condition"]
+# Ordre d'affichage des puces (du moins au plus restrictif, pour s'aligner sur
+# le recap des cultures principales) : autorisation sous condition, plafond,
+# interdiction. L'autorisation pure (vert) ouvre la liste, geree a part.
+_ORDRE_REGIME = ["autorisation_sous_condition", "plafonnement", "interdiction"]
+
+
+# Titre de section (#159, wording Emma : "Période d'interdiction", etc.).
+_SECTION_TITRE = {
+    "interdiction": "Période d’interdiction",
+    "autorisation_sous_condition": "Période d’autorisation sous condition",
+    "plafonnement": "Période de plafonnement",
+}
+
+
+@register.simple_tag
+def periodes_par_section(regle) -> list[dict]:
+    """Recap des periodes GROUPE PAR SECTION pour le calendrier statique (#159).
+
+    Structure (une section par regime present, ordre du moins au plus
+    restrictif ; l'autorisation pure ouvre la liste) :
+
+    [{"titre": "Autorisé", "periodes": [{"phrase": "du ... au ...",
+                                          "justification": None}]},
+     {"titre": "Autorisé sous conditions", "periodes": [...]},
+     {"titre": "Interdiction",
+      "periodes": [{"phrase": "du 15 novembre au 15 janvier",
+                    "justification": "Interdit du 15/11 au 15/01."}]}]
+
+    `justification` = texte_condition de la REGLE (une seule par regle, #159 :
+    on reutilise l'existant sans toucher au schema YAML). Rendue par le
+    template dans un tooltip ⓘ. On ne l'attache qu'aux sections interdiction /
+    autorisation sous condition (l'autorisation pure n'a pas de justification).
+    """
+    if regle is None:
+        return []
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    justification = getattr(regle, "texte_condition", None) or None
+
+    sections = []
+
+    # Autorisation pure (vert) : premiere section, sans justification.
+    autorisation = periode_autorisation_phrase(regle)
+    if autorisation:
+        sections.append(
+            {
+                "titre": "Période d’autorisation",
+                "periodes": [{"phrase": autorisation, "justification": None}],
+            }
+        )
+
+    # Tri des periodes d'un meme regime par jour agricole de debut (#224) :
+    # sans ca, plusieurs periodes du meme regime (ex 2 interdictions d'une regle
+    # mixte) s'affichaient dans l'ordre du YAML, pas dans l'ordre du calendrier
+    # (juillet->juin). On ordonne sur l'index agricole du `du` ; une borne non
+    # parsable (event sans date_calendrier) est repoussee en fin (float inf).
+    def _rang_agricole(p) -> float:
+        jjmm = _parse_jjmm(p.get("du", ""))
+        return _day_of_year(*jjmm) if jjmm else float("inf")
+
+    for regime in _ORDRE_REGIME:
+        periodes_regime = sorted(
+            (p for p in periodes if (p.get("regime") or regle_type) == regime),
+            key=_rang_agricole,
+        )
+        puces = [
+            {
+                "phrase": periode_phrase(p),
+                "justification": justification,
+            }
+            for p in periodes_regime
+        ]
+        if puces:
+            sections.append({"titre": _SECTION_TITRE[regime], "periodes": puces})
+
+    return sections
 
 
 @register.simple_tag
 def periodes_datees(regle) -> list[dict]:
-    """Liste ordonnee des puces a afficher sous le calendrier statique (#85) :
-
-    [{"label": "Interdiction", "phrase": "..."},
-     {"label": "Autorisé sous conditions", "phrase": "..."},
-     {"label": "Période d'autorisation", "phrase": "du ... au ..."}]
-
-    Ordre (du plus restrictif au moins) : interdiction -> plafond ->
-    autorisation sous condition -> autorisation pure (vert) en dernier.
-    Les periodes YAML sont groupees par regime EFFECTIF (p.regime sinon le
-    type de la regle). `phrase` est formatee via periode_phrase (format date
-    unifie + libelles phenologiques lisibles).
+    """[DEPRECATED, conserve pour compat tests] Liste plate des puces datees.
+    Prefere `periodes_par_section` (#159). Ordre : interdiction -> plafond ->
+    autorisation sous condition -> autorisation pure.
     """
     if regle is None:
         return []
@@ -468,7 +543,7 @@ def calendrier_epandage(regle):
     mixte) ; sinon on retombe sur le `type` global de la regle.
     """
     if regle is None:
-        return {"vide": True, "mois": _MOIS_LABELS}
+        return {"vide": True, "mois": _MOIS_PAIRES}
 
     regle_type = getattr(regle, "type", None) or ""
     periodes = getattr(regle, "periodes", None) or []
@@ -657,7 +732,7 @@ def calendrier_epandage(regle):
 
     return {
         "vide": False,
-        "mois": _MOIS_LABELS,
+        "mois": _MOIS_PAIRES,
         "fond": fond,
         "label": label,
         "segments": segments,

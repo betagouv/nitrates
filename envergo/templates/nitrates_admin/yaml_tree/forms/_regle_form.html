@@ -535,18 +535,15 @@
                    placeholder="Détail de la condition (ex: « Autorisation dans les conditions de la note 1 »)">
           </label>
         </div>
-        <details class="yaml-tree__form-advanced">
-          <summary>Texte libre (notes, exceptions)</summary>
-          <div class="yaml-tree__form-row">
-            <label class="yaml-tree__form-label">
-              <span>texte</span>
-              <input type="text"
-                     name="texte"
-                     value="{{ regle.texte|default_if_none:'' }}"
-                     placeholder="Champ libre, rarement utilisé">
-            </label>
-          </div>
-        </details>
+        <div class="yaml-tree__form-row">
+          <label class="yaml-tree__form-label">
+            <span>texte</span>
+            <input type="text"
+                   name="texte"
+                   value="{{ regle.texte|default_if_none:'' }}"
+                   placeholder="Texte libre (notes, exceptions), rarement utilisé">
+          </label>
+        </div>
         <div class="yaml-tree__form-row" data-type-row="plafonnement">
           <label class="yaml-tree__form-label"
                  title="Plafond d'azote autorisé en kg N/ha pour cette règle.">
@@ -634,7 +631,14 @@
           // sinon ordre par defaut. Le parent form doit etre flex-column.
           const formEl = typeSelect.closest('form');
           if (formEl) formEl.classList.toggle('yaml-tree__inline-form--calc', calculatrice);
-          if (conditionRow) conditionRow.style.display = sousCondition ? '' : 'none';
+          // Texte conditionne (texte_condition) : la justification/condition
+          // remontee dans la bulle ⓘ du simulateur. TOUJOURS editable, quel que
+          // soit le type -- y compris calculatrice (une calc peut porter un
+          // texte_condition de niveau regle, ex allongement regional), et il
+          // faut pouvoir le vider. Un champ laisse vide n'est simplement pas
+          // persiste. Masquer cette row selon le type empechait d'editer/vider
+          // le texte_condition de certaines regles (retour Max).
+          if (conditionRow) conditionRow.style.display = '';
           // fieldsets et rows marques avec data-type-fieldset/row
           fieldsets.forEach(el => {
             const allowed = el.dataset.typeFieldset.split(',');

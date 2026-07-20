@@ -13,6 +13,7 @@ from envergo.nitrates.bassins import (
     bassin_code_from_attributes,
     bassin_label_from_attributes,
 )
+from envergo.nitrates.form_backfill import backfill_form_fields
 from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
 from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
@@ -77,6 +78,7 @@ class HomeView(View):
         view = MoulinetteView()
         view.force_debug = False  # jamais de panneaux debug sur le root public
         view.is_building = True  # bandeau "site en construction"
+        view.geo_appliquee = True  # root public : on borne au perimetre ouvert
         return view.get(request, *args, **kwargs)
 
 
@@ -252,6 +254,16 @@ class DebugView(View):
         code_insee = request.GET.get("code_insee") or ""
         en_grand_est = region_code == "44"
 
+        # Ouverture geographique : appliquee uniquement quand la page appelante
+        # le demande (root public `/` -> geo=1). Sur `/simulateur` (interne), le
+        # front n'envoie pas le flag -> tout departement est considere ouvert.
+        # Le flag vient du contexte serveur de la page (window.NITRATES_GEO_
+        # APPLIQUEE), cf. MoulinetteView.geo_appliquee / HomeView.
+        geo_appliquee = request.GET.get("geo") == "1"
+        simulateur_ouvert = (
+            departement_est_ouvert(department_code) if geo_appliquee else True
+        )
+
         return JsonResponse(
             {
                 "lng": lng,
@@ -274,20 +286,27 @@ class DebugView(View):
                 # Bornage géographique (carte #57) : le simulateur n'est ouvert
                 # que dans certaines régions/départements. Si fermé, le front
                 # affiche un message au lieu du formulaire. Allowlist : fermé
-                # par défaut.
-                "simulateur_ouvert": departement_est_ouvert(department_code),
+                # par défaut. Non applique sur `/simulateur` interne (geo!=1).
+                "simulateur_ouvert": simulateur_ouvert,
             }
         )
 
 
-@method_decorator(_cache_in_prod(60 * 60), name="dispatch")
 class ReferentielsView(View):
-    """Expose les listes fermees du YAML referentiels (types fertilisants,
+    """Expose les listes fermees du referentiel (types fertilisants,
     cultures, codes prescription, notes...) en JSON pour le front.
 
     Permet a la cascade JS d'afficher les bons libelles (libelle_public)
     et de filtrer les options en fonction des choix precedents
     (mapping_sous_fertilisant_vers_type).
+
+    PAS de cache_page HTTP (#228) : `load_referentiels()` porte deja un cache
+    process-local (LRU) invalide sur ecriture ORM (signaux post_save/delete,
+    cf. loader.invalider_cache_referentiels). Un cache_page HTTP en plus n'etait
+    invalide par AUCUN signal -> apres l'ajout d'une culture en base, l'API
+    continuait de servir l'ancien JSON pendant 1h (bug : 5 cultures en DB, 4
+    rendues au formulaire). Le cout de (re)serialisation d'un petit dict est
+    negligeable, le LRU couvre le seul cout reel (_build_referentiels).
 
     Cache 1h : ce fichier ne change qu'au rythme de la reglementation.
     """
@@ -343,6 +362,14 @@ class MoulinetteView(View):
     force_debug = None
     is_building = False
 
+    # Ouverture geographique (allowlist departements, cf. DebugView /
+    # departement_est_ouvert). Sur `/simulateur` (interne, derriere ProConnect),
+    # on NE l'applique PAS : tout departement est accessible. Sur `/` (root
+    # public, HomeView) on la REapplique pour borner l'acces public au
+    # perimetre ouvert. La valeur est injectee dans la page (window.
+    # NITRATES_GEO_APPLIQUEE) et le DebugView en tient compte.
+    geo_appliquee = False
+
     def get(self, request, *args, **kwargs):
         from django.conf import settings
 
@@ -379,8 +406,16 @@ class MoulinetteView(View):
             "prairie_permanente",
         ]
 
+        # #175 : un lien direct peut piloter le parcours via les seuls champs
+        # backend (occupation_sol, sous_culture, type_fertilisant...) sans les
+        # champs FRONT de cascade (categorie_culture, sous_culture_form,
+        # categorie_fertilisant). Le resultat s'affiche alors, mais les radios
+        # du form restent vides. On reconstruit ces champs front A L'AFFICHAGE
+        # quand c'est non ambigu (cf. form_backfill). N'ecrase jamais l'existant.
+        data = backfill_form_fields(request.GET.dict(), referentiels)
+
         ctx = {
-            "data": request.GET,
+            "data": data,
             "codes_prescription": referentiels.get("codes_prescription", {}),
             "notes_referentiel": referentiels.get("notes", {}),
             "afficher_resultat": False,
@@ -395,6 +430,10 @@ class MoulinetteView(View):
             ),
             # Bandeau "site en construction" (mode alpha-testeur, root public).
             "is_building": self.is_building,
+            # Ouverture geographique appliquee ? (False sur /simulateur interne,
+            # True sur / public). Injecte dans la page pour que l'appel debug
+            # cote front transmette le contexte, et que DebugView decide.
+            "geo_appliquee": self.geo_appliquee,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
             "qc_repondues_champs": [],
@@ -455,10 +494,12 @@ class MoulinetteView(View):
         # (peut etre un PAR/ZAR, pas le PAN). Sinon le panel gauche ne
         # retrouverait pas les QC du ZAR (le PAN ne les a pas).
         arbre_actif = None
+        evaluateur_actif = None
         for e in regulations_evaluees:
             ac = getattr(e["evaluator"], "arbre_courant", None)
             if ac:
                 arbre_actif = ac
+                evaluateur_actif = e["evaluator"]
                 break
         if arbre_actif is None:
             # Fallback (pas d'eval arbre, ex preview draft ou hors ZV).
@@ -470,28 +511,44 @@ class MoulinetteView(View):
                     arbre_actif = load_active_tree()
             else:
                 arbre_actif = load_active_tree()
-        contexte_courant = dict(request.GET.items())
-        # Le contexte URL ne contient pas les champs catalogue (en_zone_vulnerable,
-        # zone_note_5, etc.) qui sont resolus par la moulinette. Pour permettre
-        # a collecter_qc_du_chemin de descendre l'arbre, on force
-        # en_zone_vulnerable=True (par definition si on a une QC sur le chemin,
-        # on est dans la branche ZV) et on remonte les autres champs catalogue
-        # depuis la moulinette si dispo.
+        # Contexte de descente pour collecter les QC (panneau gauche). On PART
+        # du contexte final de l'evaluateur (`.contexte`) quand il existe : le
+        # dict mute par le parcours, deja porteur des catalogues SIG resolus au
+        # fil de la cascade. On complete par les params d'URL (les reponses
+        # recentes priment sur l'etat fige), en ignorant les valeurs vides pour
+        # ne pas ecraser un catalogue deja resolu.
+        contexte_courant = {}
+        if evaluateur_actif is not None:
+            contexte_courant.update(getattr(evaluateur_actif, "contexte", None) or {})
+        for cle, valeur in request.GET.items():
+            if valeur != "" or cle not in contexte_courant:
+                contexte_courant[cle] = valeur
         contexte_courant.setdefault("en_zone_vulnerable", True)
-        try:
-            cat = getattr(moulinette, "catalog", None) or {}
-            for k in (
-                "zone_note_5",
-                "zone_montagne_d113_14",
-                "zonage_montagne_regional",
-                "zonage_prairie_III",
+        # Callback SIG : resout a la volee tout catalogue intercale sur le chemin
+        # (geo-deterministe) pour que la descente ne bute pas dessus. Generique
+        # (registre catalogue_refs), aucun champ en dur -> vaut pour tout arbre.
+        resoudre_catalogue = getattr(
+            evaluateur_actif, "_resoudre_catalogue_pour_collecte", None
+        )
+        # Arbres sur lesquels collecter les QC : TOUS les arbres traverses par
+        # la cascade (le plus specifique d'abord), pas seulement l'arbre
+        # gagnant. Une QC repondue dans un PAR/ZAR qui a ensuite bascule vers
+        # le PAN (feuille_vide, no-match ou renvoi_arbre cible) doit rester
+        # visible dans le recap : c'est elle qui explique le switch d'arbre.
+        # Dedup par champ : la version de l'arbre le plus specifique prime.
+        arbres_pour_qc = list(getattr(evaluateur_actif, "arbres_traverses", None) or [])
+        if not any(a is arbre_actif for a, _ in arbres_pour_qc):
+            arbres_pour_qc.append((arbre_actif, None))
+        qc_collectees = []
+        for arbre_qc, depart_qc in arbres_pour_qc:
+            for q in collecter_qc_du_chemin(
+                arbre_qc, contexte_courant, resoudre_catalogue, noeud_depart=depart_qc
             ):
-                if k in cat and k not in contexte_courant:
-                    contexte_courant[k] = cat[k]
-        except Exception:
-            pass
+                if any(x.champ == q.champ for x in qc_collectees):
+                    continue
+                qc_collectees.append(q)
         qc_repondues = []
-        for q in collecter_qc_du_chemin(arbre_actif, contexte_courant):
+        for q in qc_collectees:
             if q.champ in qc_actifs:
                 # Deja en cours de saisie dans le panneau resultat (a droite),
                 # on ne le redouble pas a gauche.

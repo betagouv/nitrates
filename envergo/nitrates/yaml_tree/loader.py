@@ -7,9 +7,10 @@ Pour invalider manuellement : `load_arbre.cache_clear()`.
 Note : `load_referentiels()` a ete migre depuis YAML vers la DB en
 phase 4 de la carte #61. La fonction reste exposee avec la meme
 signature pour back-compat des appelants (views, templatetag, validator,
-admin), mais lit les modeles ORM. Le YAML referentiels.yaml n'est plus
-consulte en runtime — il sert uniquement de source de seed (cf.
-`seed_referentiels` management command et migration 0012).
+admin), mais lit les modeles ORM. Depuis #226, le fichier referentiels.yaml
+a ete supprime : le seed initial se fait via la fixture
+`fixtures/initial_referentiels.json` chargee par `seed_referentiels`.
+Ce module ne charge plus que les arbres de decision (load_arbre).
 """
 
 from functools import lru_cache

@@ -25,6 +25,20 @@
   var form = document.getElementById("form-simulateur");
   if (!form) return;
 
+  // Carte #154 : sur une page qui affiche des questions complementaires en
+  // attente OU le resultat final, c'est scroll_resultat.js qui pilote le
+  // cadrage (vers la QC / vers la table resultat). Si form_autoscroll agit
+  // aussi (replay des etapes du form principal depuis l'URL), les deux scrolls
+  // se battent -> on atterrit sur le form principal au lieu de la QC. On
+  // desactive donc form_autoscroll dans ces cas : il ne sert qu'au parcours de
+  // saisie initial (avant toute soumission).
+  if (
+    document.querySelector("#qc-bloc[data-qc-en-attente='true']") ||
+    document.querySelector(".results-row.layout--split")
+  ) {
+    return;
+  }
+
   var reduceMotion =
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;

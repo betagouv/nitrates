@@ -1,0 +1,31 @@
+{% comment %}
+Colonne « Playwright simulateur » en auto-save htmx : capture (upload auto au
+change) + date de capture. Re-rend #vd-col-playwright. Cf. _col_miro.html.
+{% endcomment %}
+<div class="vd-col" id="vd-col-playwright">
+  <h2>📸 Playwright simulateur</h2>
+  {% if branche.screenshot_playwright %}
+    <img src="{{ branche.screenshot_playwright.url }}?v={{ branche.updated_at|date:'U' }}"
+         alt="Playwright"
+         class="vd-img vc-clickable"
+         data-lightbox
+         data-src="{{ branche.screenshot_playwright.url }}?v={{ branche.updated_at|date:'U' }}">
+    <p style="font-size:0.75rem; color:#666;">Capturé le {{ branche.playwright_run_at|date:"d/m/Y H:i" }}</p>
+  {% else %}
+    <p style="color:#999">Pas de capture Playwright.</p>
+  {% endif %}
+  <form hx-post="{% url 'nitrates_admin_validation_upload_playwright' pk=branche.pk %}"
+        hx-target="#vd-col-playwright"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        hx-trigger="change"
+        class="vd-form vd-autosave">
+    {% csrf_token %}
+    {% include "nitrates_admin/validation/_hidden_filtres.html" %}
+    <input type="hidden" name="col" value="playwright">
+    <input type="file" name="screenshot_playwright" accept="image/*">
+    <noscript>
+      <button type="submit" class="vc-btn">Uploader Playwright</button>
+    </noscript>
+  </form>
+</div>

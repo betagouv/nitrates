@@ -79,8 +79,10 @@ def validate_arbre(
     ids_definis = _collect_ids(arbre)
     errors.extend(_check_ids_uniques(ids_definis))
     errors.extend(_check_renvois_vers(arbre, ids_definis))
+    errors.extend(_check_remap_contexte(arbre))
     errors.extend(_check_dates(arbre, referentiels))
     errors.extend(_check_niveaux_formulaire(arbre))
+    errors.extend(_check_champ_type_fertilisant(arbre))
     errors.extend(_check_regimes_coherents(arbre))
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
@@ -234,6 +236,33 @@ def _check_renvois_vers(arbre: dict, ids: dict[str, list[str]]) -> list[str]:
             errors.append(
                 f"[renvoi_vers] '{cible}' (depuis branche valeur="
                 f"{branche.get('valeur')!r}) ne pointe vers aucun id existant"
+            )
+    return errors
+
+
+def _check_remap_contexte(arbre: dict) -> list[str]:
+    """Un `remap_contexte` n'a de sens qu'accompagne d'un `renvoi_arbre` (cf.
+    #227) : il transforme le contexte AVANT le re-parcours de l'arbre cible. Sur
+    une branche sans renvoi_arbre il serait inerte (jamais applique) -> on le
+    signale comme erreur de conception plutot que de le laisser passer
+    silencieusement. Le schema garantit deja le type (dict scalaire non vide)."""
+    errors: list[str] = []
+    for branche in _walk_branches(arbre):
+        if "remap_contexte" in branche and "renvoi_arbre" not in branche:
+            errors.append(
+                f"[remap_contexte] la branche valeur={branche.get('valeur')!r} "
+                f"porte un remap_contexte sans renvoi_arbre : il ne serait jamais "
+                f"applique. remap_contexte n'a de sens qu'avec renvoi_arbre."
+            )
+        # noeud_cible : idem, n'a de sens qu'avec renvoi_arbre. La cible etant
+        # dans un AUTRE arbre (charge a la volee par l'evaluateur), on ne peut
+        # pas verifier ici que l'id existe -- seulement qu'il accompagne bien un
+        # renvoi_arbre.
+        if "noeud_cible" in branche and "renvoi_arbre" not in branche:
+            errors.append(
+                f"[noeud_cible] la branche valeur={branche.get('valeur')!r} "
+                f"porte un noeud_cible sans renvoi_arbre : il ne serait jamais "
+                f"applique. noeud_cible n'a de sens qu'avec renvoi_arbre."
             )
     return errors
 
@@ -818,6 +847,54 @@ def _check_niveaux_formulaire(arbre: dict) -> list[str]:
     return errors
 
 
+# Valeurs de branche caracteristiques d'un choix de TYPE de fertilisant.
+_VALEURS_TYPE_FERTILISANT = {
+    "type_0",
+    "type_Ia",
+    "type_Ib",
+    "type_I",
+    "type_II",
+    "type_III",
+}
+
+
+def _check_champ_type_fertilisant(arbre: dict) -> list[str]:
+    """Un noeud formulaire dont les BRANCHES portent des valeurs de type de
+    fertilisant (type_0 / type_Ia / type_Ib / type_II / type_III) DOIT avoir
+    `champ: type_fertilisant`. Sinon la reponse du formulaire (qui remplit
+    `type_fertilisant`) ne correspond pas au champ attendu par le noeud ->
+    le parcours re-pose la question comme QC parasite (bug PAR HdF legumes :
+    un noeud `champ: avant_le_1er_juin` avec des branches type_Ia/Ib/II/III).
+
+    On ne se base PAS sur "champ == niveau" (occupation_sol a legitimement
+    niveau=culture / champ=occupation_sol) : le marqueur fiable est la presence
+    de valeurs de branche type_*.
+    """
+    errors = []
+    for obj in _walk_objects(arbre):
+        if not isinstance(obj, dict):
+            continue
+        if obj.get("type_noeud") != "formulaire":
+            continue
+        champ = obj.get("champ")
+        if champ == "type_fertilisant":
+            continue
+        valeurs = {
+            b.get("valeur")
+            for b in obj.get("branches", []) or []
+            if isinstance(b, dict)
+        }
+        if valeurs & _VALEURS_TYPE_FERTILISANT:
+            errors.append(
+                f"[champ] noeud '{obj.get('id')}' : ses branches portent des "
+                f"valeurs de type de fertilisant (type_*), il doit donc avoir "
+                f"`champ: type_fertilisant` (trouve : {champ!r}). Sinon la "
+                f"reponse du formulaire n'est pas reconnue et la question est "
+                f"reposee en question complementaire."
+            )
+    return errors
+
+
 def _walk_paths(noeud: dict, chemin: list[tuple[str, str]], errors: list[str]) -> None:
     """`chemin` : liste de (niveau, champ) des noeuds formulaire deja
     rencontres dans la branche."""
@@ -842,19 +919,29 @@ def _check_niveau_ajout(
     if niveau not in NIVEAUX_FORMULAIRE_ORDRE:
         return None  # le schema l'aurait deja attrape
     idx_nouveau = NIVEAUX_FORMULAIRE_ORDRE.index(niveau)
-    # Convention 2026-05-12 : `complement` est le dernier niveau autorise.
-    # Une fois entre dans une chaine de complements, on ne peut PAS revenir
-    # vers culture / sous_culture / type_fertilisant. Donc des qu'un
-    # complement apparait dans le chemin, tout niveau suivant doit etre
-    # complement aussi.
-    if any(n == "complement" for n, _ in chemin) and niveau != "complement":
+    # Convention 2026-05-12, assouplie #223 : apres une QC `complement`, on
+    # autorise UNIQUEMENT de redescendre vers `type_fertilisant` (QC de
+    # raffinement intermediaire, ex "legumes implantes avant/apres le 1er juin ?"
+    # entre la culture et le fertilisant, cf. PAR HdF). Tout autre retour
+    # (culture / sous_culture apres complement) reste interdit : ce sont de vrais
+    # non-sens de cascade. Le moteur de parcours gere deja ce pattern (la QC est
+    # posee puis la cascade type_fertilisant descend) -- seul ce validateur le
+    # bloquait.
+    if any(n == "complement" for n, _ in chemin) and niveau not in (
+        "complement",
+        "type_fertilisant",
+    ):
         return (
             f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
             f"'complement' dans le chemin (retour en arriere interdit)"
         )
     for prec_niveau, prec_champ in chemin:
         idx_prec = NIVEAUX_FORMULAIRE_ORDRE.index(prec_niveau)
-        if idx_nouveau < idx_prec:
+        # Exception #223 : type_fertilisant apres un complement est autorise
+        # (QC intermediaire). On ne le traite donc pas comme un retour arriere.
+        if idx_nouveau < idx_prec and not (
+            niveau == "type_fertilisant" and prec_niveau == "complement"
+        ):
             return (
                 f"[niveau] noeud '{noeud_id}' : niveau {niveau!r} apres "
                 f"{prec_niveau!r} dans le chemin (retour en arriere interdit)"

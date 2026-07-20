@@ -248,7 +248,7 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>arbre cible</span>
-      <select name="c_renvoi_arbre" required>
+      <select name="c_renvoi_arbre" required data-renvoi-arbre-scope>
         <option value="">— choisir —</option>
         <option value="region"
                 {% if form_data.c_renvoi_arbre == "region" %}selected{% endif %}>PAR régional</option>
@@ -260,11 +260,38 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       {% if err.field == "renvoi_arbre" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
+  {% comment %}
+  Noeud cible optionnel : ou atterrir DANS l'arbre cible (renvoi cross-arbre
+  cible, #222). Peuple en live via l'API noeuds-cibles selon le scope choisi.
+  Vide = re-parcours depuis la racine de l'arbre cible.
+  {% endcomment %}
+  <div class="yaml-tree__form-row">
+    <label class="yaml-tree__form-label">
+      <span>nœud cible (optionnel)</span>
+      <select name="c_noeud_cible"
+              data-noeud-cible
+              data-noeuds-url-base="{% url 'nitrates_admin_noeuds_cibles' 'SCOPE' %}"
+              data-selected="{{ form_data.c_noeud_cible|default:'' }}">
+        <option value="">— racine de l'arbre cible (défaut) —</option>
+      </select>
+    </label>
+    <small class="yaml-tree__form-help">
+      Choisir un nœud fait démarrer le parcours de l'arbre cible à ce nœud,
+      sans re-poser les questions déjà répondues.
+    </small>
+  </div>
+  {% comment %}
+    Le peuplement live du select (fetch API noeuds-cibles selon le scope) est
+    gere par un handler DELEGUE au niveau document dans base.html, PAS par un
+    <script> inline ici : htmx 2.x n'execute pas les <script> inseres via swap,
+    donc ce fragment ne peut pas embarquer sa propre logique. Le handler se
+    branche sur [data-noeud-cible] a chaque htmx:afterSettle.
+{% endcomment %}
 
 {% elif kind == "feuille_vide" %}
-  <p class="yaml-tree__form-help">
-    Réponse explicite sans règle : rend cette branche sélectionnable dans le
-    formulaire, mais ne produit aucun résultat — l'évaluation retombe sur
-    l'arbre inférieur (PAR puis PAN). Réservée aux PAR/ZAR. Aucun champ à saisir.
-  </p>
+<p class="yaml-tree__form-help">
+Réponse explicite sans règle : rend cette branche sélectionnable dans le
+formulaire, mais ne produit aucun résultat — l'évaluation retombe sur
+l'arbre inférieur (PAR puis PAN). Réservée aux PAR/ZAR. Aucun champ à saisir.
+</p>
 {% endif %}

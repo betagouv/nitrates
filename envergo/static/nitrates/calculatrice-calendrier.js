@@ -12,27 +12,57 @@
 (function () {
   "use strict";
 
-  const dataEl = document.getElementById("nitrates-calculatrice-data");
-  const root = document.querySelector("[data-calc-cal-root]");
-  if (!dataEl || !root) return;
+  // Hors navigateur (Node, pour les tests de logique pure : cf.
+  // feedback_static_js_cache_dev — on valide la logique calendrier en Node
+  // car le JS statique servi en dev peut etre perime). Dans ce mode il n'y a
+  // pas de `document` : on n'execute pas le rendu, on expose seulement les
+  // helpers purs testables via module.exports, puis on sort. En navigateur
+  // cette branche est morte (document existe, module non).
+  const _isNode =
+    typeof module !== "undefined" &&
+    module.exports &&
+    typeof document === "undefined";
 
-  let data;
-  try {
-    data = JSON.parse(dataEl.textContent);
-  } catch (e) {
-    console.error("calculatrice-calendrier: JSON parse failed", e);
-    return;
+  const dataEl = _isNode
+    ? null
+    : document.getElementById("nitrates-calculatrice-data");
+  const root = _isNode ? null : document.querySelector("[data-calc-cal-root]");
+  if (!_isNode && (!dataEl || !root)) return;
+
+  // En Node : `data` reste vide (injectable par les tests via l'API exportee).
+  let data = _isNode ? {} : null;
+  if (!_isNode) {
+    try {
+      data = JSON.parse(dataEl.textContent);
+    } catch (e) {
+      console.error("calculatrice-calendrier: JSON parse failed", e);
+      return;
+    }
+    if (!data || data.type !== "calculatrice") return;
   }
-  if (!data || data.type !== "calculatrice") return;
 
-  const mount = root.querySelector("[data-calc-cal-mount]");
-  if (!mount) return;
+  const mount = _isNode ? null : root.querySelector("[data-calc-cal-mount]");
+  if (!_isNode && !mount) return;
 
   // ─── Constantes ────────────────────────────────────────────────────────
   // Année agricole = juillet → juin. Index 0 = juillet, 11 = juin.
   const MOIS_AGRICOLES = [
     "Juil", "Aoû", "Sept", "Oct", "Nov", "Déc",
     "Jan", "Fév", "Mar", "Avr", "Mai", "Jui",
+  ];
+  // Initiales, meme ordre agricole. Affichees a la place des labels 3 lettres
+  // sur mobile (#177) via .calendrier-epandage__months[data-court] en CSS :
+  // sur petit ecran les labels 3 lettres se chevauchaient.
+  const MOIS_AGRICOLES_COURTS = [
+    "J", "A", "S", "O", "N", "D",
+    "J", "F", "M", "A", "M", "J",
+  ];
+  // Mois en toutes lettres, ordre agricole (juillet -> juin). Pour les dates
+  // des periodes affichees sous le calendrier (#159 : "15 novembre", pas
+  // "15 nov."). MOIS_AGRICOLES reste pour les 12 labels de colonnes de la barre.
+  const MOIS_AGRICOLES_COMPLETS = [
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    "janvier", "février", "mars", "avril", "mai", "juin",
   ];
   const JOURS_PAR_MOIS_AGRICOLE = [31, 31, 30, 31, 30, 31, 31, 28, 31, 30, 31, 30];
   const TOTAL_JOURS = 365;
@@ -56,6 +86,28 @@
     plafonnement: "soumis à plafonnement",
     libre: "autorisé",
     non_applicable: "ne s'applique pas",
+  };
+
+  // Titre de section du récap (#159, maquette : regroupement par régime, une
+  // liste à puces par section). Ordre = du moins au plus restrictif, pour
+  // s'aligner sur le récap des cultures principales (autorisation d'abord,
+  // interdiction en dernier).
+  const SECTIONS_RECAP = [
+    { regime: "libre", titre: "Période d’autorisation" },
+    {
+      regime: "autorisation_sous_condition",
+      titre: "Période d’autorisation sous condition",
+    },
+    { regime: "plafonnement", titre: "Période de plafonnement" },
+    { regime: "interdiction", titre: "Période d’interdiction" },
+  ];
+
+  // Vocabulaire metier des references de couvert pour la justification (#159).
+  // Le point de reference est exprime en clair, sans la date fixe redondante.
+  // Defini AVANT l'export Node (sinon TDZ en test unitaire, cf. conditionToText).
+  const REF_COUVERT = {
+    date_semis_couvert: "l’implantation du couvert",
+    date_destruction_couvert: "la destruction ou la récolte du couvert",
   };
 
   const UNITES_JOURS = { jours: 1, semaines: 7, mois: 30 };
@@ -103,7 +155,7 @@
   function messageHorsBornes(inp, jjmm) {
     if (dansBornes(inp, jjmm)) return "";
     const lc = deduireLabelCourt(inp);
-    const d = (v) => jjmmLisible(v).replace(/\.$/, "");
+    const d = (v) => jjmmLisible(v);
     if (inp.max && !inp.min) {
       return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
     }
@@ -121,9 +173,8 @@
     if (!inp || (!inp.min && !inp.max)) return "";
     const lc = deduireLabelCourt(inp);
     const intro = `D'après le type de couvert sélectionné, la ${lc}`;
-    // jjmmLisible retourne deja "31 déc." (point inclus) -> on strip pour ne
-    // pas doubler la ponctuation finale de la phrase.
-    const d = (jjmm) => jjmmLisible(jjmm).replace(/\.$/, "");
+    // jjmmLisible retourne "31 décembre" (mois en toutes lettres, #159).
+    const d = (jjmm) => jjmmLisible(jjmm);
     if (inp.max && !inp.min) {
       return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
     }
@@ -139,13 +190,14 @@
     return j !== null ? jourAgricoleToLisible(j) : jjmm;
   }
 
-  // Convertit un index de jour agricole en "JJ mois" lisible.
+  // Convertit un index de jour agricole en "JJ mois" lisible, mois en toutes
+  // lettres (#159 : "15 novembre").
   function jourAgricoleToLisible(j) {
     if (j < 0 || j >= TOTAL_JOURS) return "";
     let idx = j;
     for (let i = 0; i < 12; i++) {
       if (idx < JOURS_PAR_MOIS_AGRICOLE[i]) {
-        return `${idx + 1} ${MOIS_AGRICOLES[i].toLowerCase()}.`;
+        return `${idx + 1} ${MOIS_AGRICOLES_COMPLETS[i]}`;
       }
       idx -= JOURS_PAR_MOIS_AGRICOLE[i];
     }
@@ -188,28 +240,46 @@
   }
 
   // Parse une borne YAML (JJ/MM | event | event±Nunit) en index agricole.
-  // Retourne {jour: int|null, isEvent: bool, eventId: str|null, offsetJours: int}
+  // Retourne {jour: int|null, jourRaw: int|null, isEvent, eventId, ...offset}.
+  //
+  // `jour`    = index agricole borne dans [0, TOTAL_JOURS) (modulo) -- sert au
+  //             DESSIN sur la barre (toujours un index valide).
+  // `jourRaw` = MÊME valeur mais NON repliee (sans le `% TOTAL_JOURS`) pour les
+  //             bornes event±offset : un offset peut faire passer la borne juste
+  //             avant le 1er juillet (valeur < 0) ou apres le 30 juin (>= 365).
+  //             Le modulo masque ce franchissement et casse les COMPARAISONS de
+  //             condition (ex `01/07 < semis-15jours` avec semis=14/07 : la
+  //             borne semis-15j = 29/06, repliee a l'index 363, comparait
+  //             faussement `0 < 363` = vrai alors que 29/06 precede le 1er
+  //             juillet -> condition fausse). On garde donc le brut pour
+  //             comparer dans un repere continu autour de l'event (cf.
+  //             evalComparaison). Pour une date fixe ou un event nu, jourRaw ==
+  //             jour (aucun repliement possible).
   const BORNE_RE = /^([a-z][a-z0-9_]*)(?:([+-])(\d+)(jours|semaines|mois))?$/;
   function parseBorne(val, valeursInputs) {
-    if (!val) return { jour: null, isEvent: false };
+    if (!val) return { jour: null, jourRaw: null, isEvent: false };
     if (/^\d{2}\/\d{2}$/.test(val)) {
-      return { jour: jjmmToJourAgricole(val), isEvent: false };
+      const j = jjmmToJourAgricole(val);
+      return { jour: j, jourRaw: j, isEvent: false };
     }
     const m = BORNE_RE.exec(val);
-    if (!m) return { jour: null, isEvent: false };
+    if (!m) return { jour: null, jourRaw: null, isEvent: false };
     const eventId = m[1];
     const valEvent = valeursInputs[eventId];
-    if (!valEvent) return { jour: null, isEvent: true, eventId };
+    if (!valEvent) return { jour: null, jourRaw: null, isEvent: true, eventId };
     let jour = jjmmToJourAgricole(valEvent);
-    if (jour === null) return { jour: null, isEvent: true, eventId };
+    if (jour === null) return { jour: null, jourRaw: null, isEvent: true, eventId };
+    let jourRaw = jour;
     if (m[2]) {
       const sign = m[2] === "+" ? 1 : -1;
       const n = parseInt(m[3], 10);
       const unit = m[4];
-      jour = (jour + sign * n * UNITES_JOURS[unit] + TOTAL_JOURS) % TOTAL_JOURS;
+      jourRaw = jour + sign * n * UNITES_JOURS[unit];
+      jour = ((jourRaw % TOTAL_JOURS) + TOTAL_JOURS) % TOTAL_JOURS;
     }
     return {
       jour,
+      jourRaw,
       isEvent: true,
       eventId,
       offsetSign: m[2] || null,
@@ -236,17 +306,48 @@
   const CONDITION_RE = new RegExp(
     "^\\s*(" + _TERME + ")\\s*(<=|>=|==|!=|<|>)\\s*(" + _TERME + ")\\s*$"
   );
+  // Ramene `f` (jour, possiblement franchissant l'annee) au representant
+  // {f, f-365, f+365} le plus proche de l'ancre `a`. Sert a comparer deux
+  // bornes dans un repere CONTINU : une condition compare des dates a quelques
+  // jours/semaines l'une de l'autre dans le meme cycle agricole, donc on les
+  // aligne autour d'une ancre commune plutot que sur l'origine fixe (1er juil).
+  // Sans ca, une borne event±offset qui franchit le 1er juillet (ex 29/06,
+  // index 363, juste AVANT l'origine 0) comparait a tort comme "tres apres"
+  // (cf. bug calendrier overflow : 01/07 < semis-15jours faussement vrai).
+  function _alignerSurAncre(f, a) {
+    let best = f;
+    let bestDist = Math.abs(f - a);
+    for (const cand of [f - TOTAL_JOURS, f + TOTAL_JOURS]) {
+      const d = Math.abs(cand - a);
+      if (d < bestDist) {
+        bestDist = d;
+        best = cand;
+      }
+    }
+    return best;
+  }
+
   // Evalue UNE comparaison `terme op terme`. Retourne true si vraie OU si un
   // terme n'est pas resolvable (event non saisi / part mal formee) -> mode
   // permissif (la periode reste affichee sans distorsion ; le validator
   // backend a deja rejete les conditions reellement invalides a la saisie).
+  //
+  // Comparaison dans un repere CONTINU autour des deux bornes : on part de leur
+  // valeur NON repliee (jourRaw) puis on aligne chaque cote sur l'autre via
+  // _alignerSurAncre. Cela neutralise le repliement annuel d'une borne
+  // event±offset qui franchit le 1er juillet (sinon `01/07 < semis-15jours`
+  // avec un semis tres precoce comparait `0 < 363` = vrai a tort, et peignait
+  // tout le calendrier en interdit). Les cas sans franchissement sont
+  // inchanges (jourRaw == jour, alignement = identite).
   function evalComparaison(rawCmp, valeurs) {
     const m = CONDITION_RE.exec(rawCmp);
     if (!m) return true;
     const op = m[2];
-    const gauche = parseBorne(m[1], valeurs).jour;
-    const droite = parseBorne(m[3], valeurs).jour;
-    if (gauche === null || droite === null) return true;
+    const pg = parseBorne(m[1], valeurs);
+    const pd = parseBorne(m[3], valeurs);
+    if (pg.jourRaw === null || pd.jourRaw === null) return true;
+    const gauche = _alignerSurAncre(pg.jourRaw, pd.jourRaw);
+    const droite = _alignerSurAncre(pd.jourRaw, pg.jourRaw);
     switch (op) {
       case "<": return gauche < droite;
       case "<=": return gauche <= droite;
@@ -265,6 +366,63 @@
     return rawCond
       .split("&&")
       .every((cmp) => evalComparaison(cmp, valeurs));
+  }
+
+  // Detecte une fenetre DEGENEREE : un intervalle `du -> au` qui s'inverse
+  // (au tombe AVANT du dans le sens avant) a cause d'une date saisie, ce qui
+  // sans garde wrappe via `% 365` et peint quasi toute l'annee (bug calendrier).
+  // Couvre les deux symptomes observes :
+  //   - une borne event±offset qui franchit le 1er juillet (ex `du: 01/07,
+  //     au: semis-15jours` avec un semis tres precoce) ;
+  //   - une borne event (±offset) trop tardive/precoce qui passe de l'autre
+  //     cote d'une borne fixe (ex `du: destruction-20j, au: 31/01` avec une
+  //     destruction en mars -> du=23/02 > au=31/01).
+  // Garde-fou ROBUSTE cote moteur (ne depend pas d'un `condition:` explicite
+  // dans le YAML). On PRESERVE les wraps d'annee VOLONTAIRES entre deux dates
+  // FIXES (ex `du: 15/10 au: 31/01`) : voir _fenetreDegeneree.
+  function _fenetreDegeneree(p, valeurs) {
+    const du = parseBorne(p.du, valeurs);
+    const au = parseBorne(p.au, valeurs);
+    if (du.jourRaw === null || au.jourRaw === null) return false;
+    // Détection d'inversion (`au` tombe avant `du`), en deux régimes selon que
+    // l'une des bornes FRANCHIT réellement l'année agricole (jourRaw hors
+    // [0, 365) : un event±offset qui déborde du 1er juillet ou du 30 juin) :
+    //
+    //   - Aucun franchissement (les 2 jourRaw ∈ [0, 365)) : on compare les
+    //     index agricoles NATIFS bornés. C'est le repère fidèle à la barre
+    //     dessinée. `_alignerSurAncre` est PROSCRIT ici : il replierait une
+    //     fenêtre longue mais parfaitement valide vers une pseudo-inversion —
+    //     p.ex. `du: destruction-20j (12/10) au: 30/06` avec une destruction
+    //     au 01/11 aligne 30/06 sur -1 et neutralise à tort l'interdit (bug
+    //     signalé : l'interdit démarrait au 15/10 au lieu du 12/10).
+    //   - Un franchissement d'année : là l'index natif MENT (le modulo replie
+    //     la borne débordante du mauvais côté), on repasse par l'alignement
+    //     continu autour de l'ancre pour retrouver l'ordre réel (ex `du: 01/07
+    //     au: semis-15j` avec un semis précoce -> semis-15j = 29/06, jourRaw
+    //     négatif, réellement AVANT le 01/07).
+    const franchit = (b) => b.jourRaw < 0 || b.jourRaw >= TOTAL_JOURS;
+    const inverse = franchit(du) || franchit(au)
+      ? _alignerSurAncre(au.jourRaw, du.jourRaw) < du.jourRaw
+      : au.jour < du.jour;
+    if (!inverse) return false;
+    // Une inversion est DÉGÉNÉRÉE (donnée incohérente -> on neutralise la
+    // période, sinon elle wrappe et peint quasi toute l'année) quand au moins
+    // une borne est un EVENT : sa position dépend d'une date saisie, et c'est
+    // cette saisie « trop tardive/précoce » qui a provoqué l'inversion
+    //   - ex `du: destruction-20j au: 31/01` avec une destruction en mars
+    //     -> du=23/02 > au=31/01, intervalle inversé involontaire (bug signalé) ;
+    //   - ex `du: date_semis au: date_destruction` avec semis après destruction.
+    // En revanche, une inversion entre DEUX DATES FIXES (ex `du: 15/10 au:
+    // 31/01`) est un wrap d'année VOLONTAIRE de l'auteur -> on la conserve.
+    return du.isEvent || au.isEvent;
+  }
+
+  // Predicat unique « la periode s'applique pour ces valeurs » : condition vraie
+  // (ou absente) ET fenetre non degeneree. Utilise partout ou l'on filtrait
+  // auparavant sur la seule condition, pour que peinture, recap, bornes et
+  // legende voient exactement le meme jeu de periodes actives.
+  function _periodeActive(p, valeurs) {
+    return evalCondition(p.condition, valeurs) && !_fenetreDegeneree(p, valeurs);
   }
 
   // Hierarchie de severite des regimes pour la linearisation visuelle
@@ -396,9 +554,11 @@
     };
 
     // Filtrage : retire les periodes dont la condition est fausse pour
-    // les valeurs courantes (cf. spec_extension_grammaire_condition).
+    // les valeurs courantes (cf. spec_extension_grammaire_condition) ET dont
+    // la fenetre n'est pas degeneree (offset qui wrappe l'annee, cf.
+    // _fenetreDegeneree -- bug calendrier overflow).
     const periodesActives = (periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
 
     // Passe 1 : principales avec hierarchie.
@@ -414,14 +574,74 @@
     return result;
   }
 
+  // ─── Export Node (tests de logique pure) ───────────────────────────────
+  // Toute la suite (État, rendu DOM) depend de document/window : on s'arrete
+  // ici en Node et on n'expose que les fonctions pures du moteur de calcul.
+  // `setData` permet aux tests d'injecter le `data` (type + periodes) lu en
+  // navigateur depuis le <script type="application/json">.
+  if (_isNode) {
+    module.exports = {
+      jjmmToJourAgricole,
+      parseBorne,
+      evalComparaison,
+      evalCondition,
+      computeRegimePerDay,
+      _alignerSurAncre,
+      jourAgricoleToJJMM,
+      conditionToText,
+      justificationInterdiction,
+      annoterBorne,
+      jourAgricoleToLisible,
+      TOTAL_JOURS,
+      setData: (d) => {
+        data = d || {};
+      },
+    };
+    return;
+  }
+
   // ─── État ──────────────────────────────────────────────────────────────
   const inputs = (data.inputs_requis || []).filter(
     (inp) => inp && typeof inp === "object" && inp.id
   );
+  // Ordre d'affichage du mini-form indépendant de l'ordre du YAML : le semis
+  // précède toujours la destruction (logique agronomique : on sème AVANT de
+  // détruire). Sans ce tri, une règle qui liste la destruction d'abord
+  // affichait les champs inversés (destruction à gauche, semis à droite).
+  // Tri stable (rang) : semis=0, destruction=2, autres=1 -> semis à gauche,
+  // destruction à droite, le reste au milieu dans son ordre d'origine.
+  const _rangInput = (inp) =>
+    inp.id.includes("semis") ? 0 : inp.id.includes("destruction") ? 2 : 1;
+  inputs.sort((a, b) => _rangInput(a) - _rangInput(b));
   if (inputs.length === 0) {
     mount.innerHTML =
       '<p class="fr-alert fr-alert--warning fr-alert--sm">Aucun input requis défini pour cette règle calculatrice.</p>';
     return;
+  }
+
+  // Texte d'intro adapté aux dates réellement demandées : on ne mentionne
+  // « la date de semis » / « la date de destruction » que si l'input
+  // correspondant est présent (détection par mot-clé dans l'id, robuste aux
+  // variantes date_semis_couvert / date_semis_colza / date_destruction_*).
+  const aSemis = inputs.some((i) => i.id.includes("semis"));
+  const aDestruction = inputs.some((i) => i.id.includes("destruction"));
+  const intro = root.querySelector(".calc-cal__intro");
+  if (intro) {
+    let dates;
+    if (aSemis && aDestruction) {
+      dates = "des dates de semis et de destruction du couvert";
+    } else if (aDestruction) {
+      dates = "de la date de destruction du couvert";
+    } else if (aSemis) {
+      dates = "de la date de semis du couvert";
+    } else {
+      dates = "des dates saisies";
+    }
+    intro.textContent =
+      "Pour ce type d'interculture, la réglementation définit la période " +
+      `d'épandage autorisée en fonction ${dates}. Saisissez ` +
+      (inputs.length > 1 ? "ces dates" : "cette date") +
+      " pour voir le calendrier.";
   }
 
   // Valeurs initiales : placeholder par defaut, MAIS si un query param porte
@@ -563,7 +783,7 @@
     return `
       <div class="calendrier-epandage calendrier-epandage--vert">
         <div class="calendrier-epandage__months">
-          ${MOIS_AGRICOLES.map((m) => `<span>${m}</span>`).join("")}
+          ${MOIS_AGRICOLES.map((m, i) => `<span data-court="${MOIS_AGRICOLES_COURTS[i]}">${m}</span>`).join("")}
         </div>
         <div class="calendrier-epandage__bar" data-tooltip="Autorisé">
           ${zonesHtml}
@@ -600,22 +820,23 @@
     return REGIME_VERBE[segment.regime] || segment.regime;
   }
 
-  // Genere « a partir de N jours apres semis » (mode=du) ou « jusqu'a
-  // N jours apres semis » (mode=au), seulement pour les bornes event+offset.
+  // Annotation de survol d'une borne event+offset. La DIRECTION ne depend que
+  // du role de la borne dans la periode (#215) :
+  //   - mode "du" = la periode COMMENCE a cette borne -> "à partir de" ;
+  //   - mode "au" = la periode FINIT a cette borne     -> "jusqu'à".
+  // Le SIGNE de l'offset ne joue QUE sur "avant/après" (prep), jamais sur la
+  // direction. Auparavant la direction dependait aussi du signe, ce qui
+  // inversait le wording pour les offsets negatifs (bug #215 : "à partir de
+  // 15 jours avant le semis" affiche au lieu de "jusqu'à ...", et
+  // symetriquement pour destruction-20j). Les offsets positifs (ex semis+4sem)
+  // etaient corrects par coincidence et le restent.
   // Pour les bornes event nu (sans offset), pas d'annotation.
   function annoterBorne(part, mode, inputById) {
     if (!part.isEvent || !part.eventId || !part.offsetN) return null;
     const inp = inputById[part.eventId];
     const lc = inp ? deduireLabelCourt(inp) : part.eventId;
     const prep = part.offsetSign === "+" ? "après" : "avant";
-    const direction =
-      mode === "du"
-        ? part.offsetSign === "+"
-          ? "à partir de"
-          : "jusqu'à"
-        : part.offsetSign === "+"
-          ? "jusqu'à"
-          : "à partir de";
+    const direction = mode === "du" ? "à partir de" : "jusqu'à";
     return `${direction} ${part.offsetN} ${part.offsetUnit} ${prep} ${lc}`;
   }
 
@@ -852,7 +1073,7 @@
     // sliver d'interdiction au semis). Sans ca, la fenetre effective du
     // recap commencerait au semis alors que la barre demarre au 15/10.
     const liste = (data.periodes || []).filter((pp) =>
-      evalCondition(pp.condition, valeurs)
+      _periodeActive(pp, valeurs)
     );
     const starts = new Array(TOTAL_JOURS).fill(0);
     const ends = new Array(TOTAL_JOURS).fill(0);
@@ -915,7 +1136,7 @@
   //     non vide.
   function activePeriodesSet() {
     const periodes = (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
     const principalCovers = computePrincipalCovers(periodes);
     const result = new Set();
@@ -939,7 +1160,7 @@
     // `periodes` peut etre fourni (deja filtre par condition) ou non
     // (fallback : on lit data.periodes et on filtre ici).
     const liste = periodes || (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
     const covers = new Array(TOTAL_JOURS).fill(false);
     for (const p of liste) {
@@ -1028,18 +1249,61 @@
     return `${n} ${unit} ${prep} le ${nom}`;
   }
 
-  // Traduit une condition "<terme> <op> <terme>" en phrase humaine pour le
-  // recap, ex "date_destruction_couvert < 05/12" -> "car la destruction est
-  // avant le 5 déc." ou "date_semis_couvert+4semaines > 15/12" -> "car
-  // 4 semaines après le semis est après le 15 déc.". Retourne null si non
-  // parseable.
+  // Terme "event ± offset" exprime en phrase metier couvert (#159), ex :
+  //   date_semis_couvert+4semaines    -> "4 semaines après l’implantation du couvert"
+  //   date_destruction_couvert-20jours-> "20 jours avant la destruction ou la récolte du couvert"
+  //   date_semis_couvert (nu)         -> "l’implantation du couvert"
+  // Retourne null si le terme n'est pas un event couvert connu.
+  function termeCouvertToText(raw) {
+    const m = BORNE_RE.exec(raw);
+    if (!m) return null;
+    const ref = REF_COUVERT[m[1]];
+    if (!ref) return null;
+    if (!m[2]) return ref; // event nu
+    const prep = m[2] === "+" ? "après" : "avant";
+    return `${m[3]} ${m[4]} ${prep} ${ref}`;
+  }
+
+  // Traduit une condition "<terme> <op> <terme>" en JUSTIFICATION metier (#159).
+  // Pour les couverts, un des deux termes est un event couvert (semis /
+  // destruction) et l'autre une date fixe (borne technique, redondante). On
+  // produit "Car interdit jusqu’à / à partir de <point de reference>" :
+  //   - "jusqu’à"      quand la periode est ANTERIEURE au point event ;
+  //   - "à partir de"  quand elle est POSTERIEURE.
+  // On ne touche PAS a la construction du terme event (le "avant/après" de
+  // l'offset vient du signe ±). Ex :
+  //   15/10 < date_semis_couvert+4semaines
+  //     -> "Car interdit jusqu’à 4 semaines après l’implantation du couvert"
+  //   15/10 < date_destruction_couvert-20jours
+  //     -> "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+  // Fallback sur l'ancienne tournure "car <g> est <op> <d>" si aucun terme
+  // n'est un event couvert connu (robustesse hors-couvert).
   function conditionToText(rawCond, inputById) {
     if (!rawCond) return null;
     const m = CONDITION_RE.exec(rawCond);
     if (!m) return null;
-    const gauche = termeToText(m[1], inputById);
+    const gaucheRaw = m[1];
     const op = m[2];
-    const droite = termeToText(m[3], inputById);
+    const droiteRaw = m[3];
+
+    // Cas couvert : un terme event couvert + une date fixe.
+    const evGauche = termeCouvertToText(gaucheRaw);
+    const evDroite = termeCouvertToText(droiteRaw);
+    if (evDroite && !evGauche) {
+      // <date fixe> op <event> : op "<" => periode avant l'event => "jusqu’à".
+      const prop = op === "<" || op === "<=" ? "jusqu’à" : "à partir de";
+      return `Car interdit ${prop} ${evDroite}`;
+    }
+    if (evGauche && !evDroite) {
+      // <event> op <date fixe> : op "<" => l'event est avant la date fixe,
+      // donc l'interdiction commence a l'event => "à partir de".
+      const prop = op === "<" || op === "<=" ? "à partir de" : "jusqu’à";
+      return `Car interdit ${prop} ${evGauche}`;
+    }
+
+    // Fallback (hors couvert / deux dates fixes) : ancienne tournure.
+    const gauche = termeToText(gaucheRaw, inputById);
+    const droite = termeToText(droiteRaw, inputById);
     const tournure = {
       "<": "avant",
       "<=": "au plus tard à",
@@ -1050,6 +1314,35 @@
     }[op];
     if (!tournure) return null;
     return `car ${gauche} est ${tournure} ${droite}`;
+  }
+
+  // Justification metier (#214) d'une periode d'INTERDICTION, derivee de ses
+  // bornes `du`/`au` (et NON de son champ `condition`, qui est une garde de
+  // CALCUL, pas une justification -- beaucoup de periodes d'interdiction en sont
+  // depourvues alors qu'elles ont une borne dynamique a expliquer, cf. #214.1 /
+  // #214.3, 48 periodes concernees sur l'arbre).
+  //
+  // Regle (validee sur les cas existants qui affichaient deja le bon (i)) :
+  //   - `du` = event couvert (semis/destruction ± offset) -> l'interdiction
+  //     DEMARRE a cette borne -> "Car interdit a partir de <point>" (#214.4).
+  //   - sinon `au` = event couvert -> l'interdiction FINIT a cette borne
+  //     -> "Car interdit jusqu'a <point>".
+  //   - les deux events (rare, 1 cas) : le DEBUT prime (a partir de).
+  //   - aucune borne dynamique (interdiction a dates fixes) -> null (rien a
+  //     expliquer, la date est deja lisible sur la puce).
+  //
+  // Ne s'applique QU'aux periodes d'interdiction (#214.2, decision produit :
+  // tous les (i) "car interdit" sur les interdictions). L'appelant filtre.
+  function justificationInterdiction(periode) {
+    if (!periode) return null;
+    // termeCouvertToText ne reconnait QUE les events couvert (semis/destruction
+    // ± offset) et retourne null pour une date fixe -> il fait office de test
+    // "est-ce une borne dynamique couvert ?" sans dependre des valeurs saisies.
+    const evDu = termeCouvertToText(periode.du);
+    if (evDu) return `Car interdit à partir de ${evDu}`;
+    const evAu = termeCouvertToText(periode.au);
+    if (evAu) return `Car interdit jusqu’à ${evAu}`;
+    return null;
   }
 
   // Trouve la periode active dont la fenetre EFFECTIVE recouvre ce segment,
@@ -1092,52 +1385,56 @@
     // autorisation sous condition (prio), puis l'autorisation pure (#85) en
     // dernier (prio 2). Tri stable -> ordre chronologique conserve au sein
     // d'un meme regime.
-    const PRIORITE = { interdiction: 0, autorisation_sous_condition: 1, plafonnement: 1 };
-    const lignes = [];
+    // Puces regroupees PAR REGIME (#159). Chaque puce : "du X au Y (annotation)"
+    // + un picto info ⓘ portant la JUSTIFICATION en tooltip (le "— car ..."
+    // n'est plus affiche en clair, il passe dans le ⓘ). On ne change PAS la
+    // construction de la phrase de justification (conditionToText), seulement
+    // son emplacement d'affichage.
+    const pucesParRegime = {}; // regime -> [html <li>...]
     for (const seg of segments) {
       const regime = seg.regime;
-      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : pas de ligne
-      const verbe = REGIME_VERBE[regime] || regime;
+      if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : gere a part
       const duStr = jourAgricoleToLisible(seg.du);
-      // Borne droite affichee = dernier jour inclus du segment.
       const auStr = jourAgricoleToLisible(seg.au);
-      let ligne = `<strong>${capitalize(verbe)}</strong> du ${duStr} au ${auStr}`;
+      let ligne = `du ${duStr} au ${auStr}`;
 
-      const src = periodeSourcePourSegment(seg, actives);
-      if (src) {
-        const partDu = parseBorne(src.du, valeurs);
-        const partAu = parseBorne(src.au, valeurs);
-        const annotations = [
-          annoterBorne(partDu, "du", inputById),
-          annoterBorne(partAu, "au", inputById),
-        ].filter(Boolean);
-        if (annotations.length > 0) {
-          ligne += ` <span class="calc-cal__recap-annot">(${annotations.join(", ")})</span>`;
-        }
-        const condTxt = conditionToText(src.condition, inputById);
+      // Justification ⓘ (#214) : uniquement sur les periodes d'INTERDICTION
+      // (#214.2), et derivee de la borne dynamique de la periode source (et non
+      // de son champ `condition`, cf. justificationInterdiction -- corrige les
+      // (i) manquants #214.1/#214.3 et le wording "a partir de" #214.4).
+      if (regime === "interdiction") {
+        const src = periodeSourcePourSegment(seg, actives);
+        const condTxt = justificationInterdiction(src);
         if (condTxt) {
-          ligne += ` <span class="calc-cal__recap-cond">— ${escapeHtml(condTxt)}</span>`;
+          ligne += ` <span class="calc-cal__recap-info" tabindex="0" role="img" aria-label="${escapeHtml(condTxt)}" data-tooltip="${escapeHtml(condTxt)}">ⓘ</span>`;
         }
       }
-      lignes.push({ prio: PRIORITE[regime] ?? 9, html: `<li>${ligne}</li>` });
+      (pucesParRegime[regime] = pucesParRegime[regime] || []).push(
+        `<li>${ligne}</li>`
+      );
     }
 
     // Periode d'autorisation pure (vert, #85) = jours ni interdits ni sous
-    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne. Prio 2
-    // -> placee en dernier par le tri ci-dessous.
+    // condition, fusionnee (dont le wrap juin->juillet) en UNE ligne.
     const ligneAutorisation = buildLigneAutorisation(segments);
     if (ligneAutorisation) {
-      lignes.push({ prio: 2, html: `<li>${ligneAutorisation}</li>` });
+      pucesParRegime.libre = [`<li>${ligneAutorisation}</li>`];
     }
 
-    if (lignes.length === 0) return "";
-    lignes.sort((a, b) => a.prio - b.prio);
-    // Maquette #130 : pas de titre "Récapitulatif", liste nue (sans puces).
-    return `
-      <div class="calc-cal__recap">
-        <ul class="calc-cal__recap-list">${lignes.map((l) => l.html).join("")}</ul>
-      </div>
-    `;
+    // Rendu : une section par regime present, dans l'ordre SECTIONS_RECAP,
+    // titre + liste a puces (maquette #159).
+    const sectionsHtml = SECTIONS_RECAP.filter(
+      (s) => (pucesParRegime[s.regime] || []).length > 0
+    ).map(
+      (s) => `
+        <div class="calc-cal__recap-section">
+          <p class="calc-cal__recap-titre">${s.titre} :</p>
+          <ul class="calc-cal__recap-list">${pucesParRegime[s.regime].join("")}</ul>
+        </div>`
+    );
+
+    if (sectionsHtml.length === 0) return "";
+    return `<div class="calc-cal__recap">${sectionsHtml.join("")}</div>`;
   }
 
   // Construit la ligne "Periode d'autorisation : du X au Y et du Z au W" a
@@ -1169,7 +1466,9 @@
     } else {
       plages = morceaux.slice(0, -1).join(", ") + " et " + morceaux[morceaux.length - 1];
     }
-    return `<strong>Autorisé</strong> ${plages}`;
+    // Le régime « Autorisé » est désormais porté par le titre de section
+    // (#159) : la puce ne contient que les plages, sans le mot « Autorisé ».
+    return plages;
   }
 
   function escapeHtml(s) {
@@ -1193,7 +1492,7 @@
   // (cf. spec_extension_grammaire_condition §Recalcul a chaque change).
   function periodesActives() {
     return (data.periodes || []).filter((p) =>
-      evalCondition(p.condition, valeurs)
+      _periodeActive(p, valeurs)
     );
   }
 
@@ -1325,6 +1624,11 @@
       const barRect = bar.getBoundingClientRect();
       const zonesEl = [...bar.querySelectorAll(".calendrier-epandage__zone")];
       for (const z of zonesEl) {
+        // Sauve les positions % d'origine AVANT de figer en px : au resize on
+        // les restaure instantanement pour que le fond suive la barre en direct
+        // (le re-snap px crisp arrive juste apres, en debounce). Cf. #177.
+        if (z.dataset.pctLeft === undefined) z.dataset.pctLeft = z.style.left;
+        if (z.dataset.pctWidth === undefined) z.dataset.pctWidth = z.style.width;
         const r = z.getBoundingClientRect();
         const dLeft = snapCss(r.left);
         const dRight = snapCss(r.right);
@@ -1408,7 +1712,13 @@
   function positionTooltip(e) {
     if (!tooltipEl) return;
     const tipRect = tooltipEl.getBoundingClientRect();
-    const left = e.pageX + 12;
+    // Borne a droite : si le tooltip deborderait du viewport, on le decale a
+    // gauche du curseur (#159 : tooltips longs pres du bord droit).
+    const marge = 8;
+    const maxLeft =
+      window.scrollX + document.documentElement.clientWidth - tipRect.width - marge;
+    let left = e.pageX + 12;
+    if (left > maxLeft) left = Math.max(marge, e.pageX - tipRect.width - 12);
     const top = e.pageY - tipRect.height - 10;
     tooltipEl.style.left = `${Math.max(4, left)}px`;
     tooltipEl.style.top = `${Math.max(4, top)}px`;
@@ -1618,4 +1928,39 @@
   }
 
   render();
+
+  // Re-rendu au redimensionnement de la fenetre (#177). Le calendrier fige les
+  // zones (fond colore) en PIXELS ABSOLUS pour un pixel-snapping crisp, et cale
+  // les traits de date (ticks, en %) dessus. Apres un resize, les zones px
+  // restent a leur ancienne largeur pendant que la barre et les ticks (en %)
+  // suivent -> fond et traits desalignes tant qu'on ne rafraichit pas.
+  //
+  // Deux temps pour un rendu qui "colle" sans thrasher le CPU :
+  //   1. A CHAQUE event resize : on restaure instantanement les positions %
+  //      d'origine des zones (stockees en data-pct*) -> le fond suit la barre
+  //      en direct, aligne avec les ticks pendant tout le drag.
+  //   2. En debounce (150ms apres l'arret) : re-render complet -> re-snap px
+  //      crisp + re-layout des labels de bornes a la nouvelle largeur.
+  function restaurerZonesPct() {
+    if (!mount) return;
+    const zones = mount.querySelectorAll(".calendrier-epandage__zone");
+    for (const z of zones) {
+      if (z.dataset.pctLeft !== undefined) z.style.left = z.dataset.pctLeft;
+      if (z.dataset.pctWidth !== undefined) z.style.width = z.dataset.pctWidth;
+    }
+  }
+
+  let resizeTimer = null;
+  let lastWidth = window.innerWidth;
+  window.addEventListener("resize", () => {
+    // Ignore les resize purement verticaux (clavier mobile, barre d'URL qui
+    // se retracte) : seule la largeur impacte la geometrie du calendrier.
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+    // 1. Suivi live : le fond repasse en % -> reste cale sur les ticks.
+    restaurerZonesPct();
+    // 2. Re-snap crisp une fois le drag termine.
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(render, 150);
+  });
 })();

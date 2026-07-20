@@ -10,6 +10,10 @@ REGLE_SCHEMA = {
     "type": "object",
     "required": ["id"],
     "additionalProperties": False,
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Champs meta techniques prefixes `_` (ex: _certitude, _certitude_raison)
+    # toleres et inertes au runtime. Le reste reste strict (additionalProperties:False).
+    "patternProperties": {"^_": {}},
     # `type` est requis sauf si la regle est marquee `a_completer: true`
     # (stub brouillon, pas encore typee).
     "anyOf": [
@@ -35,6 +39,9 @@ REGLE_SCHEMA = {
                 "type": "object",
                 "required": ["du", "au"],
                 "additionalProperties": False,
+                # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+                # Champs meta techniques prefixes `_` toleres et inertes au runtime.
+                "patternProperties": {"^_": {}},
                 "properties": {
                     "du": {"type": "string"},
                     "au": {"type": "string"},
@@ -208,6 +215,9 @@ NOEUD_SCHEMA = {
 BRANCHE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Champs meta techniques prefixes `_` toleres et inertes au runtime.
+    "patternProperties": {"^_": {}},
     "properties": {
         "valeur": {"type": ["string", "boolean", "integer"]},
         "valeurs": {
@@ -239,6 +249,26 @@ BRANCHE_SCHEMA = {
         },
         # Renvoi explicite vers un autre arbre de la cascade (region|national).
         "renvoi_arbre": {"type": "string"},
+        # Noeud d'atterrissage optionnel dans l'arbre cible d'un `renvoi_arbre`.
+        # Sans lui, l'arbre cible est re-parcouru depuis SA RACINE. Avec lui, le
+        # parcours saute DIRECTEMENT a ce noeud (par son id) dans l'arbre cible,
+        # avec le contexte (eventuellement remappe). Permet un renvoi cross-arbre
+        # cible (ex : PAR HdF legumes -> PAN, noeud q_culture_printemps_type_ii)
+        # sans re-poser les questions deja repondues en amont. N'a de sens
+        # qu'avec `renvoi_arbre`. La cible etant dans un AUTRE arbre, sa validite
+        # ne peut pas etre verifiee localement (cf. validator).
+        "noeud_cible": {"type": "string"},
+        # Remap de contexte optionnel accompagnant un `renvoi_arbre` (cf. #227) :
+        # champs a forcer dans le contexte AVANT le re-parcours de l'arbre cible.
+        # Sert aux renvois cross-arbre ou le contexte accumule ne matche pas la
+        # branche visee (ex legumes PAR HdF -> PAN culture de printemps :
+        # {sous_culture: culture_printemps, type_fertilisant: type_II}). Valeurs
+        # scalaires (string / bool / int). N'a de sens qu'avec `renvoi_arbre`.
+        "remap_contexte": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {"type": ["string", "boolean", "integer"]},
+        },
         # Feuille vide : reponse explicite sans regle (PAR/ZAR uniquement, cf.
         # validator). Rend la branche cliquable ; au runtime = no-match/fallback.
         "feuille_vide": {"type": "boolean"},

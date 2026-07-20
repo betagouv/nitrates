@@ -346,6 +346,55 @@ def test_set_branch_content_regle_ok(draft, alice):
     assert b["regle"]["id"] == "r_luzerne"
 
 
+def test_set_branch_content_renvoi_arbre_avec_noeud_cible(draft, alice):
+    """#222 : un renvoi_arbre persiste aussi son noeud_cible (renvoi cross-arbre
+    cible), pas seulement la cle renvoi_arbre."""
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "legumes"}, alice)
+    draft.refresh_from_db()
+    res = editor.update_branch_content(
+        draft,
+        ("n_root", "q_culture"),
+        "legumes",
+        "renvoi_arbre",
+        {"renvoi_arbre": "national", "noeud_cible": "q_printemps_fert"},
+        alice,
+    )
+    assert res.ok
+    draft.refresh_from_db()
+    b = editor.get_branche_at(draft.contenu, ("n_root", "q_culture"), "legumes")
+    assert b["renvoi_arbre"] == "national"
+    assert b["noeud_cible"] == "q_printemps_fert"
+
+
+def test_set_branch_content_renvoi_arbre_change_nettoie_noeud_cible(draft, alice):
+    """#222 : repasser sur un renvoi_arbre SANS noeud_cible retire l'ancien
+    noeud_cible (pas de residu), et changer de kind aussi."""
+    editor.add_branch(draft, ("n_root", "q_culture"), {"valeur": "legumes"}, alice)
+    draft.refresh_from_db()
+    editor.update_branch_content(
+        draft,
+        ("n_root", "q_culture"),
+        "legumes",
+        "renvoi_arbre",
+        {"renvoi_arbre": "national", "noeud_cible": "q_printemps_fert"},
+        alice,
+    )
+    draft.refresh_from_db()
+    # Re-renvoi_arbre sans noeud_cible : l'ancien doit disparaitre.
+    editor.update_branch_content(
+        draft,
+        ("n_root", "q_culture"),
+        "legumes",
+        "renvoi_arbre",
+        {"renvoi_arbre": "national"},
+        alice,
+    )
+    draft.refresh_from_db()
+    b = editor.get_branche_at(draft.contenu, ("n_root", "q_culture"), "legumes")
+    assert b["renvoi_arbre"] == "national"
+    assert "noeud_cible" not in b
+
+
 def test_set_branch_content_remplace_existant(draft, alice):
     """Si la branche a deja un contenu, il est remplace."""
     res = editor.update_branch_content(

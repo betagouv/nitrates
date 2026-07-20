@@ -109,7 +109,89 @@ _POINTS = {
         "lng": "4.21806",
         "code_insee": "51046",
     },
+    # ─── Points PAR par region (metropole) ───────────────────────────────────
+    # Un PAR regional s'active par region (ZV + region), et son point de preview
+    # doit tomber DANS la region de l'arbre (accuracy demandee). Points generes
+    # par scripts/generate_region_points.py : commune reelle en ZV, centre
+    # officiel geo.api.gouv.fr, profil (ZV, region) verifie via le catalog
+    # moulinette. Grand Est garde son point historique (par_grand_est, 51046).
+    # Regions sans point ici (76 Occitanie, 93 PACA) : couvertes plus tard quand
+    # un PAR y sera actif -- elles retombent alors sur le fallback (None -> chemin).
+    "par_region_11": {
+        # Achères-la-Forêt (77001), Ile-de-France : ZV, hors ZAR.
+        "lat": "48.347600",
+        "lng": "2.565300",
+        "code_insee": "77001",
+    },
+    "par_region_24": {
+        # Achères (18001), Centre-Val de Loire : ZV, hors ZAR.
+        "lat": "47.282800",
+        "lng": "2.460100",
+        "code_insee": "18001",
+    },
+    "par_region_27": {
+        # Agencourt (21001), Bourgogne-Franche-Comte : ZV, hors ZAR.
+        "lat": "47.125600",
+        "lng": "4.988300",
+        "code_insee": "21001",
+    },
+    "par_region_28": {
+        # Les Trois Lacs (27676), Normandie : ZV, hors ZAR.
+        "lat": "49.213400",
+        "lng": "1.332600",
+        "code_insee": "27676",
+    },
+    "par_region_32": {
+        # Abbécourt (02001), Hauts-de-France : ZV, hors ZAR.
+        "lat": "49.599700",
+        "lng": "3.182400",
+        "code_insee": "02001",
+    },
+    "par_region_53": {
+        # Allineuc (22001), Bretagne : ZV, hors ZAR.
+        "lat": "48.314700",
+        "lng": "-2.869300",
+        "code_insee": "22001",
+    },
+    "par_region_75": {
+        # Les Adjots (16002), Nouvelle-Aquitaine : ZV, hors ZAR.
+        "lat": "46.078100",
+        "lng": "0.202800",
+        "code_insee": "16002",
+    },
+    "par_region_84": {
+        # Ambérieux-en-Dombes (01005), Auvergne-Rhone-Alpes : ZV, hors ZAR.
+        "lat": "45.999200",
+        "lng": "4.911900",
+        "code_insee": "01005",
+    },
 }
+
+# Mapping region_code -> cle _POINTS pour les PAR (scope region). Forward
+# compatible : ajouter une region = une ligne ici + son point dans _POINTS
+# (via scripts/generate_region_points.py). Grand Est (44) garde son point
+# historique ; Hauts-de-France (32) est le prochain objectif operationnel.
+_POINT_PAR_REGION = {
+    "11": "par_region_11",  # Ile-de-France
+    "24": "par_region_24",  # Centre-Val de Loire
+    "27": "par_region_27",  # Bourgogne-Franche-Comte
+    "28": "par_region_28",  # Normandie
+    "32": "par_region_32",  # Hauts-de-France
+    "44": "par_grand_est",  # Grand Est (point historique 51046)
+    "53": "par_region_53",  # Bretagne
+    "75": "par_region_75",  # Nouvelle-Aquitaine
+    "84": "par_region_84",  # Auvergne-Rhone-Alpes
+}
+
+# Idem pour les ZAR (scope zar). Aujourd'hui seul le ZAR Grand Est existe ;
+# ce mapping est le point d'extension quand un ZAR d'une autre region sera
+# modelise (il faudra alors ajouter sa couche + son point ici). Tant qu'une
+# region n'a pas de point ZAR dedie, on retombe sur le ZAR Grand Est (aucun
+# autre ZAR n'existe -> pas de regression).
+_POINT_ZAR_REGION = {
+    "44": "zar_grand_est",
+}
+_POINT_ZAR_DEFAUT = "zar_grand_est"
 
 
 # ─── Resolveur SIG ──────────────────────────────────────────────────────────
@@ -363,7 +445,43 @@ def compute_simulator_params(
             if cat:
                 params["categorie_fertilisant"] = cat
 
+        # Meme probleme quand un catalogue_parametre discrimine sur
+        # `sous_culture_form` (ex PAR HdF : un noeud intercale entre la culture
+        # et le type_fertilisant, `sous_culture_form == 'cultures_perennes_vignes'`).
+        # La cascade form a pu poser le 1er sous_culture_form du groupe (florales)
+        # qui ne satisfait PAS l'expression -> la fleche preview atterrissait sur
+        # la mauvaise culture (voire ParcoursError). On derive le sous_culture_form
+        # qui satisfait l'expression et on l'impose. N'affecte QUE l'URL de preview
+        # admin (compute_simulator_params n'est pas utilise par le parcours runtime).
+        scf = _sous_culture_form_satisfaisant(expressions_a_satisfaire, params)
+        if scf:
+            params["sous_culture_form"] = scf
+
     return params
+
+
+def _sous_culture_form_satisfaisant(expressions: list[str], params: dict) -> str | None:
+    """Retourne un slug `sous_culture_form` qui rend vraies les `expressions`
+    portant sur ce champ (catalogue_parametre discriminant par sous_culture_form,
+    ex PAR HdF vignes/legumes). On teste chaque valeur declaree au referentiel
+    avec le contexte courant. Retourne None si aucune expression ne mentionne
+    sous_culture_form, ou si aucune candidate ne satisfait -> l'appelant garde le
+    defaut de la cascade form. Symetrique de `_sous_fertilisant_satisfaisant`."""
+    pertinentes = [e for e in expressions if e and "sous_culture_form" in e]
+    if not pertinentes:
+        return None
+    from envergo.nitrates.yaml_tree.expression import evaluer_expression
+
+    ref = _load_ref()
+    candidats: list[str] = []
+    for cat in (ref or {}).get("categories_cultures", {}).values():
+        candidats.extend(cat.get("sous_cultures") or [])
+    for scf in candidats:
+        contexte = dict(params)
+        contexte["sous_culture_form"] = scf
+        if all(evaluer_expression(expr, contexte) for expr in pertinentes):
+            return scf
+    return None
 
 
 def _sous_fertilisant_satisfaisant(
@@ -425,16 +543,26 @@ def point_par_defaut_scope(scope: str, region_code: str = "") -> dict | None:
     se resout par commune (Zones Est). Sert de `point_override` (applique
     seulement si le chemin n'impose pas deja un point specifique).
 
-      - scope 'zar'                     -> point dans la couche ZAR Grand Est
-      - scope 'region' + region 44 (GE) -> point PAR Grand Est (ZV + region 44)
-      - autres                          -> None (resolution par le chemin)
+      - scope 'zar'          -> point dans la couche ZAR de la region
+                                (_POINT_ZAR_REGION, defaut = ZAR Grand Est)
+      - scope 'region'       -> point PAR de la region (_POINT_PAR_REGION),
+                                ex 44 -> Grand Est, 32 -> Hauts-de-France
+      - autres / region sans -> None (resolution par le chemin)
+        point connu
+
+    Sans ce mapping, un PAR hors Grand Est (ex HdF, region 32, sans couche
+    d'activation) retombait sur le fallback ZV national = un point Grand Est :
+    les liens preview d'un arbre HdF pointaient donc en Grand Est.
     """
     from envergo.nitrates.models import DecisionTree
 
     if scope == DecisionTree.SCOPE_ZAR:
-        return dict(_POINTS["zar_grand_est"])
-    if scope == DecisionTree.SCOPE_REGION and (region_code or "") == "44":
-        return dict(_POINTS["par_grand_est"])
+        point_name = _POINT_ZAR_REGION.get(region_code or "", _POINT_ZAR_DEFAUT)
+        return dict(_POINTS[point_name])
+    if scope == DecisionTree.SCOPE_REGION:
+        point_name = _POINT_PAR_REGION.get(region_code or "")
+        if point_name:
+            return dict(_POINTS[point_name])
     return None
 
 
