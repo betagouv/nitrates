@@ -124,8 +124,7 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -170,8 +169,7 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -245,8 +243,7 @@ arbre:
                                 - noeud:
                                     id: q_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_pas_digestats
                                     champ: pas_un_digestats
-                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
-                                      ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                     niveau: complement
                                     branches:
                                     - regle:
@@ -358,8 +355,7 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -367,15 +363,15 @@ arbre:
                             type: calculatrice
                             periodes:
                             - au: 15/01
-                              du: date_destruction_prevue-20jours
+                              du: date_destruction_couvert-20jours
                               regime: interdiction
-                              condition: date_destruction_prevue-20jours < 15/01
+                              condition: date_destruction_couvert-20jours < 15/01
                             - au: 15/01
                               du: 15/11
                               regime: interdiction
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
-                            - id: date_destruction_prevue
+                            - id: date_destruction_couvert
                               max: 31/12
                               type: date
                               label: Date de destruction prévue
@@ -394,30 +390,21 @@ arbre:
                         id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_autre
                         type: calculatrice
                         periodes:
-                        - au: date_semis_couvert-15jours
-                          du: 01/07
-                          regime: interdiction
-                          condition: 01/07 < date_semis_couvert-15jours
                         - au: 15/01
-                          du: date_destruction_prevue-20jours
+                          du: date_destruction_couvert-20jours
                           regime: interdiction
-                          condition: date_destruction_prevue-20jours < 15/01
+                          condition: date_destruction_couvert-20jours < 15/01
                         - au: 15/01
                           du: 15/11
                           regime: interdiction
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
-                        - id: date_destruction_prevue
+                        - id: date_destruction_couvert
                           max: 31/12
                           type: date
                           label: Date de destruction prévue
                           label_court: destruction
                           placeholder: 15/03
-                        - id: date_semis_couvert
-                          type: date
-                          label: Date de semis du couvert
-                          label_court: semis
-                          placeholder: 15/08
                         code_prescription: pc13
                       valeur: non_concerne
                       libelle: Non concerné
@@ -433,8 +420,7 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -482,24 +468,24 @@ arbre:
                           regime: interdiction
                           condition: 01/07 < date_semis_couvert-15jours
                         - au: 15/01
-                          du: date_destruction_prevue-20jours
+                          du: date_destruction_couvert-20jours
                           regime: interdiction
                         - au: 15/01
                           du: 15/11
                           regime: interdiction
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
-                        - id: date_destruction_prevue
-                          max: 31/12
-                          type: date
-                          label: Date de destruction prévue
-                          label_court: destruction
-                          placeholder: 15/03
                         - id: date_semis_couvert
                           type: date
                           label: Date de semis du couvert
                           label_court: semis
                           placeholder: 15/08
+                        - id: date_destruction_couvert
+                          max: 31/12
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
                         code_prescription: pc13
                       valeur: non_concerne
                       libelle: Non concerné
@@ -554,8 +540,7 @@ arbre:
                             - noeud:
                                 id: q_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_pas_digestats
                                 champ: pas_digestats
-                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
-                                  ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                 niveau: complement
                                 branches:
                                 - regle:
@@ -588,6 +573,9 @@ arbre:
                                     code_prescription: pc13
                                   valeur: false
                                   libelle: Non
+                                - valeur: true
+                                  libelle: Oui
+                                  feuille_vide: true
                                 type_noeud: formulaire
                               valeur: Pas Digestats
                               libelle: Pas Digestats
@@ -616,14 +604,15 @@ arbre:
                                   regime: interdiction
                                   condition: 01/07 < date_semis_couvert-15jours
                                 - au: 30/06
-                                  du: date_destruction_prevue-20jours
+                                  du: date_destruction_couvert-20jours
                                   regime: interdiction
                                 - au: 30/06
                                   du: 15/10
                                   regime: interdiction
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
-                                - id: date_destruction_prevue
+                                - id: date_destruction_couvert
+                                  max: 31/12
                                   type: date
                                   label: Date de destruction prévue
                                   label_court: destruction
@@ -646,14 +635,15 @@ arbre:
                                   regime: interdiction
                                   condition: 01/07 < date_semis_couvert-15jours
                                 - au: 31/01
-                                  du: date_destruction_prevue-20jours
+                                  du: date_destruction_couvert-20jours
                                   regime: interdiction
                                 - au: 31/01
                                   du: 15/10
                                   regime: interdiction
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
-                                - id: date_destruction_prevue
+                                - id: date_destruction_couvert
+                                  max: 31/12
                                   type: date
                                   label: Date de destruction prévue
                                   label_court: destruction

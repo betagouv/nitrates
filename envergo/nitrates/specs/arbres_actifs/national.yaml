@@ -318,7 +318,7 @@ arbre:
                         periodes:
                         - au: 15/01
                           du: 15/12
-                        texte_condition: Autorisé sous condition entre le 15/12 et le 15/01 (ICPE A).
+                        inputs_requis: []
                         code_prescription: pc1
                       valeur: icpe_a
                       libelle: Oui
@@ -465,6 +465,8 @@ arbre:
                         periodes:
                         - au: 15/01
                           du: 15/12
+                        inputs_requis: []
+                        code_prescription: pc12
                       valeur: autre
                       libelle: Non
                     type_noeud: formulaire
@@ -654,13 +656,25 @@ arbre:
                 texte: Quel type de fertilisant est utilisé ?
                 niveau: type_fertilisant
                 branches:
-                - valeur: type_0
+                - patch:
+                    code_prescription:
+                      pc13: pc14
+                  valeur: type_0
                   renvoi_vers: q_cine_avant_3112_type_0_icpe
-                - valeur: type_Ia
+                - patch:
+                    code_prescription:
+                      pc13: pc14
+                  valeur: type_Ia
                   renvoi_vers: q_cine_avant_3112_type_Ia_icpe
-                - valeur: type_Ib
+                - patch:
+                    code_prescription:
+                      pc13: pc14
+                  valeur: type_Ib
                   renvoi_vers: q_cine_avant_3112_type_Ib_icpe
-                - valeur: type_II
+                - patch:
+                    code_prescription:
+                      pc13: pc14
+                  valeur: type_II
                   renvoi_vers: q_cine_avant_3112_type_II_icpe
                 - regle:
                     id: r_cie_avant_3112_type_III
@@ -681,6 +695,7 @@ arbre:
                       label: Date de semis du couvert
                       label_court: semis
                       placeholder: 15/08
+                    code_prescription: pc14
                   valeur: type_III
                 type_noeud: formulaire
               valeur: cie_avant_3112
@@ -708,9 +723,13 @@ arbre:
                         id: r_true
                         type: calculatrice
                         periodes:
+                        - au: date_semis_couvert
+                          du: 01/07
+                          regime: interdiction
                         - au: 15/01
                           du: date_semis_couvert+15jours
                           regime: interdiction
+                          condition: date_semis_couvert+15jours < 15/01
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
                         - id: date_semis_couvert
@@ -718,19 +737,20 @@ arbre:
                           label: Date de semis du couvert
                           label_court: semis
                           placeholder: 15/08
+                        code_prescription: pc12
                       valeur: true
                       libelle: 'True'
                     - regle:
                         id: r_cie_apres_0101_interculture_longue_type_cie_apres_0101_type_iii_false
                         type: calculatrice
-                        texte: Interdit du 01/07 (date arbitraire) au jour de l'implantation. Interdit de 15 jours après semis jusqu'au 15/01.
                         periodes:
-                        - au: 31/01
-                          du: date_semis_couvert+15jours
-                          regime: interdiction
                         - au: date_semis_couvert
                           du: 01/07
                           regime: interdiction
+                        - au: 31/01
+                          du: date_semis_couvert+15jours
+                          regime: interdiction
+                          condition: date_semis_couvert+15jours < 31/01
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
                         - id: date_semis_couvert
@@ -738,6 +758,7 @@ arbre:
                           label: Date de semis du couvert
                           label_court: semis
                           placeholder: 15/08
+                        code_prescription: pc12
                       valeur: false
                       libelle: 'False'
                     reference: zone_note_5
@@ -762,36 +783,12 @@ arbre:
                     branches:
                     - regle:
                         id: r_cine_avant_3112_type_0_icpe_a
-                        type: calculatrice
+                        type: interdiction
                         periodes:
                         - au: 15/01
-                          du: 15/11
-                          regime: autorisation_sous_condition
-                        - au: date_semis_couvert+4semaines
                           du: 15/12
-                          masque: true
                           regime: interdiction
-                          condition: 15/12 < date_semis_couvert+4semaines
-                        - au: 15/01
-                          du: date_destruction_couvert-20jours
-                          masque: true
-                          regime: interdiction
-                          condition: date_destruction_couvert-20jours < 15/01
-                        composant: calendrier_dynamique_couvert
-                        inputs_requis:
-                        - id: date_semis_couvert
-                          type: date
-                          label: Date de semis du couvert
-                          label_court: semis
-                          placeholder: 15/08
-                        - id: date_destruction_couvert
-                          max: 31/12
-                          type: date
-                          label: Date de destruction prévue du couvert
-                          label_court: destruction
-                          placeholder: 01/11
-                        texte_condition: Autorisation dans les conditions de la note 1. Sinon interdiction du 15/12 au 15/01.
-                        code_prescription: pc1
+                        code_prescription: pc13
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -802,35 +799,12 @@ arbre:
                         branches:
                         - regle:
                             id: r_cine_avant_3112_type_0_icpe_icpe_ed_true
-                            type: calculatrice
+                            type: interdiction
                             periodes:
                             - au: 15/01
                               du: 15/12
-                              regime: autorisation_sous_condition
-                            - au: date_semis_couvert+4semaines
-                              du: 15/12
-                              masque: true
                               regime: interdiction
-                              condition: 15/12 < date_semis_couvert+4semaines
-                            - au: 15/01
-                              du: date_destruction_couvert-20jours
-                              masque: true
-                              regime: interdiction
-                              condition: date_destruction_couvert-20jours < 15/01
-                            composant: calendrier_dynamique_couvert
-                            inputs_requis:
-                            - id: date_semis_couvert
-                              type: date
-                              label: Date de semis du couvert
-                              label_court: semis
-                              placeholder: 15/08
-                            - id: date_destruction_couvert
-                              max: 31/12
-                              type: date
-                              label: Date de destruction prévue du couvert
-                              label_court: destruction
-                              placeholder: 01/11
-                            code_prescription: pc3
+                            code_prescription: pc13
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -840,6 +814,8 @@ arbre:
                             - au: 15/01
                               du: 15/12
                             inputs_requis: []
+                            code_prescription:
+                            - pc13
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -852,6 +828,7 @@ arbre:
                         - au: 15/01
                           du: 15/12
                         inputs_requis: []
+                        code_prescription: pc13
                       valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -870,16 +847,11 @@ arbre:
                         periodes:
                         - au: date_destruction_couvert-20jours
                           du: 15/11
-                          masque: true
                           regime: autorisation_sous_condition
                           condition: date_destruction_couvert-20jours > 15/11
                         - au: 15/01
                           du: date_destruction_couvert-20jours
-                          masque: true
                           regime: interdiction
-                        - au: 15/01
-                          du: 15/11
-                          regime: libre
                         - au: date_semis_couvert+4semaines
                           du: 15/11
                           masque: true
@@ -898,7 +870,9 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
-                        code_prescription: pc1
+                        code_prescription:
+                        - pc1
+                        - pc13
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -910,25 +884,19 @@ arbre:
                         - regle:
                             id: r_cine_avant_3112_type_ia_icpe_cine_ed_q6_true
                             type: calculatrice
-                            texte: Autorisé sous conditions entre le 15/11 et 20 jours avant la récolte/destruction du couvert (applicable si et seulement si 15/11 < destruction-20jours) . Interdit à partir de 20j avant la récolte/destruction du couvert jusqu'au 15/01. Dans la période du 15/11 au 15/01 :  Interdit du 15/11 jusqu'à 4 semaines après implantation du couvert (applicable si et seulement si semis_couvert + 4 semaine > 15/11)
                             periodes:
-                            - au: 15/01
+                            - au: date_destruction_couvert-20jours
                               du: 15/11
                               regime: autorisation_sous_condition
+                              condition: date_destruction_couvert-20jours > 15/11
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
                             - au: date_semis_couvert+4semaines
                               du: 15/11
                               masque: true
                               regime: interdiction
                               condition: 15/11 < date_semis_couvert+4semaines
-                            - au: date_destruction_couvert
-                              du: date_destruction_couvert-20jours
-                              masque: true
-                              regime: interdiction
-                              condition: date_destruction_couvert >= 05/12
-                            - au: 15/01
-                              du: date_destruction_couvert-20jours
-                              regime: autorisation_sous_condition
-                              condition: date_destruction_couvert < 05/12
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_semis_couvert
@@ -942,7 +910,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc3
+                            code_prescription:
+                            - pc3
+                            - pc13
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -965,7 +935,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc4
+                            code_prescription:
+                            - pc4
+                            - pc13
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -999,7 +971,9 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
-                        code_prescription: pc4
+                        code_prescription:
+                        - pc4
+                        - pc13
                       valeur: Non
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -1054,7 +1028,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc2
+                            code_prescription:
+                            - pc2
+                            - pc13
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -1084,6 +1060,8 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
+                            code_prescription:
+                            - pc13
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1098,7 +1076,6 @@ arbre:
                         - regle:
                             id: r_cine_avant_3112_type_Ib_icpe_ed_q6_true
                             type: calculatrice
-                            texte: Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions entre le 15/11 et et 20 jours avant la récolte/destruction du couvert (si et seulement si 15/11 < destruction-20jours) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01
                             periodes:
                             - au: date_semis_couvert-15jours
                               du: 01/07
@@ -1117,6 +1094,7 @@ arbre:
                               du: 15/11
                               masque: true
                               regime: interdiction
+                              condition: 15/11 < date_semis_couvert+4semaines
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_semis_couvert
@@ -1130,13 +1108,14 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc3
+                            code_prescription:
+                            - pc3
+                            - pc13
                           valeur: true
                           libelle: Oui
                         - regle:
                             id: r_cine_avant_3112_type_Ib_icpe_ed_q6_false
                             type: calculatrice
-                            texte: "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation. Autorisé sous conditions : du 15/11 à 20 jours avant la récolte/destruction du couvert ( applicable si et seulement si destruction_couverts - 20 jouurs > 15/11 ) . Interdit de 20 jours avant la récolte/destruction du couvert jusqu'au 15/01.Dans la période d'interdiction : autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert."
                             periodes:
                             - au: date_semis_couvert-15jours
                               du: 01/07
@@ -1161,7 +1140,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc4
+                            code_prescription:
+                            - pc4
+                            - pc13
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1170,23 +1151,24 @@ arbre:
                     - regle:
                         id: r_cine_avant_3112_type_Ib_non_concerne
                         type: calculatrice
-                        texte: Pas d'apport avant 15 jours avant l'implantation du CINE. Puis interdit du 15/11 jusqu'au 15/01. Si la date de destruction du couvert est plus tôt que le 05/12, interdit dès 20 jours avant la destruction du couvert jusqu'au 15/01. Dans la période d'interdiction, autorisé sous condition jusqu'à 20 jours avant la destruction ou la récolte du couvert.
                         periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                        - au: date_destruction_couvert-20jours
+                          du: 15/11
+                          regime: autorisation_sous_condition
+                          condition: 15/11 < date_destruction_couvert-20jours
+                        - au: 15/01
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
                         - au: 15/01
                           du: 15/11
+                          regime: libre
+                        - au: date_semis_couvert+4semaines
+                          du: 15/11
                           regime: interdiction
-                        - au: date_destruction_couvert
-                          du: date_destruction_couvert-20jours
-                          masque: true
-                          regime: autorisation_sous_condition
-                          condition: date_destruction_couvert >= 05/12
-                        - au: date_semis_couvert
-                          du: date_semis_couvert-15jours
-                          regime: interdiction
-                        - au: date_destruction_couvert
-                          du: date_destruction_couvert-20jours
-                          regime: interdiction
-                          condition: date_destruction_couvert < 05/12
+                          condition: 15/11 < date_semis_couvert+4semaines
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
                         - id: date_semis_couvert
@@ -1200,7 +1182,9 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 01/11
-                        code_prescription: pc4
+                        code_prescription:
+                        - pc4
+                        - pc13
                       valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -1221,26 +1205,24 @@ arbre:
                             type: calculatrice
                             texte: "Interdit du 01/07 (date arbitraire) à 15 jours avant l'implantation.  Autorisé sous conditions entre le 15/10 et 20 jours avant la récolte/destruction du couvert (applicable si et seulement si destruction_couverts - 20 jours > 15/10 ). Interdit de 20 jours avant la destruction/ récolte jusqu'au 31/01. Dans la période du 15/10 au 31/01 : Interdit du 15/10  jusqu'à 4 semaines après implantation du couvert (applicable si et seulement si semis_couvert + 4 semaine > 15/10)."
                             periodes:
-                            - au: 31/01
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                            - au: date_destruction_couvert-20jours
                               du: 15/10
                               regime: autorisation_sous_condition
+                              condition: 15/10 < date_destruction_couvert-20jours
+                            - au: 31/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                            - au: 31/01
+                              du: 15/10
+                              regime: libre
                             - au: date_semis_couvert+4semaines
                               du: 15/10
                               masque: true
                               regime: interdiction
                               condition: 15/10 < date_semis_couvert+4semaines
-                            - au: date_destruction_couvert
-                              du: date_destruction_couvert-20jours
-                              masque: true
-                              regime: interdiction
-                              condition: date_destruction_couvert >= 04/11
-                            - au: 31/01
-                              du: date_destruction_couvert-20jours
-                              regime: autorisation_sous_condition
-                              condition: date_destruction_couvert < 04/11
-                            - au: date_semis_couvert
-                              du: date_semis_couvert-15jours
-                              regime: autorisation_sous_condition
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_semis_couvert
@@ -1254,7 +1236,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc1
+                            code_prescription:
+                            - pc1
+                            - pc13
                           valeur: true
                           libelle: Oui
                           expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
@@ -1300,7 +1284,9 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
-                                code_prescription: pc2
+                                code_prescription:
+                                - pc2
+                                - pc13
                               valeur: true
                               libelle: Oui
                             - regle:
@@ -1330,7 +1316,7 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
-                                code_prescription: pc4
+                                code_prescription: pc13
                               valeur: false
                               libelle: Non
                             type_noeud: formulaire
@@ -1372,10 +1358,12 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc9
-                          valeur: true
+                            code_prescription:
+                            - pc9
+                            - pc13
+                          valeur: 'True'
                           libelle: Oui
-                          expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                          expression: sous_fertilisant in ('effluents_peu_charges_elevage')
                         - noeud:
                             id: q_cine_avant_3112_type_II_icpe_ed_q6
                             champ: fertilisant_iaa
@@ -1418,7 +1406,9 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
-                                code_prescription: pc3
+                                code_prescription:
+                                - pc3
+                                - pc13
                               valeur: true
                               libelle: Oui
                             - regle:
@@ -1449,13 +1439,15 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 01/11
-                                code_prescription: pc4
+                                code_prescription:
+                                - pc4
+                                - pc13
                               valeur: false
                               libelle: Non
                             type_noeud: formulaire
-                          valeur: false
+                          valeur: 'False'
                           libelle: Non
-                          expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                          expression: sous_fertilisant != 'effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
                       valeur: icpe_ed
                       libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
@@ -1477,6 +1469,7 @@ arbre:
                               condition: 15/10 < date_destruction_couvert-20jours
                             - au: 31/01
                               du: date_destruction_couvert-20jours
+                              regime: interdiction
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_semis_couvert
@@ -1490,7 +1483,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc9
+                            code_prescription:
+                            - pc9
+                            - pc13
                           valeur: true
                           libelle: Oui
                           expression: sous_fertilisant =='effluents_peu_charges_elevage'
@@ -1521,7 +1516,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 01/11
-                            code_prescription: pc4
+                            code_prescription:
+                            - pc4
+                            - pc13
                           valeur: false
                           libelle: Non
                           expression: sous_fertilisant !='effluents_peu_charges_elevage'
@@ -1537,6 +1534,8 @@ arbre:
                     periodes:
                     - au: 30/06
                       du: 01/07
+                    code_prescription:
+                    - pc13
                   valeur: type_III
                 type_noeud: formulaire
               valeur: cine_avant_3112
@@ -1585,7 +1584,9 @@ arbre:
                           label_court: destruction
                           placeholder: 15/01
                         texte_condition: Autorisé sous condition entre le 15/12 et le 15/01.
-                        code_prescription: pc1
+                        code_prescription:
+                        - pc1
+                        - pc12
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -1624,7 +1625,9 @@ arbre:
                               label: Date de destruction prévue du couvert
                               label_court: destruction
                               placeholder: 15/01
-                            code_prescription: pc3
+                            code_prescription:
+                            - pc3
+                            - pc12
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -1633,6 +1636,8 @@ arbre:
                             periodes:
                             - au: 15/01
                               du: 15/12
+                            inputs_requis: []
+                            code_prescription: pc12
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1644,6 +1649,8 @@ arbre:
                         periodes:
                         - au: 15/01
                           du: 15/12
+                        code_prescription:
+                        - pc12
                       valeur: Non
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -1684,8 +1691,9 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 15/01
-                        texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
-                        code_prescription: pc1
+                        code_prescription:
+                        - pc1
+                        - pc12
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
                     - noeud:
@@ -1724,7 +1732,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 15/01
-                            code_prescription: pc3
+                            code_prescription:
+                            - pc3
+                            - pc12
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -1755,7 +1765,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 15/01
-                            code_prescription: pc4
+                            code_prescription:
+                            - pc4
+                            - pc12
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1789,7 +1801,9 @@ arbre:
                           label: Date de destruction du couvert
                           label_court: destruction
                           placeholder: 15/01
-                        code_prescription: pc4
+                        code_prescription:
+                        - pc4
+                        - pc12
                       valeur: Non
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -1836,8 +1850,9 @@ arbre:
                               label: Date de destruction du couvert
                               label_court: destruction
                               placeholder: 15/01
-                            texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
-                            code_prescription: pc2
+                            code_prescription:
+                            - pc2
+                            - pc12
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -1846,6 +1861,8 @@ arbre:
                             periodes:
                             - au: 15/01
                               du: 15/11
+                            code_prescription:
+                            - pc12
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1888,7 +1905,9 @@ arbre:
                               label_court: destruction
                               placeholder: 15/01
                             texte_condition: Autorisé sous condition entre le 15/11 et le 15/01.
-                            code_prescription: pc3
+                            code_prescription:
+                            - pc3
+                            - pc12
                           valeur: true
                           libelle: Oui
                         - regle:
@@ -1920,7 +1939,9 @@ arbre:
                               label_court: destruction
                               placeholder: 15/01
                             texte_condition: Interdit du 15/11 au 15/01.
-                            code_prescription: pc4
+                            code_prescription:
+                            - pc4
+                            - pc12
                           valeur: false
                           libelle: Non
                         type_noeud: formulaire
@@ -1955,7 +1976,9 @@ arbre:
                           label_court: destruction
                           placeholder: 15/01
                         texte_condition: Interdit du 15/11 au 15/01.
-                        code_prescription: pc4
+                        code_prescription:
+                        - pc4
+                        - pc12
                       valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
@@ -1977,7 +2000,6 @@ arbre:
                             branches:
                             - regle:
                                 id: r_cine_apres_0101_type_II_icpe_a_note5_effluent_true
-                                note: note_5
                                 type: calculatrice
                                 periodes:
                                 - au: 15/01
@@ -2006,8 +2028,9 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 15/01
-                                texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
-                                code_prescription: pc1
+                                code_prescription:
+                                - pc1
+                                - pc12
                               valeur: true
                               libelle: Oui
                               expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
@@ -2019,7 +2042,6 @@ arbre:
                                 branches:
                                 - regle:
                                     id: r_cine_apres_0101_type_II_icpe_a_note5_q6_true
-                                    note: note_5
                                     type: calculatrice
                                     periodes:
                                     - au: 15/01
@@ -2049,16 +2071,19 @@ arbre:
                                       label_court: destruction
                                       placeholder: 15/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
-                                    code_prescription: pc2
+                                    code_prescription:
+                                    - pc2
+                                    - pc12
                                   valeur: true
                                   libelle: Oui
                                 - regle:
                                     id: r_cine_apres_0101_type_II_icpe_a_note5_q6_false
-                                    note: note_5
                                     type: interdiction
                                     periodes:
                                     - au: 15/01
                                       du: 15/10
+                                    inputs_requis: []
+                                    code_prescription: pc12
                                   valeur: false
                                   libelle: Non
                                 type_noeud: formulaire
@@ -2103,7 +2128,9 @@ arbre:
                                   label_court: destruction
                                   placeholder: 15/01
                                 texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
-                                code_prescription: pc1
+                                code_prescription:
+                                - pc1
+                                - pc12
                               valeur: true
                               libelle: Oui
                               expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
@@ -2143,8 +2170,9 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 15/01
-                                    texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
-                                    code_prescription: pc2
+                                    code_prescription:
+                                    - pc2
+                                    - pc12
                                   valeur: true
                                   libelle: Oui
                                 - regle:
@@ -2153,6 +2181,8 @@ arbre:
                                     periodes:
                                     - au: 31/01
                                       du: 15/10
+                                    code_prescription:
+                                    - pc12
                                   valeur: false
                                   libelle: Non
                                 type_noeud: formulaire
@@ -2177,16 +2207,18 @@ arbre:
                             branches:
                             - regle:
                                 id: r_cine_apres_0101_type_II_icpe_ed_note5_effluent_true
-                                note: note_5
                                 type: mixte
                                 periodes:
                                 - au: 15/11
                                   du: 15/10
                                   regime: autorisation_sous_condition
                                 - au: 15/01
-                                  du: 15/11
+                                  du: 16/11
                                   regime: interdiction
-                                code_prescription: pc8
+                                inputs_requis: []
+                                code_prescription:
+                                - pc8
+                                - pc12
                               valeur: true
                               libelle: Oui
                               expression: sous_fertilisant =='effluents_peu_charges_elevage'
@@ -2198,7 +2230,6 @@ arbre:
                                 branches:
                                 - regle:
                                     id: r_cine_apres_0101_type_II_icpe_ed_note5_q6_true
-                                    note: note_5
                                     type: calculatrice
                                     periodes:
                                     - au: 15/01
@@ -2227,13 +2258,13 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 15/01
-                                    texte_condition: Autorisé sous condition entre le 15/10 et le 15/01.
-                                    code_prescription: pc3
+                                    code_prescription:
+                                    - pc3
+                                    - pc12
                                   valeur: true
                                   libelle: Oui
                                 - regle:
                                     id: r_cine_apres_0101_type_II_icpe_ed_note5_q6_false
-                                    note: note_5
                                     type: calculatrice
                                     texte: "Autorisé sous conditions du 15/10 au 15/01. Dans cette période : Interdit de 20 jours avant la récolte/destruction jusqu'au 15/01 ( applicable si et seulement si destruction_couverts - 20 jours < 15/01 )"
                                     periodes:
@@ -2253,8 +2284,9 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 15/01
-                                    texte_condition: Interdit du 15/10 au 15/01.
-                                    code_prescription: pc4
+                                    code_prescription:
+                                    - pc4
+                                    - pc12
                                   valeur: false
                                   libelle: Non
                                 type_noeud: formulaire
@@ -2276,9 +2308,12 @@ arbre:
                                   du: 15/10
                                   regime: autorisation_sous_condition
                                 - au: 31/01
-                                  du: 15/11
+                                  du: 16/11
                                   regime: interdiction
-                                code_prescription: pc8
+                                inputs_requis: []
+                                code_prescription:
+                                - pc8
+                                - pc12
                               valeur: true
                               libelle: Oui
                               expression: sous_fertilisant == 'effluents_peu_charges_elevage'
@@ -2319,7 +2354,9 @@ arbre:
                                       label_court: destruction
                                       placeholder: 15/01
                                     texte_condition: Autorisé sous condition entre le 15/10 et le 31/01.
-                                    code_prescription: pc3
+                                    code_prescription:
+                                    - pc3
+                                    - pc12
                                   valeur: true
                                   libelle: Oui
                                 - regle:
@@ -2342,8 +2379,9 @@ arbre:
                                       label: Date de destruction du couvert
                                       label_court: destruction
                                       placeholder: 15/01
-                                    texte_condition: Interdit du 15/10 au 31/01.
-                                    code_prescription: pc4
+                                    code_prescription:
+                                    - pc4
+                                    - pc12
                                   valeur: false
                                   libelle: Non
                                 type_noeud: formulaire
@@ -2368,33 +2406,34 @@ arbre:
                             branches:
                             - regle:
                                 id: r_cine_apres_0101_type_II_non_concerne_note5_effluent_true
-                                note: note_5
                                 type: mixte
                                 periodes:
                                 - au: 15/11
                                   du: 15/10
                                   regime: autorisation_sous_condition
                                 - au: 15/01
-                                  du: 15/11
+                                  du: 16/11
                                   regime: interdiction
-                                code_prescription: pc8
+                                inputs_requis: []
+                                code_prescription:
+                                - pc8
+                                - pc12
                               valeur: true
                               libelle: Oui
                               expression: sous_fertilisant =='effluents_peu_charges_elevage'
                             - regle:
                                 id: r_cine_apres_0101_type_II_non_concerne_note5_effluent_false
-                                note: note_5
                                 type: calculatrice
                                 texte: "Autorisé sous conditions du 15/10 au 15/01. Dans cette période : Interdit de 20 jours avant la récolte/destruction jusqu'au 15/01 ( applicable si et seulement si destruction_couverts - 20 jours < 15/01 )"
                                 periodes:
                                 - au: 15/01
                                   du: 15/10
-                                  regime: interdiction
-                                - au: 15/10
+                                  regime: autorisation_sous_condition
+                                - au: 15/01
                                   du: date_destruction_couvert-20jours
                                   masque: true
-                                  regime: autorisation_sous_condition
-                                  condition: date_destruction_couvert-20jours < 15/10
+                                  regime: interdiction
+                                  condition: date_destruction_couvert-20jours < 15/01
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
                                 - id: date_destruction_couvert
@@ -2403,8 +2442,9 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 15/01
-                                texte_condition: Interdit du 15/10 au 15/01.
-                                code_prescription: pc4
+                                code_prescription:
+                                - pc4
+                                - pc12
                               valeur: false
                               libelle: Non
                               expression: sous_fertilisant !='effluents_peu_charges_elevage'
@@ -2425,9 +2465,12 @@ arbre:
                                   du: 15/10
                                   regime: autorisation_sous_condition
                                 - au: 31/01
-                                  du: 15/11
+                                  du: 16/11
                                   regime: interdiction
-                                code_prescription: pc8
+                                inputs_requis: []
+                                code_prescription:
+                                - pc8
+                                - pc12
                               valeur: true
                               libelle: Oui
                             - regle:
@@ -2437,11 +2480,11 @@ arbre:
                                 periodes:
                                 - au: 31/01
                                   du: 15/10
-                                  regime: interdiction
+                                  regime: autorisation_sous_condition
                                 - au: 31/01
                                   du: date_destruction_couvert-20jours
                                   masque: true
-                                  regime: autorisation_sous_condition
+                                  regime: interdiction
                                   condition: date_destruction_couvert-20jours < 31/01
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
@@ -2451,8 +2494,9 @@ arbre:
                                   label: Date de destruction du couvert
                                   label_court: destruction
                                   placeholder: 15/01
-                                texte_condition: Interdit du 15/10 au 31/01.
-                                code_prescription: pc4
+                                code_prescription:
+                                - pc4
+                                - pc12
                               valeur: false
                               libelle: Non
                             type_noeud: formulaire
@@ -2471,6 +2515,7 @@ arbre:
                     - au: 30/06
                       du: 01/07
                       regime: interdiction
+                    inputs_requis: []
                   valeur: type_III
                 type_noeud: formulaire
               valeur: cine_apres_0101
@@ -2489,8 +2534,22 @@ arbre:
                   renvoi_vers: r_cie_courte_types_0_I_II
                 - regle:
                     id: r_cie_courte_type_III
-                    type: autorisation_sous_condition
-                    inputs_requis: []
+                    type: calculatrice
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                      regime: interdiction
+                    - au: date_semis_couvert+15jours
+                      du: date_semis_couvert
+                      masque: true
+                      regime: libre
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
                     texte_condition: Apports possibles selon les conditions fixées par le PAR ou entre le semis et les 15 jours suivants.
                     code_prescription: pc15
                     plafonnement_associe: r_plafond_cie_courte
@@ -2505,12 +2564,12 @@ arbre:
                 niveau: type_fertilisant
                 branches:
                 - valeur: type_0
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                  renvoi_vers: r_cie_courte_types_0_I_II
                 - valeur: type_I
                   libelle: Type I (Ia ou Ib)
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                  renvoi_vers: r_cie_courte_types_0_I_II
                 - valeur: type_II
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                  renvoi_vers: r_cie_courte_types_0_I_II
                 - regle:
                     id: r_cine_courte_type_III
                     type: interdiction
@@ -2555,14 +2614,11 @@ plafonnements:
     plafond_azote_kg_n_ha: 70
 regles_partagees:
 - regle:
-    id: r_cine_courte_types_0_I_II
-    type: autorisation_sous_condition
-    message: Couvert d'interculture courte non exporté, types 0, I (Ia ou Ib) ou II.
-    texte_condition: Apport autorisé.
-    plafonnement_associe: r_plafond_cine_avant_3112
-- regle:
     id: r_cie_courte_types_0_I_II
-    type: autorisation_sous_condition
-    message: Couvert d'interculture courte exporté (dérobée, CIVE), types 0, I (Ia ou Ib) ou II.
-    texte_condition: Apport autorisé selon les conditions du PAR.
-    plafonnement_associe: r_plafond_cie_courte
+    type: libre
+    message: Couvert d'interculture courte, types 0, I (Ia ou Ib) ou II.
+    periodes:
+    - au: 30/06
+      du: 01/07
+      regime: libre
+    code_prescription: pc15
