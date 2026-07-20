@@ -1,0 +1,1156 @@
+arbre:
+  noeud:
+    id: n_en_zone_vulnerable
+    champ: en_zone_vulnerable
+    source: sig
+    branches:
+    - regle:
+        id: r_racine
+        type: non_applicable
+        message: La parcelle n'est pas en zone vulnérable aux nitrates. La réglementation nitrates ne s'applique pas.
+      valeur: false
+      libelle: Non
+    - noeud:
+        id: q_occupation_sol
+        champ: occupation_sol
+        texte: Est-ce que la culture en place est une culture principale ou un couvert végétal d'interculture ?
+        niveau: culture
+        branches:
+        - noeud:
+            id: q_sous_culture
+            champ: sous_culture
+            texte: Quelle est la culture principale ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_culture_hiver
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_culture_hiver_type_II
+                    champ: resolution_digestats_par_hiver_type_ii
+                    branches:
+                    - noeud:
+                        id: n_culture_hiver_type_II_digestats
+                        champ: resolution_prairie_automne_par_hiver
+                        branches:
+                        - regle:
+                            id: r_culture_hiver_type_II_digestats_prairie_automne
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 15/11
+                              regime: interdiction
+                          valeur: prairie_automne
+                          libelle: Prairie de moins de 6 mois implantée à l'automne ou en fin d'été
+                          expression: sous_culture_form == 'prairie_moins_6_mois_automne'
+                        - regle:
+                            id: r_culture_hiver_type_II_digestats_hors_prairie_automne
+                            type: calculatrice
+                            texte: Interdit jusqu'à 15 jours avant le semis, puis du 01/10 au 01/02. Plafond PAR Grand Est de 30 kg d'azote minéral.
+                            periodes:
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                            - au: 01/02
+                              du: 01/10
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis
+                              label_court: semis
+                              placeholder: 25/08
+                          valeur: hors_prairie_automne
+                          libelle: Autre culture d'hiver (hors prairie de moins de 6 mois implantée à l'automne)
+                          expression: sous_culture_form != 'prairie_moins_6_mois_automne'
+                        type_noeud: catalogue_parametre
+                      valeur: Le fertilisant est un digestat
+                      libelle: Le fertilisant est un digestat
+                      expression: categorie_fertilisant == 'digestats'
+                    - valeur: Autre fertilisant de type II
+                      libelle: Autre fertilisant de type II
+                      expression: categorie_fertilisant != 'digestats'
+                      feuille_vide: true
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: culture_hiver_hors_colza
+              libelle: Culture d'hiver autre que colza
+            - noeud:
+                id: q_colza
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_colza_type_II
+                    champ: categorie_fertilisant_digestats_colza_ii
+                    branches:
+                    - regle:
+                        id: r_colza_type_II_digestats
+                        type: calculatrice
+                        texte: Interdit avant 15 jours avant le semis puis du 01/10 au 01/02
+                        periodes:
+                        - au: date_semis_colza-15jours
+                          du: 01/07
+                          regime: interdiction
+                          condition: 01/07 < date_semis_colza-15jours
+                        - au: 01/02
+                          du: 01/10
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_colza
+                          type: date
+                          label: Date de semis du colza
+                          label_court: semis
+                          placeholder: 20/08
+                      valeur: Digestats
+                      libelle: Catégorie de fertilisant "Digestats"
+                      expression: categorie_fertilisant == 'digestats'
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: colza
+              libelle: Colza
+            - noeud:
+                id: n_culture_printemps
+                champ: culture_printemps_detail
+                branches:
+                - noeud:
+                    id: q_culture_printemps_prairie_moins_6_mois_printemps
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: n_culture_printemps_prairie_moins_6_mois_printemps_type_II
+                        champ: fertilisant_digestats
+                        branches:
+                        - regle:
+                            id: r_culture_printemps_prairie_moins_6_mois_printemps_type_II_digestats
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 15/11
+                              regime: interdiction
+                          valeur: Le fertilisant est un digestat
+                          libelle: Le fertilisant est un digestat
+                          expression: categorie_fertilisant=='digestats'
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type_II
+                    type_noeud: formulaire
+                  valeur: prairie_moins_6_mois_printemps
+                  expression: sous_culture_form == 'prairie_moins_6_mois_printemps'
+                - noeud:
+                    id: n_culture_printemps_mais
+                    champ: zone_grand_est_1
+                    source: sig
+                    branches:
+                    - noeud:
+                        id: q_culture_printemps_mais_en_zone_grand_est_1
+                        champ: q_type_fertilisant_par_mais
+                        texte: Quel type de fertilisant est utilisé ?
+                        niveau: type_fertilisant
+                        branches:
+                        - noeud:
+                            id: q_culture_printemps_mais_en_zone_grand_est_1_type_II
+                            champ: type_ii
+                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
+                              animaux ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_iaa
+                                type: mixte
+                                periodes:
+                                - au: 15/02
+                                  du: 31/08
+                                  regime: interdiction
+                                - au: 31/08
+                                  du: 01/07
+                                  regime: autorisation_sous_condition
+                                inputs_requis: []
+                                texte_condition: Autorisé sous condition entre le 01/07 et le 31/08.
+                                code_prescription: pc6
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_non_iaa
+                                type: interdiction
+                                periodes:
+                                - au: 15/02
+                                  du: 01/07
+                                  regime: interdiction
+                                inputs_requis: []
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: type_II
+                          libelle: Type_II
+                        type_noeud: formulaire
+                      valeur: q_type_fertilisant_par_mais
+                      libelle: Quel type de fertilisant est utilisé ?
+                    reference: zone_grand_est_1
+                    type_noeud: catalogue
+                  valeur: mais
+                  libelle: Mais
+                  expression: sous_fertilisant == 'mais'
+                type_noeud: catalogue_parametre
+              valeur: culture_printemps
+            - noeud:
+                id: n_prairie_plus_6_mois
+                champ: zone_grand_est_1
+                source: sig
+                branches:
+                - noeud:
+                    id: q_prairie_plus_6_mois_en_zone_grand_est_1
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: n_prairie_plus_6_mois_en_zone_grand_est_1_type_II
+                        champ: effluent_peu_charge
+                        branches:
+                        - regle:
+                            id: r_prairie_plus_6_mois_en_zone_grand_est_1_type_II_effluent_peu_charge
+                            type: autorisation_sous_condition
+                            periodes:
+                            - au: 31/01
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            inputs_requis: []
+                            code_prescription:
+                            - pc7
+                            - pc16
+                          valeur: effluent_peu_charge
+                          libelle: Effluent peu chargé
+                          expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                        - regle:
+                            id: r_prairie_plus_6_mois_en_zone_grand_est_1_type_II_pas_effluent_peu_charge
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 15/11
+                            inputs_requis: []
+                            code_prescription: pc16
+                          valeur: pas effluent peu charge
+                          libelle: Pas effluent peu charge
+                          expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type II
+                    type_noeud: formulaire
+                  valeur: q_type_fertilisant_par_mais
+                  libelle: Quel type de fertilisant est utilisé ?
+                reference: zone_grand_est_1
+                type_noeud: catalogue
+              valeur: prairie_plus_6_mois
+              libelle: Prairies implantées depuis plus de six mois (dont prairie permanente)
+            - noeud:
+                id: n_luzerne
+                champ: zone_grand_est_1
+                source: sig
+                branches:
+                - noeud:
+                    id: q_luzerne_en_zone_grand_est_1
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: q_luzerne_en_zone_grand_est_1_type_II
+                        aide: ''
+                        champ: plan_epandage
+                        texte: Votre plan d'épandage est-il soumis à autorisation ?
+                        niveau: complement
+                        branches:
+                        - noeud:
+                            id: q_luzerne_en_zone_grand_est_1_type_II_icpe_a
+                            aide: ''
+                            champ: fertilisant_iaa
+                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
+                              animaux ? (Note 12)
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_luzerne_en_zone_grand_est_1_type_II_icpe_a_iaa
+                                type: mixte
+                                periodes:
+                                - au: 31/01
+                                  du: 15/11
+                                  regime: interdiction
+                                - au: 31/01
+                                  du: derniere_coupe_luzerne
+                                  regime: autorisation_sous_condition
+                                composant: luzerne_post_coupe
+                                parametres:
+                                  note: note_12
+                                  code_prescription: pc10
+                                  texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 15/11 au 31/01.
+                                  periode_reglementaire:
+                                    au: 31/01
+                                    du: 15/11
+                                inputs_requis:
+                                - date_derniere_coupe_luzerne
+                                code_prescription: pc10
+                              valeur: true
+                              libelle: Oui
+                            - valeur: false
+                              libelle: Non
+                              renvoi_vers: n_prairie_plus_6_mois_en_zone_grand_est_1_type_II
+                            type_noeud: formulaire
+                          valeur: icpe_a
+                          libelle: Oui
+                        - valeur: autre
+                          libelle: Non
+                          renvoi_vers: n_prairie_plus_6_mois_en_zone_grand_est_1_type_II
+                        type_noeud: formulaire
+                      valeur: type_II
+                      libelle: Type II
+                    - noeud:
+                        id: q_luzerne_en_zone_grand_est_1_type_III
+                        aide: ''
+                        champ: plan_epandage
+                        texte: Votre plan d'épandage est-il soumis à autorisation ?
+                        niveau: complement
+                        branches:
+                        - noeud:
+                            id: q_luzerne_en_zone_grand_est_1_type_III_icpe_a
+                            aide: ''
+                            champ: fertilisant_iaa
+                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
+                              animaux ? (Note 12)
+                            niveau: complement
+                            branches:
+                            - noeud:
+                                id: n_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa
+                                champ: zone_montagne_d113_14
+                                texte: L'îlot cultural est-il situé en zone de montagne (article D113-14 du code rural et de la pêche) ?
+                                source: sig
+                                branches:
+                                - noeud:
+                                    id: n_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa_2
+                                    champ: zonage_montagne_regional
+                                    source: sig
+                                    branches:
+                                    - regle:
+                                        id: r_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa_note_6
+                                        type: mixte
+                                        periodes:
+                                        - au: 28/02
+                                          du: 01/10
+                                          regime: interdiction
+                                        - au: 31/12
+                                          du: derniere_coupe_luzerne
+                                          regime: autorisation_sous_condition
+                                        composant: luzerne_post_coupe
+                                        parametres:
+                                          note: note_6
+                                          code_prescription: pc10
+                                          texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 28/02.
+                                          periode_reglementaire:
+                                            au: 28/02
+                                            du: 01/10
+                                        inputs_requis:
+                                        - date_derniere_coupe_luzerne
+                                        code_prescription: pc10
+                                      valeur: note_6
+                                      libelle: Oui, dans une autre région et/ou départements (Note 6)
+                                    reference: zone_note_7_vs_note_6
+                                    type_noeud: catalogue
+                                  valeur: true
+                                  libelle: Oui, îlot en zone montagne (article D113-14)
+                                - regle:
+                                    id: r_luzerne_en_zone_grand_est_1_type_III_icpe_a_iaa
+                                    type: mixte
+                                    periodes:
+                                    - au: 31/01
+                                      du: 01/10
+                                      regime: interdiction
+                                    - au: 31/12
+                                      du: derniere_coupe_luzerne
+                                      regime: autorisation_sous_condition
+                                    composant: luzerne_post_coupe
+                                    parametres:
+                                      code_prescription: pc10
+                                      texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 31/01.
+                                      periode_reglementaire:
+                                        au: 31/01
+                                        du: 01/10
+                                    inputs_requis:
+                                    - date_derniere_coupe_luzerne
+                                    code_prescription: pc10
+                                  valeur: false
+                                  libelle: Non — pas en zone montagne
+                                reference: zone_montagne_d113_14
+                                type_noeud: catalogue
+                              valeur: true
+                              libelle: Oui
+                            - valeur: false
+                              libelle: Non
+                              feuille_vide: true
+                            type_noeud: formulaire
+                          valeur: icpe_a
+                          libelle: Oui
+                        - valeur: autre
+                          libelle: Non
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: type_III
+                      libelle: Type III
+                    type_noeud: formulaire
+                  valeur: En Zone Grand Est 1
+                  libelle: En Zone Grand Est 1
+                reference: zone_grand_est_1
+                type_noeud: catalogue
+              valeur: luzerne
+              libelle: Luzerne
+            - noeud:
+                id: n_autres_cultures
+                champ: zone_grand_est_2
+                source: sig
+                branches:
+                - noeud:
+                    id: n_autres_cultures_en_zone_grand_est_2
+                    champ: q_type_fertilisant_autres_cultures_vigne_par
+                    branches:
+                    - noeud:
+                        id: q_autres_cultures_en_zone_grand_est_2_vigne
+                        champ: type_fertilisant
+                        texte: Quel type de fertilisant est utilisé ?
+                        niveau: type_fertilisant
+                        branches:
+                        - regle:
+                            id: r_autres_cultures_en_zone_grand_est_2_vigne_type_II
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 01/07
+                          valeur: type_II
+                          libelle: Type II
+                        - regle:
+                            id: r_autres_cultures_en_zone_grand_est_2_vigne_type_III
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 01/07
+                          valeur: type_III
+                          libelle: Type III
+                        type_noeud: formulaire
+                      valeur: Vigne
+                      libelle: Vigne
+                      expression: sous_culture_form=='cultures_perennes_vergers_vignes'
+                    type_noeud: catalogue_parametre
+                  valeur: en_zge2
+                  libelle: en_zge2
+                reference: zone_grand_est_2
+                type_noeud: catalogue
+              valeur: autres_cultures
+              libelle: Autres cultures (pérennes-vergers, vignes, cultures maraîchères, culture porte-graine)
+            type_noeud: formulaire
+          valeur: culture_principale
+          libelle: Culture principale
+        - noeud:
+            id: q_sous_culture_2
+            champ: sous_culture
+            texte: Quel type de couvert d'interculture ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_cine_apres_0101
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cine_apres_0101_type_Ib
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_cine_apres_0101_type_Ib_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_apres_0101_type_Ib_icpe_ed_non_iaa
+                            type: calculatrice
+                            periodes:
+                            - au: 15/12
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert-20jours < 15/01
+                            - au: 15/01
+                              du: 15/12
+                              masque: true
+                              regime: autorisation_sous_condition
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_destruction_couvert
+                              min: 31/12
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 15/03
+                            code_prescription:
+                            - pc4
+                            - pc12
+                          valeur: false
+                          libelle: Non
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_apres_0101_type_Ib_icpe_autre
+                        type: calculatrice
+                        periodes:
+                        - au: 15/12
+                          du: 15/11
+                          regime: autorisation_sous_condition
+                        - au: 15/01
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                          condition: date_destruction_couvert-20jours < 15/01
+                        - au: 15/01
+                          du: 15/12
+                          masque: true
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_destruction_couvert
+                          max: 31/12
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 15/03
+                        code_prescription:
+                        - pc4
+                        - pc12
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                  libelle: Type Ib
+                - noeud:
+                    id: n_cine_apres_0101_type_II
+                    champ: zone_note_5
+                    source: sig
+                    branches:
+                    - noeud:
+                        id: q_cine_apres_0101_type_II_hors_note5
+                        champ: plan_epandage
+                        texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                        niveau: complement
+                        branches:
+                        - noeud:
+                            id: n_cine_apres_0101_type_II_hors_note5_icpe_a
+                            champ: n_cine_apres0101_ii_icepe_a_digestats
+                            branches:
+                            - regle:
+                                id: r_cine_apres_0101_type_II_hors_note5_icpe_a_est_un_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: 31/01
+                                  du: 15/10
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                code_prescription: pc12
+                              valeur: Est un Digestats
+                              libelle: Est un Digestats
+                              expression: categorie_fertilisant == 'digestats'
+                            type_noeud: catalogue_parametre
+                          valeur: icpe_a
+                          libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                        - noeud:
+                            id: n_cine_apres_0101_type_II_hors_note5_icpe_ed
+                            champ: effluent_peu_charge_elevage
+                            branches:
+                            - noeud:
+                                id: n_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge
+                                champ: resolution_digestats_cine_apres0101_ii_ed
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_digestats
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: 15/11
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: 31/01
+                                      du: 16/11
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    code_prescription:
+                                    - pc4
+                                    - pc12
+                                  valeur: Digestats
+                                  libelle: Le fertilisant est un digestat
+                                  expression: categorie_fertilisant == 'digestats'
+                                - noeud:
+                                    id: q_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_pas_digestats
+                                    champ: pas_un_digestats
+                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
+                                      ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                    niveau: complement
+                                    branches:
+                                    - regle:
+                                        id: r_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_pas_digestats_non_iaa
+                                        type: mixte
+                                        periodes:
+                                        - au: 15/11
+                                          du: 15/10
+                                          regime: autorisation_sous_condition
+                                        - au: 31/01
+                                          du: 16/11
+                                          regime: interdiction
+                                        composant: calendrier_dynamique_couvert
+                                        inputs_requis: []
+                                        code_prescription:
+                                        - pc4
+                                        - pc12
+                                      valeur: false
+                                      libelle: Non
+                                    - valeur: true
+                                      libelle: Oui
+                                      feuille_vide: true
+                                    type_noeud: formulaire
+                                  valeur: Pas digestats
+                                  libelle: Pas un digestat
+                                  expression: categorie_fertilisant != 'digestats'
+                                type_noeud: catalogue_parametre
+                              valeur: pas_effluent_peu_charge_issue_d'elevage
+                              libelle: non
+                              expression: sous_fertilisant !='effluents_peu_charges_elevage'
+                            type_noeud: catalogue_parametre
+                          valeur: icpe_ed
+                          libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                        - noeud:
+                            id: n_cine_apres_0101_type_II_hors_note5_icpe_autre
+                            champ: effluent_peu_charge_elevage
+                            branches:
+                            - noeud:
+                                id: n_cine_apres_0101_type_II_hors_note5_icpe_autre_pas_effluent_peu_charge
+                                champ: resolution_digestats_cine_apres0101_ii_nc
+                                branches:
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_hors_note5_icpe_autre_pas_effluent_peu_charge_digestats
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: 15/11
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: 31/01
+                                      du: 16/11
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    code_prescription:
+                                    - pc12
+                                    - pc4
+                                  valeur: Digestats
+                                  libelle: Le fertilisant est un digestat
+                                  expression: categorie_fertilisant == 'digestats'
+                                - regle:
+                                    id: r_cine_apres_0101_type_II_hors_note5_icpe_autre_pas_effluent_peu_charge_pas_digestats
+                                    type: mixte
+                                    periodes:
+                                    - au: 15/11
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                    - au: 31/01
+                                      du: 16/11
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      max: 31/12
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 15/03
+                                    code_prescription:
+                                    - pc12
+                                    - pc4
+                                  valeur: Pas Digestats
+                                  libelle: Pas un digestat
+                                  expression: categorie_fertilisant != 'digestats'
+                                type_noeud: catalogue_parametre
+                              valeur: pas_effluent_peu_charge_issus_elevage
+                              libelle: non
+                              expression: sous_fertilisant !='effluents_peu_charges_elevage'
+                            type_noeud: catalogue_parametre
+                          valeur: non_concerne
+                          libelle: Non concerné
+                        type_noeud: formulaire
+                      valeur: 'False'
+                      libelle: Non
+                    reference: zone_note_5
+                    type_noeud: catalogue
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: cine_apres_0101
+              libelle: CINE détruit après le 01/01 (dont cultures énergétiques CIVE)
+            - valeur: cie_apres_0101
+              libelle: CIE exporté après le 01/01 (dont cultures énergétiques CIVE)
+              renvoi_vers: q_cine_apres_0101
+            - noeud:
+                id: q_cine_avant_3112
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cine_avant_3112_type_Ib
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis enregistrement ou déclaration?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_cine_avant_3112_type_Ib_icpe_ed
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
+                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_Ib_icpe_ed_non_iaa
+                            type: calculatrice
+                            periodes:
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                              condition: 01/07 < date_semis_couvert-15jours
+                            - au: date_destruction_couvert-20jours
+                              du: 15/11
+                              regime: autorisation_sous_condition
+                              condition: 15/11 < date_destruction_couvert-20jours
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                            - au: 15/01
+                              du: 15/12
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              max: 31/12
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription:
+                            - pc13
+                            - pc4
+                          valeur: false
+                          libelle: Non
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cine_avant_3112_type_Ib_pas_digestats
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                          condition: 01/07 < date_semis_couvert-15jours
+                        - au: date_destruction_couvert-20jours
+                          du: 15/11
+                          regime: autorisation_sous_condition
+                          condition: 15/11 < date_destruction_couvert-20jours
+                        - au: 15/01
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                        - au: 15/01
+                          du: 15/12
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          max: 31/12
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription:
+                        - pc13
+                        - pc4
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_Ib
+                  libelle: Type Ib
+                - noeud:
+                    id: q_cine_avant_3112_type_II
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: n_cine_avant_3112_type_II_icpe_a
+                        champ: q_plan_epandage_cine_avant3112_ii_icpe_a_est_digestats
+                        branches:
+                        - regle:
+                            id: r_cine_avant_3112_type_II_icpe_a_digestats
+                            type: calculatrice
+                            periodes:
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                              condition: 01/07 < date_semis_couvert-15jours
+                            - au: 30/06
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                            - au: 30/06
+                              du: 15/10
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              max: 31/12
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc13
+                          valeur: Digestats
+                          libelle: Digestats
+                          expression: categorie_fertilisant == 'digestats'
+                        type_noeud: catalogue_parametre
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                    - noeud:
+                        id: n_cine_avant_3112_type_II_icpe_ed
+                        champ: effluent_peu_charge_elevage
+                        branches:
+                        - noeud:
+                            id: n_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge
+                            champ: resolution_digestats_cine_avant3112_ii_ed
+                            branches:
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: date_destruction_couvert-20jours
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                  condition: 15/10 < date_destruction_couvert-20jours
+                                - au: 30/06
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                - au: 30/06
+                                  du: 16/11
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  max: 31/12
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription:
+                                - pc13
+                                - pc4
+                              valeur: Digestats
+                              libelle: Le fertilisant est un digestat
+                              expression: categorie_fertilisant == 'digestats'
+                            - noeud:
+                                id: q_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_pas_digestats
+                                champ: pas_un_digestats
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
+                                  ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                niveau: complement
+                                branches:
+                                - regle:
+                                    id: r_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_pas_digestats_non_iaa
+                                    type: calculatrice
+                                    periodes:
+                                    - au: date_semis_couvert-15jours
+                                      du: 01/07
+                                      regime: interdiction
+                                      condition: 01/07 < date_semis_couvert-15jours
+                                    - au: date_destruction_couvert-20jours
+                                      du: 15/10
+                                      regime: autorisation_sous_condition
+                                      condition: 15/10 < date_destruction_couvert-20jours
+                                    - au: 31/01
+                                      du: date_destruction_couvert-20jours
+                                      regime: interdiction
+                                    - au: 31/01
+                                      du: 16/11
+                                      regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      max: 31/12
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 01/11
+                                    code_prescription:
+                                    - pc13
+                                    - pc4
+                                  valeur: false
+                                  libelle: Non
+                                - valeur: true
+                                  libelle: Oui
+                                  feuille_vide: true
+                                type_noeud: formulaire
+                              valeur: Pas digestats
+                              libelle: Pas un digestat
+                              expression: categorie_fertilisant != 'digestats'
+                            type_noeud: catalogue_parametre
+                          valeur: pas_effluent_peu_charge_issus_elevage
+                          libelle: non
+                          expression: sous_fertilisant != 'effluents_peu_charges_elevage'
+                        type_noeud: catalogue_parametre
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                    - noeud:
+                        id: n_cine_avant_3112_type_II_icpe_autre
+                        champ: effluent_peu_charge_elevage
+                        branches:
+                        - noeud:
+                            id: n_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge
+                            champ: resolution_digestats_cine_avant3112_ii_nc
+                            branches:
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: date_destruction_couvert-20jours
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                  condition: 15/10 < date_destruction_couvert-20jours
+                                - au: 30/06
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                - au: 30/06
+                                  du: 16/11
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  max: 31/12
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription:
+                                - pc13
+                                - pc4
+                              valeur: Digestats
+                              libelle: Le fertilisant est un digestat
+                              expression: categorie_fertilisant == 'digestats'
+                            - regle:
+                                id: r_cine_avant_3112_type_II_icpe_autre_pas_effluent_peu_charge_pas_digestats
+                                type: calculatrice
+                                periodes:
+                                - au: date_semis_couvert-15jours
+                                  du: 01/07
+                                  regime: interdiction
+                                  condition: 01/07 < date_semis_couvert-15jours
+                                - au: date_destruction_couvert-20jours
+                                  du: 15/10
+                                  regime: autorisation_sous_condition
+                                  condition: 15/10 < date_destruction_couvert-20jours
+                                - au: 30/06
+                                  du: date_destruction_couvert-20jours
+                                  regime: interdiction
+                                - au: 30/06
+                                  du: 16/11
+                                  regime: interdiction
+                                composant: calendrier_dynamique_couvert
+                                inputs_requis:
+                                - id: date_semis_couvert
+                                  type: date
+                                  label: Date de semis du couvert
+                                  label_court: semis
+                                  placeholder: 15/08
+                                - id: date_destruction_couvert
+                                  max: 31/12
+                                  type: date
+                                  label: Date de destruction du couvert
+                                  label_court: destruction
+                                  placeholder: 01/11
+                                code_prescription:
+                                - pc13
+                                - pc4
+                              valeur: Pas Digestats
+                              libelle: Pas un digestat
+                              expression: categorie_fertilisant != 'digestats'
+                            type_noeud: catalogue_parametre
+                          valeur: pas_effluent_peu_charge_issus_elevage
+                          expression: sous_fertilisant != 'effluents_peu_charges_elevage'
+                        type_noeud: catalogue_parametre
+                      valeur: non_concerne
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: cine_avant_3112
+              libelle: CINE détruit avant le 31/12
+            - patch:
+                code_prescription:
+                  pc13: pc14
+              valeur: cie_avant_3112
+              libelle: Cie_avant_3112
+              renvoi_vers: q_cine_avant_3112
+            - noeud:
+                id: n_cie_courte
+                champ: exporte_ou_non
+                branches:
+                - noeud:
+                    id: q_cie_courte_exporte_ou_pas
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: n_cie_courte_exporte_ou_pas_type_II
+                        champ: q_type_fertilisant_cie_courte_par_digestats
+                        branches:
+                        - regle:
+                            id: r_cie_courte_exporte_ou_pas_type_II_digestats
+                            type: calculatrice
+                            periodes:
+                            - au: date_semis_couvert-15jours
+                              du: 01/07
+                              regime: interdiction
+                            - au: 30/06
+                              du: date_destruction_couvert-20jours
+                              regime: interdiction
+                            - au: 30/06
+                              du: 15/10
+                              regime: interdiction
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              type: date
+                              label: Date de destruction du couvert
+                              label_court: destruction
+                              placeholder: 01/11
+                            code_prescription: pc15
+                          valeur: Digestats
+                          libelle: Digestats
+                          expression: categorie_fertilisant == 'digestats'
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type_II
+                    type_noeud: formulaire
+                  valeur: exporte ou pas
+                  libelle: exporte ou pas
+                  expression: sous_culture_form in('couvert_courte_recolte','couvert_courte_non_recolte')
+                type_noeud: catalogue_parametre
+              valeur: cie_courte
+              libelle: Couvert d'interculture courte
+            type_noeud: formulaire
+          valeur: couvert_intercultures
+          libelle: Couvert végétal d'interculture
+        type_noeud: formulaire
+      valeur: true
+    reference: zone_vulnerable_nitrates
+    type_noeud: catalogue
