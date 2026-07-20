@@ -99,6 +99,30 @@ jobs:
         run: bash bin/build_assets.sh
 
       # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+      # Garde-fous GitOps (carte #50). Autonomes : tournent sur la base ephemere
+      # CI, sans acces a nitrates-dev. Le check "fixture/arbres a jour vs DB
+      # active" (dump_*_--check) est un garde-fou SEPARE, execute cote dev (hook
+      # local + one-off), pas ici (la CI n'a pas le pivot dev).
+
+      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus tot.
+      - name: Migrations coherentes (makemigrations --check)
+        run: python manage.py makemigrations --check --dry-run
+
+      # 2. Un arbre canonique malforme ne doit jamais etre merge sur main.
+      #    Valide parse + structure + refs, avec referentiels + scope (sinon faux
+      #    negatifs sur les branches SIG PAR/ZAR).
+      - name: Arbres canoniques valides
+        run: python manage.py validate_arbres_actifs
+
+      # 3. La fixture referentiels doit etre rechargeable et round-trip stable :
+      #    seed depuis la fixture, puis dump_referentiels --check (fixture == etat
+      #    seede). Garantit que la fixture committee n'est pas corrompue/perimee
+      #    dans sa forme.
+      - name: Fixture referentiels coherente (seed + round-trip)
+        run: |
+          python manage.py seed_referentiels
+          python manage.py dump_referentiels --check
+
       # On lance la suite sous coverage.py (deja installe via requirements) au
       # lieu de `pytest` seul, pour mesurer la couverture des apps Python
       # (nitrates, moulinette...). La config vit dans setup.cfg [coverage:*].

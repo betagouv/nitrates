@@ -20,6 +20,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from envergo.nitrates.management.commands.dump_active_trees import canonical_filename
+from envergo.nitrates.management.commands.validate_arbres_actifs import (
+    scope_from_filename,
+)
 from envergo.nitrates.models import DecisionTree
 
 pytestmark = pytest.mark.django_db
@@ -106,6 +109,29 @@ def test_dump_active_trees_check_echoue_si_absent(tmp_path):
             stdout=StringIO(),
             stderr=StringIO(),
         )
+
+
+# ─── validate_arbres_actifs (déduction scope + garde-fou CI) ─────────────────
+
+
+def test_scope_from_filename_deduit_identite():
+    """Le scope se déduit du seul nom de fichier canonique (inverse du dump)."""
+    assert scope_from_filename("national.yaml") == (DecisionTree.SCOPE_NATIONAL, "")
+    assert scope_from_filename("region_44.yaml") == (DecisionTree.SCOPE_REGION, "44")
+    assert scope_from_filename("zar_44.yaml") == (DecisionTree.SCOPE_ZAR, "44")
+    # Hors convention -> None (le garde-fou CI le refusera).
+    assert scope_from_filename("nawak.yaml") is None
+
+
+def test_validate_arbres_actifs_refuse_yaml_casse(tmp_path):
+    """Un YAML canonique cassé fait échouer le garde-fou CI."""
+    arbres = tmp_path / "arbres_actifs"
+    arbres.mkdir()
+    (arbres / "national.yaml").write_text(
+        "{ ceci n'est pas: du: yaml valide", encoding="utf-8"
+    )
+    with pytest.raises(CommandError):
+        call_command("validate_arbres_actifs", dir=str(tmp_path), stdout=StringIO())
 
 
 # ─── dump_referentiels ────────────────────────────────────────────────────────
