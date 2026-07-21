@@ -11,11 +11,14 @@ env:
   DJANGO_SETTINGS_MODULE: "config.settings.ci"
 
 on:
+  # develop = branche d'integration de nitrates-dev (modele GitOps #50). Le CI
+  # doit couvrir develop AUTANT que main, sinon tout ce qui transite par develop
+  # (PR feature->develop, PR sécu, push) echappe aux garde-fous.
   pull_request:
-    branches: ["main"]
+    branches: ["main", "develop"]
 
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
 
 jobs:
   linter:
