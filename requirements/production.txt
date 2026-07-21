@@ -114,7 +114,7 @@ django==4.2.30
     #   django-phonenumber-field
     #   django-redis
     #   django-storages
-django-allauth==65.10.0
+django-allauth==65.14.1
     # via -r base.txt
 django-anymail[sendinblue]==13.0.1
     # via -r base.txt
@@ -162,7 +162,7 @@ gunicorn==23.0.0
     # via -r production.in
 hiredis==3.2.1
     # via -r base.txt
-idna==3.10
+idna==3.15
     # via
     #   -r base.txt
     #   anyio
@@ -278,7 +278,7 @@ referencing==0.37.0
     #   -r base.txt
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.4
+requests==2.33.0
     # via
     #   -r base.txt
     #   django-anymail
@@ -312,7 +312,7 @@ sniffio==1.3.1
     # via
     #   -r base.txt
     #   anyio
-sqlparse==0.5.3
+sqlparse==0.5.4
     # via
     #   -r base.txt
     #   django
