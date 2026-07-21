@@ -1,0 +1,75 @@
+name: Deploy dev
+
+# CD nitrates-dev (carte #50). Se declenche au merge sur main (= branche
+# d'integration de nitrates-dev). Sequence :
+#   1. safety : dump de l'etat ACTIF de dev (arbres + referentiels) -> artefact
+#      de rollback, AVANT tout ecrit.
+#   2. deploy code : git archive -> scalingo deploy (par archive, token API,
+#      pas de cle SSH). Le post_deploy joue migrate + imports SIG idempotents.
+#   3. reload data : load_arbres_actifs (draft->active) + seed_referentiels,
+#      puis restart web (cache lru).
+#   4. smoke : root repond, cascade arbres OK.
+#
+# Secret requis : SCALINGO_API_TOKEN (repository secret). Aucun autre.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  # Permet un declenchement manuel (bouton "Run workflow") pour rejouer.
+  workflow_dispatch: {}
+
+env:
+  SCALINGO_REGION: osc-fr1
+  SCALINGO_APP: nitrates-dev
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Installer la CLI Scalingo
+        run: |
+          curl -s -O https://cli-dl.scalingo.com/install && bash install
+          scalingo --version
+
+      # --- 1. SAFETY : capture l'etat actif de dev AVANT tout ecrit ---------
+      # C'est le filet de rollback. On dumpe arbres + referentiels via un
+      # one-off detache et on archive le resultat (récupérable dans les
+      # artifacts du run).
+      - name: Safety — snapshot etat actif de dev
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_dev_snapshot.sh
+
+      - name: Upload snapshot (rollback)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-snapshot-before-deploy
+          path: _deploy_snapshot/
+          if-no-files-found: warn
+
+      # --- 2. DEPLOY CODE : archive -> scalingo deploy ----------------------
+      - name: Deploy code (archive)
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_dev_code.sh "${{ github.sha }}"
+
+      # --- 3. RELOAD DATA : arbres (draft->active) + referentiels + restart -
+      - name: Reload données canoniques
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_dev_reload.sh
+
+      # --- 4. SMOKE ---------------------------------------------------------
+      - name: Smoke test
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_dev_smoke.sh

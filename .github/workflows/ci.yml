@@ -11,11 +11,14 @@ env:
   DJANGO_SETTINGS_MODULE: "config.settings.ci"
 
 on:
+  # develop = branche d'integration de nitrates-dev (modele GitOps #50). Le CI
+  # doit couvrir develop AUTANT que main, sinon tout ce qui transite par develop
+  # (PR feature->develop, PR sécu, push) echappe aux garde-fous.
   pull_request:
-    branches: ["main"]
+    branches: ["main", "develop"]
 
   push:
-    branches: ["main"]
+    branches: ["main", "develop"]
 
 jobs:
   linter:
@@ -99,6 +102,36 @@ jobs:
         run: bash bin/build_assets.sh
 
       # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+      # Garde-fous GitOps (carte #50). Autonomes : tournent sur la base ephemere
+      # CI, sans acces a nitrates-dev. Le check "fixture/arbres a jour vs DB
+      # active" (dump_*_--check) est un garde-fou SEPARE, execute cote dev (hook
+      # local + one-off), pas ici (la CI n'a pas le pivot dev).
+
+      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus tot.
+      #    Autonome (pas de DB requise).
+      - name: Migrations coherentes (makemigrations --check)
+        run: python manage.py makemigrations --check --dry-run
+
+      # Les garde-fous 2 et 3 ont besoin d'une DB migree + seedee : validate_arbres
+      # charge les referentiels depuis la DB (exhaustivite), et le round-trip
+      # fixture compare a l'etat seede. On prepare donc la base ephemere ici (le
+      # job pytest, lui, recree sa propre base de test isolee ensuite).
+      - name: Preparer la base (migrate + seed referentiels)
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_referentiels
+
+      # 2. Un arbre canonique malforme ne doit jamais etre merge sur main.
+      #    Valide parse + structure + refs, avec referentiels + scope (sinon faux
+      #    negatifs sur les branches SIG PAR/ZAR).
+      - name: Arbres canoniques valides
+        run: python manage.py validate_arbres_actifs
+
+      # 3. La fixture referentiels doit etre round-trip stable : dump_referentiels
+      #    --check compare la fixture committee a l'etat seede a l'etape precedente.
+      - name: Fixture referentiels coherente (round-trip)
+        run: python manage.py dump_referentiels --check
+
       # On lance la suite sous coverage.py (deja installe via requirements) au
       # lieu de `pytest` seul, pour mesurer la couverture des apps Python
       # (nitrates, moulinette...). La config vit dans setup.cfg [coverage:*].

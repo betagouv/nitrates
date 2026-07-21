@@ -30,12 +30,31 @@ _cle_validator = RegexValidator(
 )
 
 
+class _CleNaturalKeyManager(models.Manager):
+    """Clef naturelle = (cle,) — pour dumpdata/loaddata portable entre DB.
+
+    Comme les referentiels (cf. models_referentiels._NaturalKeyByIdentifiant),
+    on expose `cle` comme clef naturelle pour que le GitOps des donnees
+    (dump/seed entre environnements dev/staging/prod, cf. carte #50) resolve
+    l'objet par sa cle stable et non par sa PK auto-incrementee (non portable
+    d'une base a l'autre).
+    """
+
+    def get_by_natural_key(self, cle):
+        return self.get(cle=cle)
+
+
 class ContenuRichDSFR(models.Model):
     """Une zone de contenu riche, adressée par `cle`.
 
     `blocs` est l'unique source : une liste de blocs typés (cf.
     `compile_dsfr`). Pas de champ HTML : le rendu est recompilé.
     """
+
+    objects = _CleNaturalKeyManager()
+
+    def natural_key(self):
+        return (self.cle,)
 
     cle = models.CharField(
         max_length=64,

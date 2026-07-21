@@ -23,6 +23,91 @@ arbre:
             niveau: sous_culture
             branches:
             - noeud:
+                id: n_culture_printemps
+                champ: culture_printemps_detail
+                branches:
+                - noeud:
+                    id: q_culture_printemps_prairie_moins_6_mois_printemps
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: n_culture_printemps_prairie_moins_6_mois_printemps_type_II
+                        champ: fertilisant_digestats
+                        branches:
+                        - regle:
+                            id: r_culture_printemps_prairie_moins_6_mois_printemps_type_II_digestats
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 15/11
+                              regime: interdiction
+                          valeur: Le fertilisant est un digestat
+                          libelle: Le fertilisant est un digestat
+                          expression: categorie_fertilisant=='digestats'
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type_II
+                    type_noeud: formulaire
+                  valeur: prairie_moins_6_mois_printemps
+                  expression: sous_culture_form == 'prairie_moins_6_mois_printemps'
+                - noeud:
+                    id: n_culture_printemps_mais
+                    champ: zone_grand_est_1
+                    source: sig
+                    branches:
+                    - noeud:
+                        id: q_culture_printemps_mais_en_zone_grand_est_1
+                        aide: ''
+                        champ: type_fertilisant
+                        texte: Quel type de fertilisant est utilisé ?
+                        niveau: type_fertilisant
+                        branches:
+                        - noeud:
+                            id: q_culture_printemps_mais_en_zone_grand_est_1_type_II
+                            champ: type_ii
+                            texte: Épandez-vous des effluents peu chargés en fertirrigation ?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_iaa
+                                type: mixte
+                                periodes:
+                                - au: 15/02
+                                  du: 31/08
+                                  regime: interdiction
+                                - au: 31/08
+                                  du: 01/07
+                                  regime: autorisation_sous_condition
+                                inputs_requis: []
+                                code_prescription: pc6
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_non_iaa
+                                type: interdiction
+                                periodes:
+                                - au: 15/02
+                                  du: 01/07
+                                  regime: interdiction
+                                inputs_requis: []
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: type_II
+                          libelle: Type_II
+                        type_noeud: formulaire
+                      valeur: true
+                      libelle: Quel type de fertilisant est utilisé ?
+                    reference: zone_grand_est_1
+                    type_noeud: catalogue
+                  valeur: mais
+                  libelle: Mais
+                  expression: sous_culture_form == 'mais'
+                type_noeud: catalogue_parametre
+              valeur: culture_printemps
+            - noeud:
                 id: q_culture_hiver
                 champ: type_fertilisant
                 texte: Quel type de fertilisant est utilisé ?
@@ -54,7 +139,7 @@ arbre:
                             - au: date_semis_couvert-15jours
                               du: 01/07
                               regime: interdiction
-                            - au: 01/02
+                            - au: 31/01
                               du: 01/10
                               regime: interdiction
                             composant: calendrier_dynamique_couvert
@@ -120,92 +205,6 @@ arbre:
               valeur: colza
               libelle: Colza
             - noeud:
-                id: n_culture_printemps
-                champ: culture_printemps_detail
-                branches:
-                - noeud:
-                    id: q_culture_printemps_prairie_moins_6_mois_printemps
-                    champ: type_fertilisant
-                    texte: Quel type de fertilisant est utilisé ?
-                    niveau: type_fertilisant
-                    branches:
-                    - noeud:
-                        id: n_culture_printemps_prairie_moins_6_mois_printemps_type_II
-                        champ: fertilisant_digestats
-                        branches:
-                        - regle:
-                            id: r_culture_printemps_prairie_moins_6_mois_printemps_type_II_digestats
-                            type: interdiction
-                            periodes:
-                            - au: 31/01
-                              du: 15/11
-                              regime: interdiction
-                          valeur: Le fertilisant est un digestat
-                          libelle: Le fertilisant est un digestat
-                          expression: categorie_fertilisant=='digestats'
-                        type_noeud: catalogue_parametre
-                      valeur: type_II
-                      libelle: Type_II
-                    type_noeud: formulaire
-                  valeur: prairie_moins_6_mois_printemps
-                  expression: sous_culture_form == 'prairie_moins_6_mois_printemps'
-                - noeud:
-                    id: n_culture_printemps_mais
-                    champ: zone_grand_est_1
-                    source: sig
-                    branches:
-                    - noeud:
-                        id: q_culture_printemps_mais_en_zone_grand_est_1
-                        champ: q_type_fertilisant_par_mais
-                        texte: Quel type de fertilisant est utilisé ?
-                        niveau: type_fertilisant
-                        branches:
-                        - noeud:
-                            id: q_culture_printemps_mais_en_zone_grand_est_1_type_II
-                            champ: type_ii
-                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
-                              animaux ?
-                            niveau: complement
-                            branches:
-                            - regle:
-                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_iaa
-                                type: mixte
-                                periodes:
-                                - au: 15/02
-                                  du: 31/08
-                                  regime: interdiction
-                                - au: 31/08
-                                  du: 01/07
-                                  regime: autorisation_sous_condition
-                                inputs_requis: []
-                                texte_condition: Autorisé sous condition entre le 01/07 et le 31/08.
-                                code_prescription: pc6
-                              valeur: true
-                              libelle: Oui
-                            - regle:
-                                id: r_culture_printemps_mais_en_zone_grand_est_1_type_II_non_iaa
-                                type: interdiction
-                                periodes:
-                                - au: 15/02
-                                  du: 01/07
-                                  regime: interdiction
-                                inputs_requis: []
-                              valeur: false
-                              libelle: Non
-                            type_noeud: formulaire
-                          valeur: type_II
-                          libelle: Type_II
-                        type_noeud: formulaire
-                      valeur: q_type_fertilisant_par_mais
-                      libelle: Quel type de fertilisant est utilisé ?
-                    reference: zone_grand_est_1
-                    type_noeud: catalogue
-                  valeur: mais
-                  libelle: Mais
-                  expression: sous_fertilisant == 'mais'
-                type_noeud: catalogue_parametre
-              valeur: culture_printemps
-            - noeud:
                 id: n_prairie_plus_6_mois
                 champ: zone_grand_est_1
                 source: sig
@@ -249,7 +248,7 @@ arbre:
                       valeur: type_II
                       libelle: Type II
                     type_noeud: formulaire
-                  valeur: q_type_fertilisant_par_mais
+                  valeur: true
                   libelle: Quel type de fertilisant est utilisé ?
                 reference: zone_grand_est_1
                 type_noeud: catalogue
@@ -277,8 +276,7 @@ arbre:
                             id: q_luzerne_en_zone_grand_est_1_type_II_icpe_a
                             aide: ''
                             champ: fertilisant_iaa
-                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
-                              animaux ? (Note 12)
+                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ? (Note 12)
                             niveau: complement
                             branches:
                             - regle:
@@ -327,8 +325,7 @@ arbre:
                             id: q_luzerne_en_zone_grand_est_1_type_III_icpe_a
                             aide: ''
                             champ: fertilisant_iaa
-                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour
-                              animaux ? (Note 12)
+                            texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ? (Note 12)
                             niveau: complement
                             branches:
                             - noeud:
@@ -408,7 +405,7 @@ arbre:
                       valeur: type_III
                       libelle: Type III
                     type_noeud: formulaire
-                  valeur: En Zone Grand Est 1
+                  valeur: true
                   libelle: En Zone Grand Est 1
                 reference: zone_grand_est_1
                 type_noeud: catalogue
@@ -450,7 +447,7 @@ arbre:
                       libelle: Vigne
                       expression: sous_culture_form=='cultures_perennes_vergers_vignes'
                     type_noeud: catalogue_parametre
-                  valeur: en_zge2
+                  valeur: true
                   libelle: en_zge2
                 reference: zone_grand_est_2
                 type_noeud: catalogue
@@ -480,8 +477,7 @@ arbre:
                     - noeud:
                         id: q_cine_apres_0101_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -498,8 +494,7 @@ arbre:
                               condition: date_destruction_couvert-20jours < 15/01
                             - au: 15/01
                               du: 15/12
-                              masque: true
-                              regime: autorisation_sous_condition
+                              regime: interdiction
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_destruction_couvert
@@ -533,7 +528,6 @@ arbre:
                           condition: date_destruction_couvert-20jours < 15/01
                         - au: 15/01
                           du: 15/12
-                          masque: true
                           regime: interdiction
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
@@ -629,8 +623,7 @@ arbre:
                                 - noeud:
                                     id: q_cine_apres_0101_type_II_hors_note5_icpe_ed_pas_effluent_peu_charge_pas_digestats
                                     champ: pas_un_digestats
-                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
-                                      ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                     niveau: complement
                                     branches:
                                     - regle:
@@ -643,7 +636,6 @@ arbre:
                                         - au: 31/01
                                           du: 16/11
                                           regime: interdiction
-                                        composant: calendrier_dynamique_couvert
                                         inputs_requis: []
                                         code_prescription:
                                         - pc4
@@ -709,19 +701,6 @@ arbre:
                                     - au: 31/01
                                       du: 16/11
                                       regime: interdiction
-                                    composant: calendrier_dynamique_couvert
-                                    inputs_requis:
-                                    - id: date_semis_couvert
-                                      type: date
-                                      label: Date de semis du couvert
-                                      label_court: semis
-                                      placeholder: 15/08
-                                    - id: date_destruction_couvert
-                                      max: 31/12
-                                      type: date
-                                      label: Date de destruction du couvert
-                                      label_court: destruction
-                                      placeholder: 15/03
                                     code_prescription:
                                     - pc12
                                     - pc4
@@ -736,7 +715,7 @@ arbre:
                           valeur: icpe_autre
                           libelle: Non concerné
                         type_noeud: formulaire
-                      valeur: 'False'
+                      valeur: false
                       libelle: Non
                     reference: zone_note_5
                     type_noeud: catalogue
@@ -764,8 +743,7 @@ arbre:
                     - noeud:
                         id: q_cine_avant_3112_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale
-                          ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -940,8 +918,7 @@ arbre:
                             - noeud:
                                 id: q_cine_avant_3112_type_II_icpe_ed_pas_effluent_peu_charge_pas_digestats
                                 champ: pas_un_digestats
-                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine
-                                  ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                 niveau: complement
                                 branches:
                                 - regle:
@@ -1051,7 +1028,7 @@ arbre:
                                   du: 15/10
                                   regime: autorisation_sous_condition
                                   condition: 15/10 < date_destruction_couvert-20jours
-                                - au: 30/06
+                                - au: 31/01
                                   du: date_destruction_couvert-20jours
                                   regime: interdiction
                                 - au: 30/06

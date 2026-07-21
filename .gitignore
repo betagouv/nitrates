@@ -352,3 +352,6 @@ envergo/nitrates/specs/snapshot_miro/par_zar_grand_est/*/board.svg
 /shot_*.mjs
 /check_*.mjs
 /test_*.mjs
+
+# Artefacts runtime du deploiement CI/CD (#50) — jamais commites
+_deploy_snapshot/

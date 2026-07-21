@@ -33,7 +33,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-# 7 tables référentiel, dans l'ordre de comptage du rapport.
+# 8 tables suivies par le GitOps (7 référentiel + ContenuRichDSFR standalone,
+# ajouté au dump canonique #50). Ordre de comptage du rapport.
 _MODELS = [
     ("nitrates", "GroupeCultureUI"),
     ("nitrates", "BrancheCulturale"),
@@ -42,6 +43,7 @@ _MODELS = [
     ("nitrates", "NoteReglementaire"),
     ("nitrates", "CodePrescription"),
     ("nitrates", "EvenementPhenologique"),
+    ("nitrates", "ContenuRichDSFR"),
 ]
 
 _DEFAULT_FIXTURE = (

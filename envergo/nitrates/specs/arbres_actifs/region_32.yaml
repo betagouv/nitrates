@@ -86,7 +86,6 @@ arbre:
                           du: 01/07
                           regime: interdiction
                         inputs_requis: []
-                        texte_condition: 'Allongement régional : interdiction du 1er juillet au 14 août inclus, en plus de la période nationale (du 1er septembre au 31 janvier, apport possible sous conditions du 1er septembre au 15 octobre).'
                         source_juridique: Article 2-I 1° du PAR Hauts-de-France (allongement des périodes d'interdiction d'épandage)
                         code_prescription: pc11
                       valeur: false
@@ -164,13 +163,13 @@ arbre:
                           valeur: type_Ib
                           libelle: Type_Ib
                         - valeur: type_II
-                          libelle: "Type_II — renvoi PAN culture de printemps type II (légumes implantés avant le 1er juin, non régis par le PAR)"
+                          libelle: Type_II — renvoi PAN culture de printemps type II (légumes implantés avant le 1er juin, non régis par le PAR)
+                          noeud_cible: q_printemps_II_fertirrigation
                           renvoi_arbre: national
-                          noeud_cible: q_printemps_fertilisant
                         - valeur: type_III
-                          libelle: "Type_III — renvoi PAN culture de printemps type III"
+                          libelle: Type_III — renvoi PAN culture de printemps type III
+                          noeud_cible: q_printemps_III_irriguee
                           renvoi_arbre: national
-                          noeud_cible: q_printemps_fertilisant
                         type_noeud: formulaire
                       valeur: Avant le 1er juin
                       libelle: Avant le 1er juin
