@@ -8,6 +8,8 @@ Vit dans l'app nitrates (comme l'éditeur d'arbre YAML), accessible depuis le
 header de l'admin nitrates.
 """
 
+import json
+
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
@@ -94,13 +96,12 @@ def ouverture_toggle(request):
         est_ouvert=est_ouvert
     )
     if not updated:
-        return HttpResponseBadRequest(f"Département {code!r} inconnu.")
+        return HttpResponseBadRequest("Département inconnu.")
 
     etat = "ouvert" if est_ouvert else "fermé"
     resp = HttpResponse(status=204)
-    resp["HX-Trigger"] = '{"showToast": {"message": "Département %s : %s"}}' % (
-        code,
-        etat,
+    resp["HX-Trigger"] = json.dumps(
+        {"showToast": {"message": "Département %s : %s" % (code, etat)}}
     )
     return resp
 
@@ -129,8 +130,11 @@ def ouverture_toggle_region(request):
     etat = "ouverte" if est_ouvert else "fermée"
     resp = HttpResponse(status=204)
     resp["HX-Refresh"] = "true"
-    resp["HX-Trigger"] = (
-        '{"showToast": {"message": "Région %s %s (%d départements)"}}'
-        % (region_code, etat, n)
+    resp["HX-Trigger"] = json.dumps(
+        {
+            "showToast": {
+                "message": "Région %s %s (%d départements)" % (region_code, etat, n)
+            }
+        }
     )
     return resp
