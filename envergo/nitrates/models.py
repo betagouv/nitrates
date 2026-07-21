@@ -784,10 +784,12 @@ class BrancheValidation(models.Model):
     SCOPE_NATIONAL = "national"
     SCOPE_PAR_GRAND_EST = "par_grand_est"
     SCOPE_ZAR_GRAND_EST = "zar_grand_est"
+    SCOPE_PAR_HAUTS_DE_FRANCE = "par_hauts_de_france"
     SCOPE_CHOICES = [
         (SCOPE_NATIONAL, "PAN (national)"),
         (SCOPE_PAR_GRAND_EST, "PAR Grand Est"),
         (SCOPE_ZAR_GRAND_EST, "ZAR Grand Est"),
+        (SCOPE_PAR_HAUTS_DE_FRANCE, "PAR Hauts-de-France"),
     ]
     scope = models.CharField(
         max_length=20,

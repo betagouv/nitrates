@@ -44,6 +44,10 @@ _SCOPE_VALIDATION_VERS_ARBRE = {
         "scope": DecisionTree.SCOPE_ZAR,
         "region_code": "44",
     },
+    BrancheValidation.SCOPE_PAR_HAUTS_DE_FRANCE: {
+        "scope": DecisionTree.SCOPE_REGION,
+        "region_code": "32",
+    },
 }
 
 
@@ -92,7 +96,8 @@ def validation_index(request):
                 When(scope="national", then=Value(0)),
                 When(scope="par_grand_est", then=Value(1)),
                 When(scope="zar_grand_est", then=Value(2)),
-                default=Value(3),
+                When(scope="par_hauts_de_france", then=Value(3)),
+                default=Value(4),
                 output_field=IntegerField(),
             )
         )
@@ -109,6 +114,7 @@ def validation_index(request):
         ("national", "PAN"),
         ("par_grand_est", "PAR Grand Est"),
         ("zar_grand_est", "ZAR Grand Est"),
+        ("par_hauts_de_france", "PAR Hauts-de-France"),
     ]
     NATURES = [
         ("couvert", "Couvert"),
