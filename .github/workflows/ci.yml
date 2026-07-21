@@ -108,8 +108,18 @@ jobs:
       # local + one-off), pas ici (la CI n'a pas le pivot dev).
 
       # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus tot.
+      #    Autonome (pas de DB requise).
       - name: Migrations coherentes (makemigrations --check)
         run: python manage.py makemigrations --check --dry-run
+
+      # Les garde-fous 2 et 3 ont besoin d'une DB migree + seedee : validate_arbres
+      # charge les referentiels depuis la DB (exhaustivite), et le round-trip
+      # fixture compare a l'etat seede. On prepare donc la base ephemere ici (le
+      # job pytest, lui, recree sa propre base de test isolee ensuite).
+      - name: Preparer la base (migrate + seed referentiels)
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_referentiels
 
       # 2. Un arbre canonique malforme ne doit jamais etre merge sur main.
       #    Valide parse + structure + refs, avec referentiels + scope (sinon faux
@@ -117,14 +127,10 @@ jobs:
       - name: Arbres canoniques valides
         run: python manage.py validate_arbres_actifs
 
-      # 3. La fixture referentiels doit etre rechargeable et round-trip stable :
-      #    seed depuis la fixture, puis dump_referentiels --check (fixture == etat
-      #    seede). Garantit que la fixture committee n'est pas corrompue/perimee
-      #    dans sa forme.
-      - name: Fixture referentiels coherente (seed + round-trip)
-        run: |
-          python manage.py seed_referentiels
-          python manage.py dump_referentiels --check
+      # 3. La fixture referentiels doit etre round-trip stable : dump_referentiels
+      #    --check compare la fixture committee a l'etat seede a l'etape precedente.
+      - name: Fixture referentiels coherente (round-trip)
+        run: python manage.py dump_referentiels --check
 
       # On lance la suite sous coverage.py (deja installe via requirements) au
       # lieu de `pytest` seul, pour mesurer la couverture des apps Python
