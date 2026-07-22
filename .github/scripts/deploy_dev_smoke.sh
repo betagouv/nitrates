@@ -19,13 +19,22 @@ case "$code" in
   *) echo "ECHEC smoke HTTP (code ${code})" >&2; exit 1;;
 esac
 
-echo "== Smoke arbres : arbres actifs + validation =="
-run_oneoff "python manage.py shell -c \"from envergo.nitrates.models import DecisionTree as D; n=D.objects.filter(status='active').count(); print('arbres_actifs='+str(n)); assert n>=1\"" || {
-  echo "ECHEC : aucun arbre actif" >&2; exit 1;
-}
-
-run_oneoff "python manage.py validate_arbres_actifs" || {
-  echo "ECHEC validation arbres canoniques" >&2; exit 1;
-}
+echo "== Smoke arbres : arbres actifs + validation (un seul one-off) =="
+# Un SEUL one-off qui enchaine les deux checks avec '&&'. On se fie au CODE
+# RETOUR du one-off (capture de facon fiable par le marqueur END_..._rcN du
+# helper), PAS a la presence/ordre d'un marqueur texte dans les logs : ceux-ci
+# arrivent en desordre et avec latence cote Scalingo (source de faux negatifs).
+# rc==0 <=> le compte d'arbres ET la validation ont reussi.
+# On desarme 'set -e' autour de l'appel pour pouvoir lire rc (sinon le script
+# sortirait avant la ligne rc=$?).
+set +e
+out=$(run_oneoff "python manage.py shell -c \"from envergo.nitrates.models import DecisionTree as D; n=D.objects.filter(status='active').count(); assert n>=1, 'aucun arbre actif'; print('arbres_actifs='+str(n))\" && python manage.py validate_arbres_actifs")
+rc=$?
+set -e
+echo "$out"
+if [ "$rc" -ne 0 ]; then
+  echo "ECHEC smoke arbres (rc=$rc : compte arbres ou validation KO)" >&2
+  exit 1
+fi
 
 echo "Smoke OK."
