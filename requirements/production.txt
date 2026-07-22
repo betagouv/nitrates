@@ -33,6 +33,10 @@ backoff==2.2.1
     # via
     #   -r base.txt
     #   gql
+backports-zstd==1.6.0
+    # via
+    #   -r base.txt
+    #   py7zr
 billiard==4.2.1
     # via
     #   -r base.txt
@@ -43,6 +47,10 @@ botocore==1.40.4
     # via
     #   boto3
     #   s3transfer
+brotli==1.2.0
+    # via
+    #   -r base.txt
+    #   py7zr
 build==1.3.0
     # via
     #   -r base.txt
@@ -65,10 +73,6 @@ charset-normalizer==3.4.2
     # via
     #   -r base.txt
     #   requests
-cryptography==48.0.1
-    # via
-    #   -r base.txt
-    #   mozilla-django-oidc
 click==8.2.1
     # via
     #   -r base.txt
@@ -96,6 +100,10 @@ cligj==0.7.2
     # via
     #   -r base.txt
     #   fiona
+cryptography==48.0.1
+    # via
+    #   -r base.txt
+    #   mozilla-django-oidc
 dacite==1.9.2
     # via -r base.txt
 django==4.2.30
@@ -114,9 +122,10 @@ django==4.2.30
     #   django-phonenumber-field
     #   django-redis
     #   django-storages
+    #   mozilla-django-oidc
 django-allauth==65.14.1
     # via -r base.txt
-django-anymail[sendinblue]==13.0.1
+django-anymail[sendinblue]==14.0
     # via -r base.txt
 django-appconf==1.1.0
     # via
@@ -147,7 +156,9 @@ django-redis==6.0.0
 django-storages[boto3]==1.14.6
     # via -r production.in
 et-xmlfile==2.0.0
-    # via openpyxl
+    # via
+    #   -r base.txt
+    #   openpyxl
 faker==37.5.3
     # via -r base.txt
 fiona==1.10.1
@@ -166,8 +177,13 @@ idna==3.15
     # via
     #   -r base.txt
     #   anyio
+    #   django-anymail
     #   requests
     #   yarl
+inflate64==1.0.4
+    # via
+    #   -r base.txt
+    #   py7zr
 jmespath==1.0.1
     # via
     #   boto3
@@ -190,6 +206,10 @@ multidict==6.6.3
     # via
     #   -r base.txt
     #   yarl
+multivolumefile==0.2.3
+    # via
+    #   -r base.txt
+    #   py7zr
 numpy==2.3.2
     # via
     #   -r base.txt
@@ -203,6 +223,7 @@ packaging==25.0
     #   build
     #   gunicorn
     #   kombu
+    #   wheel
 phonenumbers==9.0.10
     # via
     #   -r base.txt
@@ -219,22 +240,40 @@ propcache==0.3.2
     # via
     #   -r base.txt
     #   yarl
-pygments==2.20.0
-    # via -r base.txt
+psutil==7.2.2
+    # via
+    #   -r base.txt
+    #   py7zr
 psycopg[binary]==3.2.9
     # via -r base.txt
 psycopg-binary==3.2.9
     # via
     #   -r base.txt
     #   psycopg
+py7zr==1.1.3
+    # via -r base.txt
+pybcj==1.0.8
+    # via
+    #   -r base.txt
+    #   py7zr
 pycparser==3.0
     # via
     #   -r base.txt
     #   cffi
+pycryptodomex==3.23.0
+    # via
+    #   -r base.txt
+    #   py7zr
+pygments==2.20.0
+    # via -r base.txt
 pyjwt==2.13.0
     # via
     #   -r base.txt
     #   mozilla-django-oidc
+pyppmd==1.3.1
+    # via
+    #   -r base.txt
+    #   py7zr
 pyproj==3.7.2
     # via -r base.txt
 pyproject-hooks==1.2.0
@@ -259,8 +298,6 @@ pytz==2025.2
     # via -r base.txt
 pyyaml==6.0.2
     # via -r base.txt
-py7zr==1.1.3
-    # via -r base.txt
 qrcode==8.2
     # via
     #   -r base.txt
@@ -282,6 +319,7 @@ requests==2.33.0
     # via
     #   -r base.txt
     #   django-anymail
+    #   mozilla-django-oidc
     #   requests-toolbelt
 requests-toolbelt==1.0.0
     # via -r base.txt
@@ -320,6 +358,10 @@ text-unidecode==1.3
     # via
     #   -r base.txt
     #   python-slugify
+texttable==1.7.0
+    # via
+    #   -r base.txt
+    #   py7zr
 tqdm==4.67.1
     # via -r base.txt
 typing-extensions==4.15.0
@@ -327,6 +369,7 @@ typing-extensions==4.15.0
     #   -r base.txt
     #   anyio
     #   psycopg
+    #   referencing
 tzdata==2025.2
     # via
     #   -r base.txt
