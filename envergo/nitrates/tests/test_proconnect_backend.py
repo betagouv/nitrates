@@ -76,6 +76,26 @@ def test_filter_email_case_insensitive(backend):
 
 
 @pytest.mark.django_db
+def test_filter_email_fallback_rejects_unverified_email(backend):
+    """F3 (refs #150) : le fallback email ne matche pas si l'IdP dit
+    explicitement que l'email n'est pas verifie."""
+    User.objects.create(email="known@example.com", name="Foo", is_staff=True)
+    claims = {"sub": "x", "email": "known@example.com", "email_verified": False}
+    users = backend.filter_users_by_claims(claims)
+    assert users.count() == 0
+
+
+@pytest.mark.django_db
+def test_filter_email_fallback_ok_when_verified_absent(backend):
+    """F3 : compat -- si le claim email_verified est absent (certains flux ne
+    l'envoient pas), on ne bloque pas, le fallback email reste actif."""
+    user = User.objects.create(email="known@example.com", name="Foo", is_staff=True)
+    claims = {"sub": "x", "email": "known@example.com"}
+    users = backend.filter_users_by_claims(claims)
+    assert list(users) == [user]
+
+
+@pytest.mark.django_db
 def test_update_user_persists_sub_first_login(backend):
     """A la 1ere connexion, on persiste le sub pour les futures reconnexions."""
     user = User.objects.create(email="known@example.com", name="Foo", is_staff=True)
