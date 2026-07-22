@@ -42,30 +42,60 @@ run_oneoff() {
   fi
   echo "run_oneoff: $off lance ($tag)" >&2
 
-  # Poll : jusqu'a 90 x 4s = 6 min. On s'arrete des qu'on voit notre marqueur END.
-  local logs="" i
-  for i in $(seq 1 90); do
+  # Poll robuste : deux signaux de fin possibles, chacun avec latence variable
+  # d'indexation cote Scalingo :
+  #   (a) notre marqueur END_..._rcN  -> fin fiable + code retour ;
+  #   (b) "[manager] ... has stopped" du conteneur -> le one-off est termine,
+  #       mais le marqueur peut ne pas encore etre indexe -> on continue a
+  #       relire quelques tours pour le recuperer avant d'abandonner.
+  # On lit LARGE (-n 1000) pour ne pas tronquer, et on ne renonce qu'apres avoir
+  # vu le stop ET epuise une fenetre de grace de relecture.
+  # Le marqueur de fin qu'on cherche est la LIGNE DE SORTIE du conteneur :
+  #   "... [one-off-XXXX] END_..._rcN"  avec N numerique.
+  # ATTENTION : les logs contiennent AUSSI une ligne "[manager] ... started with
+  # the command 'echo BEGIN...; ...; echo END_..._rc$rc'" qui reproduit le texte
+  # du marqueur (litteral, avec "$rc"). Il faut donc matcher STRICTEMENT le
+  # marqueur emis par le conteneur : prefixe "[one-off-XXXX] " + END + rc SUIVI
+  # D'UN CHIFFRE. Sinon on matche l'echo de la commande et on sort au tour 1
+  # (bug vecu 2026-07-22).
+  local end_re="\[$off\] ${end}_rc[0-9]"
+  local logs="" i grace=0 stopped=0
+  for i in $(seq 1 120); do
     sleep 4
     logs=$(scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" \
-           logs --filter "$off" -n 400 2>/dev/null || true)
-    if echo "$logs" | grep -q "${end}_rc"; then
+           logs --filter "$off" -n 1000 2>/dev/null || true)
+    # (a) vrai marqueur de sortie trouve -> succes immediat
+    if echo "$logs" | grep -qE "$end_re"; then
       break
+    fi
+    # (b) conteneur arrete : fenetre de grace pour laisser le marqueur s'indexer.
+    if echo "$logs" | grep -q "\[$off\].*has stopped"; then
+      stopped=1
+    fi
+    if [ "$stopped" = "1" ]; then
+      grace=$((grace + 1))
+      [ "$grace" -ge 8 ] && break
     fi
   done
 
-  # Extrait la portion entre BEGIN et END (notre sortie), en retirant les
-  # prefixes de log Scalingo (date + [one-off-xxxx]).
+  # Extrait la portion entre BEGIN et END (notre sortie), sans les prefixes log.
+  # On ne garde que les vraies lignes du conteneur ([one-off-XXXX]) pour ne pas
+  # inclure la ligne [manager] "started with the command".
   local body
   body=$(echo "$logs" \
+    | grep -F "[$off] " \
     | sed -E "s/.*\[$off\] //" \
-    | awk "/${begin}/{f=1;next} /${end}_rc/{f=0} f")
+    | awk "/^${begin}$/{f=1;next} /^${end}_rc[0-9]/{f=0} f")
   echo "$body"
 
-  # Code retour de la commande distante.
+  # Code retour : le rc du VRAI marqueur de sortie (ligne [one-off-XXXX]).
   local rc
-  rc=$(echo "$logs" | grep -oE "${end}_rc[0-9]+" | tail -1 | grep -oE '[0-9]+$' || echo "")
+  rc=$(echo "$logs" | grep -oE "$end_re" | tail -1 | grep -oE '[0-9]+$' || echo "")
   if [ -z "$rc" ]; then
-    echo "run_oneoff: marqueur de fin introuvable (timeout ?)" >&2
+    # Marqueur jamais vu apres la fenetre de grace. C'est un vrai probleme
+    # (timeout ou latence logs extreme) : on echoue explicitement. Ne PAS
+    # supposer le succes -- un smoke doit rester conservateur.
+    echo "run_oneoff: marqueur END non capte (stopped=$stopped) apres $((i*4))s" >&2
     return 1
   fi
   return "$rc"
