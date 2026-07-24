@@ -35,6 +35,15 @@ class ProConnectBackend(OIDCAuthenticationBackend):
         if not email:
             return self.UserModel.objects.none()
 
+        # Fallback email : n'existe que pour la 1re connexion, avant que
+        # `proconnect_sub` soit persiste (ensuite le match se fait sur `sub`).
+        # On ne fait confiance a l'email que s'il est verifie par l'IdP, pour
+        # ne pas rattacher un compte pre-provisionne sur un email non prouve
+        # (F3 pentest 2026-06-18, refs #150). Aucune creation ici : create_user
+        # leve SuspiciousOperation, donc le pire cas reste borne.
+        if claims.get("email_verified") is False:
+            return self.UserModel.objects.none()
+
         return self.UserModel.objects.filter(email__iexact=email)
 
     def create_user(self, claims):
