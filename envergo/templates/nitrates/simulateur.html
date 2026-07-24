@@ -63,6 +63,8 @@
   <script defer src="{% static_v 'nitrates/form_autoscroll.js' %}"></script>
   {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
   <script defer src="{% static_v 'nitrates/reset_form.js' %}"></script>
+  {# #255 : anti-collision des dates du calendrier statique (logique du dynamique) #}
+  <script defer src="{% static_v 'nitrates/calendrier_bornes_layout.js' %}"></script>
   {# Reformatage cosmetique front-only de questions a rallonge (#192) : swap du #}
   {# texte brut vers une version paragraphee, sans toucher a l'arbre. #}
   <script defer src="{% static_v 'nitrates/question_reformat.js' %}"></script>

@@ -1391,6 +1391,7 @@
     // construction de la phrase de justification (conditionToText), seulement
     // son emplacement d'affichage.
     const pucesParRegime = {}; // regime -> [html <li>...]
+    let tooltipSeq = 0; // ids uniques des infobulles DSFR (#248)
     for (const seg of segments) {
       const regime = seg.regime;
       if (!REGIME_COULEUR_ZONE[regime]) continue; // libre/vert : gere a part
@@ -1406,7 +1407,13 @@
         const src = periodeSourcePourSegment(seg, actives);
         const condTxt = justificationInterdiction(src);
         if (condTxt) {
-          ligne += ` <span class="calc-cal__recap-info" tabindex="0" role="img" aria-label="${escapeHtml(condTxt)}" data-tooltip="${escapeHtml(condTxt)}">ⓘ</span>`;
+          // #248 : infobulle DSFR (bouton + tooltip role=tooltip, clic + hover
+          // geres par le JS DSFR), a la place du picto ⓘ + data-tooltip custom.
+          const tid = `tooltip-calc-recap-${tooltipSeq++}`;
+          const esc = escapeHtml(condTxt);
+          ligne +=
+            ` <button class="fr-btn--tooltip fr-btn calc-cal__recap-info" type="button" aria-describedby="${tid}">Justification</button>` +
+            `<span class="fr-tooltip fr-placement" id="${tid}" role="tooltip" aria-hidden="true">${esc}</span>`;
         }
       }
       (pucesParRegime[regime] = pucesParRegime[regime] || []).push(

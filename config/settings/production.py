@@ -46,6 +46,14 @@ SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 SESSION_COOKIE_SECURE = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-secure
 CSRF_COOKIE_SECURE = True
+# nitrates(securite): SameSite explicite pour le flow OIDC ProConnect (F4, refs #150).
+# "Lax" : le callback ProConnect est une navigation top-level GET, donc compatible ;
+# "Strict" casserait le retour d'authentification. REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+# nitrates(securite): origines de confiance CSRF figées sur les hôtes autorisés,
+# en https (F4, refs #150). REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS]
 # https://docs.djangoproject.com/en/dev/topics/security/#ssl-https
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-seconds
 # TODO: set this to 60 seconds first and then to 518400 once you prove the former works
@@ -291,7 +299,10 @@ SELF_DECLARATION_FORM_ID = env("DJANGO_SELF_DECLARATION_FORM_ID", default="")
 
 TRANSFER_EVAL_EMAIL_FORM_ID = env("DJANGO_TRANSFER_EVAL_EMAIL_FORM_ID", default="")
 
-ADMIN_OTP_REQUIRED = env.bool("DJANGO_ADMIN_OTP_REQUIRED", default=True)
+# nitrates(securite): OTP admin forcé en dur en prod (F4, refs #150) — plus de
+# lecture d'env var qui, mal positionnée, ferait sauter l'OTP silencieusement.
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+ADMIN_OTP_REQUIRED = True
 
 # This should never be used, it's better to use the more specific `FROM_EMAIL` setting below
 # However, in we were to forget to manually set the `from` header in an outgoing email,
