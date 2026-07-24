@@ -753,10 +753,24 @@ ul.calc-cal__recap-list {
 
 /* Picto info ⓘ : porte la justification en tooltip (#159, data-tooltip +
    bindTooltips). Discret, cliquable/focusable pour l'accessibilite. */
-.calc-cal__recap-info {
-  cursor: help;
-  color: var(--blue-france-sun-113-625, #000091);
-  margin-left: 0.15rem;
+
+/* #248 : declencheur d'infobulle DSFR du recap du calendrier dynamique.
+   Meme traitement que .periodes-info (statique) : icone DSFR agrandie et
+   bouton centre verticalement sur le texte de la puce. */
+.calc-cal__recap-info.fr-btn--tooltip {
+  margin-left: 0.25rem;
+  min-height: 1.25rem;
+  max-height: 1.25rem;
+  min-width: 1.25rem;
+  max-width: 1.25rem; /* garde overflow:hidden du label "Justification" */
+  padding: 0;
+  vertical-align: -0.3em;
+}
+
+.calc-cal__recap-info.fr-btn--tooltip::before {
+  --icon-size: 1.25rem;
+
+  margin: 0;
 }
 
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */

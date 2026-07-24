@@ -897,9 +897,25 @@ ul.periodes-liste {
 /* #248 : declencheur d'infobulle DSFR (bouton) inline dans la liste des
    periodes. On garde l'icone/le comportement DSFR, on aligne juste le bouton
    sur le texte de la puce. */
+
+/* #248 : declencheur d'infobulle DSFR inline dans une liste de periodes.
+   L'icone DSFR par defaut (--icon-size: 1rem) est trop petite et le bouton
+   (min-height: 2rem) s'aligne mal sur la ligne de texte. On agrandit l'icone
+   et on centre le bouton verticalement sur le texte de la puce. */
 .periodes-info.fr-btn--tooltip {
-  margin-left: 0.15rem;
-  vertical-align: middle;
+  margin-left: 0.25rem;
+  min-height: 1.25rem;
+  max-height: 1.25rem;
+  min-width: 1.25rem;
+  max-width: 1.25rem; /* garde overflow:hidden du label "Justification" */
+  padding: 0;
+  vertical-align: -0.3em; /* centre l'icone sur la hauteur de la ligne (24px) */
+}
+
+.periodes-info.fr-btn--tooltip::before {
+  --icon-size: 1.25rem; /* 20px au lieu de 16px */
+
+  margin: 0;
 }
 
 /* ─── Focus clavier visible sur tous les boutons/liens d'action (Carte #154,
