@@ -199,14 +199,15 @@
 }
 
 /* #247 : espacement de 10px entre les options radio d'une meme question, pour
-   qu'elles ne soient pas collees. Le conteneur des options ([data-cascade] cote
-   form principal, ou le groupe QC) empile les .fr-radio-group ; on les aere avec
-   un gap homogene -> bloc compact et regulier. */
-.form-question-group [data-cascade],
-.form-question-group .qc-question {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+   qu'elles ne soient pas collees. On ajoute une marge entre deux options
+   consecutives (le combinateur `+` ne cible que des options qui SE SUIVENT
+   dans le flux). IMPORTANT : ne PAS mettre `display:flex/gap` sur le conteneur
+   [data-cascade] -> ca reafficherait les radios masques par le hack couvert en
+   2 questions (.couvert-split__origin-hidden { display:none }) et casserait le
+   formulaire. On garde donc le flux normal et un simple margin-top. */
+.form-question-group [data-cascade] .fr-radio-group + .fr-radio-group,
+.form-question-group .qc-question .fr-radio-group + .fr-radio-group {
+  margin-top: 10px;
 }
 
 .form-question-group .fr-radio-group:focus-within {
