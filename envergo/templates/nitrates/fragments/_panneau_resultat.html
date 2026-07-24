@@ -131,11 +131,20 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                   <li>
                     {{ puce.phrase }}
                     {% if puce.justification %}
-                      <span class="periodes-info"
-                            tabindex="0"
-                            role="img"
-                            aria-label="{{ puce.justification }}"
-                            title="{{ puce.justification }}">ⓘ</span>
+                      {% comment %}
+                      #248 : infobulle DSFR (icone DSFR + affichage au clic +
+                      hover, gere par le JS DSFR) a la place du title natif du
+                      navigateur. Id unique par puce via les compteurs de boucle.
+                      {% endcomment %}
+                      <button class="fr-btn--tooltip fr-btn periodes-info"
+                              type="button"
+                              aria-describedby="tooltip-periode-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                        Justification
+                      </button>
+                      <span class="fr-tooltip fr-placement"
+                            id="tooltip-periode-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                            role="tooltip"
+                            aria-hidden="true">{{ puce.justification }}</span>
                     {% endif %}
                   </li>
                 {% endfor %}

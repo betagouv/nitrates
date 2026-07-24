@@ -893,10 +893,12 @@ ul.periodes-liste {
   list-style-position: outside;
 }
 
-.periodes-info {
-  cursor: help;
-  color: #000091;
+/* #248 : declencheur d'infobulle DSFR (bouton) inline dans la liste des
+   periodes. On garde l'icone/le comportement DSFR, on aligne juste le bouton
+   sur le texte de la puce. */
+.periodes-info.fr-btn--tooltip {
   margin-left: 0.15rem;
+  vertical-align: middle;
 }
 
 /* ─── Focus clavier visible sur tous les boutons/liens d'action (Carte #154,
