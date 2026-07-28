@@ -7,7 +7,7 @@
     "champs_prefill": {
       "occupation_sol": "sol_non_cultive"
     },
-    "ordre_affichage": 0
+    "ordre_affichage": 2
   }
 },
 {
@@ -16,7 +16,7 @@
     "identifiant": "culture_hiver",
     "libelle_public": "Culture d'hiver (culture principale implantée l'année civile en cours et récoltée l'année suivante)",
     "champs_prefill": {},
-    "ordre_affichage": 1
+    "ordre_affichage": 3
   }
 },
 {
@@ -25,7 +25,7 @@
     "identifiant": "culture_printemps",
     "libelle_public": "Culture de printemps (culture principale implantée et récoltée pendant la même année civile)",
     "champs_prefill": {},
-    "ordre_affichage": 2
+    "ordre_affichage": 4
   }
 },
 {
@@ -34,7 +34,7 @@
     "identifiant": "prairies_ou_luzerne",
     "libelle_public": "Prairies ou luzerne",
     "champs_prefill": {},
-    "ordre_affichage": 3
+    "ordre_affichage": 5
   }
 },
 {
@@ -43,7 +43,7 @@
     "identifiant": "autres_cultures_principales",
     "libelle_public": "Autres cultures principales (cultures pérennes, vergers, vignes, cultures maraîchères et cultures porte-graines)",
     "champs_prefill": {},
-    "ordre_affichage": 4
+    "ordre_affichage": 6
   }
 },
 {
@@ -52,7 +52,7 @@
     "identifiant": "couvert_intercultures_longue",
     "libelle_public": "Couvert d'interculture longue",
     "champs_prefill": {},
-    "ordre_affichage": 5
+    "ordre_affichage": 0
   }
 },
 {
@@ -61,7 +61,7 @@
     "identifiant": "couvert_intercultures_courte",
     "libelle_public": "Couvert d'interculture courte",
     "champs_prefill": {},
-    "ordre_affichage": 6
+    "ordre_affichage": 1
   }
 },
 {

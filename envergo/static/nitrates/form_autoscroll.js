@@ -74,13 +74,16 @@
   }
 
   // Map : id de l'element qui se revele -> doit-on viser sa section parente ?
-  // - sections entieres (#section-culture via #form-after-localisation,
-  //   #categorie_fertilisant-wrapper dans #section-fertilisant) : oui, on
-  //   cadre sur le titre de section.
+  // - sections entieres (#categorie_fertilisant-wrapper dans #section-fertilisant)
+  //   : oui, on cadre sur le titre de section.
   // - wrappers intermediaires (sous_culture_form, sous_fertilisant) : non, on
   //   cadre pile sur la nouvelle question.
+  //
+  // #263 : PAS de scroll vers #section-culture apres la recherche par
+  // localisation. On veut que l'agriculteur reste sur la carte pour affiner
+  // son point / trouver sa parcelle, au lieu d'etre emmene direct au formulaire
+  // (surtout genant sur petit ecran). Le point par defaut reste pose.
   var ETAPES = [
-    { id: "section-culture", section: false },
     { id: "sous_culture_form-wrapper", section: false },
     { id: "section-fertilisant", section: false },
     { id: "categorie_fertilisant-wrapper", section: false },
@@ -111,25 +114,10 @@
     obs.observe(el, { attributes: true, attributeFilter: ["hidden"] });
   });
 
-  // Cas special "section-culture" : c'est #form-after-localisation qui change
-  // de `hidden` (au clic carte), pas #section-culture directement. On observe
-  // donc le conteneur et on scrolle vers la section Culture qu'il contient.
-  var zoneApresLoc = document.getElementById("form-after-localisation");
-  if (zoneApresLoc) {
-    var dejaRevele = estVisible(zoneApresLoc);
-    var obsLoc = new MutationObserver(function () {
-      if (estVisible(zoneApresLoc) && !dejaRevele) {
-        dejaRevele = true;
-        scrollVers(
-          document.getElementById("section-culture") || zoneApresLoc
-        );
-      }
-    });
-    obsLoc.observe(zoneApresLoc, {
-      attributes: true,
-      attributeFilter: ["hidden"],
-    });
-  }
+  // #263 : plus de scroll auto vers #section-culture au moment ou la zone
+  // apres-localisation se revele (clic carte / recherche). L'utilisateur reste
+  // sur la carte pour affiner son point. Le scroll ne reprend qu'a partir du
+  // choix de la categorie de culture (etapes ci-dessus).
 
   // Dernier pas : apres le choix du sous-fertilisant (fin de cascade), aucune
   // nouvelle etape ne se revele -> on amene au bouton de soumission. On ecoute

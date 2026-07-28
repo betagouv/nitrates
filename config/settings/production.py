@@ -299,10 +299,11 @@ SELF_DECLARATION_FORM_ID = env("DJANGO_SELF_DECLARATION_FORM_ID", default="")
 
 TRANSFER_EVAL_EMAIL_FORM_ID = env("DJANGO_TRANSFER_EVAL_EMAIL_FORM_ID", default="")
 
-# nitrates(securite): OTP admin forcé en dur en prod (F4, refs #150) — plus de
-# lecture d'env var qui, mal positionnée, ferait sauter l'OTP silencieusement.
-# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
-ADMIN_OTP_REQUIRED = True
+# nitrates(securite): OTP admin (F4, refs #150). Défaut True (sécurisé), mais
+# pilotable par env pour les environnements de test/UAT où les comptes n'ont pas
+# encore de device TOTP provisionné (sinon boucle de login post-ProConnect).
+# En prod : ne PAS positionner la var (reste True). REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+ADMIN_OTP_REQUIRED = env.bool("DJANGO_ADMIN_OTP_REQUIRED", default=True)
 
 # This should never be used, it's better to use the more specific `FROM_EMAIL` setting below
 # However, in we were to forget to manually set the `from` header in an outgoing email,
