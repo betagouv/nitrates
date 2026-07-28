@@ -2615,10 +2615,9 @@ plafonnements:
 regles_partagees:
 - regle:
     id: r_cie_courte_types_0_I_II
-    type: libre
+    type: autorisation_sous_condition
     message: Couvert d'interculture courte, types 0, I (Ia ou Ib) ou II.
     periodes:
     - au: 30/06
       du: 01/07
-      regime: libre
     code_prescription: pc15
