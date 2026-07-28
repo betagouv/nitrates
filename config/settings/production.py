@@ -328,54 +328,56 @@ FROM_EMAIL = {
 
 SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=FROM_EMAIL["amenagement"]["admin"])
 
-# Whenever we are confident the csp policy is ok, move the rules from the "report only"
-# settings to this setting.
-SECURE_CSP = {}
+# Politique CSP resserrée au périmètre réel de nitrates (#261).
+#
+# On N'hérite PAS des origines Envergo (crisp.chat, sentry-cdn,
+# demarches-simplifiees...) : le fork nitrates n'utilise aucun de ces services.
+# On n'autorise que ce que le simulateur appelle réellement, pour ne pas
+# élargir la surface d'attaque par défaut.
+#
+# Surface réseau externe réelle (audit des templates + JS du simulateur) :
+#   - data.geopf.fr        : tuiles carto IGN/Géoplateforme (WMTS) + géocodage
+#   - api-adresse.data.gouv.fr, geo.api.gouv.fr : autocomplétion / commune (BAN)
+#   - Cellar S3            : médias (captures de validation)
+#   - sentry.incubateur.net : monitoring erreurs
+#   - Matomo beta.gouv     : stats (à implémenter prochainement, autorisé en amont)
+# Tout le reste (scripts, styles, fonts) est servi en propre ('self').
+# 'unsafe-inline' reste nécessaire tant que des <script>/style inline existent
+# dans les templates (migration vers nonce = chantier séparé).
+#
+# L'admin (éditeur YAML CodeMirror via cdnjs/unpkg) élargit cette politique
+# au cas par cas via csp_update, pas ici — cf. views_admin_yaml.
+_GEOPF = "https://data.geopf.fr"  # IGN / Géoplateforme (carto + géocodage)
+_BAN = "https://api-adresse.data.gouv.fr"  # Base Adresse Nationale
+_GEO_API = "https://geo.api.gouv.fr"  # Reverse commune
+_CELLAR_S3 = "https://*.cellar-c2.services.clever-cloud.com"  # Médias validation
+_SENTRY = "https://sentry.incubateur.net"  # Monitoring erreurs (loader JS + envoi)
+_MATOMO = "https://*.beta.gouv.fr"  # Stats Matomo (à venir)
 
-SECURE_CSP_REPORT_ONLY = {
+_CSP_POLICY = {
     "default-src": [CSP.SELF],
-    "script-src": [
-        CSP.SELF,
-        CSP.UNSAFE_INLINE,
-        "https://*.crisp.chat",
-        "https://sentry.incubateur.net",
-        "https://browser.sentry-cdn.com",
-        "https://*.data.gouv.fr",
-        "https://*.beta.gouv.fr",
-    ],
-    "connect-src": [
-        CSP.SELF,
-        "https://data.geopf.fr",  # New address autocomplete api
-        "https://*.data.gouv.fr",  # Address autocomplete api
-        "https://geo.api.gouv.fr",  # Reverse geocode commune (nitrates simulateur)
-        "https://*.beta.gouv.fr",  # Stats
-        "https://sentry.incubateur.net",
-        "https://*.crisp.chat",
-        "wss://*.crisp.chat",
-    ],
-    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE, "https://*.crisp.chat"],
-    "img-src": [
-        CSP.SELF,
-        "https://data.geopf.fr",  # Leaflet geoportail images
-        "https://*.s3.fr-par.scw.cloud",
-        "data:",
-        "https://*.crisp.chat",
-        "https://static.demarches-simplifiees.fr",
-    ],
-    "font-src": [CSP.SELF, "https://*.crisp.chat"],
-    "media-src": [CSP.SELF, "https://*.s3.fr-par.scw.cloud", "https://*.crisp.chat"],
-    "frame-src": [
-        CSP.SELF,
-        "https://*.crisp.chat",
-        "https://*.data.gouv.fr",  # Matomo iframe opt-out
-        "https://*.beta.gouv.fr",
-    ],
-    "worker-src": [CSP.SELF, "blob:", "https://*.crisp.chat"],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE, _SENTRY, _MATOMO],
+    "connect-src": [CSP.SELF, _GEOPF, _BAN, _GEO_API, _SENTRY, _MATOMO],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "img-src": [CSP.SELF, _GEOPF, _CELLAR_S3, "data:", _MATOMO],
+    "font-src": [CSP.SELF],
+    "media-src": [CSP.SELF, _CELLAR_S3],
+    "frame-src": [CSP.SELF, _MATOMO],  # iframe opt-out CNIL Matomo
+    "worker-src": [CSP.SELF, "blob:"],
     "object-src": [CSP.NONE],
     "base-uri": [CSP.SELF],
     "form-action": [CSP.SELF],
     "report-uri": "/csp/reports/",
 }
+
+# Enforce la politique (header Content-Security-Policy). Peut être basculé en
+# report-only seul via DJANGO_SECURE_CSP_ENFORCE=false en cas de régression.
+if env.bool("DJANGO_SECURE_CSP_ENFORCE", default=True):
+    SECURE_CSP = _CSP_POLICY
+else:
+    SECURE_CSP = {}
+
+SECURE_CSP_REPORT_ONLY = _CSP_POLICY
 
 RATELIMIT_IP_META_KEY = "HTTP_X_REAL_IP"
 
