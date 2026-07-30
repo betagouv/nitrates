@@ -84,6 +84,13 @@
   // son point / trouver sa parcelle, au lieu d'etre emmene direct au formulaire
   // (surtout genant sur petit ecran). Le point par defaut reste pose.
   var ETAPES = [
+    // #272 : questions successives du flow culture/couvert (revelees une a une
+    // par question_couvert_flow.js via `hidden`). On les scrolle comme les
+    // autres etapes des qu'elles apparaissent.
+    { id: "q_type_couvert-wrapper", section: false },
+    { id: "q_couvert_recolte-wrapper", section: false },
+    { id: "q_sous_culture-wrapper", section: false },
+    { id: "q_dates_couvert-wrapper", section: false },
     { id: "sous_culture_form-wrapper", section: false },
     { id: "section-fertilisant", section: false },
     { id: "categorie_fertilisant-wrapper", section: false },

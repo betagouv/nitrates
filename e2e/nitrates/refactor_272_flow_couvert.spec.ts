@@ -104,6 +104,39 @@ test('#272 couvert longue CINE, destruction après 01/01 -> cine_apres_0101', as
   expect(await hidden(page, 'id_sous_culture')).toBe('cine_apres_0101');
 });
 
+test('#272 date-picker : le calendrier s ouvre et un jour est cliquable (fix clipping)', async ({ page }) => {
+  await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
+  await page.waitForLoadState('networkidle');
+
+  await pickFlow(page, 'cflow_destination', 0); // couvert
+  await pickFlow(page, 'cflow_type_couvert', 0); // longue
+  await pickFlow(page, 'cflow_couvert_recolte', 0); // récolté
+
+  // Ouvre le picker du semis en cliquant l'input.
+  await page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]').click();
+  // Le popup est ancré sur <body> en position:fixed -> visible et non clippé.
+  const popup = page.locator('.calc-cal__picker--fixed');
+  await expect(popup).toBeVisible();
+  // Un jour de la grille est cliquable (le bug : la grille etait masquee).
+  const jour10 = popup.locator('.calc-cal__picker-day[data-jour="10"]');
+  await expect(jour10).toBeVisible();
+  await jour10.click();
+
+  // La valeur saisie reflete le jour clique (mois par defaut = janvier).
+  const v = await page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]').inputValue();
+  expect(v).toMatch(/^10\/\d{2}$/);
+  expect(await hidden(page, 'id_date_semis_couvert')).toBe(v);
+});
+
+test('#272 label sol_non_cultivé porte la parenthèse explicative', async ({ page }) => {
+  await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
+  await page.waitForLoadState('networkidle');
+  await pickFlow(page, 'cflow_destination', 2); // culture principale
+  const dernier = page.locator('#q_type_couvert label').last();
+  await expect(dernier).toContainText('Sol non cultivé');
+  await expect(dernier).toContainText('surface non utilisée en vue d');
+});
+
 test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 précision', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');

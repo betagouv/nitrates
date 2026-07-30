@@ -251,6 +251,16 @@
   margin-bottom: 0;
 }
 
+/* Popup du date-picker Q4 ancre sur <body> en position: fixed (#272) : sans ca
+   il etait clippe par `.results-row { overflow: clip }` et la grille du
+   calendrier restait invisible -> impossible de choisir un jour. `top`/`left`
+   sont poses en JS depuis le rect de l'input. z-index tres haut pour passer
+   au-dessus du form et de la carte Leaflet. */
+.calc-cal__picker--fixed {
+  position: fixed;
+  z-index: 2000;
+}
+
 /* ─── Carte ────────────────────────────────────────────────────────── */
 
 /* Leaflet pose des elements de proxy (.leaflet-proxy) hors viewport

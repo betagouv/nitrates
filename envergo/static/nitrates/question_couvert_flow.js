@@ -59,6 +59,13 @@
     "sol_non_cultive",
   ];
 
+  // Libellés surchargés côté flow (#272) sans toucher aux référentiels : la
+  // carte demande une parenthèse explicative sur « Sol non cultivé ».
+  var LABELS_CULTURE_OVERRIDE = {
+    sol_non_cultive:
+      "Sol non cultivé (surface non utilisée en vue d'une production agricole : ni semé, ni récolté, ni fauché, ni pâturé pendant une campagne culturale)",
+  };
+
   // Q1 — 4 réponses, mais 2 valeurs métier (couvert / culture_principale).
   var Q1_OPTIONS = [
     { val: "couvert", label: "Sur un couvert" },
@@ -313,7 +320,11 @@
     var opts = CATS_CULTURE_ORDRE.filter(function (cle) {
       return cats[cle];
     }).map(function (cle) {
-      return { val: cle, label: cats[cle].libelle_public || cle };
+      return {
+        val: cle,
+        label:
+          LABELS_CULTURE_OVERRIDE[cle] || cats[cle].libelle_public || cle,
+      };
     });
     rendreRadios(c, "cflow_type_couvert", opts, onChangeTypeCulture, function () {
       // Culture principale : question suivante = précision sous_culture (si la
@@ -528,7 +539,28 @@
     var open = function () {
       if (openPicker) openPicker.close();
       var popup = createPickerPopup(inputEl);
-      field.appendChild(popup);
+      // Le popup est ancré sur <body> en position: fixed, PAS dans le
+      // .calc-cal__field : un ancêtre du form (.results-row { overflow: clip })
+      // clippait sinon la grille du calendrier -> impossible de choisir un jour
+      // (bug remonté #272). On le place à la main sous l'input via son rect.
+      popup.classList.add("calc-cal__picker--fixed");
+      document.body.appendChild(popup);
+      var positionner = function () {
+        var r = inputEl.getBoundingClientRect();
+        // Le popup est en position: fixed. On le place sous l'input si la place
+        // le permet, sinon AU-DESSUS (sinon il déborde sous le viewport quand le
+        // champ est bas dans la page). left borné pour rester à l'écran.
+        var h = popup.offsetHeight || 300;
+        var placeDessous = r.bottom + 6 + h <= window.innerHeight;
+        var top = placeDessous ? r.bottom + 6 : Math.max(6, r.top - 6 - h);
+        var left = Math.min(
+          r.left,
+          Math.max(6, window.innerWidth - (popup.offsetWidth || 268) - 6)
+        );
+        popup.style.top = top + "px";
+        popup.style.left = left + "px";
+      };
+      positionner();
       var outside = function (e) {
         if (!popup.contains(e.target) && e.target !== inputEl) {
           openPicker.close();
@@ -539,8 +571,14 @@
           popup.remove();
           openPicker = null;
           document.removeEventListener("mousedown", outside, true);
+          window.removeEventListener("scroll", positionner, true);
+          window.removeEventListener("resize", positionner);
         },
       };
+      // Repositionne le popup si la page scrolle / se redimensionne pendant
+      // qu'il est ouvert (position: fixed -> il faut suivre l'input).
+      window.addEventListener("scroll", positionner, true);
+      window.addEventListener("resize", positionner);
       setTimeout(function () {
         document.addEventListener("mousedown", outside, true);
       }, 0);
