@@ -156,6 +156,24 @@
     if (dansBornes(inp, jjmm)) return "";
     const lc = deduireLabelCourt(inp);
     const d = (v) => jjmmLisible(v);
+    // #272 : pour la destruction du couvert, la borne decoule de la BRANCHE
+    // choisie en amont -> on guide vers « recommencez une simulation » plutot
+    // que d'exiger juste une date dans la borne (frustration : l'utilisateur ne
+    // peut PAS sortir de la borne ici).
+    if (inp.id === "date_destruction_couvert") {
+      if (inp.max && !inp.min) {
+        return (
+          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
+          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+        );
+      }
+      if (inp.min && !inp.max) {
+        return (
+          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
+          `Pour une destruction avant cette date, recommencez une simulation.`
+        );
+      }
+    }
     if (inp.max && !inp.min) {
       return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
     }
@@ -175,6 +193,29 @@
     const intro = `D'après le type de couvert sélectionné, la ${lc}`;
     // jjmmLisible retourne "31 décembre" (mois en toutes lettres, #159).
     const d = (jjmm) => jjmmLisible(jjmm);
+
+    // #272 : cas particulier de la date de DESTRUCTION du couvert. Sa borne
+    // (max 31/12 pour la branche « avant 31/12 » ; min 01/01 pour « après
+    // 01/01 ») decoule de la BRANCHE choisie en amont dans le formulaire (le
+    // couvert est-il encore en place apres le 1er janvier ?). Si l'utilisateur
+    // veut sortir de cette borne, il ne peut pas ici : il doit RECOMMENCER la
+    // simulation pour repartir sur l'autre branche. On rend donc le message
+    // actionnable au lieu d'expliquer seulement la contrainte.
+    if (inp.id === "date_destruction_couvert") {
+      if (inp.max && !inp.min) {
+        return (
+          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
+          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+        );
+      }
+      if (inp.min && !inp.max) {
+        return (
+          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
+          `Pour une destruction avant cette date, recommencez une simulation.`
+        );
+      }
+    }
+
     if (inp.max && !inp.min) {
       return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
     }
@@ -592,6 +633,8 @@
       justificationInterdiction,
       annoterBorne,
       jourAgricoleToLisible,
+      messageBornePicker,
+      messageHorsBornes,
       TOTAL_JOURS,
       setData: (d) => {
         data = d || {};
