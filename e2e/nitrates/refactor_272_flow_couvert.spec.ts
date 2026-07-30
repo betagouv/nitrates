@@ -269,6 +269,42 @@ test('#272 auto-scroll : après saisie des dates, on scrolle vers la section Fer
   // On a bien scrollé vers la section Fertilisant après les dates.
   const targets = await page.evaluate(() => (window as any).__scrollTargets as string[]);
   expect(targets).toContain('section-fertilisant');
+
+  // Puis choix de la catégorie de fertilisant -> scroll vers la sous-question.
+  await page.evaluate(() => ((window as any).__scrollTargets = []));
+  await pickFlow(page, 'categorie_fertilisant', 1); // lisiers (a des sous-fertilisants)
+  await page.waitForTimeout(400);
+  const targets2 = await page.evaluate(() => (window as any).__scrollTargets as string[]);
+  expect(targets2).toContain('sous_fertilisant-wrapper');
+});
+
+test('#272 note picker destruction : affichée seulement sur un mois avec jours indispo', async ({ page }) => {
+  // Résultat couvert avant 31/12 (destruction bornée max 31/12).
+  const url =
+    `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
+    '&categorie_culture=couvert_intercultures_longue' +
+    '&sous_culture_form=couvert_non_recolte_plus_en_place_apres_3112' +
+    '&occupation_sol=couvert_intercultures&sous_culture=cine_avant_3112' +
+    '&date_semis_couvert=15/08&date_destruction_couvert=15/11' +
+    '&categorie_fertilisant=fumiers&sous_fertilisant=fumier_volaille&type_fertilisant=type_Ia' +
+    '&plan_epandage=icpe_a';
+  await page.goto(url);
+  await page.waitForLoadState('networkidle');
+  await page.locator('[data-calc-cal-root] input[data-input-id="date_destruction_couvert"]').click();
+  await page.waitForTimeout(300);
+
+  // Novembre (tout dispo) : la note est masquée.
+  await expect(page.locator('[data-calc-cal-root] [data-mois-label]')).toHaveText('Novembre');
+  await expect(page.locator('.calc-cal__picker-note')).toBeHidden();
+
+  // On avance jusqu'à janvier (jours indispo -> après le 31/12) : note visible.
+  await page.locator('.calc-cal__picker-nav[data-nav="next"]').click(); // décembre
+  await page.waitForTimeout(120);
+  await page.locator('.calc-cal__picker-nav[data-nav="next"]').click(); // janvier
+  await page.waitForTimeout(150);
+  await expect(page.locator('[data-calc-cal-root] [data-mois-label]')).toHaveText('Janvier');
+  await expect(page.locator('.calc-cal__picker-note')).toBeVisible();
+  await expect(page.locator('.calc-cal__picker-note')).toContainText('recommencez une simulation');
 });
 
 test('#272 result page : changer une question du flow invalide le résultat et repasse en saisie', async ({ page }) => {

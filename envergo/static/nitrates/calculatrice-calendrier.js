@@ -1914,11 +1914,16 @@
         <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
       </div>
       <div class="calc-cal__picker-grid" data-grid></div>
-      ${noteBorne ? `<p class="calc-cal__picker-note">${escapeHtml(noteBorne)}</p>` : ""}
+      ${noteBorne ? `<p class="calc-cal__picker-note" data-note hidden>${escapeHtml(noteBorne)}</p>` : ""}
     `;
 
     const moisLabel = popup.querySelector("[data-mois-label]");
     const grid = popup.querySelector("[data-grid]");
+    // La note « recommencez une simulation » ne doit apparaitre QUE sur les mois
+    // qui contiennent des jours indisponibles (hors borne). Sur un mois
+    // entierement dispo (ex l'utilisateur reste dans les mois autorises), on ne
+    // pollue pas l'affichage avec un texte inutile.
+    const note = popup.querySelector("[data-note]");
 
     function render() {
       moisLabel.textContent = MOIS_LABELS[state.mois - 1][1];
@@ -1935,11 +1940,13 @@
       for (let i = 0; i < offset; i++) {
         cells.push('<button type="button" class="calc-cal__picker-day calc-cal__picker-day--empty" disabled></button>');
       }
+      let moisAJoursIndispo = false;
       for (let j = 1; j <= maxJour; j++) {
         const isSel = j === state.jour && state.mois === current.mois;
         const jjmm =
           String(j).padStart(2, "0") + "/" + String(state.mois).padStart(2, "0");
         const horsBorne = inpBorne ? !dansBornes(inpBorne, jjmm) : false;
+        if (horsBorne) moisAJoursIndispo = true;
         const cls =
           "calc-cal__picker-day" +
           (isSel ? " calc-cal__picker-day--selected" : "") +
@@ -1948,6 +1955,10 @@
           `<button type="button" class="${cls}" data-jour="${j}"${horsBorne ? " disabled" : ""}>${j}</button>`,
         );
       }
+      // Note « recommencez une simulation » : affichée seulement si le mois
+      // courant contient au moins un jour indisponible (#272). Sur un mois tout
+      // dispo, on ne montre pas ce texte inutile.
+      if (note) note.hidden = !moisAJoursIndispo;
       grid.innerHTML = cells.join("");
       grid.querySelectorAll("[data-jour]").forEach((btn) => {
         btn.addEventListener("click", () => {

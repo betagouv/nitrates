@@ -152,6 +152,31 @@
   // sur la carte pour affiner son point. Le scroll ne reprend qu'a partir du
   // choix de la categorie de culture (etapes ci-dessus).
 
+  // #272 : les sous-questions cascade (sous_fertilisant, sous_culture_form) sont
+  // remplies par CONTENU (cascade.js re-render leurs radios dans [data-cascade]),
+  // pas toujours par une transition `hidden` -> l'observer d'attribut ci-dessus
+  // peut manquer la revelation, notamment en iterant (page chargee avec un
+  // resultat : le wrapper etait deja `hidden=false`, cascade re-render dedans
+  // sans toucher a `hidden`, donc aucune mutation d'attribut). On complete donc
+  // par un scroll DIRECT au change de la categorie parente, une fois que
+  // cascade.js a rendu la sous-question (tick suivant).
+  //   choix categorie_fertilisant -> scroll « Precisez la categorie de fertilisant »
+  //   choix categorie_culture (couvert exclu, gere par le flow) -> sous_culture_form
+  function scrollVersWrapperSiVisible(id) {
+    var w = document.getElementById(id);
+    if (estVisible(w)) scrollVers(w);
+  }
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t || t.type !== "radio" || !t.checked) return;
+    if (t.name === "categorie_fertilisant") {
+      // Laisse cascade.js rendre sous_fertilisant, puis scrolle dessus.
+      setTimeout(function () {
+        scrollVersWrapperSiVisible("sous_fertilisant-wrapper");
+      }, 60);
+    }
+  });
+
   // Dernier pas : apres le choix du sous-fertilisant (fin de cascade), aucune
   // nouvelle etape ne se revele -> on amene au bouton de soumission. On ecoute
   // les `change` sur le champ sous_fertilisant (delegation, car ses radios sont
