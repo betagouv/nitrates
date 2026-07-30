@@ -537,8 +537,42 @@
       elmt.addEventListener("change", function () {
         onDateChange(elmt);
       });
+      // Accessibilité clavier (#272) : Entrée ou flèche bas sur le champ ouvre
+      // le calendrier et donne le focus au jour sélectionné -> tout se fait au
+      // clavier (Tab pour entrer, Entrée pour ouvrir, flèches pour naviguer,
+      // Entrée pour valider, focus passe ensuite au champ/section suivant).
+      elmt.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === "ArrowDown") {
+          // N'ouvre pas si l'utilisateur a tapé une date valide et appuie
+          // Entrée pour la valider : dans ce cas on laisse le change + on avance.
+          if (e.key === "Enter" && /^\d{2}\/\d{2}$/.test(elmt.value.trim())) {
+            elmt.dispatchEvent(new Event("change", { bubbles: true }));
+            avancerApresDate(elmt);
+            return;
+          }
+          e.preventDefault();
+          ouvrirPicker(elmt);
+        }
+      });
       attachPicker(elmt);
     });
+  }
+
+  // Après qu'une date est saisie/choisie, on avance le focus : semis -> champ
+  // destruction ; destruction -> 1er radio du fertilisant (ou bouton si prêt).
+  function avancerApresDate(inputEl) {
+    var id = inputEl.dataset.inputId;
+    if (id === "date_semis_couvert") {
+      var destr = document.querySelector(
+        '#q_dates_couvert input[data-input-id="date_destruction_couvert"]'
+      );
+      if (destr) {
+        destr.focus();
+        return;
+      }
+    }
+    // destruction (ou pas de champ suivant) : on passe au fertilisant.
+    focusApresCouvert();
   }
 
   function onDateChange(elmt) {
@@ -572,57 +606,73 @@
   };
   var openPicker = null;
 
+  // Ouvre le date-picker pour `inputEl`. Fonction module-level pour être
+  // appelable depuis le keydown du champ (Entrée/flèche bas) et depuis le clic.
+  function ouvrirPicker(inputEl) {
+    var field = inputEl.closest(".calc-cal__field");
+    if (!field) return;
+    if (openPicker) openPicker.close();
+    var popup = createPickerPopup(inputEl);
+    // Le popup est ancré sur <body> en position: fixed, PAS dans le
+    // .calc-cal__field : un ancêtre du form (.results-row { overflow: clip })
+    // clippait sinon la grille du calendrier -> impossible de choisir un jour
+    // (bug remonté #272). On le place à la main sous l'input via son rect.
+    popup.classList.add("calc-cal__picker--fixed");
+    document.body.appendChild(popup);
+    var positionner = function () {
+      var r = inputEl.getBoundingClientRect();
+      // Le popup est en position: fixed. On le place sous l'input si la place
+      // le permet, sinon AU-DESSUS (sinon il déborde sous le viewport quand le
+      // champ est bas dans la page). left borné pour rester à l'écran.
+      var h = popup.offsetHeight || 300;
+      var placeDessous = r.bottom + 6 + h <= window.innerHeight;
+      var top = placeDessous ? r.bottom + 6 : Math.max(6, r.top - 6 - h);
+      var left = Math.min(
+        r.left,
+        Math.max(6, window.innerWidth - (popup.offsetWidth || 268) - 6)
+      );
+      popup.style.top = top + "px";
+      popup.style.left = left + "px";
+    };
+    positionner();
+    var outside = function (e) {
+      if (!popup.contains(e.target) && e.target !== inputEl) {
+        openPicker.close();
+      }
+    };
+    openPicker = {
+      input: inputEl,
+      close: function (opts) {
+        popup.remove();
+        openPicker = null;
+        document.removeEventListener("mousedown", outside, true);
+        window.removeEventListener("scroll", positionner, true);
+        window.removeEventListener("resize", positionner);
+        // Fermeture au clavier (Échap/Entrée) : on rend le focus au champ pour
+        // que Tab reprenne la navigation à partir de là.
+        if (opts && opts.focusInput) inputEl.focus();
+      },
+    };
+    // Repositionne le popup si la page scrolle / se redimensionne pendant
+    // qu'il est ouvert (position: fixed -> il faut suivre l'input).
+    window.addEventListener("scroll", positionner, true);
+    window.addEventListener("resize", positionner);
+    setTimeout(function () {
+      document.addEventListener("mousedown", outside, true);
+    }, 0);
+    // Focus le jour sélectionné pour la navigation clavier immédiate.
+    var jourSel =
+      popup.querySelector(".calc-cal__picker-day--selected") ||
+      popup.querySelector(".calc-cal__picker-day:not([disabled])");
+    if (jourSel) jourSel.focus();
+  }
+
   function attachPicker(inputEl) {
     var field = inputEl.closest(".calc-cal__field");
     if (!field) return;
-    var open = function () {
-      if (openPicker) openPicker.close();
-      var popup = createPickerPopup(inputEl);
-      // Le popup est ancré sur <body> en position: fixed, PAS dans le
-      // .calc-cal__field : un ancêtre du form (.results-row { overflow: clip })
-      // clippait sinon la grille du calendrier -> impossible de choisir un jour
-      // (bug remonté #272). On le place à la main sous l'input via son rect.
-      popup.classList.add("calc-cal__picker--fixed");
-      document.body.appendChild(popup);
-      var positionner = function () {
-        var r = inputEl.getBoundingClientRect();
-        // Le popup est en position: fixed. On le place sous l'input si la place
-        // le permet, sinon AU-DESSUS (sinon il déborde sous le viewport quand le
-        // champ est bas dans la page). left borné pour rester à l'écran.
-        var h = popup.offsetHeight || 300;
-        var placeDessous = r.bottom + 6 + h <= window.innerHeight;
-        var top = placeDessous ? r.bottom + 6 : Math.max(6, r.top - 6 - h);
-        var left = Math.min(
-          r.left,
-          Math.max(6, window.innerWidth - (popup.offsetWidth || 268) - 6)
-        );
-        popup.style.top = top + "px";
-        popup.style.left = left + "px";
-      };
-      positionner();
-      var outside = function (e) {
-        if (!popup.contains(e.target) && e.target !== inputEl) {
-          openPicker.close();
-        }
-      };
-      openPicker = {
-        close: function () {
-          popup.remove();
-          openPicker = null;
-          document.removeEventListener("mousedown", outside, true);
-          window.removeEventListener("scroll", positionner, true);
-          window.removeEventListener("resize", positionner);
-        },
-      };
-      // Repositionne le popup si la page scrolle / se redimensionne pendant
-      // qu'il est ouvert (position: fixed -> il faut suivre l'input).
-      window.addEventListener("scroll", positionner, true);
-      window.addEventListener("resize", positionner);
-      setTimeout(function () {
-        document.addEventListener("mousedown", outside, true);
-      }, 0);
-    };
-    inputEl.addEventListener("click", open);
+    inputEl.addEventListener("click", function () {
+      ouvrirPicker(inputEl);
+    });
     var picto = field.querySelector(".calc-cal__field-icon");
     if (picto) {
       picto.style.pointerEvents = "auto";
@@ -630,7 +680,7 @@
       picto.addEventListener("click", function (e) {
         e.preventDefault();
         inputEl.focus();
-        open();
+        ouvrirPicker(inputEl);
       });
     }
   }
@@ -697,15 +747,47 @@
         );
       }
       grid.innerHTML = cells.join("");
+
+      function choisir(jour) {
+        var jj = String(jour).padStart(2, "0");
+        var mm = String(state.mois).padStart(2, "0");
+        inputEl.value = jj + "/" + mm;
+        inputEl.removeAttribute("data-default");
+        inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+        if (openPicker) openPicker.close();
+        // Clavier : après validation d'une date, on avance au champ/section
+        // suivant (destruction après semis, fertilisant après destruction).
+        avancerApresDate(inputEl);
+      }
+
       grid.querySelectorAll("[data-jour]").forEach(function (btn) {
         btn.addEventListener("click", function () {
+          choisir(parseInt(btn.dataset.jour, 10));
+        });
+        // Navigation clavier dans la grille (#272, a11y) : flèches pour se
+        // déplacer d'un jour (±1) ou d'une semaine (±7), Entrée/Espace pour
+        // valider, Échap pour fermer sans choisir.
+        btn.addEventListener("keydown", function (e) {
           var jour = parseInt(btn.dataset.jour, 10);
-          var jj = String(jour).padStart(2, "0");
-          var mm = String(state.mois).padStart(2, "0");
-          inputEl.value = jj + "/" + mm;
-          inputEl.removeAttribute("data-default");
-          inputEl.dispatchEvent(new Event("change", { bubbles: true }));
-          if (openPicker) openPicker.close();
+          var cible = null;
+          if (e.key === "ArrowRight") cible = jour + 1;
+          else if (e.key === "ArrowLeft") cible = jour - 1;
+          else if (e.key === "ArrowDown") cible = jour + 7;
+          else if (e.key === "ArrowUp") cible = jour - 7;
+          else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            choisir(jour);
+            return;
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            if (openPicker) openPicker.close({ focusInput: true });
+            return;
+          } else {
+            return;
+          }
+          e.preventDefault();
+          var next = grid.querySelector('[data-jour="' + cible + '"]');
+          if (next) next.focus();
         });
       });
     }
@@ -715,6 +797,9 @@
         var dir = btn.dataset.nav === "prev" ? -1 : 1;
         state.mois = ((state.mois - 1 + dir + 12) % 12) + 1;
         render();
+        // Refocus un jour après changement de mois (garde la nav clavier).
+        var d = grid.querySelector(".calc-cal__picker-day:not([disabled])");
+        if (d) d.focus();
       });
     });
 

@@ -307,6 +307,43 @@ test('#272 note picker destruction : affichée seulement sur un mois avec jours 
   await expect(page.locator('.calc-cal__picker-note')).toContainText('recommencez une simulation');
 });
 
+test('#272 clavier : saisie des dates au clavier puis focus vers Fertilisant', async ({ page }) => {
+  await page.goto(`/simulateur/?lat=49.05&lng=3.97`);
+  await page.waitForLoadState('networkidle');
+  await pickFlow(page, 'cflow_destination', 0);
+  await pickFlow(page, 'cflow_type_couvert', 0);
+  await pickFlow(page, 'cflow_couvert_recolte', 0);
+
+  // Semis : focus champ -> Entrée ouvre le picker -> Entrée valide le jour.
+  await page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.calc-cal__picker--fixed')).toBeVisible();
+  // Le focus est sur un jour de la grille.
+  expect(
+    await page.evaluate(() =>
+      document.activeElement?.classList.contains('calc-cal__picker-day'),
+    ),
+  ).toBeTruthy();
+  await page.keyboard.press('Enter'); // valide -> ferme -> focus destruction
+  await expect(page.locator('#id_date_semis_couvert')).not.toHaveValue('');
+
+  // Le focus a avancé sur le champ destruction.
+  expect(
+    await page.evaluate(() => (document.activeElement as any)?.dataset?.inputId),
+  ).toBe('date_destruction_couvert');
+
+  // Destruction au clavier de la même façon.
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  await expect(page.locator('#id_date_destruction_couvert')).not.toHaveValue('');
+
+  // Le focus a avancé vers la sélection Fertilisant.
+  expect(
+    await page.evaluate(() => (document.activeElement as any)?.name),
+  ).toBe('categorie_fertilisant');
+});
+
 test('#272 result page : changer une question du flow invalide le résultat et repasse en saisie', async ({ page }) => {
   // Résultat couvert longue CINE avant 31/12 (URL directe -> résultat affiché).
   const url =
