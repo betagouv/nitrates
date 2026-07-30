@@ -492,6 +492,12 @@
       '<div class="calc-cal__form">' +
       DATE_INPUTS.map(function (inp) {
         var cur = (el(inp.hidden) || {}).value || "";
+        // #272 : PAS de placeholder gris (15/08) tant que rien n'est saisi -> il
+        // faisait croire que le champ était rempli et masquait que « Suivant »
+        // était désactivé. Le champ reste VIDE (état requis visible, encadré
+        // rouge via aria-invalid), mais le date-picker s'ouvre quand même sur le
+        // mois indicatif (data-mois-defaut).
+        var champVide = !cur;
         return (
           '<label class="calc-cal__field">' +
           '<span class="calc-cal__field-label">' +
@@ -500,12 +506,13 @@
           '<input type="text" class="fr-input" ' +
           'data-input-id="' +
           escapeHtml(inp.id) +
+          '" data-mois-defaut="' +
+          escapeHtml(inp.placeholder) +
           '" value="' +
           escapeHtml(cur) +
-          '" placeholder="' +
-          escapeHtml(inp.placeholder) +
-          '" pattern="^\\d{2}/\\d{2}$" maxlength="5"' +
-          (cur ? "" : ' data-default="true"') +
+          '" placeholder="jj/mm"' +
+          ' pattern="^\\d{2}/\\d{2}$" maxlength="5"' +
+          (champVide ? ' aria-invalid="true"' : "") +
           ">" +
           SVG_CAL +
           "</label>"
@@ -544,6 +551,11 @@
       return;
     }
     if (el(meta.hidden)) el(meta.hidden).value = val;
+    // Encadré rouge (aria-invalid) tant que le champ est vide : la date est
+    // obligatoire, il faut que ça se voie (sinon l'utilisateur ne comprend pas
+    // pourquoi « Suivant » est désactivé). #272.
+    if (val) elmt.removeAttribute("aria-invalid");
+    else elmt.setAttribute("aria-invalid", "true");
     // La date de destruction pilote l'axe présence (interculture longue).
     appliquerCouvert();
     mettreAJourBouton();
@@ -630,13 +642,17 @@
   }
 
   function createPickerPopup(inputEl) {
-    // Ouvre le calendrier sur la date saisie ; à défaut sur le PLACEHOLDER
-    // (ex 15/08 pour le semis -> août, 15/12 pour la destruction -> décembre),
-    // et seulement en dernier recours sur le 15 janvier. Sans ça, cliquer un
-    // champ vide ouvrait toujours janvier, à contre-sens du placeholder.
+    // Ouvre le calendrier sur la date saisie ; à défaut sur le MOIS INDICATIF
+    // (data-mois-defaut : 15/08 pour le semis -> août, 15/12 pour la
+    // destruction -> décembre), et seulement en dernier recours sur le 15
+    // janvier. Le champ n'affiche plus de placeholder gris (#272) mais garde ce
+    // repère pour l'ouverture du picker.
     var current =
       parseJjmm(inputEl.value) ||
-      parseJjmm(inputEl.getAttribute("placeholder")) || { jour: 15, mois: 1 };
+      parseJjmm(inputEl.getAttribute("data-mois-defaut")) || {
+        jour: 15,
+        mois: 1,
+      };
     var state = { mois: current.mois };
     var popup = document.createElement("div");
     popup.className = "calc-cal__picker";
@@ -794,6 +810,19 @@
     // est déjà résolu côté cascade, on repositionne le flow en conséquence.
     replayDepuisEtat();
     mettreAJourBouton();
+
+    // #272 : quand reset_form invalide un résultat suite au changement d'une
+    // question du flow (retour en mode saisie), on ré-affiche les dates Q4 à
+    // gauche (elles étaient masquées sur la page résultat) pour que
+    // l'utilisateur complète un parcours cohérent avant de relancer.
+    document.addEventListener("nitrates:retour-saisie", function () {
+      if (valeurFlow("cflow_destination") !== "couvert") return;
+      if (!valeurFlow("cflow_type_couvert")) return;
+      if (!valeurFlow("cflow_couvert_recolte")) return;
+      montrerDatesGauche(); // resultatAffiche() est maintenant false -> montre
+      appliquerCouvert();
+      mettreAJourBouton();
+    });
   }
 
   // Reconstruit l'état du flow à partir des valeurs déjà présentes (params URL

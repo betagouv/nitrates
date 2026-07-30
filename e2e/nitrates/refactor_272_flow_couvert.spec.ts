@@ -210,3 +210,56 @@ test('#272 sol non cultivé : pas de Q3 précision, occupation_sol résolu direc
   expect(await estVisible(page, '#q_sous_culture-wrapper')).toBeFalsy();
   expect(await hidden(page, 'id_occupation_sol')).toBe('sol_non_cultive');
 });
+
+test('#272 dates Q4 vides : encadré rouge (aria-invalid), pas de placeholder gris, « Suivant » désactivé', async ({ page }) => {
+  await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
+  await page.waitForLoadState('networkidle');
+  await pickFlow(page, 'cflow_destination', 0); // couvert
+  await pickFlow(page, 'cflow_type_couvert', 0); // longue
+  await pickFlow(page, 'cflow_couvert_recolte', 0); // récolté -> Q4 apparaît
+
+  const semis = page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]');
+  const destr = page.locator('#q_dates_couvert input[data-input-id="date_destruction_couvert"]');
+  // Champs VIDES (pas de valeur pré-remplie « 15/08 » grise) + aria-invalid.
+  expect(await semis.inputValue()).toBe('');
+  await expect(semis).toHaveAttribute('aria-invalid', 'true');
+  await expect(destr).toHaveAttribute('aria-invalid', 'true');
+  // Le gating bloque tant que les 2 dates ne sont pas saisies.
+  await expect(page.locator('#form-simulateur')).toHaveAttribute(
+    'data-couvert-dates-incompletes',
+    '1',
+  );
+
+  // Une fois le semis saisi, son encadré rouge disparaît (mais destruction reste).
+  await semis.fill('15/08');
+  await semis.blur();
+  await expect(semis).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(destr).toHaveAttribute('aria-invalid', 'true');
+});
+
+test('#272 result page : changer une question du flow invalide le résultat et repasse en saisie', async ({ page }) => {
+  // Résultat couvert longue CINE avant 31/12 (URL directe -> résultat affiché).
+  const url =
+    `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
+    '&categorie_culture=couvert_intercultures_longue' +
+    '&sous_culture_form=couvert_non_recolte_plus_en_place_apres_3112' +
+    '&occupation_sol=couvert_intercultures&sous_culture=cine_avant_3112' +
+    '&date_semis_couvert=15/08&date_destruction_couvert=15/11' +
+    '&categorie_fertilisant=fumiers&sous_fertilisant=fumier_volaille&type_fertilisant=type_Ia' +
+    '&plan_epandage=icpe_a';
+  await page.goto(url);
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.results-row.layout--split')).toBeVisible();
+  await expect(page.locator('#form-simulateur')).toHaveAttribute('data-resultat-affiche', '1');
+
+  // L'utilisateur change la question récolté (non récolté -> récolté).
+  await pickFlow(page, 'cflow_couvert_recolte', 0); // récolté
+
+  // Le résultat est invalidé : plus de colonne résultat, retour en mode saisie.
+  await expect(page.locator('.result-col')).toHaveCount(0);
+  await expect(page.locator('#form-simulateur')).not.toHaveAttribute('data-resultat-affiche', '1');
+  // Le bouton « Lancer la simulation » est de nouveau visible.
+  await expect(page.locator('#form-submit-row')).toBeVisible();
+  // Les dates Q4 réapparaissent à gauche pour re-compléter un parcours cohérent.
+  await expect(page.locator('#q_dates_couvert-wrapper')).toBeVisible();
+});

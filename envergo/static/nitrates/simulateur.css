@@ -251,6 +251,15 @@
   margin-bottom: 0;
 }
 
+/* #272 : encadré ROUGE tant qu'une date obligatoire n'est pas saisie. Sans ça
+   (placeholder gris), l'utilisateur croyait le champ rempli et ne comprenait
+   pas pourquoi « Suivant » restait désactivé. On force la bordure rouge +
+   ombre, robuste quel que soit le theme DSFR. */
+.couvert-flow__dates input.fr-input[aria-invalid="true"] {
+  box-shadow: inset 0 -2px 0 0 var(--border-plain-error, #ce0500);
+  border: 1px solid var(--border-plain-error, #ce0500);
+}
+
 /* Popup du date-picker Q4 ancre sur <body> en position: fixed (#272) : sans ca
    il etait clippe par `.results-row { overflow: clip }` et la grille du
    calendrier restait invisible -> impossible de choisir un jour. `top`/`left`
