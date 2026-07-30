@@ -49,6 +49,10 @@ test('#272 couvert interculture longue CINE, destruction avant 31/12', async ({ 
   // Q1 : « Sur un couvert » (index 0 => valeur couvert).
   await pickFlow(page, 'cflow_destination', 0);
   await expect(page.locator('#q_type_couvert-wrapper')).toBeVisible();
+  // Titre Q2 en mode couvert.
+  await expect(page.locator('#q_type_couvert-label')).toContainText(
+    'Quel type de couvert',
+  );
   // Q3/Q4 toujours masquées.
   expect(await estVisible(page, '#q_couvert_recolte-wrapper')).toBeFalsy();
 
@@ -146,6 +150,10 @@ test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 pr
   // Q1 : culture principale (index 2).
   await pickFlow(page, 'cflow_destination', 2);
   await expect(page.locator('#q_type_couvert-wrapper')).toBeVisible();
+  // Le titre de Q2 s'adapte : « catégorie de culture principale », pas « couvert ».
+  await expect(page.locator('#q_type_couvert-label')).toContainText(
+    'Quelle catégorie de culture principale',
+  );
 
   // Q2 culture : 5 options, dernière = sol_non_cultivé.
   const labels = await page.locator('#q_type_couvert label').allTextContents();
@@ -160,7 +168,7 @@ test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 pr
   expect(await hidden(page, 'id_sous_culture')).toBe('colza');
 });
 
-test('#272 page résultat : dates dégagées du form gauche, bandeau + labels « prévue » à droite', async ({ page }) => {
+test('#272 page résultat : dates dégagées du form gauche, bandeau + titre + labels courts à droite', async ({ page }) => {
   // Résultat couvert longue CINE avant 31/12, type Ia + plan épandage autorisation
   // -> feuille calculatrice avec calendrier dynamique (composant + inputs dates).
   const url =

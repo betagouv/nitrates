@@ -302,9 +302,18 @@
     mettreAJourBouton();
   }
 
+  // Le libellé de Q2 dépend de Q1 : « type de couvert » vs « catégorie de
+  // culture principale ». On garde le « * » (champ obligatoire).
+  function setLabelQ2(texte) {
+    var lab = el("q_type_couvert-label");
+    // espace insécable avant « ? » (typo FR), aligné sur le template.
+    if (lab) lab.textContent = texte + " ? *";
+  }
+
   // Q2 — cas couvert : longue / courte.
   function rendreQ2Couvert() {
     var c = el("q_type_couvert");
+    setLabelQ2("Quel type de couvert");
     var opts = Object.keys(CATS_COUVERT).map(function (cle) {
       return { val: cle, label: CATS_COUVERT[cle].label };
     });
@@ -316,6 +325,7 @@
   // Q2 — cas culture principale : 5 catégories, sol_non_cultivé en bas.
   function rendreQ2Culture() {
     var c = el("q_type_couvert");
+    setLabelQ2("Quelle catégorie de culture principale");
     var cats = (referentiels || {}).categories_cultures || {};
     var opts = CATS_CULTURE_ORDRE.filter(function (cle) {
       return cats[cle];

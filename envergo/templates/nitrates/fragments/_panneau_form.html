@@ -183,7 +183,9 @@ dans les deux cas.
 
       {# Q2 couvert — type d'interculture (longue / courte) #}
       <div class="form-question-group" id="q_type_couvert-wrapper" hidden>
-        <p class="form-question-text">Quel type de couvert&nbsp;? *</p>
+        {# Texte adapté par question_couvert_flow.js selon Q1 : « Quel type de #}
+        {# couvert ? » (couvert) ou « Quelle catégorie de culture principale ? ». #}
+        <p class="form-question-text" id="q_type_couvert-label">Quel type de couvert&nbsp;? *</p>
         <div id="q_type_couvert" class="couvert-flow__group"></div>
       </div>
 
