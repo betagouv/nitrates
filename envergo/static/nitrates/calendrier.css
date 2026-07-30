@@ -504,6 +504,35 @@
   align-items: flex-end; /* labels de hauteurs differentes -> input aligne en bas */
 }
 
+/* #272 : bandeau violet derriere les 2 champs dates du calendrier dynamique,
+   facon question complementaire, pour que ces champs ressortent face au
+   calendrier colore juste en dessous (les utilisateurs ne les voyaient pas et
+   ne comprenaient pas qu'il faut jouer avec les dates). On resserre aussi le
+   label du champ (gap reduit) : trop d'air entre le libelle et l'input. */
+.calc-cal__form--highlight {
+  background: var(--background-open-blue-france, #e3e3fd);
+  border-left: 3px solid var(--border-action-high-blue-france, #6a6af4);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.calc-cal__form--highlight .calc-cal__field {
+  gap: 0.15rem; /* resserre label <-> input (defaut 0.35rem) */
+}
+
+.calc-cal__form--highlight .calc-cal__field-label {
+  /* Label sur 1 ligne : plus besoin de reserver 2 lignes (les 2 libelles
+     « Date prevue de … du couvert » tiennent), on colle l'input au label. */
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+[data-fr-theme="dark"] .calc-cal__form--highlight {
+  background: rgb(106 106 244 / 16%);
+  border-left-color: #8585f6;
+}
+
 /* Input "date" type JJ/MM : large pour matcher le figma, avec un picto
    calendrier en suffix pour signaler que c'est un champ date. La valeur
    initiale (placeholder du YAML) est grisee tant que l'utilisateur n'a

@@ -17,7 +17,10 @@ login au clic sur "Lancer la simulation". MoulinetteView sert les deux chemins
 (`/` via HomeView et `/simulateur/`), donc resoumettre sur place fonctionne
 dans les deux cas.
 {% endcomment %}
-<form id="form-simulateur" method="get" action="{{ request.path }}">
+<form id="form-simulateur"
+      method="get"
+      action="{{ request.path }}"
+      {% if afficher_resultat and not qc_en_attente %}data-resultat-affiche="1"{% endif %}>
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
   <div class="form-section" id="section-localisation">

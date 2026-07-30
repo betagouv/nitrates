@@ -668,6 +668,15 @@
   // que les 2 calendriers (statique / dynamique) aient le meme look. Les
   // classes utilisees sont `.calendrier-epandage*`.
 
+  // #272 : on préfixe « Date … » -> « Date prévue … » à l'affichage seulement
+  // (label de l'arbre inchangé, pas de redeploiement). Idempotent : si le label
+  // contient déjà « prévue », on ne double pas.
+  function labelPrevu(label) {
+    if (!label) return label;
+    if (/pr[ée]vue/i.test(label)) return label;
+    return label.replace(/^Date\s+de\s+/i, "Date prévue de ");
+  }
+
   function renderMiniForm() {
     // 2 inputs cote a cote, label sur 1 ligne ferme (truncate si trop long)
     // pour eviter que les hauteurs des champs varient selon le label (le
@@ -685,7 +694,7 @@
       '<line x1="16" y1="3" x2="16" y2="6.5"/>' +
       "</svg>";
     return `
-      <div class="calc-cal__form">
+      <div class="calc-cal__form calc-cal__form--highlight">
         ${inputs
           .map((inp) => {
             const isDefault =
@@ -694,7 +703,7 @@
               valeurs[inp.id] === (inp.placeholder || "");
             return `
           <label class="calc-cal__field">
-            <span class="calc-cal__field-label">${escapeHtml(inp.label || inp.id)}</span>
+            <span class="calc-cal__field-label">${escapeHtml(labelPrevu(inp.label || inp.id))}</span>
             <input type="text"
                    class="fr-input"
                    data-input-id="${escapeHtml(inp.id)}"

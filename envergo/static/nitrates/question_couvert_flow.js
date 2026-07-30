@@ -405,10 +405,27 @@
     );
   }
 
-  function onChangeRecolte() {
-    // Q3 répondue : on révèle Q4 (dates) puis on tente de recomposer.
+  // #272 : les 2 champs dates n'apparaissent à GAUCHE que pendant la SAISIE.
+  // Une fois le résultat affiché, ils feraient doublon avec ceux du calendrier
+  // dynamique (à droite, au-dessus du calendrier) qui pilotent déjà le rendu.
+  // On ne les montre donc pas à gauche sur la page résultat.
+  function resultatAffiche() {
+    var form = el("form-simulateur");
+    return !!(form && form.hasAttribute("data-resultat-affiche"));
+  }
+
+  function montrerDatesGauche() {
+    if (resultatAffiche()) {
+      cacher("q_dates_couvert");
+      return;
+    }
     montrer("q_dates_couvert");
     monterDatesSiBesoin();
+  }
+
+  function onChangeRecolte() {
+    // Q3 répondue : on révèle Q4 (dates) puis on tente de recomposer.
+    montrerDatesGauche();
     appliquerCouvert();
     mettreAJourBouton();
   }
@@ -812,16 +829,14 @@
       var recolteCourte =
         sousCulture === "couvert_courte_recolte" ? "recolte" : "non_recolte";
       cocherFlow("cflow_couvert_recolte", recolteCourte);
-      montrer("q_dates_couvert");
-      monterDatesSiBesoin();
+      montrerDatesGauche(); // masqué sur page résultat (doublon calendrier droite)
       return;
     }
     // Longue : couvert_{recolte|non_recolte}_{presence}
     var m = /^couvert_(recolte|non_recolte)_/.exec(sousCulture);
     if (m) {
       cocherFlow("cflow_couvert_recolte", m[1]);
-      montrer("q_dates_couvert");
-      monterDatesSiBesoin();
+      montrerDatesGauche();
       // Les dates elles-mêmes viennent des hidden inputs (params URL), déjà
       // pré-remplis côté template -> renderDatesForm les a repris.
     }

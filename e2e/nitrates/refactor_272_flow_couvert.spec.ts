@@ -158,6 +158,35 @@ test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 pr
   expect(await hidden(page, 'id_sous_culture')).toBe('colza');
 });
 
+test('#272 page résultat : dates dégagées du form gauche, bandeau + labels « prévue » à droite', async ({ page }) => {
+  // Résultat couvert longue CINE avant 31/12, type Ia + plan épandage autorisation
+  // -> feuille calculatrice avec calendrier dynamique (composant + inputs dates).
+  const url =
+    `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
+    '&categorie_culture=couvert_intercultures_longue' +
+    '&sous_culture_form=couvert_non_recolte_plus_en_place_apres_3112' +
+    '&occupation_sol=couvert_intercultures&sous_culture=cine_avant_3112' +
+    '&date_semis_couvert=15/08&date_destruction_couvert=15/11' +
+    '&categorie_fertilisant=fumiers&sous_fertilisant=fumier_volaille&type_fertilisant=type_Ia' +
+    '&plan_epandage=icpe_a';
+  await page.goto(url);
+  await page.waitForLoadState('networkidle');
+
+  // Page résultat (colonne split).
+  await expect(page.locator('.results-row.layout--split')).toBeVisible();
+
+  // Doublon supprimé : les dates Q4 du formulaire GAUCHE sont masquées.
+  await expect(page.locator('#q_dates_couvert-wrapper')).toBeHidden();
+
+  // À DROITE : le calendrier dynamique porte le bandeau violet + les labels
+  // « Date prévue de … ».
+  const highlight = page.locator('[data-calc-cal-root] .calc-cal__form--highlight');
+  await expect(highlight).toBeVisible();
+  const labels = await highlight.locator('.calc-cal__field-label').allTextContents();
+  expect(labels).toContain('Date prévue de semis du couvert');
+  expect(labels).toContain('Date prévue de destruction du couvert');
+});
+
 test('#272 sol non cultivé : pas de Q3 précision, occupation_sol résolu direct', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');
