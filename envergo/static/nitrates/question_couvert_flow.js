@@ -620,7 +620,13 @@
   }
 
   function createPickerPopup(inputEl) {
-    var current = parseJjmm(inputEl.value) || { jour: 15, mois: 1 };
+    // Ouvre le calendrier sur la date saisie ; à défaut sur le PLACEHOLDER
+    // (ex 15/08 pour le semis -> août, 15/12 pour la destruction -> décembre),
+    // et seulement en dernier recours sur le 15 janvier. Sans ça, cliquer un
+    // champ vide ouvrait toujours janvier, à contre-sens du placeholder.
+    var current =
+      parseJjmm(inputEl.value) ||
+      parseJjmm(inputEl.getAttribute("placeholder")) || { jour: 15, mois: 1 };
     var state = { mois: current.mois };
     var popup = document.createElement("div");
     popup.className = "calc-cal__picker";

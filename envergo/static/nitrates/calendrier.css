@@ -507,9 +507,10 @@
 /* #272 : bandeau violet derriere les 2 champs dates du calendrier dynamique,
    facon question complementaire, pour que ces champs ressortent face au
    calendrier colore juste en dessous (les utilisateurs ne les voyaient pas et
-   ne comprenaient pas qu'il faut jouer avec les dates). On resserre aussi le
-   label du champ (gap reduit) : trop d'air entre le libelle et l'input. */
+   ne comprenaient pas qu'il faut jouer avec les dates). Un titre d'intro
+   explique l'interaction. On resserre aussi le label du champ (gap reduit). */
 .calc-cal__form--highlight {
+  display: block; /* on empile titre + rangee de champs */
   background: var(--background-open-blue-france, #e3e3fd);
   border-left: 3px solid var(--border-action-high-blue-france, #6a6af4);
   border-radius: 6px;
@@ -517,15 +518,37 @@
   margin-bottom: 1.25rem;
 }
 
+/* Titre d'intro du bandeau : « Jouer avec les dates … fait evoluer le
+   calendrier ». Guide l'utilisateur qui ne comprenait pas l'interaction. */
+.calc-cal__form-titre {
+  margin: 0 0 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-title-blue-france, #000091);
+}
+
+[data-fr-theme="dark"] .calc-cal__form-titre {
+  color: #c1c1fb;
+}
+
+/* Rangee des 2 champs dates (reprend l'ancien layout flex de .calc-cal__form). */
+.calc-cal__form-champs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
 .calc-cal__form--highlight .calc-cal__field {
   gap: 0.15rem; /* resserre label <-> input (defaut 0.35rem) */
 }
 
 .calc-cal__form--highlight .calc-cal__field-label {
-  /* Label sur 1 ligne : plus besoin de reserver 2 lignes (les 2 libelles
-     « Date prevue de … du couvert » tiennent), on colle l'input au label. */
+  /* Libelles courts (« Date de semis/destruction du couvert ») : tiennent sur
+     une ligne -> on n'a plus besoin de reserver 2 lignes, input colle au label. */
   min-height: 0;
   margin-bottom: 0;
+  white-space: nowrap;
 }
 
 [data-fr-theme="dark"] .calc-cal__form--highlight {

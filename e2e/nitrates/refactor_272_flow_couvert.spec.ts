@@ -117,14 +117,16 @@ test('#272 date-picker : le calendrier s ouvre et un jour est cliquable (fix cli
   // Le popup est ancré sur <body> en position:fixed -> visible et non clippé.
   const popup = page.locator('.calc-cal__picker--fixed');
   await expect(popup).toBeVisible();
+  // Le picker s'ouvre sur le MOIS DU PLACEHOLDER (semis 15/08 -> Août), pas janvier.
+  await expect(popup.locator('[data-mois-label]')).toHaveText('Août');
   // Un jour de la grille est cliquable (le bug : la grille etait masquee).
   const jour10 = popup.locator('.calc-cal__picker-day[data-jour="10"]');
   await expect(jour10).toBeVisible();
   await jour10.click();
 
-  // La valeur saisie reflete le jour clique (mois par defaut = janvier).
+  // La valeur saisie reflete le jour clique dans le mois du placeholder (août = 08).
   const v = await page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]').inputValue();
-  expect(v).toMatch(/^10\/\d{2}$/);
+  expect(v).toBe('10/08');
   expect(await hidden(page, 'id_date_semis_couvert')).toBe(v);
 });
 
@@ -178,13 +180,16 @@ test('#272 page résultat : dates dégagées du form gauche, bandeau + labels «
   // Doublon supprimé : les dates Q4 du formulaire GAUCHE sont masquées.
   await expect(page.locator('#q_dates_couvert-wrapper')).toBeHidden();
 
-  // À DROITE : le calendrier dynamique porte le bandeau violet + les labels
-  // « Date prévue de … ».
+  // À DROITE : le calendrier dynamique porte le bandeau violet + le titre
+  // d'intro, avec les libellés COURTS d'origine (1 ligne).
   const highlight = page.locator('[data-calc-cal-root] .calc-cal__form--highlight');
   await expect(highlight).toBeVisible();
+  await expect(highlight.locator('.calc-cal__form-titre')).toContainText(
+    'Jouer avec les dates du couvert',
+  );
   const labels = await highlight.locator('.calc-cal__field-label').allTextContents();
-  expect(labels).toContain('Date prévue de semis du couvert');
-  expect(labels).toContain('Date prévue de destruction du couvert');
+  expect(labels).toContain('Date de semis du couvert');
+  expect(labels).toContain('Date de destruction du couvert');
 });
 
 test('#272 sol non cultivé : pas de Q3 précision, occupation_sol résolu direct', async ({ page }) => {
