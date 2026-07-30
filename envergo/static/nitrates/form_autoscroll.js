@@ -29,14 +29,21 @@
   // attente OU le resultat final, c'est scroll_resultat.js qui pilote le
   // cadrage (vers la QC / vers la table resultat). Si form_autoscroll agit
   // aussi (replay des etapes du form principal depuis l'URL), les deux scrolls
-  // se battent -> on atterrit sur le form principal au lieu de la QC. On
-  // desactive donc form_autoscroll dans ces cas : il ne sert qu'au parcours de
-  // saisie initial (avant toute soumission).
-  if (
-    document.querySelector("#qc-bloc[data-qc-en-attente='true']") ||
-    document.querySelector(".results-row.layout--split")
-  ) {
-    return;
+  // se battent -> on atterrit sur le form principal au lieu de la QC.
+  //
+  // #272 : on NE désactive PLUS le module en dur au chargement (avant, un
+  // `return` ici tuait l'auto-scroll pour toute la vie de la page dès qu'elle
+  // chargeait avec un résultat/QC -> après un reset_form qui ramène en saisie,
+  // plus aucun auto-scroll, ex en re-jouant les dates couvert). On attache
+  // toujours les observers ; c'est `scrollVers` qui devient un no-op tant qu'un
+  // résultat / une QC en attente est affiché (là scroll_resultat.js commande),
+  // et redevient actif dès qu'on repasse en saisie.
+  function estEnModeResultat() {
+    return !!(
+      document.querySelector("#qc-bloc[data-qc-en-attente='true']") ||
+      document.querySelector(".results-row.layout--split") ||
+      document.querySelector(".result-col")
+    );
   }
 
   var reduceMotion =
@@ -49,6 +56,10 @@
   var dernierScroll = 0;
   function scrollVers(el) {
     if (!el) return;
+    // No-op tant qu'un resultat / une QC en attente est affiche : c'est
+    // scroll_resultat.js qui cadre. On reprend l'auto-scroll des qu'on repasse
+    // en saisie (reset_form retire le resultat). #272.
+    if (estEnModeResultat()) return;
     var maintenant = Date.now();
     // Throttle : evite les scrolls en rafale si plusieurs mutations groupees.
     if (maintenant - dernierScroll < 250) return;
@@ -102,23 +113,38 @@
   }
 
   // Observe chaque etape : quand son `hidden` tombe (revelation), on scrolle.
+  // On garde une reference a l'etat `dejaVisible` de chaque etape pour pouvoir
+  // le re-armer quand on repasse en mode saisie (#272, retour-saisie).
+  var etats = [];
   ETAPES.forEach(function (etape) {
     var el = document.getElementById(etape.id);
     if (!el) return;
     // Ne pas scroller pour les etapes deja visibles au chargement (cas d'un
     // parcours rejoue depuis l'URL : tout est deja la, pas de revelation).
-    var dejaVisible = estVisible(el);
+    var etat = { el: el, etape: etape, dejaVisible: estVisible(el) };
+    etats.push(etat);
     var obs = new MutationObserver(function () {
-      if (estVisible(el) && !dejaVisible) {
+      if (estVisible(el) && !etat.dejaVisible) {
         scrollVers(cibleDepuis(el, etape.section));
-        dejaVisible = true; // une seule fois
+        etat.dejaVisible = true; // une seule fois
       } else if (!estVisible(el)) {
         // L'etape a ete re-cachee (l'user a change un choix en amont) : on
         // re-arme pour rescroller a la prochaine revelation.
-        dejaVisible = false;
+        etat.dejaVisible = false;
       }
     });
     obs.observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  });
+
+  // #272 : quand reset_form ramene en mode saisie apres avoir invalide un
+  // resultat, on resynchronise `dejaVisible` sur la visibilite COURANTE de
+  // chaque etape. Ainsi une etape re-revelee ensuite (ex section fertilisant
+  // apres re-saisie des dates) redeclenche bien un scroll, meme si elle etait
+  // deja visible sous le resultat au chargement de la page.
+  document.addEventListener("nitrates:retour-saisie", function () {
+    etats.forEach(function (etat) {
+      etat.dejaVisible = estVisible(etat.el);
+    });
   });
 
   // #263 : plus de scroll auto vers #section-culture au moment ou la zone

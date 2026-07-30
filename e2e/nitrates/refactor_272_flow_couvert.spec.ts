@@ -237,6 +237,40 @@ test('#272 dates Q4 vides : encadré rouge (aria-invalid), pas de placeholder gr
   await expect(destr).toHaveAttribute('aria-invalid', 'true');
 });
 
+test('#272 auto-scroll : après saisie des dates, on scrolle vers la section Fertilisant', async ({ page }) => {
+  // Page chargée AVEC lat/lng (cas où l'ancien code désactivait l'auto-scroll
+  // en dur -> régression corrigée #272).
+  await page.goto(`/simulateur/?lat=49.05&lng=3.97`);
+  await page.waitForLoadState('networkidle');
+
+  // On trace les cibles de scrollIntoView.
+  await page.evaluate(() => {
+    (window as any).__scrollTargets = [];
+    const orig = Element.prototype.scrollIntoView;
+    (Element.prototype as any).scrollIntoView = function (...a: any[]) {
+      (window as any).__scrollTargets.push(this.id || this.className);
+      return orig.apply(this, a);
+    };
+  });
+
+  await pickFlow(page, 'cflow_destination', 0);
+  await pickFlow(page, 'cflow_type_couvert', 0);
+  await pickFlow(page, 'cflow_couvert_recolte', 0);
+  // Saisie des 2 dates -> révèle la section fertilisant.
+  const semis = page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]');
+  await semis.fill('15/08');
+  await semis.blur();
+  await page.waitForTimeout(300);
+  const destr = page.locator('#q_dates_couvert input[data-input-id="date_destruction_couvert"]');
+  await destr.fill('15/11');
+  await destr.blur();
+  await page.waitForTimeout(500);
+
+  // On a bien scrollé vers la section Fertilisant après les dates.
+  const targets = await page.evaluate(() => (window as any).__scrollTargets as string[]);
+  expect(targets).toContain('section-fertilisant');
+});
+
 test('#272 result page : changer une question du flow invalide le résultat et repasse en saisie', async ({ page }) => {
   // Résultat couvert longue CINE avant 31/12 (URL directe -> résultat affiché).
   const url =
