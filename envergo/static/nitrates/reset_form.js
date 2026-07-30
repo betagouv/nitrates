@@ -380,6 +380,12 @@
   function onChangeChamp(e) {
     const target = e.target;
     if (!target || target.type !== "radio") return;
+    // Radios UI-only du flow culture/couvert (#272) : name prefixe `cflow_`.
+    // Ils ne portent PAS d'etat backend (ils PILOTENT les vrais champs cascade
+    // categorie_culture / sous_culture_form, qui declenchent eux-memes leur
+    // propre change -> elagage correct). Les ignorer ici, sinon `champChange`
+    // serait un nom absent du parcours et elaguerait tout l'aval a tort.
+    if (target.name && target.name.indexOf("cflow_") === 0) return;
     // lat/lng/code_insee ne sont pas des radios -> deja exclus.
     if (!rendurServeurAffiche()) return;
 
