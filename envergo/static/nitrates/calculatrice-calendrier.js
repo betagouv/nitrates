@@ -1474,6 +1474,28 @@
       pucesParRegime.libre = [`<li>${ligneAutorisation}</li>`];
     }
 
+    // #271 : lien vers le drawer des conditions PC, inséré DANS le <ul> de la
+    // section « autorisation sous condition » (comme un <li>), SOUS la/les
+    // période(s) ASC. Ainsi il reste rattaché à la bonne période (avant, un <p>
+    // hors calendrier pouvait suggérer un rattachement à une autre section).
+    // Rendu uniquement si la règle porte des prescriptions/note à montrer.
+    const ascPuces = pucesParRegime.autorisation_sous_condition || [];
+    const aDuContenu =
+      (data.codes_prescription && data.codes_prescription.length) || data.note;
+    if (ascPuces.length && aDuContenu) {
+      const pluriel = ascPuces.length > 1;
+      const texte = pluriel
+        ? "Voir les conditions d'épandage spécifiques pour ces périodes"
+        : "Voir les conditions d'épandage spécifiques pour cette période";
+      ascPuces.push(
+        '<li class="periodes-lien-conditions">' +
+          '<a href="#drawer-conditions" class="fr-link periodes-lien-conditions__link" data-drawer-open="drawer-conditions">' +
+          '<span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>' +
+          escapeHtml(texte) +
+          "</a></li>"
+      );
+    }
+
     // Rendu : une section par regime present, dans l'ordre SECTIONS_RECAP,
     // titre + liste a puces (maquette #159).
     const sectionsHtml = SECTIONS_RECAP.filter(
@@ -1594,26 +1616,12 @@
   // laisse un conteneur [data-drawer-badges-asc] qu'on remplit ici.
   function majBadgesDrawer(regimeParJour) {
     const cible = document.querySelector("[data-drawer-badges-asc]");
-    const lienCalc = document.querySelector("[data-drawer-lien-calc]");
     const segments = computeSegments(regimeParJour).filter(
       (s) => s.regime === "autorisation_sous_condition"
     );
     const nb = segments.length;
 
-    // Lien déclencheur (calculatrice) : masqué s'il n'y a pas de période ASC,
-    // sinon libellé accordé au nombre. #271.
-    if (lienCalc) {
-      lienCalc.hidden = nb === 0;
-      const texte = lienCalc.querySelector("[data-drawer-lien-texte]");
-      if (texte) {
-        texte.textContent =
-          nb > 1
-            ? "Voir les conditions d'épandage spécifiques pour ces périodes"
-            : "Voir les conditions d'épandage spécifiques pour cette période";
-      }
-    }
-
-    // Titre « Période(s) d'application » du drawer, accordé au nombre.
+    // Titre « Période(s) d'application » du drawer, accordé au nombre. #271.
     const label = document.querySelector("[data-drawer-application-label]");
     if (label) {
       label.textContent =

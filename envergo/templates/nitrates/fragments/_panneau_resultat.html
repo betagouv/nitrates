@@ -100,23 +100,13 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           (calendrier_dynamique_couvert), sinon le templatetag standard 12 mois.
           {% endcomment %}
           {% if ev.regle.type == "calculatrice" and ev.regle.composant == "calendrier_dynamique_couvert" %}
-            {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
             {% comment %}
-            #271 : lien vers le drawer pour les règles CALCULATRICE (couvert),
-            placé JUSTE sous le calendrier dynamique (près de son recap ASC), pas
-            après le panneau debug. Affiché/masqué + accordé (singulier/pluriel)
-            par calculatrice-calendrier.js selon la présence d'une période ASC.
+            #271 : pour les couverts (calculatrice), le lien vers le drawer est
+            généré par calculatrice-calendrier.js DANS le <ul> de la section
+            « autorisation sous condition » de son recap (rattaché à la bonne
+            période). Rien à rendre ici hors du composant.
             {% endcomment %}
-            {% if ev.regle.codes_prescription or ev.regle.note %}
-              <p class="periodes-lien-conditions" data-drawer-lien-calc hidden>
-                <a href="#drawer-conditions"
-                   class="fr-link periodes-lien-conditions__link"
-                   data-drawer-open="drawer-conditions">
-                  <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
-                  <span data-drawer-lien-texte>Voir les conditions d'épandage spécifiques pour cette période</span>
-                </a>
-              </p>
-            {% endif %}
+            {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
           {% else %}
             {% calendrier_epandage ev.regle %}
           {% endif %}
