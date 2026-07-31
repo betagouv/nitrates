@@ -16,7 +16,7 @@ test.describe('Nitrates debug view', () => {
     // Le panneau debug parcelle (#nitrates-debug) n'existe que sur
     // `/simulateur/` (la home publique `/` le masque : force_debug=False).
     // h1 narrative validee UX.
-    await expect(page.locator('h1')).toContainText("règles d'épandage");
+    await expect(page.locator('h1')).toContainText("conditions d'épandage");
 
     const map = page.locator('#nitrates-map');
     await expect(map).toBeVisible();

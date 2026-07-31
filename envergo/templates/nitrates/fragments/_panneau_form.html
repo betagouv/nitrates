@@ -17,10 +17,7 @@ login au clic sur "Lancer la simulation". MoulinetteView sert les deux chemins
 (`/` via HomeView et `/simulateur/`), donc resoumettre sur place fonctionne
 dans les deux cas.
 {% endcomment %}
-<form id="form-simulateur"
-      method="get"
-      action="{{ request.path }}"
-      {% if afficher_resultat and not qc_en_attente %}data-resultat-affiche="1"{% endif %}>
+<form id="form-simulateur" method="get" action="{{ request.path }}">
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
   <div class="form-section" id="section-localisation">
@@ -149,89 +146,20 @@ dans les deux cas.
   <div id="form-after-localisation"
        {% if not data.lat or not data.lng %}hidden{% endif %}>
 
-    {% comment %}
-    ─── Culture ou couvert (#272) ─────────────────────────────────────────
-    Refactor du parcours culture/couvert en questions successives (une a la
-    fois). Tout est piloté FRONT par question_couvert_flow.js :
-      Q1  destination_epandage  -> couvert | culture_principale
-      Q2  (couvert)  type_couvert  -> interculture longue / courte
-          (culture) categorie_culture réel (5 catégories, sol_non_cultivé en bas)
-      Q3  (couvert)  couvert récolté / non récolté
-      Q4  (couvert)  dates de semis + destruction (picker JJ/MM DSFR)
-
-    Les vrais champs cascade `categorie_culture` / `sous_culture_form` (source
-    de vérité soumise au backend, rendus par cascade.js) restent dans le DOM
-    mais sont masqués : le flow coche les bons radios et dispatch leur `change`
-    -> cascade.js prend le relais (résolution hidden inputs, cascade fertilisant),
-    exactement comme le faisait l'ancien couvert_split.js. Aucun changement
-    d'arbre ni de référentiels.
-
-    Pour l'interculture longue, la question historique « encore en place après
-    le 1ᵉʳ janvier ? » disparaît : elle est INFÉRÉE de la date de destruction
-    du couvert (Q4). Destruction ≥ 01/01 (inclus, année agricole) => couvert
-    toujours en place après le 1ᵉʳ janvier (branche …_apres_0101) ; sinon plus
-    en place après le 31/12 (branche …_avant_3112).
-    {% endcomment %}
+    {# ─── Culture ────────────────────────────────────────────────────── #}
     <div class="form-section" id="section-culture" style="margin-top: 40px;">
       <h2 class="form-section-title">Culture ou couvert</h2>
 
-      {# Q1 — destination de l'épandage (regroupement UI front, 4 réponses -> 2 familles) #}
-      <div class="form-question-group" id="q_destination_epandage-wrapper">
-        <p class="form-question-text">Vous avez prévu d'épandre&nbsp;? *</p>
-        <div id="q_destination_epandage" class="couvert-flow__group"></div>
+      <div class="form-question-group">
+        <p class="form-question-text">Sur quelle culture ou couvert prévoyez-vous d'épandre ? *</p>
+        <div data-cascade="categorie_culture"></div>
       </div>
 
-      {# Q2 couvert — type d'interculture (longue / courte) #}
-      <div class="form-question-group" id="q_type_couvert-wrapper" hidden>
-        {# Texte adapté par question_couvert_flow.js selon Q1 : « Quel type de #}
-        {# couvert ? » (couvert) ou « Quelle catégorie de culture principale ? ». #}
-        <p class="form-question-text" id="q_type_couvert-label">Quel type de couvert&nbsp;? *</p>
-        <div id="q_type_couvert" class="couvert-flow__group"></div>
-      </div>
-
-      {# Q3 couvert — récolté / non récolté #}
-      <div class="form-question-group" id="q_couvert_recolte-wrapper" hidden>
-        <p class="form-question-text">Le couvert est-il récolté, fauché ou pâturé&nbsp;? *</p>
-        <div id="q_couvert_recolte" class="couvert-flow__group"></div>
-      </div>
-
-      {# Q3 culture principale — précision du type de culture (sous_culture) #}
-      <div class="form-question-group" id="q_sous_culture-wrapper" hidden>
-        <p class="form-question-text">Précisez le type de culture&nbsp;: *</p>
-        <div id="q_sous_culture" class="couvert-flow__group"></div>
-      </div>
-
-      {# Q4 couvert — dates de semis et destruction (picker JJ/MM DSFR, cf. #272) #}
-      <div class="form-question-group" id="q_dates_couvert-wrapper" hidden>
-        <p class="form-question-text">Quelles sont les dates prévues pour ce couvert&nbsp;? *</p>
-        <div id="q_dates_couvert" class="couvert-flow__dates"></div>
-      </div>
-
-      {% comment %}
-      Vrais champs cascade (source de vérité backend). Rendus par cascade.js ;
-      masqués (hidden) car pilotés par le flow ci-dessus. On garde le wrapper
-      #sous_culture_form-wrapper (id attendu par cascade.js) mais toujours caché.
-      {% endcomment %}
-      <div class="couvert-flow__origin-hidden" aria-hidden="true">
-        <div class="form-question-group" id="categorie_culture-wrapper">
-          <div data-cascade="categorie_culture"></div>
-        </div>
-        <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
-          <div data-cascade="sous_culture_form"></div>
-        </div>
+      <div class="form-question-group" id="sous_culture_form-wrapper" hidden>
+        <p class="form-question-text">Précisez le type de culture ou de couvert&nbsp;: *</p>
+        <div data-cascade="sous_culture_form"></div>
       </div>
     </div>
-
-    {# Hidden inputs des dates couvert (Q4) : remplis par le flow, consommés #}
-    {# par le backend (bornes calendrier date_semis/destruction_couvert). #}
-    <input type="hidden"
-           name="date_semis_couvert"
-           id="id_date_semis_couvert"
-           value="{{ data.date_semis_couvert|default:'' }}">
-    <input type="hidden"
-           name="date_destruction_couvert"
-           id="id_date_destruction_couvert"
-           value="{{ data.date_destruction_couvert|default:'' }}">
 
     {% comment %}
   Hidden inputs : occupation_sol + sous_culture sont resolus cote front
