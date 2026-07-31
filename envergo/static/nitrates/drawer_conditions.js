@@ -11,6 +11,18 @@
 
   var ouvert = null; // { drawer, declencheur }
 
+  // Hauteur VISIBLE du bandeau « site en construction » (page publique). 0 s'il
+  // est absent ou masqué (opacité ~0 tant qu'on n'a pas scrollé). Même mesure
+  // que scroll_resultat.js.
+  function hauteurBandeau() {
+    var bandeau = document.querySelector(".nitrates-construction__bar");
+    if (!bandeau) return 0;
+    var r = bandeau.getBoundingClientRect();
+    var style = window.getComputedStyle(bandeau);
+    if (r.height > 0 && parseFloat(style.opacity) > 0.1) return r.height;
+    return 0;
+  }
+
   function ouvrir(drawer, declencheur) {
     if (ouvert) fermer();
     // Reparente le drawer sous <body> : il est en position: fixed et pourrait
@@ -23,6 +35,15 @@
       document.body.appendChild(drawer);
     }
     drawer.hidden = false;
+    // #271 : sur la page publique `/`, un bandeau « site en construction » fixe
+    // occupe le haut (position: fixed, top: 0). Le drawer (top: 0 aussi) passait
+    // dessous -> son en-tête (Fermer) était caché. On décale donc le panneau ET
+    // l'overlay de la hauteur VISIBLE du bandeau.
+    var offsetHaut = hauteurBandeau();
+    var panel = drawer.querySelector(".drawer-conditions__panel");
+    var overlay = drawer.querySelector(".drawer-conditions__overlay");
+    if (panel) panel.style.top = offsetHaut + "px";
+    if (overlay) overlay.style.top = offsetHaut + "px";
     // Force un reflow avant d'ajouter la classe --ouvert pour jouer la transition.
     void drawer.offsetWidth;
     drawer.classList.add("drawer-conditions--ouvert");
