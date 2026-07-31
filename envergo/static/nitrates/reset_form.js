@@ -383,6 +383,36 @@
     // lat/lng/code_insee ne sont pas des radios -> deja exclus.
     if (!rendurServeurAffiche()) return;
 
+    // Radios UI-only du flow culture/couvert (#272) : name prefixe `cflow_`.
+    // Ils PILOTENT les vrais champs cascade (categorie_culture /
+    // sous_culture_form), mais sur la PAGE RESULTAT la recomposition peut
+    // echouer silencieusement (ex interculture longue : la date de destruction
+    // qui infere la branche n'est plus saisie a gauche, elle est masquee ->
+    // pas de recompose) et le resultat resterait affiche sur un etat
+    // incoherent, avec des QC obsoletes. Des qu'un radio du flow change apres
+    // resultat : on INVALIDE le resultat (elague resultat + QC, ré-affiche le
+    // bouton) et on repasse le formulaire en mode SAISIE (retrait de
+    // data-resultat-affiche) -> le flow re-revele alors ses dates Q4 a gauche
+    // pour que l'utilisateur complete un parcours coherent avant de relancer.
+    if (target.name && target.name.indexOf("cflow_") === 0) {
+      const ordreC = ordreParcoursDOM();
+      setTimeout(() => {
+        elaguerResultat();
+        form.removeAttribute("data-resultat-affiche");
+        // Signale au flow de repasser en mode saisie (re-affiche Q4 dates).
+        document.dispatchEvent(new Event("nitrates:retour-saisie"));
+        // Elague l'aval de la partie culture : on repart de categorie_culture,
+        // dont on reprend la valeur COURANTE (le flow l'a repilotee) -> tout
+        // sous_culture / fertilisant / QC en aval est retire de l'URL.
+        reconstruireUrl(
+          "categorie_culture",
+          ordreC,
+          valeurCocheePour("categorie_culture")
+        );
+      }, 0);
+      return;
+    }
+
     // GARDE-FOU anti-boucle (#135) : si le radio modifie est DANS le bloc QC
     // en attente, c'est l'utilisateur qui REPOND a la question bloquante. On ne
     // touche a RIEN : subsidiaires_cascade.js gere la cascade conditionnelle,
