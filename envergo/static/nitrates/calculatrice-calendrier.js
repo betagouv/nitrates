@@ -156,6 +156,24 @@
     if (dansBornes(inp, jjmm)) return "";
     const lc = deduireLabelCourt(inp);
     const d = (v) => jjmmLisible(v);
+    // #272 : pour la destruction du couvert, la borne decoule de la BRANCHE
+    // choisie en amont -> on guide vers « recommencez une simulation » plutot
+    // que d'exiger juste une date dans la borne (frustration : l'utilisateur ne
+    // peut PAS sortir de la borne ici).
+    if (inp.id === "date_destruction_couvert") {
+      if (inp.max && !inp.min) {
+        return (
+          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
+          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+        );
+      }
+      if (inp.min && !inp.max) {
+        return (
+          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
+          `Pour une destruction avant cette date, recommencez une simulation.`
+        );
+      }
+    }
     if (inp.max && !inp.min) {
       return `La date de ${lc} doit être au plus tard le ${d(inp.max)} pour ce type de couvert.`;
     }
@@ -175,6 +193,29 @@
     const intro = `D'après le type de couvert sélectionné, la ${lc}`;
     // jjmmLisible retourne "31 décembre" (mois en toutes lettres, #159).
     const d = (jjmm) => jjmmLisible(jjmm);
+
+    // #272 : cas particulier de la date de DESTRUCTION du couvert. Sa borne
+    // (max 31/12 pour la branche « avant 31/12 » ; min 01/01 pour « après
+    // 01/01 ») decoule de la BRANCHE choisie en amont dans le formulaire (le
+    // couvert est-il encore en place apres le 1er janvier ?). Si l'utilisateur
+    // veut sortir de cette borne, il ne peut pas ici : il doit RECOMMENCER la
+    // simulation pour repartir sur l'autre branche. On rend donc le message
+    // actionnable au lieu d'expliquer seulement la contrainte.
+    if (inp.id === "date_destruction_couvert") {
+      if (inp.max && !inp.min) {
+        return (
+          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
+          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+        );
+      }
+      if (inp.min && !inp.max) {
+        return (
+          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
+          `Pour une destruction avant cette date, recommencez une simulation.`
+        );
+      }
+    }
+
     if (inp.max && !inp.min) {
       return `${intro} intervient nécessairement avant le ${d(inp.max)}.`;
     }
@@ -592,6 +633,8 @@
       justificationInterdiction,
       annoterBorne,
       jourAgricoleToLisible,
+      messageBornePicker,
+      messageHorsBornes,
       TOTAL_JOURS,
       setData: (d) => {
         data = d || {};
@@ -685,7 +728,9 @@
       '<line x1="16" y1="3" x2="16" y2="6.5"/>' +
       "</svg>";
     return `
-      <div class="calc-cal__form">
+      <div class="calc-cal__form calc-cal__form--highlight">
+        <p class="calc-cal__form-titre">Jouer avec les dates du couvert fait évoluer le calendrier d'épandage</p>
+        <div class="calc-cal__form-champs">
         ${inputs
           .map((inp) => {
             const isDefault =
@@ -708,6 +753,7 @@
         `;
           })
           .join("")}
+        </div>
       </div>
     `;
   }
@@ -1868,11 +1914,16 @@
         <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
       </div>
       <div class="calc-cal__picker-grid" data-grid></div>
-      ${noteBorne ? `<p class="calc-cal__picker-note">${escapeHtml(noteBorne)}</p>` : ""}
+      ${noteBorne ? `<p class="calc-cal__picker-note" data-note hidden>${escapeHtml(noteBorne)}</p>` : ""}
     `;
 
     const moisLabel = popup.querySelector("[data-mois-label]");
     const grid = popup.querySelector("[data-grid]");
+    // La note « recommencez une simulation » ne doit apparaitre QUE sur les mois
+    // qui contiennent des jours indisponibles (hors borne). Sur un mois
+    // entierement dispo (ex l'utilisateur reste dans les mois autorises), on ne
+    // pollue pas l'affichage avec un texte inutile.
+    const note = popup.querySelector("[data-note]");
 
     function render() {
       moisLabel.textContent = MOIS_LABELS[state.mois - 1][1];
@@ -1889,11 +1940,13 @@
       for (let i = 0; i < offset; i++) {
         cells.push('<button type="button" class="calc-cal__picker-day calc-cal__picker-day--empty" disabled></button>');
       }
+      let moisAJoursIndispo = false;
       for (let j = 1; j <= maxJour; j++) {
         const isSel = j === state.jour && state.mois === current.mois;
         const jjmm =
           String(j).padStart(2, "0") + "/" + String(state.mois).padStart(2, "0");
         const horsBorne = inpBorne ? !dansBornes(inpBorne, jjmm) : false;
+        if (horsBorne) moisAJoursIndispo = true;
         const cls =
           "calc-cal__picker-day" +
           (isSel ? " calc-cal__picker-day--selected" : "") +
@@ -1902,6 +1955,10 @@
           `<button type="button" class="${cls}" data-jour="${j}"${horsBorne ? " disabled" : ""}>${j}</button>`,
         );
       }
+      // Note « recommencez une simulation » : affichée seulement si le mois
+      // courant contient au moins un jour indisponible (#272). Sur un mois tout
+      // dispo, on ne montre pas ce texte inutile.
+      if (note) note.hidden = !moisAJoursIndispo;
       grid.innerHTML = cells.join("");
       grid.querySelectorAll("[data-jour]").forEach((btn) => {
         btn.addEventListener("click", () => {

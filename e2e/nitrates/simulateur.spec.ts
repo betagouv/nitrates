@@ -50,7 +50,41 @@ async function waitForCascadeReady(page) {
  * NB : `slug` cote JS remplace non-alphanumeric par `_`. Pour les
  * valeurs utilisees ici (alphanum + underscore), c'est identique.
  */
+// #272 : les champs `categorie_culture` / `sous_culture_form` ne sont plus des
+// radios visibles cliquables directement -- ils sont pilotes en coulisse par le
+// flow (question_couvert_flow.js) via des radios `cflow_*`. On rend donc ce
+// helper flow-aware : cliquer une categorie de culture ou une sous-culture passe
+// par les bonnes questions du flow, ce qui coche in fine le vrai champ cascade et
+// declenche la meme resolution backend qu'avant. Les autres champs (fertilisant)
+// restent des radios cascade classiques.
+async function clickFlowRadio(page, name, value) {
+  const input = page.locator(`input[type=radio][name="${name}"][value="${value}"]`).first();
+  const id = await input.getAttribute('id');
+  await page.locator(`label[for="${id}"]`).first().click();
+  await page.waitForTimeout(250);
+}
+
+const CATEGORIES_COUVERT = [
+  'couvert_intercultures_longue',
+  'couvert_intercultures_courte',
+];
+
 async function clickCascadeRadio(page, name, value) {
+  if (name === 'categorie_culture') {
+    if (CATEGORIES_COUVERT.includes(value)) {
+      await clickFlowRadio(page, 'cflow_destination', 'couvert');
+      await clickFlowRadio(page, 'cflow_type_couvert', value);
+    } else {
+      await clickFlowRadio(page, 'cflow_destination', 'culture_principale');
+      await clickFlowRadio(page, 'cflow_type_couvert', value);
+    }
+    return;
+  }
+  if (name === 'sous_culture_form') {
+    // Sous-culture d'une culture principale -> question de précision du flow.
+    await clickFlowRadio(page, 'cflow_sous_culture', value);
+    return;
+  }
   await page.locator(`label[for="id_${name}__${value}"]`).click();
 }
 
@@ -204,10 +238,12 @@ test.describe('Simulateur nitrates : cascade radios', () => {
 
     await clickCascadeRadio(page, 'categorie_culture', 'culture_hiver');
 
-    // Le wrapper sous_culture_form doit etre visible avec au moins colza.
-    await expect(page.locator('#sous_culture_form-wrapper')).toBeVisible();
-    // Le label colza est rendu (l'input lui-meme est masque par DSFR).
-    await expect(page.locator('label[for="id_sous_culture_form__colza"]')).toBeVisible();
+    // #272 : la précision de culture est désormais posée par le flow dans
+    // #q_sous_culture-wrapper (les cflow_sous_culture), avec au moins colza.
+    await expect(page.locator('#q_sous_culture-wrapper')).toBeVisible();
+    await expect(
+      page.locator('input[name="cflow_sous_culture"][value="colza"]'),
+    ).toHaveCount(1);
   });
 
   test('titre section Fertilisant cache tant que le niveau n est pas atteint (#160)', async ({
@@ -222,9 +258,9 @@ test.describe('Simulateur nitrates : cascade radios', () => {
     await expect(page.locator('#section-fertilisant')).toBeHidden();
 
     // On choisit une culture SANS aller jusqu'au fertilisant (couvert court :
-    // sous_culture_form s'affiche mais categorie_fertilisant pas encore).
+    // #272 la question Q3 récolté s'affiche mais categorie_fertilisant pas encore).
     await clickCascadeRadio(page, 'categorie_culture', 'couvert_intercultures_courte');
-    await expect(page.locator('#sous_culture_form-wrapper')).toBeVisible();
+    await expect(page.locator('#q_couvert_recolte-wrapper')).toBeVisible();
     // La section Fertilisant reste cachee (pas de titre orphelin).
     await expect(page.locator('#section-fertilisant')).toBeHidden();
 
@@ -299,6 +335,10 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
 
     await clickCascadeRadio(page, 'categorie_culture', 'sol_non_cultive');
     await expect(page.locator('#id_occupation_sol')).toHaveValue('sol_non_cultive');
+    // Le bouton n'est actif qu'une fois le parcours complet (fertilisant inclus,
+    // gating cascade). On complète la cascade fertilisant avant de lancer.
+    await clickCascadeRadio(page, 'categorie_fertilisant', 'engrais_mineral');
+    await clickCascadeRadio(page, 'sous_fertilisant', 'engrais_azote_mineral');
     await page.locator('button[type="submit"]').click();
 
     // Page resultat

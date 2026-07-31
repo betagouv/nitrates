@@ -202,9 +202,9 @@
    qu'elles ne soient pas collees. On ajoute une marge entre deux options
    consecutives (le combinateur `+` ne cible que des options qui SE SUIVENT
    dans le flux). IMPORTANT : ne PAS mettre `display:flex/gap` sur le conteneur
-   [data-cascade] -> ca reafficherait les radios masques par le hack couvert en
-   2 questions (.couvert-split__origin-hidden { display:none }) et casserait le
-   formulaire. On garde donc le flux normal et un simple margin-top. */
+   [data-cascade] -> ca reafficherait les vrais radios sous_culture_form masques
+   (source de verite pilotee par le flow #272) et casserait le formulaire. On
+   garde donc le flux normal et un simple margin-top. */
 .form-question-group [data-cascade] .fr-radio-group + .fr-radio-group,
 .form-question-group .qc-question .fr-radio-group + .fr-radio-group {
   margin-top: 10px;
@@ -230,16 +230,44 @@
   margin-top: 22px;
 }
 
-/* ─── Couvert interculture longue : saisie en 2 questions (hack front) ───
-   Les 4 radios d'origine sous_culture_form restent dans le DOM (source de
-   verite, soumis avec le form) mais sont masques visuellement ; couvert_split.js
-   monte 2 sous-questions a la place et recompose la valeur. */
-.couvert-split__origin-hidden {
+/* ─── Flow culture/couvert en questions successives (#272) ───────────────
+   Les vrais champs cascade (categorie_culture / sous_culture_form) sont
+   pilotes en coulisse par question_couvert_flow.js : on les masque en gardant
+   leur DOM (source de verite soumise au backend). Les radios visibles sont
+   ceux montes par le flow dans .couvert-flow__group. */
+.couvert-flow__origin-hidden {
   display: none;
 }
 
-.couvert-split__group + .couvert-split__group {
-  margin-top: 22px;
+/* Espacement 10px entre options radio des questions du flow, aligne sur le
+   traitement #247 des autres groupes cascade. */
+.couvert-flow__group .fr-radio-group + .fr-radio-group {
+  margin-top: 10px;
+}
+
+/* Bloc dates Q4 : reutilise le look du date-picker JJ/MM (calc-cal__*) du
+   calendrier dynamique, sans dependre de son composant (cf. #272). */
+.couvert-flow__dates .calc-cal__form {
+  margin-bottom: 0;
+}
+
+/* #272 : encadré ROUGE tant qu'une date obligatoire n'est pas saisie. Sans ça
+   (placeholder gris), l'utilisateur croyait le champ rempli et ne comprenait
+   pas pourquoi « Suivant » restait désactivé. On force la bordure rouge +
+   ombre, robuste quel que soit le theme DSFR. */
+.couvert-flow__dates input.fr-input[aria-invalid="true"] {
+  box-shadow: inset 0 -2px 0 0 var(--border-plain-error, #ce0500);
+  border: 1px solid var(--border-plain-error, #ce0500);
+}
+
+/* Popup du date-picker Q4 ancre sur <body> en position: fixed (#272) : sans ca
+   il etait clippe par `.results-row { overflow: clip }` et la grille du
+   calendrier restait invisible -> impossible de choisir un jour. `top`/`left`
+   sont poses en JS depuis le rect de l'input. z-index tres haut pour passer
+   au-dessus du form et de la carte Leaflet. */
+.calc-cal__picker--fixed {
+  position: fixed;
+  z-index: 2000;
 }
 
 /* ─── Carte ────────────────────────────────────────────────────────── */
@@ -916,6 +944,34 @@ ul.periodes-liste {
   --icon-size: 1.25rem; /* 20px au lieu de 16px */
 
   margin: 0;
+}
+
+/* Dark mode : la mask de l'icone DSFR « ? » ne se charge pas correctement (asset
+   servi sur un mauvais base URL) -> le ::before apparait comme un carre violet
+   plein au lieu du « ? » detoure. Plutot que de dependre de cette mask, on
+   dessine NOTRE propre pastille : cercle borde violet clair, « ? » au centre,
+   fond transparent. Robuste et net sur fond sombre. #272 */
+[data-fr-theme="dark"] .periodes-info.fr-btn--tooltip {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 1px solid #8585f6 !important;
+  border-radius: 50% !important;
+  color: #8585f6 !important;
+}
+
+[data-fr-theme="dark"] .periodes-info.fr-btn--tooltip::before {
+  content: "?" !important;
+  mask: none !important;
+  background: none !important;
+  color: #8585f6 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ─── Focus clavier visible sur tous les boutons/liens d'action (Carte #154,
