@@ -95,10 +95,16 @@ function vendorScripts() {
     .pipe(dest(paths.js, { sourcemaps: '.' }));
 }
 
-// Image compression
+// Image compression (optimisation ponctuelle des sources, PAS dans le build de
+// déploiement). gulp-imagemin -> optipng-bin télécharge un binaire précompilé au
+// build ; ce binaire est régulièrement indisponible/incompatible et fait planter
+// `gulp build` sur Scalingo (spawn optipng ENOENT). On sort donc cette tâche du
+// build : elle recompresse des SOURCES en place, ce n'est pas un livrable. À
+// lancer manuellement au besoin : `npx gulp imgCompression`.
 async function imgCompression() {
   const imagemin = (await import("gulp-imagemin")).default;
   return src(`${paths.images}/*.{png,svg,jpg}`, { encoding: false })
+    .pipe(plumber()) // ne crashe pas le process si un optimiseur échoue
     .pipe(imagemin()) // Compresses PNG, JPEG, SVG images.
     .pipe(dest(paths.images));
 }
@@ -145,11 +151,16 @@ function watchPaths() {
   );
 }
 
-// Generate all assets
-const build = parallel(styles, scripts, imgCompression);
+// Generate all assets déployés (CSS + JS). La compression d'images est
+// volontairement HORS build (cf. imgCompression) car elle dépend d'un binaire
+// externe fragile (optipng) qui casse le build Scalingo.
+const build = parallel(styles, scripts);
 
 // Set up dev environment
 const dev = parallel(initBrowserSync, watchPaths);
+
+// Tâche manuelle d'optimisation d'images (hors build de déploiement).
+task('imgCompression', imgCompression);
 
 task('default', series(build, dev));
 task('build', build);
