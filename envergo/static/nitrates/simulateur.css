@@ -293,24 +293,16 @@
    .map-container au-dela de cette colonne, symetriquement, via des marges
    negatives calculees. On plafonne l'elargissement pour conserver des buffers
    lateraux (le panorama ne colle jamais aux bords de l'ecran). */
+
+/* #271 : la carte (#section-localisation) est désormais TOUJOURS pleine largeur,
+   sortie de la .results-row et placée au-dessus du split. Plus besoin du hack de
+   marges négatives « panorama » (l'ancienne carte vivait dans une colonne
+   étroite). On lui donne juste une hauteur confortable, identique en saisie et
+   en résultat. */
 @media (width >= 992px) {
-  .results-row:not(.layout--split) .map-container {
-    /* Deborde de part et d'autre de la colonne form (58.33%) pour viser une
-       largeur ~ 90% du container, centree. Le facteur (90/58.33 - 1)/2 ~ 0.272
-       de la largeur de la colonne, applique en marge negative de chaque cote. */
-    width: auto;
-    margin-left: calc(-27% + 0px);
-    margin-right: calc(-27% + 0px);
+  .nitrates-map {
+    height: 460px;
   }
-
-  .results-row:not(.layout--split) .nitrates-map {
-    height: 460px; /* un peu plus haut en panorama */
-  }
-}
-
-/* Mode resultat : carte petite (largeur = colonne etroite, hauteur reduite). */
-.results-row.layout--split .nitrates-map {
-  height: 300px;
 }
 
 /* Filet de securite global : on garantit qu'aucun overflow horizontal
@@ -485,11 +477,20 @@ body {
     max-width 0.55s ease;
 }
 
-/* Mode solo : le form prend ~58% (~fr-col-lg-7) et reste centre. */
+/* #271 : mode saisie (non-split). La carte étant désormais pleine largeur
+   au-dessus, la colonne des questions n'a plus besoin d'être limitée à ~58 % et
+   centrée (ça créait un décalage à gauche). On la garde pleine largeur mais on
+   borne la longueur de ligne pour le confort de lecture, alignée à gauche sous
+   la carte. */
 @media (width >= 992px) {
   .results-row:not(.layout--split) .form-col {
-    flex-basis: 58.3333%;
-    max-width: 58.3333%;
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .results-row:not(.layout--split) .form-col .form-section,
+  .results-row:not(.layout--split) .form-col #form-after-localisation {
+    max-width: 760px;
   }
 }
 
