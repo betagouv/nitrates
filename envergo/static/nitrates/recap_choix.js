@@ -56,11 +56,13 @@
   function construireLignes() {
     var lignes = [];
 
-    // Localisation : commune + département (depuis le bandeau localisation).
+    // Localisation : commune - région (sans le numéro de région, que personne ne
+    // connaît). Ex « Reims - Grand Est ». Le département (numéro) n'est pas repris
+    // ici : c'est la région en toutes lettres qui parle à l'utilisateur.
     var commune = texte("#commune-display");
-    var dept = texte("#departement-display");
+    var region = texte("#region-display").replace(/\s*\(\d+\)\s*$/, "").trim();
     if (commune) {
-      lignes.push(ligne("Localisation", commune + (dept ? " (" + dept + ")" : "")));
+      lignes.push(ligne("Localisation", commune + (region ? " - " + region : "")));
     }
 
     // Culture ou couvert : on résume via les réponses du flow (#272).

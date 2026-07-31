@@ -175,7 +175,25 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
         <aside id="recap-choix"
                class="recap-choix"
                aria-label="Récapitulatif de vos choix">
+          {# Choix culture/couvert/fertilisant : remplis côté JS depuis l'état du form. #}
           <div class="recap-choix__liste" data-recap-liste></div>
+
+          {% comment %}
+          Questions complémentaires répondues : rendues côté serveur (données
+          dynamiques peu synthétisables). On les liste telles quelles (question ->
+          réponse humaine), à la fin du récap.
+          {% endcomment %}
+          {% if qc_repondues %}
+            <div class="recap-choix__liste recap-choix__qc">
+              {% for qc in qc_repondues %}
+                <div class="recap-choix__item">
+                  <span class="recap-choix__label">{{ qc.texte }}</span>
+                  <span class="recap-choix__valeur">{{ qc.libelle }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
           <button type="button"
                   class="fr-btn fr-btn--secondary fr-btn--sm recap-choix__modifier"
                   data-recap-modifier>Modifier</button>
