@@ -195,44 +195,53 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           compris les blocs riches -> la PC15 d'une regle avec message
           (ex CIE courte types 0/I/II) ne s'affichait pas.
           {% endcomment %}
-          {% if ev.regle.codes_prescription %}
-            {% for cp in ev.regle.codes_prescription %}
-              {% with pc=codes_prescription|get_item:cp %}
-                {% if pc.blocs %}
-                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
-                {% elif pc and not ev.regle.message %}
-                  <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
-                  {% if pc.texte_court %}
-                    <p>
-                      {{ pc.texte_court|linebreaksbr }}
-                      {% if pc.texte_redaction_initiale %}
-                        <a href="#accordion-texte-init-{{ cp }}"
-                           class="fr-link fr-link--sm nitrates-voir-plus"
-                           data-target="accordion-texte-init-{{ cp }}">voir plus</a>
-                      {% endif %}
-                    </p>
-                  {% endif %}
-                {% elif not pc and not ev.regle.message %}
-                  <p class="fr-text--sm">
-                    <strong>Code prescription :</strong> {{ cp }}
-                  </p>
-                {% endif %}
-              {% endwith %}
-            {% endfor %}
-          {% endif %}
-
-          {# Note réglementaire : libelle long resolu via referentiels #}
-          {% if ev.regle.note %}
-            {% with note=notes_referentiel|get_item:ev.regle.note %}
-              {% if note %}
-                <h4 class="fr-h6 fr-mt-2w">{{ note.libelle_court|default:ev.regle.note }}</h4>
-                {% if note.condition_declenchement %}<p>{{ note.condition_declenchement|linebreaksbr }}</p>{% endif %}
+          {% comment %}
+          #271 chantier 3 — les prescriptions conditionnées (blocs riches PC) et
+          la note ne s'affichent plus inline (trop de texte qui noie le résultat)
+          mais dans un DRAWER latéral, ouvert par le bouton ci-dessous. Le bouton
+          et le drawer ne sont rendus que s'il y a du contenu conditionné à
+          montrer (codes_prescription ou note). Le libellé s'accorde au nombre de
+          périodes d'autorisation sous condition.
+          {% endcomment %}
+          {% if ev.regle.codes_prescription or ev.regle.note %}
+            {% nb_periodes_sous_condition ev.regle as nb_asc %}
+            <button type="button"
+                    class="fr-btn drawer-conditions__trigger"
+                    data-drawer-open="drawer-conditions"
+                    aria-haspopup="dialog"
+                    aria-controls="drawer-conditions">
+              <span class="drawer-conditions__trigger-icon" aria-hidden="true">📅</span>
+              Voir les conditions d'épandage pour
+              {% if nb_asc > 1 %}
+                ces périodes
               {% else %}
-                <p class="fr-text--sm">
-                  <strong>Note :</strong> {{ ev.regle.note }}
-                </p>
+                cette période
               {% endif %}
-            {% endwith %}
+            </button>
+
+            {% comment %}
+            Drawer latéral (#271 chantier 3) : slide depuis la droite (2/3
+            desktop, plein écran mobile). Contenu = prescriptions conditionnées
+            + note + dates ASC réinjectées (badges orange). Fermé par défaut ;
+            piloté par drawer_conditions.js.
+            {% endcomment %}
+            <div id="drawer-conditions"
+                 class="drawer-conditions"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="drawer-conditions-titre"
+                 hidden>
+              <div class="drawer-conditions__overlay" data-drawer-close></div>
+              <div class="drawer-conditions__panel">
+                <div class="drawer-conditions__header">
+                  <h2 id="drawer-conditions-titre" class="drawer-conditions__titre fr-h4">Conditions d'épandage</h2>
+                  <button type="button"
+                          class="fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left fr-icon-close-line drawer-conditions__fermer"
+                          data-drawer-close>Fermer</button>
+                </div>
+                <div class="drawer-conditions__contenu">{% include "nitrates/fragments/_drawer_conditions.html" %}</div>
+              </div>
+            </div>
           {% endif %}
 
           {# Marqueur a_completer #}

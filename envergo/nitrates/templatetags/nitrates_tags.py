@@ -417,6 +417,25 @@ _SECTION_TITRE = {
 
 
 @register.simple_tag
+def nb_periodes_sous_condition(regle) -> int:
+    """Nombre de periodes « autorisation sous condition » d'une regle (#271).
+
+    Sert a accorder le libelle du bouton du drawer conditions (« cette periode »
+    vs « ces periodes »). On compte les periodes dont le regime effectif est
+    autorisation_sous_condition (regime explicite ou type de la regle).
+    """
+    if regle is None:
+        return 0
+    regle_type = getattr(regle, "type", None) or ""
+    periodes = getattr(regle, "periodes", None) or []
+    return sum(
+        1
+        for p in periodes
+        if (p.get("regime") or regle_type) == "autorisation_sous_condition"
+    )
+
+
+@register.simple_tag
 def periodes_par_section(regle) -> list[dict]:
     """Recap des periodes GROUPE PAR SECTION pour le calendrier statique (#159).
 

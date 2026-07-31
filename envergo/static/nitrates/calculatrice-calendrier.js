@@ -1584,6 +1584,39 @@
     layoutBornesRows();
     bindInputs();
     bindTooltips();
+    majBadgesDrawer(regimeParJour);
+  }
+
+  // #271 : réinjecte les dates des périodes d'autorisation sous condition
+  // (résolues depuis les dates saisies) dans le drawer « Conditions d'épandage »,
+  // sous forme de badges orange. Pour une règle calculatrice, ces dates sont
+  // event+offset (semis/destruction) que seul ce JS sait résoudre -> le template
+  // laisse un conteneur [data-drawer-badges-asc] qu'on remplit ici.
+  function majBadgesDrawer(regimeParJour) {
+    const cible = document.querySelector("[data-drawer-badges-asc]");
+    if (!cible) return;
+    const segments = computeSegments(regimeParJour).filter(
+      (s) => s.regime === "autorisation_sous_condition"
+    );
+    if (!segments.length) {
+      cible.innerHTML = "";
+      return;
+    }
+    cible.innerHTML = segments
+      .map((s) => {
+        const du = jourAgricoleToLisible(s.du);
+        const au = jourAgricoleToLisible(s.au);
+        return (
+          '<span class="drawer-conditions__date-badge">' +
+          '<span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>' +
+          "du " +
+          escapeHtml(du) +
+          " au " +
+          escapeHtml(au) +
+          "</span>"
+        );
+      })
+      .join("");
   }
 
   // Anti-collision vertical des labels de bornes, par MESURE REELLE du DOM
