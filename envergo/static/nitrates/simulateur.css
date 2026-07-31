@@ -1161,13 +1161,13 @@ html.nitrates-construction-visible .nitrates-progress {
    CETTE / CES période(s). L'item n'a pas de marqueur de liste. */
 li.periodes-lien-conditions {
   list-style: none;
-  margin-top: 0.35rem;
+  margin-top: 0.15rem;
 }
 
 /* Le lien est un <p> (cas calculatrice hors liste) : léger retrait pour
    s'aligner visuellement sous les puces. */
 p.periodes-lien-conditions {
-  margin: 0.35rem 0 0;
+  margin: 0.15rem 0 0;
   padding-left: 1.25rem;
 }
 
@@ -1176,6 +1176,11 @@ p.periodes-lien-conditions {
   align-items: baseline;
   gap: 0.4rem;
   font-weight: 600;
+
+  /* DSFR ajoute un padding vertical aux .fr-link -> gros blanc au-dessus du
+     lien. On le neutralise pour coller le lien à la période. */
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .periodes-lien-conditions__icon {
@@ -1274,11 +1279,11 @@ body.drawer-open {
   padding: 0.3rem 0.7rem;
   border-radius: 4px;
 
-  /* Même orange que la zone « autorisé sous condition » du calendrier : on part
-     de --cal-orange-ink (#fa7a35) à faible opacité pour le fond, comme les
-     hachures, avec le contour plein de la même teinte. */
-  background: rgb(250 122 53 / 18%);
-  border: 1px solid var(--cal-orange-ink, #fa7a35);
+  /* EXACTEMENT l'orange des hachures « autorisé sous condition » du calendrier
+     (--cal-orange-ink #fa7a35), en fond PLEIN et SANS bordure (comme la
+     maquette designer). Texte foncé pour le contraste sur l'orange. */
+  background: var(--cal-orange-ink, #fa7a35);
+  border: none;
   color: var(--text-default-grey, #161616);
   font-size: 0.9rem;
   font-weight: 600;
@@ -1302,5 +1307,6 @@ body.drawer-open {
 }
 
 [data-fr-theme="dark"] .drawer-conditions__date-badge {
-  background: rgb(250 122 53 / 18%);
+  background: var(--cal-orange-ink, #fa7a35);
+  color: #161616;
 }
