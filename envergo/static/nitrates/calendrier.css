@@ -825,6 +825,34 @@ ul.calc-cal__recap-list {
   margin: 0;
 }
 
+/* Dark mode : la mask de l'icone DSFR « ? » ne se charge pas correctement (asset
+   servi sur un mauvais base URL) -> le ::before apparait comme un carre violet
+   plein au lieu du « ? » detoure. Plutot que de dependre de cette mask, on
+   dessine NOTRE propre pastille : cercle borde violet clair, « ? » au centre,
+   fond transparent. Robuste et net sur fond sombre. #272 */
+[data-fr-theme="dark"] .calc-cal__recap-info.fr-btn--tooltip {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 1px solid #8585f6 !important;
+  border-radius: 50% !important;
+  color: #8585f6 !important;
+}
+
+[data-fr-theme="dark"] .calc-cal__recap-info.fr-btn--tooltip::before {
+  content: "?" !important;
+  mask: none !important;
+  background: none !important;
+  color: #8585f6 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */
 .calendrier-epandage__tooltip {
   position: absolute;
