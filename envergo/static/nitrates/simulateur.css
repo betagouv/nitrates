@@ -533,6 +533,13 @@ body {
   justify-content: center;
 }
 
+/* #271 : sur la page résultat, aérer entre la zone carte/localisation (au-dessus)
+   et le split (encart récap + résultat). Sans ça, le split est collé au panneau
+   Commune/Département/Région, ce qui fait serré. */
+.results-row.layout--split {
+  margin-top: 2rem;
+}
+
 .results-row .form-col {
   transition:
     flex-basis 0.55s ease,
