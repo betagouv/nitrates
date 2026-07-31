@@ -381,10 +381,14 @@ body {
   line-height: 1.3;
 }
 
-/* Questions complémentaires répondues : légère séparation du bloc principal. */
-.recap-choix__qc {
+/* Mention « + N questions complémentaires » : discrète, séparée du bloc
+   principal par un filet. On ne détaille pas les QC (cliquer Modifier pour). */
+.recap-choix__qc-note {
   padding-top: 16px;
   border-top: 1px solid rgb(106 106 244 / 35%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-title-grey, #161616);
 }
 
 .recap-choix__modifier {
