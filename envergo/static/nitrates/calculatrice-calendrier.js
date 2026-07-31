@@ -1594,11 +1594,34 @@
   // laisse un conteneur [data-drawer-badges-asc] qu'on remplit ici.
   function majBadgesDrawer(regimeParJour) {
     const cible = document.querySelector("[data-drawer-badges-asc]");
-    if (!cible) return;
+    const lienCalc = document.querySelector("[data-drawer-lien-calc]");
     const segments = computeSegments(regimeParJour).filter(
       (s) => s.regime === "autorisation_sous_condition"
     );
-    if (!segments.length) {
+    const nb = segments.length;
+
+    // Lien déclencheur (calculatrice) : masqué s'il n'y a pas de période ASC,
+    // sinon libellé accordé au nombre. #271.
+    if (lienCalc) {
+      lienCalc.hidden = nb === 0;
+      const texte = lienCalc.querySelector("[data-drawer-lien-texte]");
+      if (texte) {
+        texte.textContent =
+          nb > 1
+            ? "Voir les conditions d'épandage spécifiques pour ces périodes"
+            : "Voir les conditions d'épandage spécifiques pour cette période";
+      }
+    }
+
+    // Titre « Période(s) d'application » du drawer, accordé au nombre.
+    const label = document.querySelector("[data-drawer-application-label]");
+    if (label) {
+      label.textContent =
+        (nb > 1 ? "Périodes d'application" : "Période d'application") + " :";
+    }
+
+    if (!cible) return;
+    if (!nb) {
       cible.innerHTML = "";
       return;
     }

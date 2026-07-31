@@ -14,30 +14,42 @@ s'appliquent, en écho au calendrier. Rendu seulement s'il y a des blocs PC.
 {% endcomment %}
 
 {% comment %}
-Dates des périodes d'autorisation sous condition (badges orange).
-- Règle NON calculatrice : les bornes sont des dates fixes -> rendues côté
-  serveur ici via periodes_par_section.
-- Règle calculatrice (couvert) : les bornes sont des events (semis/destruction
-  ± offset) résolus côté client par le calendrier dynamique -> on laisse un
-  conteneur que calculatrice-calendrier.js remplit avec les dates résolues.
+En-tête du drawer (#271) : « Période(s) d'application : » + badges des dates des
+périodes d'autorisation sous condition (fond orange, cohérent avec le calendrier).
+- Règle NON calculatrice : bornes = dates fixes -> rendues côté serveur ici.
+- Règle calculatrice (couvert) : bornes = events (semis/destruction ± offset)
+  résolus côté client -> conteneur rempli par calculatrice-calendrier.js. Le
+  titre singulier/pluriel est ajusté par le JS selon le nombre de badges.
 {% endcomment %}
-{% if ev.regle.type == "calculatrice" %}
-  <div class="drawer-conditions__badges" data-drawer-badges-asc></div>
-{% else %}
-  {% periodes_par_section ev.regle as sections_periodes %}
-  <div class="drawer-conditions__badges">
-    {% for section in sections_periodes %}
-      {% if section.titre == "Période d’autorisation sous condition" %}
-        {% for puce in section.periodes %}
-          <span class="drawer-conditions__date-badge">
-            <span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>
-            {{ puce.phrase }}
-          </span>
-        {% endfor %}
-      {% endif %}
-    {% endfor %}
-  </div>
-{% endif %}
+{% nb_periodes_sous_condition ev.regle as nb_asc %}
+<div class="drawer-conditions__application" data-drawer-application>
+  <span class="drawer-conditions__application-label"
+        data-drawer-application-label>
+    {% if nb_asc > 1 %}
+      Périodes d'application
+    {% else %}
+      Période d'application
+    {% endif %}
+    :
+  </span>
+  {% if ev.regle.type == "calculatrice" %}
+    <span class="drawer-conditions__badges" data-drawer-badges-asc></span>
+  {% else %}
+    {% periodes_par_section ev.regle as sections_periodes %}
+    <span class="drawer-conditions__badges">
+      {% for section in sections_periodes %}
+        {% if section.titre == "Période d’autorisation sous condition" %}
+          {% for puce in section.periodes %}
+            <span class="drawer-conditions__date-badge">
+              <span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>
+              {{ puce.phrase }}
+            </span>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </span>
+  {% endif %}
+</div>
 
 {% comment %}
 Prescription(s) conditionnée(s) : contenu riche PC (#136). Même logique que

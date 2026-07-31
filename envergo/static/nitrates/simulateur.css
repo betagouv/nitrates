@@ -1155,13 +1155,23 @@ html.nitrates-construction-visible .nitrates-progress {
    Panneau latéral qui slide depuis la droite. 2/3 de large sur desktop, plein
    écran sur mobile. Ouvert/fermé par drawer_conditions.js (classe --ouvert). */
 
-/* Bouton déclencheur : bien visible, façon appel à l'action près du calendrier. */
-.drawer-conditions__trigger {
-  margin-top: 1.5rem;
+/* Lien déclencheur (#271) : intégré dans la section « autorisation sous
+   condition », avec icône warning. Pas un gros bouton bleu (tache, illisible)
+   mais un lien clair qui rattache l'action à CETTE / CES période(s). */
+.periodes-lien-conditions {
+  margin: 0.5rem 0 0;
 }
 
-.drawer-conditions__trigger-icon {
-  margin-right: 0.4rem;
+.periodes-lien-conditions__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.periodes-lien-conditions__icon {
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 /* Verrou du scroll body quand un drawer est ouvert. */
@@ -1214,18 +1224,13 @@ body.drawer-open {
   transform: translateX(0);
 }
 
+/* En-tête du drawer : plus de titre, juste le bouton Fermer aligné à droite. */
 .drawer-conditions__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-default-grey, #ddd);
+  justify-content: flex-end;
+  padding: 1rem 1.5rem 0.5rem;
   flex: 0 0 auto;
-}
-
-.drawer-conditions__titre {
-  margin: 0;
 }
 
 .drawer-conditions__contenu {
@@ -1234,9 +1239,22 @@ body.drawer-open {
   flex: 1 1 auto;
 }
 
-/* Badges des dates de périodes ASC réinjectées : orange, façon calendrier, avec
-   icône 📅. Rappellent quand ces conditions s'appliquent. Placés en tête du
-   contenu (avant les blocs riches PC). */
+/* En-tête « Période(s) d'application : » + badges de dates. */
+.drawer-conditions__application {
+  margin-bottom: 1.25rem;
+}
+
+.drawer-conditions__application-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-title-grey, #161616);
+}
+
+/* Badges des dates de périodes ASC réinjectées : ORANGE (cohérent avec la zone
+   « autorisé sous condition » du calendrier), icône 📅. NB : la var
+   --cal-orange-fill vaut en réalité le fond ROUGE partagé (choix maquette #130),
+   donc on pose ici un vrai orangé pâle + le contour orange --cal-orange-ink. */
 .drawer-conditions__date-badge {
   display: inline-flex;
   align-items: center;
@@ -1244,7 +1262,7 @@ body.drawer-open {
   margin: 0 0.5rem 0.5rem 0;
   padding: 0.3rem 0.7rem;
   border-radius: 4px;
-  background: var(--cal-orange-fill, #fddede);
+  background: #fdead9;
   border: 1px solid var(--cal-orange-ink, #fa7a35);
   color: var(--text-default-grey, #161616);
   font-size: 0.9rem;
