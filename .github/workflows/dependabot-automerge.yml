@@ -1,0 +1,49 @@
+# Auto-merge des PR Dependabot sûres.
+#
+# Politique (validée 2026-07-31) :
+#   - patch + minor : merge automatique en squash DÈS QUE la CI est verte.
+#     L'auto-merge GitHub attend les status checks requis sur `main`
+#     (pytest + linter, cf. protection de branche) avant de fusionner.
+#     Un test qui casse => la PR reste ouverte, rien n'est mergé.
+#   - major : PAS d'auto-merge. On laisse la PR ouverte pour revue manuelle
+#     (un bump majeur peut introduire un breaking non couvert par les tests).
+#
+# La CI (ci.yml) tourne déjà sur ces PR (pull_request -> main) ; ce workflow
+# ne fait qu'ARMER l'auto-merge, il ne court-circuite aucun test.
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    # Uniquement les PR ouvertes par Dependabot.
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupère les métadonnées Dependabot
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Arme l'auto-merge (patch + minor uniquement)
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Signale les majors (revue manuelle requise)
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr comment "$PR_URL" --body \
+            "Bump **majeur** (\`${{ steps.meta.outputs.dependency-names }}\` -> ${{ steps.meta.outputs.new-version }}). Pas d'auto-merge : à revoir et merger manuellement une fois la CI verte."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
