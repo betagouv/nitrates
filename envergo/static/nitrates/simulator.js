@@ -45,6 +45,116 @@
     document.dispatchEvent(new CustomEvent("nitrates:form-revealed"));
   }
 
+  // #271 : re-clic carte sur une page résultat. On ne réévalue le backend que si
+  // le SCOPE d'interprétation change ; sinon on garde le résultat affiché.
+  //
+  // Champs de scope comparés (ceux qui pilotent l'arbre / la région / les zones) :
+  //   en_zone_vulnerable, en_zar, region_code, zone_grand_est_1/2, et le code
+  //   INSEE (dont dépendent la zone montagne D113-14 et la note 5).
+  function scopeDepuisData(data, codeInsee) {
+    return {
+      zv: !!data.en_zone_vulnerable,
+      zar: !!data.en_zar,
+      region: data.region_code || "",
+      zge1: !!data.zone_grand_est_1,
+      zge2: !!data.zone_grand_est_2,
+      insee: codeInsee || "",
+    };
+  }
+
+  function scopeDepuisCatalog(cat, ancienInsee) {
+    if (!cat) return null;
+    return {
+      zv: !!cat.en_zone_vulnerable,
+      zar: !!cat.en_zar,
+      region: cat.region_code || "",
+      zge1: !!cat.zone_grand_est_1,
+      zge2: !!cat.zone_grand_est_2,
+      // Le catalog ne porte pas le code INSEE : on passe l'ancien code capturé
+      // AVANT écrasement du hidden (celui de la simulation en cours).
+      insee: ancienInsee || "",
+    };
+  }
+
+  function scopesDifferents(a, b) {
+    if (!a || !b) return true;
+    if (
+      a.zv !== b.zv ||
+      a.zar !== b.zar ||
+      a.region !== b.region ||
+      a.zge1 !== b.zge1 ||
+      a.zge2 !== b.zge2
+    ) {
+      return true;
+    }
+    // Code INSEE : ne le compare QUE si l'ancien est connu (une simulation
+    // lancée par clic carte l'a renseigné). Si l'ancien est vide (résultat
+    // rejoué depuis une URL sans code_insee), on ne déclenche pas une
+    // invalidation sur la seule commune -> les zones (ci-dessus) suffisent.
+    if (a.insee && a.insee !== b.insee) return true;
+    return false;
+  }
+
+  // Scope de RÉFÉRENCE de la simulation actuellement affichée. On l'établit à
+  // partir de la MÊME source que le re-clic (DebugView), pour comparer des
+  // valeurs cohérentes (le catalog moulinette peut diverger de DebugView sur
+  // certains champs, ex zone_grand_est_2 sans code_insee). Renseigné au 1er
+  // re-clic si absent (le scope de référence = celui du point qui a produit le
+  // résultat, dont les coordonnées sont dans les hidden lat/lng).
+  let scopeReference = null;
+
+  function gererReclicCarteResultat(data, nouveauInsee, ancienInsee) {
+    const form = document.getElementById("form-simulateur");
+    // Rien à faire si on n'est pas sur une page résultat affiché.
+    if (!form || !form.hasAttribute("data-resultat-affiche")) return;
+
+    const nouveau = scopeDepuisData(data, nouveauInsee);
+
+    // Établit la référence si pas encore connue : on interroge DebugView sur le
+    // point d'ORIGINE (lat/lng du résultat affiché, avant ce re-clic). Comme
+    // c'est asynchrone et qu'on veut une décision immédiate, on retombe sur le
+    // catalog moulinette pour cette première comparaison, puis on mémorise la
+    // référence DebugView pour les fois suivantes.
+    const ref =
+      scopeReference || scopeDepuisCatalog(window.NITRATES_CATALOG, ancienInsee);
+
+    if (!scopesDifferents(ref, nouveau)) {
+      // Même scope géographique : le résultat reste valide. On mémorise le
+      // nouveau scope comme référence (DebugView, cohérent) pour la suite.
+      scopeReference = nouveau;
+      return;
+    }
+
+    // Scope changé -> le résultat n'est plus valide. On l'invalide et on repasse
+    // en mode saisie, en forçant un re-clic « Lancer la simulation ».
+    form.removeAttribute("data-resultat-affiche");
+    const resultCol = document.querySelector(".result-col");
+    if (resultCol) resultCol.remove();
+    const row = document.querySelector(".results-row");
+    if (row) row.classList.remove("layout--split");
+    const formCol = document.querySelector(".form-col");
+    if (formCol) formCol.classList.remove("fr-col-lg-3");
+    // Masque l'encart récap, ré-affiche le formulaire complet.
+    const recap = document.getElementById("recap-choix");
+    if (recap) recap.hidden = true;
+    const formApres = document.getElementById("form-after-localisation");
+    if (formApres) formApres.hidden = false;
+    // Ré-affiche le bouton « Lancer la simulation » (masqué sur page résultat).
+    const submitRow = document.getElementById("form-submit-row");
+    if (submitRow) submitRow.hidden = false;
+    // Notifie les autres modules (recap_choix / reset_form / flow) du retour saisie.
+    document.dispatchEvent(new Event("nitrates:retour-saisie"));
+    // Le scope courant est désormais celui du nouveau point : on met à jour le
+    // catalog en mémoire pour les comparaisons suivantes (avant re-soumission).
+    window.NITRATES_CATALOG = Object.assign({}, window.NITRATES_CATALOG || {}, {
+      en_zone_vulnerable: nouveau.zv,
+      en_zar: nouveau.zar,
+      region_code: nouveau.region,
+      zone_grand_est_1: nouveau.zge1,
+      zone_grand_est_2: nouveau.zge2,
+    });
+  }
+
   // ─── Carte #57 : bornage geographique ────────────────────────────────
   // Quand la parcelle cliquee est dans un departement non ouvert, on masque
   // le formulaire et on affiche un message dedie (#form-region-fermee).
@@ -521,7 +631,16 @@
         // le form et utilise cote backend pour resoudre la zone
         // montagne (D113-14) sans charger les polygones communes.
         const codeInseeInput = document.getElementById("id_code_insee");
+        // #271 : on capture l'ANCIEN code INSEE (celui de la simulation en cours)
+        // AVANT de l'écraser, pour comparer les scopes.
+        const ancienInsee = codeInseeInput ? codeInseeInput.value || "" : "";
         if (codeInseeInput) codeInseeInput.value = communeInfo.code || "";
+        // #271 : gestion du re-clic carte quand un RÉSULTAT est déjà affiché.
+        // Si le nouveau point change le SCOPE d'interprétation (zones : ZV, ZAR,
+        // région, Grand Est 1/2, commune -> montagne/note5), le résultat n'est
+        // plus valide -> on l'invalide et on force un re-clic « Lancer ». Si le
+        // scope est identique, on garde l'affichage (rien à réévaluer).
+        gererReclicCarteResultat(data, communeInfo.code || "", ancienInsee);
         terminerChargementLoc();
       })
       .catch((err) => {
@@ -744,4 +863,27 @@
       }
     });
   }
+
+  // #271 : au chargement d'une PAGE RÉSULTAT, on établit le scope de RÉFÉRENCE
+  // en interrogeant DebugView pour le point du résultat (lat/lng des hidden).
+  // Ainsi la 1re comparaison au re-clic se fait DebugView vs DebugView (valeurs
+  // cohérentes), sans dépendre du catalog moulinette qui peut diverger.
+  (function initScopeReference() {
+    const form = document.getElementById("form-simulateur");
+    if (!form || !form.hasAttribute("data-resultat-affiche")) return;
+    const lat = (latInput.value || "").trim();
+    const lng = (lngInput.value || "").trim();
+    if (!lat || !lng) return;
+    const insee = (document.getElementById("id_code_insee") || {}).value || "";
+    const url =
+      `${window.NITRATES_DEBUG_URL}?lng=${lng}&lat=${lat}` +
+      (insee ? `&code_insee=${encodeURIComponent(insee)}` : "") +
+      (window.NITRATES_GEO_APPLIQUEE ? "&geo=1" : "");
+    fetch(url, { headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) scopeReference = scopeDepuisData(data, insee);
+      })
+      .catch(() => {});
+  })();
 })();
