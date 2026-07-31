@@ -74,6 +74,10 @@
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
     {# resultat final -> section Localisation/resultat en haut (#112). #}
     <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
+    {# #271 : encart recap des choix (colonne gauche) + bouton Modifier. #}
+    <script defer src="{% static_v 'nitrates/recap_choix.js' %}"></script>
+    {# #271 : drawer lateral « Conditions d'epandage » (notes PC + dates ASC). #}
+    <script defer src="{% static_v 'nitrates/drawer_conditions.js' %}"></script>
   {% endif %}
 {% endblock %}
 
@@ -139,26 +143,14 @@
     </div>
 
     {% comment %}
-    Section formulaire + resultats.
-    Le panel resultat (colonne droite + layout--split) n'apparait QUE quand un
-    resultat final est pret, c'est-a-dire qu'il reste aucune question
-    complementaire a poser (qc_en_attente == False). Tant qu'une QC est en
-    attente, on reste en colonne unique : le formulaire occupe toute la largeur
-    et les questions complementaires sont rendues sous lui (#112).
+    Section formulaire + resultats (#271).
+    Toute la mise en page (carte pleine largeur en haut + split
+    encart-recap 1/4 / resultat 3/4 en dessous) est portee par
+    _panneau_form.html, qui enveloppe le <form> autour des deux colonnes pour
+    que la carte puisse sortir en pleine largeur sans casser la soumission.
+    Le panel resultat n'apparait QUE quand un resultat final est pret (aucune
+    QC en attente). Tant qu'une QC est en attente, colonne unique (#112).
     {% endcomment %}
-    <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat and not qc_en_attente %} layout--split{% endif %}"
-         style="align-items: flex-start">
-
-      {# Colonne gauche : form + carte (+ QC sous le form si en attente) #}
-      <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-5{% endif %} form-col">
-        {% include "nitrates/fragments/_panneau_form.html" %}
-      </div>
-
-      {# Colonne droite : resultat final, seulement si plus aucune QC en attente #}
-      {% if afficher_resultat and not qc_en_attente %}
-        <div class="fr-col-12 fr-col-lg-7 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
-      {% endif %}
-
-    </div>
+    {% include "nitrates/fragments/_panneau_form.html" %}
   </div>
 {% endblock %}

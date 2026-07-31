@@ -293,24 +293,16 @@
    .map-container au-dela de cette colonne, symetriquement, via des marges
    negatives calculees. On plafonne l'elargissement pour conserver des buffers
    lateraux (le panorama ne colle jamais aux bords de l'ecran). */
+
+/* #271 : la carte (#section-localisation) est désormais TOUJOURS pleine largeur,
+   sortie de la .results-row et placée au-dessus du split. Plus besoin du hack de
+   marges négatives « panorama » (l'ancienne carte vivait dans une colonne
+   étroite). On lui donne juste une hauteur confortable, identique en saisie et
+   en résultat. */
 @media (width >= 992px) {
-  .results-row:not(.layout--split) .map-container {
-    /* Deborde de part et d'autre de la colonne form (58.33%) pour viser une
-       largeur ~ 90% du container, centree. Le facteur (90/58.33 - 1)/2 ~ 0.272
-       de la largeur de la colonne, applique en marge negative de chaque cote. */
-    width: auto;
-    margin-left: calc(-27% + 0px);
-    margin-right: calc(-27% + 0px);
+  .nitrates-map {
+    height: 460px;
   }
-
-  .results-row:not(.layout--split) .nitrates-map {
-    height: 460px; /* un peu plus haut en panorama */
-  }
-}
-
-/* Mode resultat : carte petite (largeur = colonne etroite, hauteur reduite). */
-.results-row.layout--split .nitrates-map {
-  height: 300px;
 }
 
 /* Filet de securite global : on garantit qu'aucun overflow horizontal
@@ -343,6 +335,68 @@ body {
 
 .qc-box .form-question-group {
   margin: 0;
+}
+
+/* ─── #271 : encart récap des choix (colonne gauche, page résultat) ──────
+   Rappel compact et mauve des réponses de l'utilisateur, façon .qc-box, avec
+   un bouton « Modifier » pour revenir au formulaire. */
+.recap-choix {
+  background: #cecefc;
+  padding: 20px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* display:flex ne doit pas court-circuiter l'attribut hidden (bouton Modifier). */
+.recap-choix[hidden] {
+  display: none !important;
+}
+
+.recap-choix__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recap-choix__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recap-choix__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-mention-grey, #666);
+  font-weight: 600;
+}
+
+.recap-choix__valeur {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-title-grey, #161616);
+  line-height: 1.3;
+}
+
+/* Mention « + N questions complémentaires » : discrète, séparée du bloc
+   principal par un filet. On ne détaille pas les QC (cliquer Modifier pour). */
+.recap-choix__qc-note {
+  padding-top: 16px;
+  border-top: 1px solid rgb(106 106 244 / 35%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-title-grey, #161616);
+}
+
+.recap-choix__modifier {
+  align-self: flex-start;
+}
+
+[data-fr-theme="dark"] .recap-choix {
+  background: rgb(133 133 246 / 20%);
 }
 
 /* ─── Recap QC repondues (sous le form principal, colonne gauche) ─── */
@@ -479,17 +533,33 @@ body {
   justify-content: center;
 }
 
+/* #271 : sur la page résultat, aérer entre la zone carte/localisation (au-dessus)
+   et le split (encart récap + résultat). Sans ça, le split est collé au panneau
+   Commune/Département/Région, ce qui fait serré. */
+.results-row.layout--split {
+  margin-top: 2rem;
+}
+
 .results-row .form-col {
   transition:
     flex-basis 0.55s ease,
     max-width 0.55s ease;
 }
 
-/* Mode solo : le form prend ~58% (~fr-col-lg-7) et reste centre. */
+/* #271 : mode saisie (non-split). La carte étant désormais pleine largeur
+   au-dessus, la colonne des questions n'a plus besoin d'être limitée à ~58 % et
+   centrée (ça créait un décalage à gauche). On la garde pleine largeur mais on
+   borne la longueur de ligne pour le confort de lecture, alignée à gauche sous
+   la carte. */
 @media (width >= 992px) {
   .results-row:not(.layout--split) .form-col {
-    flex-basis: 58.3333%;
-    max-width: 58.3333%;
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .results-row:not(.layout--split) .form-col .form-section,
+  .results-row:not(.layout--split) .form-col #form-after-localisation {
+    max-width: 760px;
   }
 }
 
@@ -1021,7 +1091,9 @@ ul.periodes-liste {
    ~ min-height 1.25rem + padding 0.4rem*2 ~ 2.05rem. La transition sur `top`
    accompagne l'apparition/disparition du bandeau. */
 html.nitrates-construction-visible .nitrates-progress {
-  top: 2.05rem;
+  /* Se cale sous la hauteur RÉELLE du bandeau (varie selon le nombre de lignes,
+     surtout mobile). Fallback 2.05rem si la var n'est pas encore posée. #271 */
+  top: var(--nitrates-construction-h, 2.05rem);
 }
 
 .nitrates-progress.is-visible {
@@ -1086,4 +1158,169 @@ html.nitrates-construction-visible .nitrates-progress {
 
 [data-fr-theme="dark"] .nitrates-loc-loading__fill {
   background: #8585f6;
+}
+
+/* ─── #271 chantier 3 : drawer « Conditions d'épandage » ─────────────────────
+   Panneau latéral qui slide depuis la droite. 2/3 de large sur desktop, plein
+   écran sur mobile. Ouvert/fermé par drawer_conditions.js (classe --ouvert). */
+
+/* Lien déclencheur (#271) : intégré dans la liste des périodes « autorisation
+   sous condition », aligné SOUS la puce (même indentation que le texte). Pas un
+   gros bouton bleu (tache, illisible) mais un lien clair qui rattache l'action à
+   CETTE / CES période(s). L'item n'a pas de marqueur de liste. */
+li.periodes-lien-conditions {
+  list-style: none;
+  margin-top: 0.15rem;
+}
+
+/* Le lien est un <p> (cas calculatrice hors liste) : léger retrait pour
+   s'aligner visuellement sous les puces. */
+p.periodes-lien-conditions {
+  margin: 0.15rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.periodes-lien-conditions__link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 600;
+
+  /* DSFR ajoute un padding vertical aux .fr-link -> gros blanc au-dessus du
+     lien. On le neutralise pour coller le lien à la période. */
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.periodes-lien-conditions__icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* Verrou du scroll body quand un drawer est ouvert. */
+body.drawer-open {
+  overflow: hidden;
+}
+
+/* Conteneur plein écran (overlay + panneau). hidden -> display:none. */
+.drawer-conditions {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.drawer-conditions[hidden] {
+  display: none;
+}
+
+.drawer-conditions__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(22 22 22 / 45%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-conditions--ouvert .drawer-conditions__overlay {
+  opacity: 1;
+}
+
+/* Panneau : ancré à droite, 2/3 de large, translaté hors écran par défaut. */
+.drawer-conditions__panel {
+  position: absolute;
+
+  /* top/bottom (pas height:100%) : quand on décale le `top` en JS pour passer
+     sous le bandeau construction, la hauteur s'ajuste automatiquement grâce à
+     bottom:0 -> le contenu ne déborde plus sous le viewport et reste scrollable
+     jusqu'en bas (bug mobile #271). */
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 66.6667%;
+  max-width: 900px;
+  background: var(--background-default-grey, #fff);
+  color: var(--text-default-grey, #161616);
+  box-shadow: -4px 0 24px rgb(0 0 0 / 20%);
+  transform: translateX(100%);
+  transition: transform 0.32s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-conditions--ouvert .drawer-conditions__panel {
+  transform: translateX(0);
+}
+
+/* En-tête du drawer : « Période(s) d'application : » à gauche, Fermer à droite,
+   sur UNE seule ligne (gain de hauteur). */
+.drawer-conditions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem 0.5rem;
+  flex: 0 0 auto;
+}
+
+.drawer-conditions__contenu {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* En-tête « Période(s) d'application : » + badges de dates. */
+.drawer-conditions__application {
+  margin-bottom: 1.25rem;
+}
+
+/* Libellé « Période(s) d'application : » (désormais dans l'en-tête, à gauche du
+   bouton Fermer). */
+.drawer-conditions__application-label {
+  font-weight: 700;
+  color: var(--text-title-grey, #161616);
+}
+
+/* Badges des dates de périodes ASC réinjectées : ORANGE (cohérent avec la zone
+   « autorisé sous condition » du calendrier), icône 📅. NB : la var
+   --cal-orange-fill vaut en réalité le fond ROUGE partagé (choix maquette #130),
+   donc on pose ici un vrai orangé pâle + le contour orange --cal-orange-ink. */
+.drawer-conditions__date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0.5rem 0.5rem 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+
+  /* EXACTEMENT l'orange des hachures « autorisé sous condition » du calendrier
+     (--cal-orange-ink #fa7a35), en fond PLEIN et SANS bordure (comme la
+     maquette designer). Texte foncé pour le contraste sur l'orange. */
+  background: var(--cal-orange-ink, #fa7a35);
+  border: none;
+  color: var(--text-default-grey, #161616);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.drawer-conditions__date-icon {
+  font-size: 0.95rem;
+}
+
+/* Mobile : plein écran, slide identique. */
+@media (width < 768px) {
+  .drawer-conditions__panel {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+[data-fr-theme="dark"] .drawer-conditions__panel {
+  background: var(--background-default-grey, #1e1e1e);
+}
+
+[data-fr-theme="dark"] .drawer-conditions__date-badge {
+  background: var(--cal-orange-ink, #fa7a35);
+  color: #161616;
 }

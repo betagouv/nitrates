@@ -100,6 +100,12 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           (calendrier_dynamique_couvert), sinon le templatetag standard 12 mois.
           {% endcomment %}
           {% if ev.regle.type == "calculatrice" and ev.regle.composant == "calendrier_dynamique_couvert" %}
+            {% comment %}
+            #271 : pour les couverts (calculatrice), le lien vers le drawer est
+            généré par calculatrice-calendrier.js DANS le <ul> de la section
+            « autorisation sous condition » de son recap (rattaché à la bonne
+            période). Rien à rendre ici hors du composant.
+            {% endcomment %}
             {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
           {% else %}
             {% calendrier_epandage ev.regle %}
@@ -124,9 +130,32 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
           {% if ev.regle.type != "calculatrice" %}
             {% periodes_par_section ev.regle as sections_periodes %}
+            {% nb_periodes_sous_condition ev.regle as nb_asc %}
             {% for section in sections_periodes %}
               <p class="periodes-section-titre">{{ section.titre }} :</p>
+              {% comment %}
+              #271 : dans la section « autorisation sous condition », un lien
+              (avec icône warning) renvoie vers le drawer des conditions PC. Si
+              plusieurs périodes ASC, le lien est placé EN HAUT (au pluriel) ;
+              si une seule, il est placé SOUS la période (au singulier).
+              {% endcomment %}
+              {% comment %}
+              #271 : lien vers le drawer, ALIGNÉ sous la période ASC (même
+              indentation que le texte des puces). Placé dans la liste : au-dessus
+              des puces si plusieurs périodes (au pluriel), juste après l'unique
+              puce sinon (au singulier). L'item n'a pas de marqueur (liseré vide).
+              {% endcomment %}
               <ul class="fr-mb-0 periodes-liste">
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc > 1 and ev.regle.codes_prescription %}
+                  <li class="periodes-lien-conditions">
+                    <a href="#drawer-conditions"
+                       class="fr-link periodes-lien-conditions__link"
+                       data-drawer-open="drawer-conditions">
+                      <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
+                      Voir les conditions d'épandage spécifiques pour ces périodes
+                    </a>
+                  </li>
+                {% endif %}
                 {% for puce in section.periodes %}
                   <li>
                     {{ puce.phrase }}
@@ -148,6 +177,16 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% endif %}
                   </li>
                 {% endfor %}
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc == 1 and ev.regle.codes_prescription %}
+                  <li class="periodes-lien-conditions">
+                    <a href="#drawer-conditions"
+                       class="fr-link periodes-lien-conditions__link"
+                       data-drawer-open="drawer-conditions">
+                      <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
+                      Voir les conditions d'épandage spécifiques pour cette période
+                    </a>
+                  </li>
+                {% endif %}
               </ul>
             {% endfor %}
           {% endif %}
@@ -195,44 +234,50 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           compris les blocs riches -> la PC15 d'une regle avec message
           (ex CIE courte types 0/I/II) ne s'affichait pas.
           {% endcomment %}
-          {% if ev.regle.codes_prescription %}
-            {% for cp in ev.regle.codes_prescription %}
-              {% with pc=codes_prescription|get_item:cp %}
-                {% if pc.blocs %}
-                  <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
-                {% elif pc and not ev.regle.message %}
-                  <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
-                  {% if pc.texte_court %}
-                    <p>
-                      {{ pc.texte_court|linebreaksbr }}
-                      {% if pc.texte_redaction_initiale %}
-                        <a href="#accordion-texte-init-{{ cp }}"
-                           class="fr-link fr-link--sm nitrates-voir-plus"
-                           data-target="accordion-texte-init-{{ cp }}">voir plus</a>
-                      {% endif %}
-                    </p>
-                  {% endif %}
-                {% elif not pc and not ev.regle.message %}
-                  <p class="fr-text--sm">
-                    <strong>Code prescription :</strong> {{ cp }}
-                  </p>
-                {% endif %}
-              {% endwith %}
-            {% endfor %}
-          {% endif %}
-
-          {# Note réglementaire : libelle long resolu via referentiels #}
-          {% if ev.regle.note %}
-            {% with note=notes_referentiel|get_item:ev.regle.note %}
-              {% if note %}
-                <h4 class="fr-h6 fr-mt-2w">{{ note.libelle_court|default:ev.regle.note }}</h4>
-                {% if note.condition_declenchement %}<p>{{ note.condition_declenchement|linebreaksbr }}</p>{% endif %}
-              {% else %}
-                <p class="fr-text--sm">
-                  <strong>Note :</strong> {{ ev.regle.note }}
-                </p>
-              {% endif %}
-            {% endwith %}
+          {% comment %}
+          #271 chantier 3 — les prescriptions conditionnées (blocs riches PC) et
+          la note ne s'affichent plus inline (trop de texte) mais dans un DRAWER
+          latéral, ouvert par un LIEN placé dans la section « autorisation sous
+          condition » (cf. plus haut pour les règles non calculatrice ; pour les
+          calculatrice/couverts, le lien est injecté par le calendrier dynamique
+          près de son recap ASC). Le drawer n'est rendu que s'il y a du contenu
+          conditionné (codes_prescription ou note).
+          {% endcomment %}
+          {% if ev.regle.codes_prescription or ev.regle.note %}
+            {% comment %}
+            Drawer latéral (#271 chantier 3) : slide depuis la droite (2/3
+            desktop, plein écran mobile). Contenu = prescriptions conditionnées
+            + note + dates ASC réinjectées (badges orange). Fermé par défaut ;
+            piloté par drawer_conditions.js.
+            {% endcomment %}
+            <div id="drawer-conditions"
+                 class="drawer-conditions"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Conditions d'épandage en période d'autorisation sous condition"
+                 hidden>
+              <div class="drawer-conditions__overlay" data-drawer-close></div>
+              <div class="drawer-conditions__panel">
+                {% nb_periodes_sous_condition ev.regle as nb_asc_h %}
+                <div class="drawer-conditions__header">
+                  {# « Période(s) d'application : » sur la MÊME ligne que Fermer #}
+                  {# (gain de hauteur). Accord ajusté aussi par le JS (couvert). #}
+                  <span class="drawer-conditions__application-label"
+                        data-drawer-application-label>
+                    {% if nb_asc_h > 1 %}
+                      Périodes
+                    {% else %}
+                      Période
+                    {% endif %}
+                    d'application :
+                  </span>
+                  <button type="button"
+                          class="fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left fr-icon-close-line drawer-conditions__fermer"
+                          data-drawer-close>Fermer</button>
+                </div>
+                <div class="drawer-conditions__contenu">{% include "nitrates/fragments/_drawer_conditions.html" %}</div>
+              </div>
+            </div>
           {% endif %}
 
           {# Marqueur a_completer #}
