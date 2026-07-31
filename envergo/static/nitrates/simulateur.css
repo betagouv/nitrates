@@ -1155,16 +1155,25 @@ html.nitrates-construction-visible .nitrates-progress {
    Panneau latéral qui slide depuis la droite. 2/3 de large sur desktop, plein
    écran sur mobile. Ouvert/fermé par drawer_conditions.js (classe --ouvert). */
 
-/* Lien déclencheur (#271) : intégré dans la section « autorisation sous
-   condition », avec icône warning. Pas un gros bouton bleu (tache, illisible)
-   mais un lien clair qui rattache l'action à CETTE / CES période(s). */
-.periodes-lien-conditions {
-  margin: 0.5rem 0 0;
+/* Lien déclencheur (#271) : intégré dans la liste des périodes « autorisation
+   sous condition », aligné SOUS la puce (même indentation que le texte). Pas un
+   gros bouton bleu (tache, illisible) mais un lien clair qui rattache l'action à
+   CETTE / CES période(s). L'item n'a pas de marqueur de liste. */
+li.periodes-lien-conditions {
+  list-style: none;
+  margin-top: 0.35rem;
+}
+
+/* Le lien est un <p> (cas calculatrice hors liste) : léger retrait pour
+   s'aligner visuellement sous les puces. */
+p.periodes-lien-conditions {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
 }
 
 .periodes-lien-conditions__link {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.4rem;
   font-weight: 600;
 }
@@ -1224,11 +1233,13 @@ body.drawer-open {
   transform: translateX(0);
 }
 
-/* En-tête du drawer : plus de titre, juste le bouton Fermer aligné à droite. */
+/* En-tête du drawer : « Période(s) d'application : » à gauche, Fermer à droite,
+   sur UNE seule ligne (gain de hauteur). */
 .drawer-conditions__header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1rem 1.5rem 0.5rem;
   flex: 0 0 auto;
 }
@@ -1244,10 +1255,10 @@ body.drawer-open {
   margin-bottom: 1.25rem;
 }
 
+/* Libellé « Période(s) d'application : » (désormais dans l'en-tête, à gauche du
+   bouton Fermer). */
 .drawer-conditions__application-label {
-  display: block;
   font-weight: 700;
-  margin-bottom: 0.5rem;
   color: var(--text-title-grey, #161616);
 }
 
@@ -1262,7 +1273,11 @@ body.drawer-open {
   margin: 0 0.5rem 0.5rem 0;
   padding: 0.3rem 0.7rem;
   border-radius: 4px;
-  background: #fdead9;
+
+  /* Même orange que la zone « autorisé sous condition » du calendrier : on part
+     de --cal-orange-ink (#fa7a35) à faible opacité pour le fond, comme les
+     hachures, avec le contour plein de la même teinte. */
+  background: rgb(250 122 53 / 18%);
   border: 1px solid var(--cal-orange-ink, #fa7a35);
   color: var(--text-default-grey, #161616);
   font-size: 0.9rem;

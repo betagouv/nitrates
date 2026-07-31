@@ -21,17 +21,12 @@ périodes d'autorisation sous condition (fond orange, cohérent avec le calendri
   résolus côté client -> conteneur rempli par calculatrice-calendrier.js. Le
   titre singulier/pluriel est ajusté par le JS selon le nombre de badges.
 {% endcomment %}
-{% nb_periodes_sous_condition ev.regle as nb_asc %}
+{% comment %}
+Le libellé « Période(s) d'application : » est rendu dans l'en-tête du drawer
+(même ligne que Fermer, cf. _panneau_resultat.html). Ici, juste les badges de
+dates (fond orange, cohérent calendrier), en tête du contenu.
+{% endcomment %}
 <div class="drawer-conditions__application" data-drawer-application>
-  <span class="drawer-conditions__application-label"
-        data-drawer-application-label>
-    {% if nb_asc > 1 %}
-      Périodes d'application
-    {% else %}
-      Période d'application
-    {% endif %}
-    :
-  </span>
   {% if ev.regle.type == "calculatrice" %}
     <span class="drawer-conditions__badges" data-drawer-badges-asc></span>
   {% else %}

@@ -101,6 +101,22 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
           {% if ev.regle.type == "calculatrice" and ev.regle.composant == "calendrier_dynamique_couvert" %}
             {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
+            {% comment %}
+            #271 : lien vers le drawer pour les règles CALCULATRICE (couvert),
+            placé JUSTE sous le calendrier dynamique (près de son recap ASC), pas
+            après le panneau debug. Affiché/masqué + accordé (singulier/pluriel)
+            par calculatrice-calendrier.js selon la présence d'une période ASC.
+            {% endcomment %}
+            {% if ev.regle.codes_prescription or ev.regle.note %}
+              <p class="periodes-lien-conditions" data-drawer-lien-calc hidden>
+                <a href="#drawer-conditions"
+                   class="fr-link periodes-lien-conditions__link"
+                   data-drawer-open="drawer-conditions">
+                  <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
+                  <span data-drawer-lien-texte>Voir les conditions d'épandage spécifiques pour cette période</span>
+                </a>
+              </p>
+            {% endif %}
           {% else %}
             {% calendrier_epandage ev.regle %}
           {% endif %}
@@ -133,17 +149,23 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               plusieurs périodes ASC, le lien est placé EN HAUT (au pluriel) ;
               si une seule, il est placé SOUS la période (au singulier).
               {% endcomment %}
-              {% if section.titre == "Période d’autorisation sous condition" and nb_asc > 1 and ev.regle.codes_prescription %}
-                <p class="periodes-lien-conditions">
-                  <a href="#drawer-conditions"
-                     class="fr-link periodes-lien-conditions__link"
-                     data-drawer-open="drawer-conditions">
-                    <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
-                    Voir les conditions d'épandage spécifiques pour ces périodes
-                  </a>
-                </p>
-              {% endif %}
+              {% comment %}
+              #271 : lien vers le drawer, ALIGNÉ sous la période ASC (même
+              indentation que le texte des puces). Placé dans la liste : au-dessus
+              des puces si plusieurs périodes (au pluriel), juste après l'unique
+              puce sinon (au singulier). L'item n'a pas de marqueur (liseré vide).
+              {% endcomment %}
               <ul class="fr-mb-0 periodes-liste">
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc > 1 and ev.regle.codes_prescription %}
+                  <li class="periodes-lien-conditions">
+                    <a href="#drawer-conditions"
+                       class="fr-link periodes-lien-conditions__link"
+                       data-drawer-open="drawer-conditions">
+                      <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
+                      Voir les conditions d'épandage spécifiques pour ces périodes
+                    </a>
+                  </li>
+                {% endif %}
                 {% for puce in section.periodes %}
                   <li>
                     {{ puce.phrase }}
@@ -165,17 +187,17 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% endif %}
                   </li>
                 {% endfor %}
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc == 1 and ev.regle.codes_prescription %}
+                  <li class="periodes-lien-conditions">
+                    <a href="#drawer-conditions"
+                       class="fr-link periodes-lien-conditions__link"
+                       data-drawer-open="drawer-conditions">
+                      <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
+                      Voir les conditions d'épandage spécifiques pour cette période
+                    </a>
+                  </li>
+                {% endif %}
               </ul>
-              {% if section.titre == "Période d’autorisation sous condition" and nb_asc == 1 and ev.regle.codes_prescription %}
-                <p class="periodes-lien-conditions">
-                  <a href="#drawer-conditions"
-                     class="fr-link periodes-lien-conditions__link"
-                     data-drawer-open="drawer-conditions">
-                    <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
-                    Voir les conditions d'épandage spécifiques pour cette période
-                  </a>
-                </p>
-              {% endif %}
             {% endfor %}
           {% endif %}
 
@@ -233,22 +255,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
           {% if ev.regle.codes_prescription or ev.regle.note %}
             {% comment %}
-            Lien de secours pour les règles CALCULATRICE (couvert) : le recap ASC
-            est rendu côté JS, qui affiche/masque ce lien selon la présence d'une
-            période ASC et pose le bon libellé (singulier/pluriel).
-            {% endcomment %}
-            {% if ev.regle.type == "calculatrice" %}
-              <p class="periodes-lien-conditions" data-drawer-lien-calc hidden>
-                <a href="#drawer-conditions"
-                   class="fr-link periodes-lien-conditions__link"
-                   data-drawer-open="drawer-conditions">
-                  <span class="periodes-lien-conditions__icon" aria-hidden="true">⚠️</span>
-                  <span data-drawer-lien-texte>Voir les conditions d'épandage spécifiques pour cette période</span>
-                </a>
-              </p>
-            {% endif %}
-
-            {% comment %}
             Drawer latéral (#271 chantier 3) : slide depuis la droite (2/3
             desktop, plein écran mobile). Contenu = prescriptions conditionnées
             + note + dates ASC réinjectées (badges orange). Fermé par défaut ;
@@ -262,7 +268,19 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                  hidden>
               <div class="drawer-conditions__overlay" data-drawer-close></div>
               <div class="drawer-conditions__panel">
+                {% nb_periodes_sous_condition ev.regle as nb_asc_h %}
                 <div class="drawer-conditions__header">
+                  {# « Période(s) d'application : » sur la MÊME ligne que Fermer #}
+                  {# (gain de hauteur). Accord ajusté aussi par le JS (couvert). #}
+                  <span class="drawer-conditions__application-label"
+                        data-drawer-application-label>
+                    {% if nb_asc_h > 1 %}
+                      Périodes
+                    {% else %}
+                      Période
+                    {% endif %}
+                    d'application :
+                  </span>
                   <button type="button"
                           class="fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left fr-icon-close-line drawer-conditions__fermer"
                           data-drawer-close>Fermer</button>
