@@ -164,8 +164,27 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
         <p class="form-region-fermee__texte">Revenez bientôt&nbsp;: votre secteur sera prochainement pris en charge.</p>
       </section>
 
+      {% comment %}
+    #271 chantier 2 — encart récap : sur la page résultat, la colonne gauche
+    n'affiche plus le formulaire complet mais un encart violet compact qui
+    rappelle les choix (rempli côté JS par recap_choix.js depuis l'état du form),
+    avec un bouton « Modifier » qui ré-affiche le formulaire et masque le
+    résultat (via reset_form.js #135). Rendu seulement en page résultat.
+      {% endcomment %}
+      {% if afficher_resultat and not qc_en_attente %}
+        <aside id="recap-choix"
+               class="recap-choix"
+               aria-label="Récapitulatif de vos choix">
+          <div class="recap-choix__liste" data-recap-liste></div>
+          <button type="button"
+                  class="fr-btn fr-btn--secondary fr-btn--sm recap-choix__modifier"
+                  data-recap-modifier>Modifier</button>
+        </aside>
+      {% endif %}
+
       <div id="form-after-localisation"
-           {% if not data.lat or not data.lng %}hidden{% endif %}>
+           {% if not data.lat or not data.lng %}hidden{% endif %}
+           {% if afficher_resultat and not qc_en_attente %}data-recap-actif="1"{% endif %}>
 
         {% comment %}
     ─── Culture ou couvert (#272) ─────────────────────────────────────────

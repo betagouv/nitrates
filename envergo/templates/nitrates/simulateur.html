@@ -74,6 +74,8 @@
     {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
     {# resultat final -> section Localisation/resultat en haut (#112). #}
     <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
+    {# #271 : encart recap des choix (colonne gauche) + bouton Modifier. #}
+    <script defer src="{% static_v 'nitrates/recap_choix.js' %}"></script>
   {% endif %}
 {% endblock %}
 
