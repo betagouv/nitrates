@@ -349,7 +349,22 @@
   }
 
   function parcoursComplet() {
+    // Partie culture (#272) : les champs cascade categorie_culture /
+    // sous_culture_form sont désormais pilotés en coulisse par le flow
+    // question_couvert_flow.js et rendus dans des conteneurs MASQUÉS -> ils ne
+    // passent plus le test de visibilité. On gate donc la partie culture sur le
+    // hidden input `occupation_sol`, qui n'est renseigné qu'une fois le flow
+    // arrivé à une branche valide (sous_culture résolu, ou sol_non_cultivé).
+    if (occupationSolHidden && !occupationSolHidden.value) return false;
+
+    // Dates couvert (Q4 #272) obligatoires quand posées : le flow marque le form
+    // tant que semis/destruction ne sont pas tous deux saisis.
+    const form = document.getElementById("form-simulateur");
+    if (form && form.hasAttribute("data-couvert-dates-incompletes")) return false;
+
+    // Partie fertilisant : gating inchangé sur les champs visibles.
     for (const champ of FIELDS) {
+      if (champ === "categorie_culture" || champ === "sous_culture_form") continue;
       const container = containers[champ];
       if (!estVisible(container)) continue;
       if (!currentValue(champ)) return false;

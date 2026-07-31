@@ -57,8 +57,9 @@
   <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
   {# Barre de progression du parcours, fixee top (#154). #}
   <script defer src="{% static_v 'nitrates/progress.js' %}"></script>
-  {# Saisie en 2 questions du type de couvert interculture longue (hack UI). #}
-  <script defer src="{% static_v 'nitrates/couvert_split.js' %}"></script>
+  {# #272 : parcours culture/couvert en questions successives (Q1 destination -> #}
+  {# Q2 type -> Q3 récolté / sous-culture -> Q4 dates). Remplace couvert_split.js. #}
+  <script defer src="{% static_v 'nitrates/question_couvert_flow.js' %}"></script>
   {# Auto-scroll progressif entre les etapes du formulaire (#83). #}
   <script defer src="{% static_v 'nitrates/form_autoscroll.js' %}"></script>
   {# Reset/flush du resultat au changement d'un champ apres soumission (#135). #}
