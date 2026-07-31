@@ -37,6 +37,15 @@
       "nitrates-construction-visible",
       on
     );
+    // #271 : expose la hauteur RÉELLE du bandeau (elle varie : le texte passe
+    // sur plusieurs lignes en mobile) pour que ce qui se cale dessous (barre de
+    // progression, drawer) suive sa vraie hauteur au lieu d'une valeur figée.
+    var bar = root.querySelector(".nitrates-construction__bar") || root;
+    var h = on ? Math.round(bar.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty(
+      "--nitrates-construction-h",
+      h + "px"
+    );
   }
 
   function setScrolled(on) {

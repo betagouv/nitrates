@@ -1,0 +1,90 @@
+{% load nitrates_tags %}
+
+{% comment %}
+#271 chantier 3 — Drawer « Conditions d'épandage ».
+
+Panneau latéral (slide depuis la droite, 2/3 sur desktop, plein écran mobile)
+qui porte les prescriptions conditionnées (blocs riches PC) + la note. Ouvert
+par le bouton « Voir les conditions d'épandage pour cette/ces période(s) »
+placé près des zones orange du calendrier (cf. _panneau_resultat.html).
+
+En tête du contenu, on RÉINJECTE les dates des périodes d'autorisation sous
+condition (badges orange, icône 📅) : elles rappellent quand ces conditions
+s'appliquent, en écho au calendrier. Rendu seulement s'il y a des blocs PC.
+{% endcomment %}
+
+{% comment %}
+En-tête du drawer (#271) : « Période(s) d'application : » + badges des dates des
+périodes d'autorisation sous condition (fond orange, cohérent avec le calendrier).
+- Règle NON calculatrice : bornes = dates fixes -> rendues côté serveur ici.
+- Règle calculatrice (couvert) : bornes = events (semis/destruction ± offset)
+  résolus côté client -> conteneur rempli par calculatrice-calendrier.js. Le
+  titre singulier/pluriel est ajusté par le JS selon le nombre de badges.
+{% endcomment %}
+{% comment %}
+Le libellé « Période(s) d'application : » est rendu dans l'en-tête du drawer
+(même ligne que Fermer, cf. _panneau_resultat.html). Ici, juste les badges de
+dates (fond orange, cohérent calendrier), en tête du contenu.
+{% endcomment %}
+<div class="drawer-conditions__application" data-drawer-application>
+  {% if ev.regle.type == "calculatrice" %}
+    <span class="drawer-conditions__badges" data-drawer-badges-asc></span>
+  {% else %}
+    {% periodes_par_section ev.regle as sections_periodes %}
+    <span class="drawer-conditions__badges">
+      {% for section in sections_periodes %}
+        {% if section.titre == "Période d’autorisation sous condition" %}
+          {% for puce in section.periodes %}
+            <span class="drawer-conditions__date-badge">
+              <span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>
+              {{ puce.phrase }}
+            </span>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </span>
+  {% endif %}
+</div>
+
+{% comment %}
+Prescription(s) conditionnée(s) : contenu riche PC (#136). Même logique que
+l'ancien rendu inline du panneau résultat, désormais dans le drawer.
+{% endcomment %}
+{% if ev.regle.codes_prescription %}
+  {% for cp in ev.regle.codes_prescription %}
+    {% with pc=codes_prescription|get_item:cp %}
+      {% if pc.blocs %}
+        <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
+      {% elif pc and not ev.regle.message %}
+        <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
+        {% if pc.texte_court %}
+          <p>
+            {{ pc.texte_court|linebreaksbr }}
+            {% if pc.texte_redaction_initiale %}
+              <a href="#accordion-texte-init-{{ cp }}"
+                 class="fr-link fr-link--sm nitrates-voir-plus"
+                 data-target="accordion-texte-init-{{ cp }}">voir plus</a>
+            {% endif %}
+          </p>
+        {% endif %}
+      {% elif not pc and not ev.regle.message %}
+        <p class="fr-text--sm">
+          <strong>Code prescription :</strong> {{ cp }}
+        </p>
+      {% endif %}
+    {% endwith %}
+  {% endfor %}
+{% endif %}
+
+{% if ev.regle.note %}
+  {% with note=notes_referentiel|get_item:ev.regle.note %}
+    {% if note %}
+      <h4 class="fr-h6 fr-mt-2w">{{ note.libelle_court|default:ev.regle.note }}</h4>
+      {% if note.condition_declenchement %}<p>{{ note.condition_declenchement|linebreaksbr }}</p>{% endif %}
+    {% else %}
+      <p class="fr-text--sm">
+        <strong>Note :</strong> {{ ev.regle.note }}
+      </p>
+    {% endif %}
+  {% endwith %}
+{% endif %}
