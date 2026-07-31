@@ -1091,7 +1091,9 @@ ul.periodes-liste {
    ~ min-height 1.25rem + padding 0.4rem*2 ~ 2.05rem. La transition sur `top`
    accompagne l'apparition/disparition du bandeau. */
 html.nitrates-construction-visible .nitrates-progress {
-  top: 2.05rem;
+  /* Se cale sous la hauteur RÉELLE du bandeau (varie selon le nombre de lignes,
+     surtout mobile). Fallback 2.05rem si la var n'est pas encore posée. #271 */
+  top: var(--nitrates-construction-h, 2.05rem);
 }
 
 .nitrates-progress.is-visible {
@@ -1226,9 +1228,14 @@ body.drawer-open {
 /* Panneau : ancré à droite, 2/3 de large, translaté hors écran par défaut. */
 .drawer-conditions__panel {
   position: absolute;
+
+  /* top/bottom (pas height:100%) : quand on décale le `top` en JS pour passer
+     sous le bandeau construction, la hauteur s'ajuste automatiquement grâce à
+     bottom:0 -> le contenu ne déborde plus sous le viewport et reste scrollable
+     jusqu'en bas (bug mobile #271). */
   top: 0;
+  bottom: 0;
   right: 0;
-  height: 100%;
   width: 66.6667%;
   max-width: 900px;
   background: var(--background-default-grey, #fff);
