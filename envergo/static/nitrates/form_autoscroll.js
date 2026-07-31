@@ -29,14 +29,21 @@
   // attente OU le resultat final, c'est scroll_resultat.js qui pilote le
   // cadrage (vers la QC / vers la table resultat). Si form_autoscroll agit
   // aussi (replay des etapes du form principal depuis l'URL), les deux scrolls
-  // se battent -> on atterrit sur le form principal au lieu de la QC. On
-  // desactive donc form_autoscroll dans ces cas : il ne sert qu'au parcours de
-  // saisie initial (avant toute soumission).
-  if (
-    document.querySelector("#qc-bloc[data-qc-en-attente='true']") ||
-    document.querySelector(".results-row.layout--split")
-  ) {
-    return;
+  // se battent -> on atterrit sur le form principal au lieu de la QC.
+  //
+  // #272 : on NE désactive PLUS le module en dur au chargement (avant, un
+  // `return` ici tuait l'auto-scroll pour toute la vie de la page dès qu'elle
+  // chargeait avec un résultat/QC -> après un reset_form qui ramène en saisie,
+  // plus aucun auto-scroll, ex en re-jouant les dates couvert). On attache
+  // toujours les observers ; c'est `scrollVers` qui devient un no-op tant qu'un
+  // résultat / une QC en attente est affiché (là scroll_resultat.js commande),
+  // et redevient actif dès qu'on repasse en saisie.
+  function estEnModeResultat() {
+    return !!(
+      document.querySelector("#qc-bloc[data-qc-en-attente='true']") ||
+      document.querySelector(".results-row.layout--split") ||
+      document.querySelector(".result-col")
+    );
   }
 
   var reduceMotion =
@@ -49,6 +56,10 @@
   var dernierScroll = 0;
   function scrollVers(el) {
     if (!el) return;
+    // No-op tant qu'un resultat / une QC en attente est affiche : c'est
+    // scroll_resultat.js qui cadre. On reprend l'auto-scroll des qu'on repasse
+    // en saisie (reset_form retire le resultat). #272.
+    if (estEnModeResultat()) return;
     var maintenant = Date.now();
     // Throttle : evite les scrolls en rafale si plusieurs mutations groupees.
     if (maintenant - dernierScroll < 250) return;
@@ -84,6 +95,13 @@
   // son point / trouver sa parcelle, au lieu d'etre emmene direct au formulaire
   // (surtout genant sur petit ecran). Le point par defaut reste pose.
   var ETAPES = [
+    // #272 : questions successives du flow culture/couvert (revelees une a une
+    // par question_couvert_flow.js via `hidden`). On les scrolle comme les
+    // autres etapes des qu'elles apparaissent.
+    { id: "q_type_couvert-wrapper", section: false },
+    { id: "q_couvert_recolte-wrapper", section: false },
+    { id: "q_sous_culture-wrapper", section: false },
+    { id: "q_dates_couvert-wrapper", section: false },
     { id: "sous_culture_form-wrapper", section: false },
     { id: "section-fertilisant", section: false },
     { id: "categorie_fertilisant-wrapper", section: false },
@@ -95,29 +113,69 @@
   }
 
   // Observe chaque etape : quand son `hidden` tombe (revelation), on scrolle.
+  // On garde une reference a l'etat `dejaVisible` de chaque etape pour pouvoir
+  // le re-armer quand on repasse en mode saisie (#272, retour-saisie).
+  var etats = [];
   ETAPES.forEach(function (etape) {
     var el = document.getElementById(etape.id);
     if (!el) return;
     // Ne pas scroller pour les etapes deja visibles au chargement (cas d'un
     // parcours rejoue depuis l'URL : tout est deja la, pas de revelation).
-    var dejaVisible = estVisible(el);
+    var etat = { el: el, etape: etape, dejaVisible: estVisible(el) };
+    etats.push(etat);
     var obs = new MutationObserver(function () {
-      if (estVisible(el) && !dejaVisible) {
+      if (estVisible(el) && !etat.dejaVisible) {
         scrollVers(cibleDepuis(el, etape.section));
-        dejaVisible = true; // une seule fois
+        etat.dejaVisible = true; // une seule fois
       } else if (!estVisible(el)) {
         // L'etape a ete re-cachee (l'user a change un choix en amont) : on
         // re-arme pour rescroller a la prochaine revelation.
-        dejaVisible = false;
+        etat.dejaVisible = false;
       }
     });
     obs.observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  });
+
+  // #272 : quand reset_form ramene en mode saisie apres avoir invalide un
+  // resultat, on resynchronise `dejaVisible` sur la visibilite COURANTE de
+  // chaque etape. Ainsi une etape re-revelee ensuite (ex section fertilisant
+  // apres re-saisie des dates) redeclenche bien un scroll, meme si elle etait
+  // deja visible sous le resultat au chargement de la page.
+  document.addEventListener("nitrates:retour-saisie", function () {
+    etats.forEach(function (etat) {
+      etat.dejaVisible = estVisible(etat.el);
+    });
   });
 
   // #263 : plus de scroll auto vers #section-culture au moment ou la zone
   // apres-localisation se revele (clic carte / recherche). L'utilisateur reste
   // sur la carte pour affiner son point. Le scroll ne reprend qu'a partir du
   // choix de la categorie de culture (etapes ci-dessus).
+
+  // #272 : les sous-questions cascade (sous_fertilisant, sous_culture_form) sont
+  // remplies par CONTENU (cascade.js re-render leurs radios dans [data-cascade]),
+  // pas toujours par une transition `hidden` -> l'observer d'attribut ci-dessus
+  // peut manquer la revelation, notamment en iterant (page chargee avec un
+  // resultat : le wrapper etait deja `hidden=false`, cascade re-render dedans
+  // sans toucher a `hidden`, donc aucune mutation d'attribut). On complete donc
+  // par un scroll DIRECT au change de la categorie parente, une fois que
+  // cascade.js a rendu la sous-question (tick suivant).
+  //   choix categorie_fertilisant -> scroll « Precisez la categorie de fertilisant »
+  //   choix categorie_culture (couvert exclu, gere par le flow) -> sous_culture_form
+  function scrollVersWrapperSiVisible(id) {
+    var w = document.getElementById(id);
+    if (estVisible(w)) scrollVers(w);
+  }
+  form.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t || t.type !== "radio" || !t.checked) return;
+    if (t.name === "categorie_fertilisant") {
+      // Laisse cascade.js rendre sous_fertilisant, puis scrolle dessus.
+      setTimeout(function () {
+        scrollVersWrapperSiVisible("sous_fertilisant-wrapper");
+      }, 60);
+    }
+  });
 
   // Dernier pas : apres le choix du sous-fertilisant (fin de cascade), aucune
   // nouvelle etape ne se revele -> on amene au bouton de soumission. On ecoute

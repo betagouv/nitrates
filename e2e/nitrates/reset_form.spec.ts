@@ -260,20 +260,26 @@ test.describe('Simulateur #135 : parcours QC complet par clics reels', () => {
   }) => {
     await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
 
-    // Attendre la cascade prete.
+    // Attendre le flow #272 pret (Q1 destination rendue).
     await expect
       .poll(
         async () =>
-          page
-            .locator('[data-cascade="categorie_culture"] input[type="radio"]')
-            .count(),
+          page.locator('#q_destination_epandage input[type="radio"]').count(),
         { timeout: 10000 }
       )
       .toBeGreaterThan(0);
 
-    // Cascade culture : printemps -> mais.
-    await page.locator('label[for="id_categorie_culture__culture_printemps"]').click();
-    await page.locator('label[for="id_sous_culture_form__mais"]').click();
+    // Flow #272 : Q1 culture principale (index 2) -> Q2 culture printemps ->
+    // Q3 precision mais.
+    const clickFlow = async (name: string, index: number) => {
+      const g = page.locator(`input[type=radio][name="${name}"]`);
+      const id = await g.nth(index).getAttribute('id');
+      await page.locator(`label[for="${id}"]`).click();
+      await page.waitForTimeout(250);
+    };
+    await clickFlow('cflow_destination', 2); // culture principale
+    await clickFlow('cflow_type_couvert', 1); // culture de printemps
+    await clickFlow('cflow_sous_culture', 0); // mais
     // Cascade fertilisant : digestats -> fraction liquide.
     await page.locator('label[for="id_categorie_fertilisant__digestats"]').click();
     await page
@@ -303,43 +309,39 @@ test.describe('Simulateur #135 : parcours QC complet par clics reels', () => {
 });
 
 /**
- * #135 — cas couvert split : la saisie du sous_culture_form passe par 2 mini
- * questions (couvert_split.js) qui cochent le vrai radio et dispatchent son
- * change. On verifie que ce change synthetique declenche bien l'elagage du
- * resultat sans casser (le radio split n'est PAS un champ cascade/derive, mais
- * le sous_culture_form qu'il pilote l'est).
+ * #135 + #272 — cas couvert flow : la saisie du couvert passe par les questions
+ * successives Q1..Q4 (question_couvert_flow.js), qui cochent le vrai radio
+ * categorie_culture / sous_culture_form et dispatchent leur change. On verifie
+ * que ce change synthetique declenche bien l'elagage du resultat sans casser
+ * (les radios cflow_* ne sont PAS des champs cascade/derives, mais le
+ * sous_culture_form qu'ils pilotent l'est).
  */
-test.describe('Simulateur #135 : reset sur saisie couvert split', () => {
+test.describe('Simulateur #135 : reset sur saisie couvert (flow #272)', () => {
   const URL_RESULTAT_COUVERT =
     `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
     '&categorie_culture=couvert_intercultures_longue' +
     '&sous_culture_form=couvert_non_recolte_toujours_en_place_apres_0101' +
-    '&occupation_sol=interculture_longue&sous_culture=couvert' +
+    '&occupation_sol=couvert_intercultures&sous_culture=cine_apres_0101' +
+    '&date_semis_couvert=15/08&date_destruction_couvert=15/02' +
     '&categorie_fertilisant=engrais_mineral' +
     '&sous_fertilisant=engrais_azote_mineral&type_fertilisant=type_III';
 
-  test('changer une mini-question split apres resultat elague le resultat', async ({
+  test('changer la question recolte apres resultat elague le resultat', async ({
     page,
   }) => {
     await page.goto(URL_RESULTAT_COUVERT);
     await expect(page.locator('.result-col')).toBeVisible();
 
-    // Les 2 mini-questions split sont rendues (couvert_split.js). On change
-    // l'axe "recolte" -> recompose la valeur -> coche le vrai radio ->
-    // dispatch change -> reset_form doit elaguer.
-    const splitRecolte = page.locator(
-      'input[name="couvert_split_recolte"][value="recolte"]'
+    // Le flow #272 est reconstruit depuis l'URL (Q1..Q3 cochees). On change
+    // l'axe "recolte" (Q3) -> pilote le vrai sous_culture_form -> dispatch
+    // change -> reset_form doit elaguer.
+    const recolteRadio = page.locator(
+      'input[name="cflow_couvert_recolte"][value="recolte"]'
     );
-    // Le label DSFR intercepte le clic ; on cible le label associe.
-    await page
-      .locator('label[for="id_couvert_split_recolte__recolte"]')
-      .click();
-    await page.waitForTimeout(150);
+    const id = await recolteRadio.getAttribute('id');
+    await page.locator(`label[for="${id}"]`).click();
+    await page.waitForTimeout(200);
 
-    // Selon que la valeur recomposee correspond a un vrai radio, le resultat
-    // doit avoir ete elague (le parcours a change). Au minimum : pas de crash,
-    // et si un sous_culture_form a ete recoche, le resultat disparait.
-    void splitRecolte;
     // L'invariant robuste : aucune cle d'URL dupliquee apres l'operation.
     const search = await page.evaluate(() => location.search);
     expect(dupKeys(search)).toEqual([]);

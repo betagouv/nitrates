@@ -13,6 +13,7 @@ const assert = require("node:assert");
 
 const cal = require("./calculatrice-calendrier.js");
 const { parseBorne, evalComparaison, evalCondition, computeRegimePerDay, TOTAL_JOURS } = cal;
+const { messageBornePicker, messageHorsBornes } = cal;
 
 // "JJ/MM" -> index agricole, pour des assertions lisibles.
 const J = (s) => cal.jjmmToJourAgricole(s);
@@ -413,4 +414,39 @@ test("#215 : borne event nu (sans offset) -> pas d'annotation", () => {
     annote({ isEvent: true, eventId: "date_semis_couvert", offsetN: null }, "du", IBID),
     null
   );
+});
+
+// #272 : la note de bornage de la DESTRUCTION du couvert doit être actionnable
+// (« recommencez une simulation ») car la borne découle de la branche choisie.
+test("messageBornePicker destruction max (avant 31/12) -> recommencer simulation", () => {
+  const msg = messageBornePicker({
+    id: "date_destruction_couvert",
+    max: "31/12",
+  });
+  assert.match(msg, /jusqu'au 31 décembre/);
+  assert.match(msg, /recommencez une simulation/);
+});
+
+test("messageBornePicker destruction min (après 01/01) -> recommencer simulation", () => {
+  const msg = messageBornePicker({
+    id: "date_destruction_couvert",
+    min: "01/01",
+  });
+  assert.match(msg, /à partir du 1 janvier/);
+  assert.match(msg, /recommencez une simulation/);
+});
+
+test("messageBornePicker autre input (semis) garde la formulation générique", () => {
+  const msg = messageBornePicker({ id: "date_semis_couvert", max: "15/11" });
+  assert.match(msg, /nécessairement avant/);
+  assert.doesNotMatch(msg, /recommencez/);
+});
+
+test("messageHorsBornes destruction hors borne -> recommencer simulation", () => {
+  // Destruction bornée à max 31/12 ; on saisit 04/01 (année agricole -> après).
+  const msg = messageHorsBornes(
+    { id: "date_destruction_couvert", max: "31/12" },
+    "04/01"
+  );
+  assert.match(msg, /recommencez une simulation/);
 });

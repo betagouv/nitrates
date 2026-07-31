@@ -504,6 +504,58 @@
   align-items: flex-end; /* labels de hauteurs differentes -> input aligne en bas */
 }
 
+/* #272 : bandeau violet derriere les 2 champs dates du calendrier dynamique,
+   facon question complementaire, pour que ces champs ressortent face au
+   calendrier colore juste en dessous (les utilisateurs ne les voyaient pas et
+   ne comprenaient pas qu'il faut jouer avec les dates). Un titre d'intro
+   explique l'interaction. On resserre aussi le label du champ (gap reduit). */
+.calc-cal__form--highlight {
+  display: block; /* on empile titre + rangee de champs */
+  background: var(--background-open-blue-france, #e3e3fd);
+  border-left: 3px solid var(--border-action-high-blue-france, #6a6af4);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Titre d'intro du bandeau : « Jouer avec les dates … fait evoluer le
+   calendrier ». Guide l'utilisateur qui ne comprenait pas l'interaction. */
+.calc-cal__form-titre {
+  margin: 0 0 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-title-blue-france, #000091);
+}
+
+[data-fr-theme="dark"] .calc-cal__form-titre {
+  color: #c1c1fb;
+}
+
+/* Rangee des 2 champs dates (reprend l'ancien layout flex de .calc-cal__form). */
+.calc-cal__form-champs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
+.calc-cal__form--highlight .calc-cal__field {
+  gap: 0.15rem; /* resserre label <-> input (defaut 0.35rem) */
+}
+
+.calc-cal__form--highlight .calc-cal__field-label {
+  /* Libelles courts (« Date de semis/destruction du couvert ») : tiennent sur
+     une ligne -> on n'a plus besoin de reserver 2 lignes, input colle au label. */
+  min-height: 0;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+[data-fr-theme="dark"] .calc-cal__form--highlight {
+  background: rgb(106 106 244 / 16%);
+  border-left-color: #8585f6;
+}
+
 /* Input "date" type JJ/MM : large pour matcher le figma, avec un picto
    calendrier en suffix pour signaler que c'est un champ date. La valeur
    initiale (placeholder du YAML) est grisee tant que l'utilisateur n'a
@@ -771,6 +823,34 @@ ul.calc-cal__recap-list {
   --icon-size: 1.25rem;
 
   margin: 0;
+}
+
+/* Dark mode : la mask de l'icone DSFR « ? » ne se charge pas correctement (asset
+   servi sur un mauvais base URL) -> le ::before apparait comme un carre violet
+   plein au lieu du « ? » detoure. Plutot que de dependre de cette mask, on
+   dessine NOTRE propre pastille : cercle borde violet clair, « ? » au centre,
+   fond transparent. Robuste et net sur fond sombre. #272 */
+[data-fr-theme="dark"] .calc-cal__recap-info.fr-btn--tooltip {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 1px solid #8585f6 !important;
+  border-radius: 50% !important;
+  color: #8585f6 !important;
+}
+
+[data-fr-theme="dark"] .calc-cal__recap-info.fr-btn--tooltip::before {
+  content: "?" !important;
+  mask: none !important;
+  background: none !important;
+  color: #8585f6 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ─── Tooltip survol calendrier (issue #28) ─────────────────────────── */
