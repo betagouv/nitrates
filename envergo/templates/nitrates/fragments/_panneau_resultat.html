@@ -112,6 +112,25 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
+          CR 2026-08 : les PC « plafond sur couvert » (PC12-15 & fusions/overrides)
+          s'appliquent sur tout le 2nd semestre (automne + hiver), pas seulement
+          sur la période d'autorisation sous condition. Elles restent donc
+          affichées INLINE sous le calendrier (et NON dans le drawer conditions).
+          Les autres PC (spécifiques à la période ASC) vont dans le drawer.
+          {% endcomment %}
+          {% codes_prescription_plafond_couvert ev.regle as pc_plafond %}
+          {% for cp in pc_plafond %}
+            {% with pc=codes_prescription|get_item:cp %}
+              {% if pc.blocs %}
+                <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
+              {% elif pc %}
+                <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
+                {% if pc.texte_court %}<p>{{ pc.texte_court|linebreaksbr }}</p>{% endif %}
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
+
+          {% comment %}
           Ancien callout "Condition d'autorisation" (texte_condition, #28)
           retire : redondant avec les prescriptions conditionnees riches qui
           portent desormais tout le detail. Le texte_condition reste exploite
@@ -131,6 +150,9 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% if ev.regle.type != "calculatrice" %}
             {% periodes_par_section ev.regle as sections_periodes %}
             {% nb_periodes_sous_condition ev.regle as nb_asc %}
+            {# Lien drawer affiché seulement s'il reste des PC HORS plafond (les #}
+            {# PC plafond sont inline sous le calendrier) ou une note. #}
+            {% drawer_conditions_a_du_contenu ev.regle as drawer_a_du_contenu %}
             {% for section in sections_periodes %}
               <p class="periodes-section-titre">{{ section.titre }} :</p>
               {% comment %}
@@ -146,7 +168,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               puce sinon (au singulier). L'item n'a pas de marqueur (liseré vide).
               {% endcomment %}
               <ul class="fr-mb-0 periodes-liste">
-                {% if section.titre == "Période d’autorisation sous condition" and nb_asc > 1 and ev.regle.codes_prescription %}
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc > 1 and drawer_a_du_contenu %}
                   <li class="periodes-lien-conditions">
                     <a href="#drawer-conditions"
                        class="fr-link periodes-lien-conditions__link"
@@ -177,7 +199,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                     {% endif %}
                   </li>
                 {% endfor %}
-                {% if section.titre == "Période d’autorisation sous condition" and nb_asc == 1 and ev.regle.codes_prescription %}
+                {% if section.titre == "Période d’autorisation sous condition" and nb_asc == 1 and drawer_a_du_contenu %}
                   <li class="periodes-lien-conditions">
                     <a href="#drawer-conditions"
                        class="fr-link periodes-lien-conditions__link"
@@ -241,9 +263,11 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           condition » (cf. plus haut pour les règles non calculatrice ; pour les
           calculatrice/couverts, le lien est injecté par le calendrier dynamique
           près de son recap ASC). Le drawer n'est rendu que s'il y a du contenu
-          conditionné (codes_prescription ou note).
+          conditionné HORS plafond couvert (PC non-plafond ou note) : une règle
+          qui n'a que des PC plafond les affiche inline, sans drawer.
           {% endcomment %}
-          {% if ev.regle.codes_prescription or ev.regle.note %}
+          {% drawer_conditions_a_du_contenu ev.regle as drawer_a_du_contenu %}
+          {% if drawer_a_du_contenu %}
             {% comment %}
             Drawer latéral (#271 chantier 3) : slide depuis la droite (2/3
             desktop, plein écran mobile). Contenu = prescriptions conditionnées

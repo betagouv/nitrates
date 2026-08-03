@@ -88,6 +88,12 @@
     non_applicable: "ne s'applique pas",
   };
 
+  // PC « plafond sur couvert » (PC12-15 & fusions/overrides). Miroir de la
+  // regexp Python _PC_PLAFOND_COUVERT_RE (nitrates_tags.py) : matching LARGE,
+  // forward-compatible avec les futurs override/fusion de PC. Ces PC sont
+  // rendues inline sous le calendrier (pas dans le drawer, CR 2026-08).
+  const EST_PC_PLAFOND_COUVERT = /pc1[2-5](?:$|_|\b)/i;
+
   // Titre de section du récap (#159, maquette : regroupement par régime, une
   // liste à puces par section). Ordre = du moins au plus restrictif, pour
   // s'aligner sur le récap des cultures principales (autorisation d'abord,
@@ -1479,9 +1485,17 @@
     // période(s) ASC. Ainsi il reste rattaché à la bonne période (avant, un <p>
     // hors calendrier pouvait suggérer un rattachement à une autre section).
     // Rendu uniquement si la règle porte des prescriptions/note à montrer.
+    //
+    // CR 2026-08 : on EXCLUT les PC « plafond sur couvert » (PC12-15 & fusions/
+    // overrides) : elles s'appliquent sur tout le 2nd semestre, pas seulement sur
+    // la période ASC -> rendues inline sous le calendrier (côté template), pas
+    // dans le drawer. Le lien n'apparaît donc que s'il reste des PC HORS plafond
+    // ou une note.
     const ascPuces = pucesParRegime.autorisation_sous_condition || [];
-    const aDuContenu =
-      (data.codes_prescription && data.codes_prescription.length) || data.note;
+    const pcHorsPlafond = (data.codes_prescription || []).filter(
+      (cp) => !EST_PC_PLAFOND_COUVERT.test(String(cp))
+    );
+    const aDuContenu = pcHorsPlafond.length > 0 || data.note;
     if (ascPuces.length && aDuContenu) {
       const pluriel = ascPuces.length > 1;
       const texte = pluriel
