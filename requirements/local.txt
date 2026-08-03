@@ -396,7 +396,7 @@ pytest==8.4.1
     #   -r local.in
     #   pytest-django
     #   pytest-sugar
-pytest-django==4.11.1
+pytest-django==4.12.0
     # via -r local.in
 pytest-sugar==1.0.0
     # via -r local.in
