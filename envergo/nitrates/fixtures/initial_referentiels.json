@@ -1167,6 +1167,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_1"
     ],
@@ -1380,6 +1381,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_1"
     ],
@@ -1590,6 +1592,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_2"
     ],
@@ -1757,6 +1760,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_3"
     ],
@@ -1772,6 +1776,7 @@
     "texte_redaction_initiale": "En présence d'une culture irriguée, l'apport de fertilisants azotés de\ntype III est autorisé jusqu'au 15 juillet et, sur maïs irrigué, jusqu'au\nstade du brunissement des soies du maïs.",
     "blocs": {},
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_4"
     ],
@@ -1857,6 +1862,7 @@
       "schema": 1
     },
     "toujours_affiche": true,
+    "plafond": false,
     "note_reglementaire": [
       "note_8"
     ],
@@ -1942,6 +1948,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_9"
     ],
@@ -2020,6 +2027,7 @@
       "schema": 1
     },
     "toujours_affiche": true,
+    "plafond": false,
     "note_reglementaire": [
       "note_10"
     ],
@@ -2086,6 +2094,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_11"
     ],
@@ -2247,6 +2256,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_12"
     ],
@@ -2339,6 +2349,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": [
       "note_13"
     ],
@@ -2439,6 +2450,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": true,
     "note_reglementaire": null,
     "ordre_affichage": 11
   }
@@ -2525,6 +2537,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": true,
     "note_reglementaire": null,
     "ordre_affichage": 12
   }
@@ -2614,6 +2627,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": true,
     "note_reglementaire": null,
     "ordre_affichage": 13
   }
@@ -2697,6 +2711,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": true,
     "note_reglementaire": null,
     "ordre_affichage": 14
   }
@@ -2783,6 +2798,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": true,
     "note_reglementaire": null,
     "ordre_affichage": 15
   }
@@ -2894,6 +2910,7 @@
       "schema": 1
     },
     "toujours_affiche": false,
+    "plafond": false,
     "note_reglementaire": null,
     "ordre_affichage": 16
   }

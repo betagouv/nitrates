@@ -28,6 +28,12 @@ le JS resolve les bornes event+offset.
   <div data-calc-cal-mount>{# Le JS construit ici : mini-form + .calendrier-epandage + recap. #}</div>
 </div>
 
-{{ ev.regle.to_json_dict|json_script:"nitrates-calculatrice-data" }}
+{% comment %}
+CR 2026-08 : on sérialise la règle ENRICHIE de l'info plafond
+(codes_prescription_plafond + tous_plafonds), pour que le calendrier dynamique
+sorte les PC plafond du drawer et peigne en vert une règle 100 % plafond.
+{% endcomment %}
+{% calculatrice_data_json ev.regle codes_prescription as calc_data %}
+{{ calc_data|json_script:"nitrates-calculatrice-data" }}
 
 <script defer src="{% static_v 'nitrates/calculatrice-calendrier.js' %}"></script>

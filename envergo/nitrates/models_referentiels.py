@@ -316,6 +316,19 @@ class CodePrescription(_NaturalKeyByIdentifiant):
             "(prescriptions générales d'interdiction permanente)."
         ),
     )
+    plafond = models.BooleanField(
+        default=False,
+        help_text=(
+            "Si True, ce « code » est en réalité une RÈGLE DE PLAFOND (abus de "
+            "langage : PC12 à PC16 ne sont pas de vraies prescriptions "
+            "conditionnées). Conséquences d'affichage : le plafond est rendu "
+            "inline sous le calendrier (pas dans le drawer des conditions) ; et "
+            "si TOUTES les prescriptions d'une règle sont des plafonds, ses "
+            "périodes « autorisation sous condition » sont peintes en VERT "
+            "(autorisé) au lieu d'orange — le plafond s'appliquant de toute "
+            "façon en période autorisée."
+        ),
+    )
     note_reglementaire = models.ForeignKey(
         NoteReglementaire,
         on_delete=models.SET_NULL,

@@ -88,11 +88,11 @@
     non_applicable: "ne s'applique pas",
   };
 
-  // PC « plafond sur couvert » (PC12-15 & fusions/overrides). Miroir de la
-  // regexp Python _PC_PLAFOND_COUVERT_RE (nitrates_tags.py) : matching LARGE,
-  // forward-compatible avec les futurs override/fusion de PC. Ces PC sont
-  // rendues inline sous le calendrier (pas dans le drawer, CR 2026-08).
-  const EST_PC_PLAFOND_COUVERT = /pc1[2-5](?:$|_|\b)/i;
+  // PC « plafond » (PC12-16, abus de langage). CR 2026-08 : le fait qu'une PC
+  // soit un plafond est désormais porté par le champ `plafond` du référentiel
+  // (côté back), sérialisé dans `data.codes_prescription_plafond` (slugs) et
+  // `data.tous_plafonds`. Plus de regexp d'identifiant côté JS : on lit le
+  // champ, comme le calendrier statique (nitrates_tags.py).
 
   // Titre de section du récap (#159, maquette : regroupement par régime, une
   // liste à puces par section). Ordre = du moins au plus restrictif, pour
@@ -617,6 +617,17 @@
     for (const p of periodesActives) {
       if (!p.masque) continue;
       poserMasque(p);
+    }
+
+    // CR 2026-08 : regle 100 % plafond. Si TOUTES les PC de la regle sont des
+    // plafonds (data.tous_plafonds), les jours « autorisation sous condition »
+    // sont en realite autorises (le plafond s'applique de toute facon sur la
+    // periode autorisee). On les repeint donc en `libre` (vert), en coherence
+    // avec le calendrier statique (nitrates_tags.calendrier_epandage).
+    if (data.tous_plafonds) {
+      for (let i = 0; i < result.length; i++) {
+        if (result[i] === "autorisation_sous_condition") result[i] = "libre";
+      }
     }
     return result;
   }
@@ -1492,8 +1503,11 @@
     // dans le drawer. Le lien n'apparaît donc que s'il reste des PC HORS plafond
     // ou une note.
     const ascPuces = pucesParRegime.autorisation_sous_condition || [];
+    const plafonds = new Set(
+      (data.codes_prescription_plafond || []).map((cp) => String(cp))
+    );
     const pcHorsPlafond = (data.codes_prescription || []).filter(
-      (cp) => !EST_PC_PLAFOND_COUVERT.test(String(cp))
+      (cp) => !plafonds.has(String(cp))
     );
     const aDuContenu = pcHorsPlafond.length > 0 || data.note;
     if (ascPuces.length && aDuContenu) {

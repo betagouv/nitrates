@@ -416,54 +416,99 @@ _SECTION_TITRE = {
 }
 
 
-# PC « plafond sur couvert » (PC12 à PC15 et leurs futures fusions/overrides).
-# Ces prescriptions s'appliquent sur tout le 2nd semestre (automne + hiver), PAS
-# seulement sur la periode d'autorisation sous condition : elles restent donc
-# affichees INLINE sous le calendrier (et NON dans le drawer conditions, #271).
+# PC « plafond » (PC12 à PC16, abus de langage). CR 2026-08 (point juristes) :
+# ces « codes » ne sont PAS de vraies prescriptions conditionnées. Le fait
+# qu'une PC soit un plafond est désormais porté par un CHAMP `plafond` du
+# référentiel CodePrescription (booléen, éditable en admin), et NON plus déduit
+# de l'identifiant par regexp. Le référentiel `codes_prescription` (dict
+# {slug: {..., "plafond": True}}) est en scope dans les templates ; on le passe
+# aux tags pour résoudre l'attribut.
 #
-# Regexp volontairement LARGE (forward-compatible avec les dev d'override et de
-# fusion de PC a venir) : matche pc12/pc13/pc14/pc15 apparaissant comme un token
-# dans l'identifiant, quelle que soit la decoration autour. Couvre ainsi :
-#   pc12, pc13, pc14, pc15, pc15_fusion, pc12_pc15_fusion, pc13_ge_override, ...
-_PC_PLAFOND_COUVERT_RE = re.compile(r"pc1[2-5](?:\b|_)", re.IGNORECASE)
+# Conséquences d'affichage d'un plafond :
+#   - rendu INLINE sous le calendrier (pas dans le drawer des conditions) ;
+#   - si TOUTES les PC d'une règle sont des plafonds, ses périodes
+#     « autorisation sous condition » sont peintes en VERT (autorisé) — le
+#     plafond s'appliquant de toute façon sur toute la période autorisée.
+
+
+def _est_plafond(cp, referentiel) -> bool:
+    """True si le slug de PC `cp` est marqué `plafond` dans le référentiel
+    `codes_prescription` (dict {slug: data}). `data` est un dict en runtime,
+    mais peut être un objet (SimpleNamespace) dans certains contextes de test :
+    on tolère les deux formes."""
+    if not cp or not referentiel:
+        return False
+    data = referentiel.get(str(cp))
+    if data is None:
+        return False
+    if isinstance(data, dict):
+        return bool(data.get("plafond"))
+    return bool(getattr(data, "plafond", False))
 
 
 @register.filter
-def est_pc_plafond_couvert(cp) -> bool:
-    """True si l'identifiant de PC `cp` designe un plafond sur couvert (PC12-15
-    et fusions/overrides). Cf. _PC_PLAFOND_COUVERT_RE (matching large)."""
-    if not cp:
-        return False
-    return bool(_PC_PLAFOND_COUVERT_RE.search(str(cp)))
+def est_pc_plafond_couvert(cp, referentiel=None) -> bool:
+    """True si `cp` est une PC de plafond (champ `plafond` du référentiel)."""
+    return _est_plafond(cp, referentiel)
 
 
 @register.simple_tag
-def codes_prescription_plafond_couvert(regle) -> list:
-    """Sous-liste des codes_prescription de `regle` qui sont des plafonds sur
-    couvert (a rendre INLINE sous le calendrier)."""
+def codes_prescription_plafond_couvert(regle, referentiel=None) -> list:
+    """Sous-liste des codes_prescription de `regle` qui sont des plafonds
+    (a rendre INLINE sous le calendrier)."""
     codes = getattr(regle, "codes_prescription", None) or []
-    return [cp for cp in codes if est_pc_plafond_couvert(cp)]
+    return [cp for cp in codes if _est_plafond(cp, referentiel)]
 
 
 @register.simple_tag
-def codes_prescription_hors_plafond(regle) -> list:
+def codes_prescription_hors_plafond(regle, referentiel=None) -> list:
     """Sous-liste des codes_prescription de `regle` qui NE sont PAS des plafonds
-    sur couvert (a rendre dans le drawer conditions, #271)."""
+    (a rendre dans le drawer conditions, #271)."""
     codes = getattr(regle, "codes_prescription", None) or []
-    return [cp for cp in codes if not est_pc_plafond_couvert(cp)]
+    return [cp for cp in codes if not _est_plafond(cp, referentiel)]
 
 
 @register.simple_tag
-def drawer_conditions_a_du_contenu(regle) -> bool:
+def regle_uniquement_plafonds(regle, referentiel=None) -> bool:
+    """True si la règle a au moins une PC et que TOUTES ses PC sont des plafonds.
+    Dans ce cas, les périodes « autorisation sous condition » de la règle sont en
+    réalité des périodes autorisées (le plafond s'applique de toute façon) et
+    doivent être peintes en VERT (CR 2026-08)."""
+    codes = getattr(regle, "codes_prescription", None) or []
+    if not codes:
+        return False
+    return all(_est_plafond(cp, referentiel) for cp in codes)
+
+
+@register.simple_tag
+def calculatrice_data_json(regle, referentiel=None) -> dict:
+    """Dict JSON de la regle calculatrice (couvert) ENRICHI de l'info plafond,
+    pour le calendrier dynamique (calculatrice-calendrier.js).
+
+    On ajoute deux cles au `to_json_dict` : `codes_prescription_plafond` (la
+    sous-liste des slugs de PC marques `plafond` dans le referentiel) et
+    `tous_plafonds` (True si toutes les PC de la regle sont des plafonds -> ses
+    periodes ASC sont peintes en vert cote JS). Ainsi le JS n'a plus besoin de
+    connaitre les identifiants de PC : il lit le champ, comme le back."""
+    base = regle.to_json_dict() if regle is not None else {}
+    codes = getattr(regle, "codes_prescription", None) or []
+    plafonds = [cp for cp in codes if _est_plafond(cp, referentiel)]
+    base["codes_prescription_plafond"] = plafonds
+    base["tous_plafonds"] = bool(codes) and len(plafonds) == len(codes)
+    return base
+
+
+@register.simple_tag
+def drawer_conditions_a_du_contenu(regle, referentiel=None) -> bool:
     """True si le drawer « conditions » a quelque chose a montrer : au moins une
-    PC HORS plafond couvert, ou une note. Les PC plafond couvert etant rendues
-    inline sous le calendrier, une regle qui n'a QUE des PC plafond ne doit PAS
-    afficher le lien / drawer (#271, CR 2026-08)."""
+    PC HORS plafond, ou une note. Les PC plafond etant rendues inline sous le
+    calendrier, une regle qui n'a QUE des PC plafond ne doit PAS afficher le lien
+    / drawer (#271, CR 2026-08)."""
     if regle is None:
         return False
     if getattr(regle, "note", None):
         return True
-    return len(codes_prescription_hors_plafond(regle)) > 0
+    return len(codes_prescription_hors_plafond(regle, referentiel)) > 0
 
 
 @register.simple_tag
@@ -486,7 +531,7 @@ def nb_periodes_sous_condition(regle) -> int:
 
 
 @register.simple_tag
-def periodes_par_section(regle) -> list[dict]:
+def periodes_par_section(regle, referentiel=None) -> list[dict]:
     """Recap des periodes GROUPE PAR SECTION pour le calendrier statique (#159).
 
     Structure (une section par regime present, ordre du moins au plus
@@ -510,16 +555,40 @@ def periodes_par_section(regle) -> list[dict]:
     periodes = getattr(regle, "periodes", None) or []
     justification = getattr(regle, "texte_condition", None) or None
 
+    # CR 2026-08 : regle 100% plafond -> les periodes ASC deviennent des
+    # periodes autorisees (vert). On recatalogue leur regime en autorisation
+    # pure pour qu'elles rejoignent la section « Autorisé » (et non « Autorisé
+    # sous conditions »), en coherence avec le calendrier peint en vert.
+    tous_plafonds = regle_uniquement_plafonds(regle, referentiel)
+
     sections = []
 
-    # Autorisation pure (vert) : premiere section, sans justification.
+    # Autorisation pure (vert) : premiere section, sans justification. Sur une
+    # regle 100% plafond, les periodes ASC sont ajoutees ici (elles sont
+    # autorisees, le plafond s'appliquant de toute facon).
     autorisation = periode_autorisation_phrase(regle)
+    puces_autorisation = []
     if autorisation:
+        puces_autorisation.append({"phrase": autorisation, "justification": None})
+    if tous_plafonds:
+        for p in sorted(
+            (
+                p
+                for p in periodes
+                if (p.get("regime") or regle_type) == "autorisation_sous_condition"
+            ),
+            key=lambda p: (
+                _day_of_year(*_parse_jjmm(p.get("du", "")))
+                if _parse_jjmm(p.get("du", ""))
+                else float("inf")
+            ),
+        ):
+            puces_autorisation.append(
+                {"phrase": periode_phrase(p), "justification": None}
+            )
+    if puces_autorisation:
         sections.append(
-            {
-                "titre": "Période d’autorisation",
-                "periodes": [{"phrase": autorisation, "justification": None}],
-            }
+            {"titre": "Période d’autorisation", "periodes": puces_autorisation}
         )
 
     # Tri des periodes d'un meme regime par jour agricole de debut (#224) :
@@ -532,6 +601,10 @@ def periodes_par_section(regle) -> list[dict]:
         return _day_of_year(*jjmm) if jjmm else float("inf")
 
     for regime in _ORDRE_REGIME:
+        # Regle 100% plafond : les periodes ASC ont deja ete versees dans la
+        # section « Autorisé » ci-dessus, on ne les re-liste pas ici.
+        if tous_plafonds and regime == "autorisation_sous_condition":
+            continue
         periodes_regime = sorted(
             (p for p in periodes if (p.get("regime") or regle_type) == regime),
             key=_rang_agricole,
@@ -600,12 +673,17 @@ def est_interdit_toute_lannee(regle) -> bool:
 
 
 @register.inclusion_tag("nitrates/fragments/_calendrier.html")
-def calendrier_epandage(regle):
+def calendrier_epandage(regle, referentiel=None):
     """Rend un calendrier 12 mois colore avec les periodes interdites/
     conditionnelles overlays.
 
     `regle` : un dataclass `Resultat` ou un objet avec `type` et
     `periodes` (compatible).
+    `referentiel` : dict `codes_prescription` (optionnel). Sert a detecter les
+    regles dont TOUTES les PC sont des plafonds : dans ce cas les periodes
+    « autorisation sous condition » sont peintes en VERT (autorise) plutot qu'en
+    orange, le plafond s'appliquant de toute facon sur la periode autorisee
+    (CR 2026-08).
 
     Chaque periode peut porter un champ `regime` optionnel : si
     present, c'est lui qui determine la couleur du segment (regime
@@ -616,6 +694,12 @@ def calendrier_epandage(regle):
 
     regle_type = getattr(regle, "type", None) or ""
     periodes = getattr(regle, "periodes", None) or []
+
+    # CR 2026-08 : si TOUTES les PC de la regle sont des plafonds, ses periodes
+    # « autorisation sous condition » sont en realite des periodes autorisees
+    # (le plafond s'applique quoi qu'il arrive) -> pas d'overlay orange, on
+    # laisse le fond vert. On neutralise donc ces periodes ASC.
+    tous_plafonds = regle_uniquement_plafonds(regle, referentiel)
 
     # Regle "sous condition / plafond TOUTE L'ANNEE" : certaines feuilles
     # (regles partagees CIE/CINE courte, type III, plafonnements) sont des
@@ -641,6 +725,10 @@ def calendrier_epandage(regle):
     periodes_phenologiques = []  # non parsables (ex: brunissement_soies)
     for p in periodes:
         regime_effectif = p.get("regime") or regle_type
+        # Regle 100% plafond : une periode ASC devient une periode autorisee
+        # (vert). On saute son overlay -> le fond vert porte le sens.
+        if tous_plafonds and regime_effectif == "autorisation_sous_condition":
+            continue
         couleur = _COULEUR_ZONE_PAR_TYPE.get(regime_effectif)
         if not couleur:
             # `libre` (= pas d'overlay) ou type sans overlay : on n'affiche

@@ -108,7 +108,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% endcomment %}
             {% include "nitrates/fragments/_calculatrice_calendrier.html" %}
           {% else %}
-            {% calendrier_epandage ev.regle %}
+            {% calendrier_epandage ev.regle codes_prescription %}
           {% endif %}
 
           {% comment %}
@@ -118,7 +118,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           affichées INLINE sous le calendrier (et NON dans le drawer conditions).
           Les autres PC (spécifiques à la période ASC) vont dans le drawer.
           {% endcomment %}
-          {% codes_prescription_plafond_couvert ev.regle as pc_plafond %}
+          {% codes_prescription_plafond_couvert ev.regle codes_prescription as pc_plafond %}
           {% for cp in pc_plafond %}
             {% with pc=codes_prescription|get_item:cp %}
               {% if pc.blocs %}
@@ -148,11 +148,11 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           (couverts) ont leur propre recap cote JS, pas de doublon ici.
           {% endcomment %}
           {% if ev.regle.type != "calculatrice" %}
-            {% periodes_par_section ev.regle as sections_periodes %}
+            {% periodes_par_section ev.regle codes_prescription as sections_periodes %}
             {% nb_periodes_sous_condition ev.regle as nb_asc %}
             {# Lien drawer affiché seulement s'il reste des PC HORS plafond (les #}
             {# PC plafond sont inline sous le calendrier) ou une note. #}
-            {% drawer_conditions_a_du_contenu ev.regle as drawer_a_du_contenu %}
+            {% drawer_conditions_a_du_contenu ev.regle codes_prescription as drawer_a_du_contenu %}
             {% for section in sections_periodes %}
               <p class="periodes-section-titre">{{ section.titre }} :</p>
               {% comment %}
@@ -266,7 +266,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           conditionné HORS plafond couvert (PC non-plafond ou note) : une règle
           qui n'a que des PC plafond les affiche inline, sans drawer.
           {% endcomment %}
-          {% drawer_conditions_a_du_contenu ev.regle as drawer_a_du_contenu %}
+          {% drawer_conditions_a_du_contenu ev.regle codes_prescription as drawer_a_du_contenu %}
           {% if drawer_a_du_contenu %}
             {% comment %}
             Drawer latéral (#271 chantier 3) : slide depuis la droite (2/3
