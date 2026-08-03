@@ -81,6 +81,7 @@ arbre:
                                   du: 01/07
                                   regime: autorisation_sous_condition
                                 inputs_requis: []
+                                texte_condition: Autorisé sous condition entre le 01/07 et le 31/08.
                                 code_prescription: pc6
                               valeur: true
                               libelle: Oui
@@ -267,9 +268,8 @@ arbre:
                     branches:
                     - noeud:
                         id: q_luzerne_en_zone_grand_est_1_type_II
-                        aide: ''
                         champ: plan_epandage
-                        texte: Votre plan d'épandage est-il soumis à autorisation ?
+                        texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
                         niveau: complement
                         branches:
                         - noeud:
@@ -316,9 +316,8 @@ arbre:
                       libelle: Type II
                     - noeud:
                         id: q_luzerne_en_zone_grand_est_1_type_III
-                        aide: ''
                         champ: plan_epandage
-                        texte: Votre plan d'épandage est-il soumis à autorisation ?
+                        texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
                         niveau: complement
                         branches:
                         - noeud:
@@ -471,9 +470,12 @@ arbre:
                 - noeud:
                     id: q_cine_apres_0101_type_Ib
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_cine_apres_0101_type_Ib_icpe_ed
                         champ: fertilisant_iaa
@@ -513,7 +515,7 @@ arbre:
                           feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_cine_apres_0101_type_Ib_icpe_autre
                         type: calculatrice
@@ -553,7 +555,7 @@ arbre:
                     - noeud:
                         id: q_cine_apres_0101_type_II_hors_note5
                         champ: plan_epandage
-                        texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                        texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                         niveau: complement
                         branches:
                         - noeud:
@@ -584,7 +586,7 @@ arbre:
                               expression: categorie_fertilisant == 'digestats'
                             type_noeud: catalogue_parametre
                           valeur: icpe_a
-                          libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                          libelle: Oui, plan d'épandage ICPE soumis à autorisation
                         - noeud:
                             id: n_cine_apres_0101_type_II_hors_note5_icpe_ed
                             champ: effluent_peu_charge_elevage
@@ -636,6 +638,7 @@ arbre:
                                         - au: 31/01
                                           du: 16/11
                                           regime: interdiction
+                                        composant: calendrier_dynamique_couvert
                                         inputs_requis: []
                                         code_prescription:
                                         - pc4
@@ -655,7 +658,7 @@ arbre:
                               expression: sous_fertilisant !='effluents_peu_charges_elevage'
                             type_noeud: catalogue_parametre
                           valeur: icpe_ed
-                          libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                          libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                         - noeud:
                             id: n_cine_apres_0101_type_II_hors_note5_icpe_autre
                             champ: effluent_peu_charge_elevage
@@ -701,6 +704,19 @@ arbre:
                                     - au: 31/01
                                       du: 16/11
                                       regime: interdiction
+                                    composant: calendrier_dynamique_couvert
+                                    inputs_requis:
+                                    - id: date_semis_couvert
+                                      type: date
+                                      label: Date de semis du couvert
+                                      label_court: semis
+                                      placeholder: 15/08
+                                    - id: date_destruction_couvert
+                                      max: 31/12
+                                      type: date
+                                      label: Date de destruction du couvert
+                                      label_court: destruction
+                                      placeholder: 15/03
                                     code_prescription:
                                     - pc12
                                     - pc4
@@ -735,11 +751,13 @@ arbre:
                 branches:
                 - noeud:
                     id: q_cine_avant_3112_type_Ib
-                    aide: ''
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis enregistrement ou déclaration?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_cine_avant_3112_type_Ib_icpe_ed
                         champ: fertilisant_iaa
@@ -786,7 +804,7 @@ arbre:
                           feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_cine_avant_3112_type_Ib_pas_digestats
                         type: calculatrice
@@ -829,7 +847,7 @@ arbre:
                 - noeud:
                     id: q_cine_avant_3112_type_II
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
                     - noeud:
@@ -869,7 +887,7 @@ arbre:
                           expression: categorie_fertilisant == 'digestats'
                         type_noeud: catalogue_parametre
                       valeur: icpe_a
-                      libelle: Oui, plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
                     - noeud:
                         id: n_cine_avant_3112_type_II_icpe_ed
                         champ: effluent_peu_charge_elevage
@@ -896,6 +914,7 @@ arbre:
                                 - au: 30/06
                                   du: 16/11
                                   regime: interdiction
+                                  condition: date_destruction_couvert-20jours > 16/11
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
                                 - id: date_semis_couvert
@@ -970,7 +989,7 @@ arbre:
                           expression: sous_fertilisant != 'effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - noeud:
                         id: n_cine_avant_3112_type_II_icpe_autre
                         champ: effluent_peu_charge_elevage

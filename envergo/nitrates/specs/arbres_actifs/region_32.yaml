@@ -166,10 +166,33 @@ arbre:
                           libelle: Type_II — renvoi PAN culture de printemps type II (légumes implantés avant le 1er juin, non régis par le PAR)
                           noeud_cible: q_printemps_II_fertirrigation
                           renvoi_arbre: national
-                        - valeur: type_III
-                          libelle: Type_III — renvoi PAN culture de printemps type III
-                          noeud_cible: q_printemps_III_irriguee
-                          renvoi_arbre: national
+                        - noeud:
+                            id: q_type_iii
+                            champ: type_iii
+                            texte: Est-ce que votre culture est irriguée?
+                            niveau: complement
+                            branches:
+                            - regle:
+                                id: r_avant_le_1er_juin_type_iii_true
+                                type: interdiction
+                                periodes:
+                                - au: 15/02
+                                  du: 15/07
+                                inputs_requis: []
+                              valeur: true
+                              libelle: Oui
+                            - regle:
+                                id: r_avant_le_1er_juin_type_iii_false
+                                type: interdiction
+                                periodes:
+                                - au: 15/02
+                                  du: 01/07
+                                inputs_requis: []
+                              valeur: false
+                              libelle: Non
+                            type_noeud: formulaire
+                          valeur: type_III
+                          libelle: Type_III
                         type_noeud: formulaire
                       valeur: Avant le 1er juin
                       libelle: Avant le 1er juin
@@ -271,10 +294,10 @@ arbre:
               valeur: cine_apres_0101
               libelle: CINE détruit après le 01/01
             - valeur: cine_courte
-              libelle: Cie_courte
+              libelle: Cine_courte
               renvoi_vers: q_cine_apres_0101
-            - valeur: cie_avant_3112
-              libelle: Cie_avant_3112
+            - valeur: cine_avant_3112
+              libelle: Cine_avant_3112
               renvoi_vers: q_cine_apres_0101
             type_noeud: formulaire
           valeur: couvert_intercultures
