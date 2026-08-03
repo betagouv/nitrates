@@ -19,6 +19,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import YamlLexer
 
+from envergo.decorators.csp import csp_update
 from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.permissions import can_activate_tree, can_edit_active
 from envergo.nitrates.yaml_admin.flatten import iter_entries
@@ -34,8 +35,21 @@ from envergo.nitrates.yaml_tree import load_tree_admin, load_tree_raw
 _VUES = {"arbre", "brut", "split"}
 _MODES = {"lecture", "edition"}
 
+# L'admin nitrates charge deux CDN : htmx depuis unpkg (layout base.html) et
+# CodeMirror depuis cdnjs (éditeur YAML, CSS + JS). La CSP globale nitrates est
+# volontairement stricte ('self' pour scripts/styles) pour le simulateur
+# public ; on élargit uniquement pour cette vue admin (derrière login) au lieu
+# d'ouvrir ces CDN à tout le public.
+_CDNJS = "https://cdnjs.cloudflare.com"  # CodeMirror (éditeur YAML)
+_UNPKG = "https://unpkg.com"  # htmx (layout admin)
+_CSP_ADMIN_YAML = {
+    "script-src": [_CDNJS, _UNPKG],
+    "style-src": [_CDNJS],
+}
+
 
 @method_decorator(staff_member_required, name="dispatch")
+@method_decorator(csp_update(_CSP_ADMIN_YAML), name="dispatch")
 class YamlTreeView(TemplateView):
     template_name = "nitrates_admin/yaml_tree/tree.html"
 

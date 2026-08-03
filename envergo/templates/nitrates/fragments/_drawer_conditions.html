@@ -47,11 +47,15 @@ dates (fond orange, cohérent calendrier), en tête du contenu.
 </div>
 
 {% comment %}
-Prescription(s) conditionnée(s) : contenu riche PC (#136). Même logique que
-l'ancien rendu inline du panneau résultat, désormais dans le drawer.
+Prescription(s) conditionnée(s) : contenu riche PC (#136), dans le drawer.
+On EXCLUT les PC « plafond sur couvert » (PC12-15 & fusions/overrides) : elles
+s'appliquent sur tout le 2nd semestre, pas seulement sur la période ASC, donc
+elles restent INLINE sous le calendrier (cf. _panneau_resultat.html). Ici on ne
+garde que les PC hors-plafond, vraiment spécifiques à la période sous condition.
 {% endcomment %}
-{% if ev.regle.codes_prescription %}
-  {% for cp in ev.regle.codes_prescription %}
+{% codes_prescription_hors_plafond ev.regle as pc_drawer %}
+{% if pc_drawer %}
+  {% for cp in pc_drawer %}
     {% with pc=codes_prescription|get_item:cp %}
       {% if pc.blocs %}
         <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>

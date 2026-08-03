@@ -416,6 +416,56 @@ _SECTION_TITRE = {
 }
 
 
+# PC « plafond sur couvert » (PC12 à PC15 et leurs futures fusions/overrides).
+# Ces prescriptions s'appliquent sur tout le 2nd semestre (automne + hiver), PAS
+# seulement sur la periode d'autorisation sous condition : elles restent donc
+# affichees INLINE sous le calendrier (et NON dans le drawer conditions, #271).
+#
+# Regexp volontairement LARGE (forward-compatible avec les dev d'override et de
+# fusion de PC a venir) : matche pc12/pc13/pc14/pc15 apparaissant comme un token
+# dans l'identifiant, quelle que soit la decoration autour. Couvre ainsi :
+#   pc12, pc13, pc14, pc15, pc15_fusion, pc12_pc15_fusion, pc13_ge_override, ...
+_PC_PLAFOND_COUVERT_RE = re.compile(r"pc1[2-5](?:\b|_)", re.IGNORECASE)
+
+
+@register.filter
+def est_pc_plafond_couvert(cp) -> bool:
+    """True si l'identifiant de PC `cp` designe un plafond sur couvert (PC12-15
+    et fusions/overrides). Cf. _PC_PLAFOND_COUVERT_RE (matching large)."""
+    if not cp:
+        return False
+    return bool(_PC_PLAFOND_COUVERT_RE.search(str(cp)))
+
+
+@register.simple_tag
+def codes_prescription_plafond_couvert(regle) -> list:
+    """Sous-liste des codes_prescription de `regle` qui sont des plafonds sur
+    couvert (a rendre INLINE sous le calendrier)."""
+    codes = getattr(regle, "codes_prescription", None) or []
+    return [cp for cp in codes if est_pc_plafond_couvert(cp)]
+
+
+@register.simple_tag
+def codes_prescription_hors_plafond(regle) -> list:
+    """Sous-liste des codes_prescription de `regle` qui NE sont PAS des plafonds
+    sur couvert (a rendre dans le drawer conditions, #271)."""
+    codes = getattr(regle, "codes_prescription", None) or []
+    return [cp for cp in codes if not est_pc_plafond_couvert(cp)]
+
+
+@register.simple_tag
+def drawer_conditions_a_du_contenu(regle) -> bool:
+    """True si le drawer « conditions » a quelque chose a montrer : au moins une
+    PC HORS plafond couvert, ou une note. Les PC plafond couvert etant rendues
+    inline sous le calendrier, une regle qui n'a QUE des PC plafond ne doit PAS
+    afficher le lien / drawer (#271, CR 2026-08)."""
+    if regle is None:
+        return False
+    if getattr(regle, "note", None):
+        return True
+    return len(codes_prescription_hors_plafond(regle)) > 0
+
+
 @register.simple_tag
 def nb_periodes_sous_condition(regle) -> int:
     """Nombre de periodes « autorisation sous condition » d'une regle (#271).
