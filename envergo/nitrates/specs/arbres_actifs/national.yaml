@@ -2586,7 +2586,6 @@ arbre:
                       placeholder: 15/08
                     texte_condition: Apports possibles selon les conditions fixées par le PAR ou entre le semis et les 15 jours suivants.
                     code_prescription: pc15
-                    plafonnement_associe: r_plafond_cie_courte
                   valeur: type_III
                 type_noeud: formulaire
               valeur: cie_courte
@@ -2628,35 +2627,15 @@ metadata:
   statut: brouillon - migré depuis SVG Miro 28/04 (grammaire v2 inchangée)
   version: 0.4.0-draft
   derniere_maj: '2026-04-28'
-plafonnements:
-- regle:
-    id: r_plafond_cine_avant_3112
-    type: plafonnement
-    texte: "Apports totaux (toutes formes et origines confondues) de 70 kg N/ha\navant l'implantation du couvert d'interculture, dont 50 kg N/ha\nd'azote efficace.\n"
-    code_prescription: pc13
-    plafond_azote_kg_n_ha: 70
-- regle:
-    id: r_plafond_cie_courte
-    type: plafonnement
-    code_prescription: pc15
-    plafond_azote_kg_n_ha: 70
-- regle:
-    id: r_plafond_prairies
-    type: plafonnement
-    texte: "Pour les prairies permanentes, apports à compter de la reprise de\nvégétation (fin février à début mars) plafonnés à 70 kg N/ha par\nsaison.\n"
-    code_prescription: pc16
-    plafond_azote_kg_n_ha: 70
 regles_partagees:
 - regle:
     id: r_cine_courte_types_0_I_II
     type: autorisation_sous_condition
     message: Couvert d'interculture courte non exporté, types 0, I (Ia ou Ib) ou II.
     texte_condition: Apport autorisé.
-    plafonnement_associe: r_plafond_cine_avant_3112
 - regle:
     id: r_cie_courte_types_0_I_II
     type: autorisation_sous_condition
     message: Couvert d'interculture courte exporté (dérobée, CIVE), types 0, I (Ia ou Ib) ou II.
     code_prescription: pc15
     texte_condition: Apport autorisé selon les conditions du PAR.
-    plafonnement_associe: r_plafond_cie_courte
