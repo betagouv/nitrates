@@ -121,6 +121,9 @@ arbre:
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed
                         champ: fertilisant_iaa
@@ -147,7 +150,7 @@ arbre:
                           libelle: Non
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_couvert_interculture_cine_apres_0101_type_Ia_icpe_autre
                         type: interdiction
@@ -155,17 +158,21 @@ arbre:
                         - au: 15/01
                           du: 15/11
                         code_prescription: pc12
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia
                   libelle: Type Ia
                 - noeud:
                     id: q_couvert_interculture_cine_apres_0101_type_Ib
+                    aide: ''
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed
                         champ: fertilisant_iaa
@@ -186,7 +193,7 @@ arbre:
                           feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_couvert_interculture_cine_apres_0101_type_Ib_icpe_autre
                         type: interdiction
@@ -194,17 +201,21 @@ arbre:
                         - au: 15/01
                           du: 15/11
                         code_prescription: pc12
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
                   libelle: Type Ib
                 - noeud:
                     id: q_couvert_interculture_cine_apres_0101_type_II
+                    aide: ''
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: n_couvert_interculture_cine_apres_0101_type_II_icpe_ed
                         champ: zone_note_5
@@ -273,7 +284,7 @@ arbre:
                         reference: zone_note_5
                         type_noeud: catalogue
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - noeud:
                         id: n_couvert_interculture_cine_apres_0101_type_II_icpe_autre
                         champ: zone_note_5
@@ -329,7 +340,7 @@ arbre:
                           libelle: Pas concerné par la note 5
                         reference: zone_note_5
                         type_noeud: catalogue
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_II
@@ -348,10 +359,14 @@ arbre:
                 branches:
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_Ia
+                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed
                         champ: fertilisant_iaa
@@ -363,15 +378,15 @@ arbre:
                             type: calculatrice
                             periodes:
                             - au: 15/01
-                              du: date_destruction_couvert-20jours
+                              du: date_destruction_prevue-20jours
                               regime: interdiction
-                              condition: date_destruction_couvert-20jours < 15/01
+                              condition: date_destruction_prevue-20jours < 15/01
                             - au: 15/01
                               du: 15/11
                               regime: interdiction
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
-                            - id: date_destruction_couvert
+                            - id: date_destruction_prevue
                               max: 31/12
                               type: date
                               label: Date de destruction prévue
@@ -385,38 +400,42 @@ arbre:
                           feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_autre
                         type: calculatrice
                         periodes:
                         - au: 15/01
-                          du: date_destruction_couvert-20jours
+                          du: date_destruction_prevue-20jours
                           regime: interdiction
-                          condition: date_destruction_couvert-20jours < 15/01
+                          condition: date_destruction_prevue-20jours < 15/01
                         - au: 15/01
                           du: 15/11
                           regime: interdiction
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
-                        - id: date_destruction_couvert
+                        - id: date_destruction_prevue
                           max: 31/12
                           type: date
                           label: Date de destruction prévue
                           label_court: destruction
                           placeholder: 15/03
                         code_prescription: pc13
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia
                   libelle: Type Ia
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_Ib
+                    aide: ''
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed
                         champ: fertilisant_iaa
@@ -458,7 +477,7 @@ arbre:
                           feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - regle:
                         id: r_couvert_interculture_cine_avant_3112_type_Ib_icpe_autre
                         type: calculatrice
@@ -487,17 +506,21 @@ arbre:
                           label_court: destruction
                           placeholder: 01/11
                         code_prescription: pc13
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
                   libelle: Type Ib
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_II
+                    aide: ''
                     champ: plan_epandage
-                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence ?
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
                     branches:
+                    - valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                      feuille_vide: true
                     - noeud:
                         id: n_couvert_interculture_cine_avant_3112_type_II_icpe_ed
                         champ: n_cine_avant3112_type_ii_icpe_ed
@@ -586,7 +609,7 @@ arbre:
                           expression: sous_fertilisant !='effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
                     - noeud:
                         id: n_couvert_interculture_cine_avant_3112_type_II_icpe_autre
                         champ: effluent_peu_charge_elevage
@@ -604,14 +627,14 @@ arbre:
                                   regime: interdiction
                                   condition: 01/07 < date_semis_couvert-15jours
                                 - au: 30/06
-                                  du: date_destruction_couvert-20jours
+                                  du: date_destruction_prevue-20jours
                                   regime: interdiction
                                 - au: 30/06
                                   du: 15/10
                                   regime: interdiction
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
-                                - id: date_destruction_couvert
+                                - id: date_destruction_prevue
                                   max: 31/12
                                   type: date
                                   label: Date de destruction prévue
@@ -635,14 +658,14 @@ arbre:
                                   regime: interdiction
                                   condition: 01/07 < date_semis_couvert-15jours
                                 - au: 31/01
-                                  du: date_destruction_couvert-20jours
+                                  du: date_destruction_prevue-20jours
                                   regime: interdiction
                                 - au: 31/01
                                   du: 15/10
                                   regime: interdiction
                                 composant: calendrier_dynamique_couvert
                                 inputs_requis:
-                                - id: date_destruction_couvert
+                                - id: date_destruction_prevue
                                   max: 31/12
                                   type: date
                                   label: Date de destruction prévue
@@ -661,7 +684,7 @@ arbre:
                           valeur: 'False'
                           expression: sous_fertilisant !='effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
-                      valeur: non_concerne
+                      valeur: icpe_autre
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_II
