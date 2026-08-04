@@ -134,16 +134,28 @@ test('#272 date-picker : le calendrier s ouvre et un jour est cliquable (fix cli
   expect(await hidden(page, 'id_date_semis_couvert')).toBe(v);
 });
 
-test('#272 label sol_non_cultivé porte la parenthèse explicative', async ({ page }) => {
+test('#335 label sol_non_cultivé (option Q1) porte la parenthèse explicative', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');
-  await pickFlow(page, 'cflow_destination', 2); // culture principale
-  const dernier = page.locator('#q_type_couvert label').last();
+  // #335 : sol non cultivé est une réponse de Q1 (dernière option), plus de Q2.
+  const dernier = page.locator('#q_destination_epandage label').last();
   await expect(dernier).toContainText('Sol non cultivé');
   await expect(dernier).toContainText('surface non utilisée en vue d');
 });
 
-test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 précision', async ({ page }) => {
+test('#335 Q1 a 5 réponses (dont sol non cultivé en dernier)', async ({ page }) => {
+  await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
+  await page.waitForLoadState('networkidle');
+  // Intitulé Q1 mis à jour par la carte #335.
+  await expect(page.locator('#q_destination_epandage-wrapper')).toContainText(
+    "Sur quelle culture ou couvert prévoyez-vous d'épandre",
+  );
+  const labels = await page.locator('#q_destination_epandage label').allTextContents();
+  expect(labels.length).toBe(5);
+  expect(labels[labels.length - 1].toLowerCase()).toContain('sol non cultiv');
+});
+
+test('#335 culture principale : Q2 4 catégories (sans sol non cultivé), Q3 précision', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');
 
@@ -155,10 +167,10 @@ test('#272 culture principale : Q2 5 catégories, sol_non_cultivé en bas, Q3 pr
     'Quelle catégorie de culture principale',
   );
 
-  // Q2 culture : 5 options, dernière = sol_non_cultivé.
+  // #335 : Q2 culture = 4 options, sol non cultivé n'y est PLUS (remonté en Q1).
   const labels = await page.locator('#q_type_couvert label').allTextContents();
-  expect(labels.length).toBe(5);
-  expect(labels[labels.length - 1].toLowerCase()).toContain('sol non cultiv');
+  expect(labels.length).toBe(4);
+  expect(labels.join(' ').toLowerCase()).not.toContain('sol non cultiv');
 
   // On choisit culture d'hiver (index 0) -> Q3 précision (colza / autre).
   await pickFlow(page, 'cflow_type_couvert', 0);
@@ -200,14 +212,15 @@ test('#272 page résultat : dates dégagées du form gauche, bandeau + titre + l
   expect(labels).toContain('Date de destruction du couvert');
 });
 
-test('#272 sol non cultivé : pas de Q3 précision, occupation_sol résolu direct', async ({ page }) => {
+test('#335 sol non cultivé : réponse Q1 directe, pas de Q2 ni Q3, occupation_sol résolu', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');
 
-  await pickFlow(page, 'cflow_destination', 2); // culture principale
-  await pickFlow(page, 'cflow_type_couvert', 4); // sol_non_cultivé (dernier)
-  // Pas de question précision.
+  await pickFlow(page, 'cflow_destination', 4); // sol non cultivé (dernière option Q1)
+  // Aucune 2ᵉ question ne s'affiche (ni type couvert/catégorie, ni précision).
+  expect(await estVisible(page, '#q_type_couvert-wrapper')).toBeFalsy();
   expect(await estVisible(page, '#q_sous_culture-wrapper')).toBeFalsy();
+  // Le champ occupation_sol est résolu directement par la cascade.
   expect(await hidden(page, 'id_occupation_sol')).toBe('sol_non_cultive');
 });
 

@@ -56,7 +56,6 @@
     "culture_printemps",
     "prairies_ou_luzerne",
     "autres_cultures_principales",
-    "sol_non_cultive",
   ];
 
   // Libellés surchargés côté flow (#272) sans toucher aux référentiels : la
@@ -75,6 +74,10 @@
       val: "culture_principale",
       label: "Juste avant l'implantation d'une culture principale",
     },
+    // #335 : « sol_non_cultive » remonté de Q2 vers Q1. Court-circuite Q2 (pas
+    // de sous-question), on pilote directement categorie_culture (cf.
+    // onChangeDestination). Libellé surchargé (parenthèse explicative).
+    { val: "sol_non_cultive", label: LABELS_CULTURE_OVERRIDE.sol_non_cultive },
   ];
 
   // Q3 — axe récolté (détermine CIE vs CINE).
@@ -291,8 +294,14 @@
     cacher("q_type_couvert");
     cacher("q_couvert_recolte");
     cacher("q_dates_couvert");
+    cacher("q_sous_culture");
 
-    if (val === "couvert") {
+    if (val === "sol_non_cultive") {
+      // #335 : sol non cultivé n'a pas de 2ᵉ question. On pilote directement le
+      // champ cascade categorie_culture -> cascade.js résout occupation_sol=
+      // sol_non_cultive et court-circuite vers le fertilisant. Q2 reste cachée.
+      pilotherCascade("categorie_culture", "sol_non_cultive");
+    } else if (val === "couvert") {
       rendreQ2Couvert();
       montrer("q_type_couvert");
     } else {
@@ -849,6 +858,17 @@
       .forEach(function (r) {
         r.checked = false;
       });
+    // #335 : si la destination précédente était « sol non cultivé », le vrai
+    // champ cascade categorie_culture porte encore sol_non_cultive (pas de Q2
+    // pour le décocher). On le décoche ici pour repartir propre au changement
+    // de Q1 ; cascade.js réagit au change et remet la suite à zéro.
+    var solRadio = document.querySelector(
+      'input[type="radio"][name="categorie_culture"][value="sol_non_cultive"]'
+    );
+    if (solRadio && solRadio.checked) {
+      solRadio.checked = false;
+      solRadio.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     resetApresType();
   }
 
@@ -916,6 +936,12 @@
     var initial = window.NITRATES_INITIAL_DATA || {};
     var cat = initial.categorie_culture;
     if (!cat) return;
+    // #335 : sol non cultivé est désormais une réponse de Q1 (pas de Q2). On
+    // recoche l'option Q1 correspondante et on s'arrête là.
+    if (cat === "sol_non_cultive") {
+      cocherFlow("cflow_destination", "sol_non_cultive");
+      return;
+    }
     var estCouvert =
       cat === "couvert_intercultures_longue" ||
       cat === "couvert_intercultures_courte";
