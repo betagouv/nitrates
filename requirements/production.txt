@@ -106,7 +106,7 @@ cryptography==48.0.1
     #   mozilla-django-oidc
 dacite==1.9.2
     # via -r base.txt
-django==4.2.30
+django==6.0.6
     # via
     #   -r base.txt
     #   django-allauth
