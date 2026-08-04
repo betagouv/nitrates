@@ -136,7 +136,7 @@ jsonschema-specifications==2025.9.1
     # via jsonschema
 kombu==5.5.4
     # via celery
-markdown==3.8.2
+markdown==3.10.2
     # via -r base.in
 mozilla-django-oidc==5.0.2
     # via -r base.in
