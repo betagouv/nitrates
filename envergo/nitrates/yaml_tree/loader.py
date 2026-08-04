@@ -160,6 +160,12 @@ def _build_referentiels() -> dict:
             entry["note_reglementaire"] = pc.note_reglementaire.identifiant
         if pc.toujours_affiche:
             entry["toujours_affiche"] = True
+        # #271 / CR 2026-08 : un « code » de plafond (PC12-16, abus de langage)
+        # n'est pas une vraie prescription conditionnée. Exposé au template pour
+        # (1) rendu INLINE sous le calendrier plutôt que dans le drawer, et (2)
+        # peinture VERTE des périodes ASC quand une règle n'a QUE des plafonds.
+        if pc.plafond:
+            entry["plafond"] = True
         codes_prescription[pc.identifiant] = entry
 
     # 7. notes

@@ -30,7 +30,7 @@ dates (fond orange, cohérent calendrier), en tête du contenu.
   {% if ev.regle.type == "calculatrice" %}
     <span class="drawer-conditions__badges" data-drawer-badges-asc></span>
   {% else %}
-    {% periodes_par_section ev.regle as sections_periodes %}
+    {% periodes_par_section ev.regle codes_prescription as sections_periodes %}
     <span class="drawer-conditions__badges">
       {% for section in sections_periodes %}
         {% if section.titre == "Période d’autorisation sous condition" %}
@@ -53,7 +53,7 @@ s'appliquent sur tout le 2nd semestre, pas seulement sur la période ASC, donc
 elles restent INLINE sous le calendrier (cf. _panneau_resultat.html). Ici on ne
 garde que les PC hors-plafond, vraiment spécifiques à la période sous condition.
 {% endcomment %}
-{% codes_prescription_hors_plafond ev.regle as pc_drawer %}
+{% codes_prescription_hors_plafond ev.regle codes_prescription as pc_drawer %}
 {% if pc_drawer %}
   {% for cp in pc_drawer %}
     {% with pc=codes_prescription|get_item:cp %}

@@ -450,3 +450,46 @@ test("messageHorsBornes destruction hors borne -> recommencer simulation", () =>
   );
   assert.match(msg, /recommencez une simulation/);
 });
+
+test("CR 2026-08 : règle 100% plafond (tous_plafonds) peint la période ASC en vert (libre)", () => {
+  const periodes = [
+    { du: "01/09", au: "31/01", regime: "autorisation_sous_condition" },
+  ];
+  // tous_plafonds=true -> aucun jour ne doit rester "autorisation_sous_condition".
+  cal.setData({
+    type: "calculatrice",
+    periodes,
+    tous_plafonds: true,
+    codes_prescription: ["pc12"],
+    codes_prescription_plafond: ["pc12"],
+  });
+  const regime = computeRegimePerDay(periodes, {});
+  assert.strictEqual(
+    regime.filter((r) => r === "autorisation_sous_condition").length,
+    0,
+    "aucun jour ASC ne doit subsister sur une règle 100% plafond"
+  );
+  assert.strictEqual(
+    regime.filter((r) => r === "libre").length,
+    TOTAL_JOURS,
+    "toute l'année doit être libre (verte)"
+  );
+});
+
+test("CR 2026-08 : règle plafond MIXTE (tous_plafonds=false) conserve la période ASC orange", () => {
+  const periodes = [
+    { du: "01/09", au: "31/01", regime: "autorisation_sous_condition" },
+  ];
+  cal.setData({
+    type: "calculatrice",
+    periodes,
+    tous_plafonds: false,
+    codes_prescription: ["pc12", "pc1"],
+    codes_prescription_plafond: ["pc12"],
+  });
+  const regime = computeRegimePerDay(periodes, {});
+  assert.ok(
+    regime.filter((r) => r === "autorisation_sous_condition").length > 0,
+    "la période ASC doit rester (règle mixte, pas 100% plafond)"
+  );
+});

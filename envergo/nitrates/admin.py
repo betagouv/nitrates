@@ -480,9 +480,11 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
         "mots_cles",
         "a_du_contenu_riche",
         "toujours_affiche",
+        "plafond",
         "note_reglementaire",
         "ordre_affichage",
     )
+    list_filter = ("plafond", "toujours_affiche")
     search_fields = ("identifiant", "mots_cles", "texte_court")
     autocomplete_fields = ("note_reglementaire",)
     ordering = ("ordre_affichage", "identifiant")

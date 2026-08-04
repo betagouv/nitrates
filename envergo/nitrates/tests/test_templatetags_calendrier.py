@@ -337,3 +337,104 @@ def test_calendrier_autorisation_simple_sans_periode_reste_verte():
     sont. Le cas 99% (autorise librement) reste vert."""
     ctx = calendrier_epandage(_regle(type="libre", periodes=None))
     assert all(s["couleur"] != "orange" for s in ctx["segments"])
+
+
+# ─── PC plafond : coloration verte quand une regle est 100% plafond (CR 2026-08)
+
+# Referentiel minimal : pc12/pc13 sont des plafonds, pc1 non.
+_REF_PLAFOND = {
+    "pc12": {"plafond": True},
+    "pc13": {"plafond": True},
+    "pc1": {"texte_court": "vraie PC conditionnee"},
+}
+
+
+def test_regle_uniquement_plafonds():
+    from envergo.nitrates.templatetags.nitrates_tags import regle_uniquement_plafonds
+
+    assert regle_uniquement_plafonds(
+        _regle(codes_prescription=["pc12", "pc13"]), _REF_PLAFOND
+    )
+    # une seule vraie PC suffit a casser le 100% plafond
+    assert not regle_uniquement_plafonds(
+        _regle(codes_prescription=["pc12", "pc1"]), _REF_PLAFOND
+    )
+    # aucune PC -> pas "uniquement plafonds"
+    assert not regle_uniquement_plafonds(_regle(codes_prescription=[]), _REF_PLAFOND)
+
+
+def test_calendrier_regle_tout_plafond_asc_peinte_verte():
+    """Regle dont TOUTES les PC sont des plafonds : sa periode ASC devient une
+    periode autorisee -> aucun overlay orange (fond vert)."""
+    regle = _regle(
+        type="autorisation_sous_condition",
+        codes_prescription=["pc12", "pc13"],
+        periodes=[
+            {"du": "01/09", "au": "31/01", "regime": "autorisation_sous_condition"}
+        ],
+    )
+    ctx = calendrier_epandage(regle, _REF_PLAFOND)
+    assert all(s["couleur"] != "orange" for s in ctx["segments"])
+
+
+def test_calendrier_regle_plafond_mixte_reste_orange():
+    """Regle avec une PC plafond ET une vraie PC : la periode ASC reste orange
+    (le plafond ne suffit pas a tout autoriser)."""
+    regle = _regle(
+        type="autorisation_sous_condition",
+        codes_prescription=["pc12", "pc1"],
+        periodes=[
+            {"du": "01/09", "au": "31/01", "regime": "autorisation_sous_condition"}
+        ],
+    )
+    ctx = calendrier_epandage(regle, _REF_PLAFOND)
+    assert any(s["couleur"] == "orange" for s in ctx["segments"])
+
+
+def test_periodes_par_section_tout_plafond_asc_devient_autorisation():
+    """La section recap : une regle 100% plafond ne montre PAS de section
+    "autorisation sous condition" -- ses periodes rejoignent "Autorisé"."""
+    from envergo.nitrates.templatetags.nitrates_tags import periodes_par_section
+
+    regle = _regle(
+        type="autorisation_sous_condition",
+        codes_prescription=["pc12", "pc13"],
+        texte_condition=None,
+        periodes=[
+            {"du": "01/09", "au": "31/01", "regime": "autorisation_sous_condition"}
+        ],
+    )
+    titres = [s["titre"] for s in periodes_par_section(regle, _REF_PLAFOND)]
+    assert "Période d’autorisation sous condition" not in titres
+    assert "Période d’autorisation" in titres
+
+
+def test_drawer_conditions_masque_si_que_plafonds():
+    """Le drawer conditions n'a pas de contenu si la regle n'a que des PC
+    plafond (elles s'affichent inline, pas dans le drawer)."""
+    from envergo.nitrates.templatetags.nitrates_tags import (
+        drawer_conditions_a_du_contenu,
+    )
+
+    regle_plafond = _regle(codes_prescription=["pc12", "pc13"], note=None)
+    regle_mixte = _regle(codes_prescription=["pc12", "pc1"], note=None)
+    assert not drawer_conditions_a_du_contenu(regle_plafond, _REF_PLAFOND)
+    assert drawer_conditions_a_du_contenu(regle_mixte, _REF_PLAFOND)
+
+
+def test_calculatrice_data_json_expose_plafond():
+    """Le JSON calculatrice expose codes_prescription_plafond + tous_plafonds
+    pour piloter le calendrier dynamique cote JS."""
+    from envergo.nitrates.templatetags.nitrates_tags import calculatrice_data_json
+
+    regle = _regle(codes_prescription=["pc12", "pc13"])
+    # _regle est un SimpleNamespace : on lui donne un to_json_dict minimal.
+    regle.to_json_dict = lambda: {
+        "regle_id": "x",
+        "type": regle.type,
+        "periodes": regle.periodes,
+        "codes_prescription": regle.codes_prescription,
+    }
+    data = calculatrice_data_json(regle, _REF_PLAFOND)
+    assert data["tous_plafonds"] is True
+    assert set(data["codes_prescription_plafond"]) == {"pc12", "pc13"}
