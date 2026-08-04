@@ -133,6 +133,7 @@ django==4.2.30
     #   django-appconf
     #   django-braces
     #   django-compressor
+    #   django-coverage-plugin
     #   django-crispy-forms
     #   django-debug-toolbar
     #   django-extensions
@@ -157,7 +158,7 @@ django-braces==1.17.0
     # via -r base.txt
 django-compressor==4.6.0
     # via -r base.txt
-django-coverage-plugin==3.1.1
+django-coverage-plugin==3.2.2
     # via -r local.in
 django-crispy-forms==2.4
     # via -r base.txt
