@@ -213,7 +213,7 @@ flake8==7.3.0
     # via
     #   -r local.in
     #   flake8-isort
-flake8-isort==6.1.2
+flake8-isort==7.0.0
     # via -r local.in
 gql==3.5.3
     # via -r base.txt
