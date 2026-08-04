@@ -103,7 +103,7 @@ django-localflavor==5.0
     # via -r base.in
 django-model-utils==5.0.0
     # via -r base.in
-django-otp[qrcode]==1.6.3
+django-otp[qrcode]==1.7.0
     # via -r base.in
 django-phonenumber-field[phonenumbers]==8.1.0
     # via -r base.in
