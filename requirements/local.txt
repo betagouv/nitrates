@@ -201,7 +201,7 @@ executing==2.2.0
     # via stack-data
 factory-boy==3.3.3
     # via -r local.in
-faker==37.5.3
+faker==40.21.0
     # via
     #   -r base.txt
     #   factory-boy
@@ -528,7 +528,6 @@ typing-extensions==4.15.0
 tzdata==2025.2
     # via
     #   -r base.txt
-    #   faker
     #   kombu
 urllib3==2.7.0
     # via
