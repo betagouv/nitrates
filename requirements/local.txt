@@ -175,7 +175,7 @@ django-model-utils==5.0.0
     # via -r base.txt
 django-otp[qrcode]==1.6.3
     # via -r base.txt
-django-phonenumber-field[phonenumbers]==8.1.0
+django-phonenumber-field[phonenumbers]==8.4.0
     # via -r base.txt
 django-ratelimit==4.1.0
     # via -r base.txt
