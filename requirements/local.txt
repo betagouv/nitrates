@@ -507,7 +507,7 @@ texttable==1.7.0
     #   py7zr
 tomlkit==0.13.3
     # via pylint
-tqdm==4.67.1
+tqdm==4.68.3
     # via
     #   -r base.txt
     #   djlint
