@@ -157,7 +157,7 @@ packaging==25.0
     #   wheel
 phonenumbers==9.0.10
     # via django-phonenumber-field
-pillow==12.2.0
+pillow==12.3.0
     # via -r base.in
 pip-tools==7.5.0
     # via -r base.in
