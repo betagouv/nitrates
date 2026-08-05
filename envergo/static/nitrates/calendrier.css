@@ -400,6 +400,19 @@
   background: var(--cal-orange-ink);
 }
 
+/* #107 — Borne PHENOLOGIQUE (ex "Dernière coupe luzerne") : son tic doit rester
+   NOIR meme quand la borne porte aussi la couleur du regime (--orange/--rouge).
+   Sans ca, la regle --orange::before/--rouge::before ci-dessus repeint le tic en
+   orange/rouge alors que le libelle reste noir -> incoherence visible (cf. maquette
+   luzerne). On force donc le tic phenologique au noir, avec une specificite
+   superieure (double classe) pour battre les regles regime. */
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--orange::before,
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--rouge::before,
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--orange.calendrier-epandage__period-date--big-tick::before,
+.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--rouge.calendrier-epandage__period-date--big-tick::before {
+  background: #161616;
+}
+
 /* Borne phenologique (date flottante) : on N'utilise PLUS les hachures comme
    signal (maquette #130 — les hachures sont desormais le marqueur PERMANENT
    du sous-condition, cf. --orange ci-dessus). La classe reste posee par le JS
