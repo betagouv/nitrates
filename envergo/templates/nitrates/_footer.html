@@ -35,6 +35,30 @@
       </div>
     </div>
   </div>
+
+  {% comment %}
+  Pied de page bas DSFR (#63) : liens légaux obligatoires. Les pages sont des
+  gabarits placeholder tant que le contenu métier/juridique n'est pas rédigé.
+  {% endcomment %}
+  <div class="fr-footer__bottom">
+    <ul class="fr-footer__bottom-list">
+      <li class="fr-footer__bottom-item">
+        <a class="fr-footer__bottom-link"
+           href="{% url 'nitrates_accessibilite' %}">Accessibilité : non conforme</a>
+      </li>
+      <li class="fr-footer__bottom-item">
+        <a class="fr-footer__bottom-link"
+           href="{% url 'nitrates_mentions_legales' %}">Mentions légales</a>
+      </li>
+      <li class="fr-footer__bottom-item">
+        <a class="fr-footer__bottom-link"
+           href="{% url 'nitrates_donnees_personnelles' %}">Données personnelles</a>
+      </li>
+      <li class="fr-footer__bottom-item">
+        <a class="fr-footer__bottom-link" href="{% url 'contact_us' %}">Contact</a>
+      </li>
+    </ul>
+  </div>
 </div>
 
 <script src="{% static 'nitrates/theme_toggle.js' %}" defer></script>

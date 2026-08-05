@@ -261,6 +261,23 @@ urlpatterns = [
         TemplateView.as_view(template_name="nitrates/contact_us.html"),
         name="contact_us",
     ),
+    # Pages légales du pied de page DSFR (#63). Contenu placeholder à
+    # compléter côté métier/juridique.
+    path(
+        _("mentions-legales/"),
+        TemplateView.as_view(template_name="nitrates/mentions_legales.html"),
+        name="nitrates_mentions_legales",
+    ),
+    path(
+        _("donnees-personnelles/"),
+        TemplateView.as_view(template_name="nitrates/donnees_personnelles.html"),
+        name="nitrates_donnees_personnelles",
+    ),
+    path(
+        _("accessibilite/"),
+        TemplateView.as_view(template_name="nitrates/accessibilite.html"),
+        name="nitrates_accessibilite",
+    ),
     # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)
     path(
         "admin/nitrates/validation/",
