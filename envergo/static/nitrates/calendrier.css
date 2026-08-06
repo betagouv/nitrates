@@ -400,17 +400,59 @@
   background: var(--cal-orange-ink);
 }
 
-/* #107 — Borne PHENOLOGIQUE (ex "Dernière coupe luzerne") : son tic doit rester
-   NOIR meme quand la borne porte aussi la couleur du regime (--orange/--rouge).
-   Sans ca, la regle --orange::before/--rouge::before ci-dessus repeint le tic en
-   orange/rouge alors que le libelle reste noir -> incoherence visible (cf. maquette
-   luzerne). On force donc le tic phenologique au noir, avec une specificite
-   superieure (double classe) pour battre les regles regime. */
-.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--orange::before,
-.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--rouge::before,
-.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--orange.calendrier-epandage__period-date--big-tick::before,
-.calendrier-epandage__period-date--phenologique.calendrier-epandage__period-date--rouge.calendrier-epandage__period-date--big-tick::before {
-  background: #161616;
+/* #107 — Encadre d'une borne metier saisie (ex derniere coupe luzerne,
+   brunissement des soies). Le tic garde la couleur du regime (orange/rouge),
+   mais le texte sous la date passe dans un petit encadre : libelle en gras
+   noir + sous-texte « Ici exemple au <date> » en italique gris. */
+
+/* #107 : positionnement de l'encadre, comme la maquette.
+   - BORD GAUCHE aligne sous la borne (pas centre, sinon il deborde a gauche) :
+     on annule le translateX(-50%) global, `left: pct%` place alors le coin
+     haut-gauche de l'encadre pile sur la date.
+   - l'encadre DESCEND nettement sous la barre (top:56px, neutralise le --row2
+     de 18px) pour laisser au-dessus l'espace des bornes de dates fixes
+     (15 déc / 15 jan) ; le connecteur orange remonte de l'encadre jusqu'a la
+     barre en un long trait vertical bien visible. */
+.calendrier-epandage__period-date--boite {
+  top: 56px;
+  font-weight: 400;
+  transform: translateX(0);
+}
+
+/* Le tic (connecteur) : au BORD GAUCHE de l'encadre (= la date), 2px pour
+   rester lisible, et assez haut pour relier l'encadre a la barre. */
+.calendrier-epandage__period-date--boite::before {
+  left: 0;
+  width: 2px;
+  height: 64px; /* 56 (descente encadre) + 8 (jusqu'au bas de la barre) */
+  transform: translateX(-50%);
+}
+
+.calendrier-epandage__period-date-boite {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default-grey, #ddd);
+  border-radius: 4px;
+  background: #fff;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.calendrier-epandage__period-date--boite
+  .calendrier-epandage__period-date-label {
+  font-weight: 700;
+  font-style: normal; /* bat l'italique de --phenologique */
+  color: #161616;
+}
+
+.calendrier-epandage__period-date-exemple {
+  font-style: italic;
+  font-weight: 400;
+  color: #666;
 }
 
 /* Borne phenologique (date flottante) : on N'utilise PLUS les hachures comme

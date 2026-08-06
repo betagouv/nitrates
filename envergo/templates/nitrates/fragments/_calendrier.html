@@ -54,8 +54,23 @@ Inputs (cf. templatetag calendrier_epandage) :
     {% if bornes %}
       <div class="calendrier-epandage__period">
         {% for b in bornes %}
-          <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}"
-                style="left: {{ b.pct|unlocalize }}%">{{ b.label }}</span>
+          {% comment %}
+          #107 : une borne phenologique avec un exemple de date (derniere coupe
+          luzerne, brunissement des soies) s'affiche dans un encadre : libelle
+          (gras) + « Ici exemple au <date> » (italique). Le tic prend la couleur
+          de sa zone (orange ASC / rouge interdiction) via --orange/--rouge.
+          {% endcomment %}
+          <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.couleur %} calendrier-epandage__period-date--{{ b.couleur }}{% endif %}{% if b.date_exemple %} calendrier-epandage__period-date--boite{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}"
+                style="left: {{ b.pct|unlocalize }}%">
+            {% if b.date_exemple %}
+              <span class="calendrier-epandage__period-date-boite">
+                <span class="calendrier-epandage__period-date-label">{{ b.label }}</span>
+                <span class="calendrier-epandage__period-date-exemple">Ici exemple au {{ b.date_exemple }}</span>
+              </span>
+            {% else %}
+              {{ b.label }}
+            {% endif %}
+          </span>
         {% endfor %}
       </div>
     {% endif %}

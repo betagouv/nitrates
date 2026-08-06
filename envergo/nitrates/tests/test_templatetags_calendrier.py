@@ -172,6 +172,50 @@ def test_calendrier_phenologique_dans_liste_a_part():
     assert len(ctx2["periodes_phenologiques"]) == 1
 
 
+def test_calendrier_borne_phenologique_couleur_et_encadre():
+    """#107 : une borne phenologique (ex derniere coupe luzerne) qui ouvre une
+    zone d'autorisation sous condition prend la couleur ORANGE de sa zone (pas
+    du noir) et porte un `date_exemple` (« Ici exemple au <date> ») = sa date
+    conventionnelle. Pour une zone d'interdiction, la borne serait rouge."""
+    # Regle type mixte : interdiction 15/12->15/01 + ASC derniere coupe->15/01.
+    ctx = calendrier_epandage(
+        _regle(
+            type="mixte",
+            periodes=[
+                {"du": "15/12", "au": "15/01", "regime": "interdiction"},
+                {
+                    "du": "derniere_coupe_luzerne",
+                    "au": "15/01",
+                    "regime": "autorisation_sous_condition",
+                },
+            ],
+        )
+    )
+    bornes = ctx["bornes"]
+    pheno = [b for b in bornes if b.get("is_phenologique")]
+    assert pheno, "la borne phenologique doit etre exposee"
+    b = pheno[0]
+    # Couleur de la zone ASC ouverte par la coupe = orange (pas noir).
+    assert b["couleur"] == "orange"
+    # Sous-texte « Ici exemple au <date> » = date_calendrier lisible.
+    assert b["date_exemple"], "date_exemple attendu pour la borne phenologique"
+    assert "décembre" in b["date_exemple"] or "janvier" in b["date_exemple"]
+    # Le libelle reste le libelle public lisible (pas le slug).
+    assert "coupe" in b["label"].lower()
+
+
+def test_calendrier_borne_fixe_pas_dencadre():
+    """Une borne fixe (JJ/MM) ne porte ni couleur de zone ni date_exemple :
+    pas d'encadre, comportement inchange (#107)."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    )
+    for b in ctx["bornes"]:
+        assert not b.get("is_phenologique")
+        assert b.get("date_exemple") is None
+        assert b.get("couleur") is None
+
+
 def test_calendrier_marqueur_today_present():
     """today_pct doit etre dans [0, 100]."""
     ctx = calendrier_epandage(_regle())
