@@ -53,6 +53,9 @@
   </script>
   {# static_v : ?v=<mtime> en DEBUG pour casser le cache navigateur du JS (sinon #}
   {# dev server + cache servent une version perimee malgre hard-refresh). #}
+  {# Tracking metier -> Matomo (recherche commune, point carte, simulation, 2+). #}
+  {# Charge avant simulator.js pour que ses listeners d'events soient prets. #}
+  <script defer src="{% static_v 'nitrates/nitrates_analytics.js' %}"></script>
   <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
   <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
   {# Barre de progression du parcours, fixee top (#154). #}

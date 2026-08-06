@@ -571,6 +571,13 @@
   map.on("click", function (e) {
     const { lat, lng } = e.latlng;
 
+    // Analytics (#Matomo) : ne compter que les clics carte REELS. selectCommune
+    // rejoue ce handler via map.fire(...) sans originalEvent -> on l'exclut ici
+    // (il est deja compte comme "RechercheCommune").
+    if (e.originalEvent) {
+      document.dispatchEvent(new CustomEvent("nitrates:point-carte"));
+    }
+
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
@@ -766,6 +773,8 @@
       // exactement quelle commune (parmi les homonymes) a ete retenue.
       searchInput.value = libelleSuggestion(feature.properties || {});
       closeSearch();
+      // Analytics (#Matomo) : l'utilisateur a utilise la recherche de commune.
+      document.dispatchEvent(new CustomEvent("nitrates:recherche-commune"));
       // Une fois le form revele (apres le reverse-geocode async), on deplace le
       // focus sur le 1er radio de la 1re question (Carte #154, a11y) : Max veut
       // qu'apres selection d'une ville, Tab/Entree operent directement sur le
@@ -863,6 +872,25 @@
       }
     });
   }
+
+  // Analytics (#Matomo) : "Lancer la simulation" = submit du formulaire (le
+  // parcours est un GET full-reload). On emet l'event AVANT la navigation ;
+  // sendBeacon (cf. nitrates_analytics.js) garantit qu'il parte. On enrichit
+  // avec le departement (2 premiers chiffres du code INSEE) quand il est connu.
+  (function trackSimulationSubmit() {
+    const form = document.getElementById("form-simulateur");
+    if (!form) return;
+    form.addEventListener("submit", function () {
+      const insee =
+        (document.getElementById("id_code_insee") || {}).value || "";
+      const department = insee ? insee.slice(0, 2) : undefined;
+      document.dispatchEvent(
+        new CustomEvent("nitrates:simulation-lancee", {
+          detail: { department: department },
+        })
+      );
+    });
+  })();
 
   // #271 : au chargement d'une PAGE RÉSULTAT, on établit le scope de RÉFÉRENCE
   // en interrogeant DebugView pour le point du résultat (lat/lng des hidden).
