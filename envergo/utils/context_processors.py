@@ -26,11 +26,12 @@ def settings_context(_request):
             else settings.CRISP["AMENAGEMENT"]["CHATBOX_ENABLED"]
         )
 
-    analytics = (
-        settings.ANALYTICS["HAIE"]
-        if _request.site.domain == settings.ENVERGO_HAIE_DOMAIN
-        else settings.ANALYTICS["AMENAGEMENT"]
-    )
+    if _request.site.domain == settings.ENVERGO_HAIE_DOMAIN:
+        analytics = settings.ANALYTICS["HAIE"]
+    elif _request.site.domain == settings.ENVERGO_NITRATES_DOMAIN:
+        analytics = settings.ANALYTICS["NITRATES"]
+    else:
+        analytics = settings.ANALYTICS["AMENAGEMENT"]
 
     crisp_website_id = (
         settings.CRISP["HAIE"]["WEBSITE_ID"]
