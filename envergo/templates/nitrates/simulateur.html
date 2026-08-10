@@ -109,7 +109,7 @@
         <h1 class="fr-h1">Les conditions d'épandage des fertilisants azotés en quelques clics.</h1>
 
         <div class="nitrates-badges">
-          <p class="fr-badge fr-badge--blue-ecume">🗺️ Règles nitrates</p>
+          <p class="fr-badge fr-badge--blue-ecume">📋 Règles nitrates</p>
           <p class="fr-badge fr-badge--blue-ecume">🗓️ Périodes autorisées</p>
           <p class="fr-badge fr-badge--blue-ecume">🌱 Cultures et fertilisants</p>
         </div>
@@ -120,10 +120,6 @@
         <p class="fr-text--sm nitrates-hero__disclaimer fr-mt-2w">
           Cet outil, en cours d'expérimentation, traite pour l'instant les périodes minimales d'interdiction d'épandage (mesure&nbsp;1) et les conditions d'épandage (mesure&nbsp;6) de la réglementation.
         </p>
-        <div class="fr-mt-4w">
-          <a class="fr-btn" href="#section-localisation">Voir les conditions d'épandage sur ma parcelle</a>
-        </div>
-        <p class="fr-text--sm fr-text-mention--grey fr-mt-2w" style="color:#666">*Champs obligatoires</p>
       </div>
       <div class="fr-col-12 fr-col-lg-5"
            style="display:flex;
@@ -155,5 +151,13 @@
     QC en attente). Tant qu'une QC est en attente, colonne unique (#112).
     {% endcomment %}
     {% include "nitrates/fragments/_panneau_form.html" %}
+
+    {% comment %}
+    #281 : mention « *Champs obligatoires » deplacee en bas de page (juste
+    au-dessus du footer). Elle s'applique a la fois a la selection de la commune
+    et aux champs du formulaire de simulation, d'ou sa position globale ici
+    plutot que dans le hero.
+    {% endcomment %}
+    <p class="fr-text--sm fr-text-mention--grey fr-mt-4w">*Champs obligatoires</p>
   </div>
 {% endblock %}
