@@ -39,26 +39,41 @@
   {% comment %}
   Pied de page bas DSFR (#63) : liens légaux obligatoires. Les pages sont des
   gabarits placeholder tant que le contenu métier/juridique n'est pas rédigé.
+  On resout les URLs via `{% url ... as var %}` : cette forme ne leve PAS
+  NoReverseMatch quand l'urlconf du contexte de rendu n'a pas ces routes (ex :
+  page d'erreur 429/500, ou un Site dont l'urlconf n'est pas celui de nitrates).
+  Le lien n'est alors simplement pas affiche, au lieu de casser tout le rendu.
   {% endcomment %}
-  <div class="fr-footer__bottom">
-    <ul class="fr-footer__bottom-list">
-      <li class="fr-footer__bottom-item">
-        <a class="fr-footer__bottom-link"
-           href="{% url 'nitrates_accessibilite' %}">Accessibilité : non conforme</a>
-      </li>
-      <li class="fr-footer__bottom-item">
-        <a class="fr-footer__bottom-link"
-           href="{% url 'nitrates_mentions_legales' %}">Mentions légales</a>
-      </li>
-      <li class="fr-footer__bottom-item">
-        <a class="fr-footer__bottom-link"
-           href="{% url 'nitrates_donnees_personnelles' %}">Données personnelles</a>
-      </li>
-      <li class="fr-footer__bottom-item">
-        <a class="fr-footer__bottom-link" href="{% url 'contact_us' %}">Contact</a>
-      </li>
-    </ul>
-  </div>
+  {% url 'nitrates_accessibilite' as url_accessibilite %}
+  {% url 'nitrates_mentions_legales' as url_mentions_legales %}
+  {% url 'nitrates_donnees_personnelles' as url_donnees_personnelles %}
+  {% url 'contact_us' as url_contact %}
+  {% if url_accessibilite or url_mentions_legales or url_donnees_personnelles or url_contact %}
+    <div class="fr-footer__bottom">
+      <ul class="fr-footer__bottom-list">
+        {% if url_accessibilite %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_accessibilite }}">Accessibilité : non conforme</a>
+          </li>
+        {% endif %}
+        {% if url_mentions_legales %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_mentions_legales }}">Mentions légales</a>
+          </li>
+        {% endif %}
+        {% if url_donnees_personnelles %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_donnees_personnelles }}">Données personnelles</a>
+          </li>
+        {% endif %}
+        {% if url_contact %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_contact }}">Contact</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  {% endif %}
 </div>
 
 <script src="{% static 'nitrates/theme_toggle.js' %}" defer></script>
