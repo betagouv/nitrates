@@ -84,6 +84,20 @@ def _libelle_phenologique(slug: str) -> str:
     return str(slug).replace("_", " ")
 
 
+def _date_exemple_phenologique(slug: str) -> str | None:
+    """Date conventionnelle (date_calendrier) d'un evenement phenologique,
+    rendue lisible pour le sous-texte « Ici exemple au <date> » (#107).
+
+    Ex `derniere_coupe_luzerne` -> "20 décembre" (le 1er du mois -> "1er ...").
+    Retourne None si le slug n'a pas de date_calendrier resolue.
+    """
+    jjmm = _parse_jjmm(slug)
+    if jjmm is None:
+        return None
+    # _date_lisible rend deja "1er" pour le 1er du mois (#159).
+    return _date_lisible(*jjmm)
+
+
 def _minuscule_initiale(s: str) -> str:
     """Minuscule la 1ere lettre (le reste intact). Pour inserer un libelle
     capitalise au milieu d'une phrase sans casser les majuscules internes
@@ -795,6 +809,11 @@ def calendrier_epandage(regle, referentiel=None):
             seg = _segment_interdit(p)
             du_pheno = not DATE_JJMM_RE.match(str(p["du"]))
             au_pheno = not DATE_JJMM_RE.match(str(p["au"]))
+            # Couleur de la borne = couleur du regime de SA periode (#107 :
+            # une borne phenologique prend orange pour l'ASC / rouge pour
+            # l'interdiction, comme les bornes de zone, pas du noir).
+            regime_effectif = p.get("regime") or regle_type
+            couleur_borne = _COULEUR_ZONE_PAR_TYPE.get(regime_effectif)
             bornes_brutes.append(
                 {
                     # Label affiche sous le tick : pour une borne phenologique
@@ -803,6 +822,13 @@ def calendrier_epandage(regle, referentiel=None):
                     "label": _libelle_phenologique(p["du"]) if du_pheno else p["du"],
                     "pct": seg[0][0],
                     "is_phenologique": du_pheno,
+                    "couleur": couleur_borne if du_pheno else None,
+                    # #107 : sous-texte « Ici exemple au <date> » = date
+                    # conventionnelle (date_calendrier) qui a servi a placer
+                    # la borne phenologique sur le calendrier.
+                    "date_exemple": (
+                        _date_exemple_phenologique(p["du"]) if du_pheno else None
+                    ),
                 }
             )
             if len(seg) == 1:
@@ -815,6 +841,10 @@ def calendrier_epandage(regle, referentiel=None):
                     "label": _libelle_phenologique(p["au"]) if au_pheno else p["au"],
                     "pct": end_pct,
                     "is_phenologique": au_pheno,
+                    "couleur": couleur_borne if au_pheno else None,
+                    "date_exemple": (
+                        _date_exemple_phenologique(p["au"]) if au_pheno else None
+                    ),
                 }
             )
 

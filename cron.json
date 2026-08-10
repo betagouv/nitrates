@@ -1,24 +1,3 @@
 {
-  "jobs": [
-    {
-      "command": "42 2 * * * python manage.py populate_log_communes",
-      "size": "M"
-    },
-    {
-      "command": "21 */2 * * * python manage.py delete_test_evalreqs",
-      "size": "M"
-    },
-    {
-      "command": "10 * * * * python manage.py admin_notifications",
-      "size": "M"
-    },
-    {
-      "command": "*/15 * * * * python manage.py new_files_user_alert",
-      "size": "M"
-    },
-    {
-      "command": "0 2 * * 1 python manage.py obsolete_moulinette_template_admin_alert",
-      "size": "M"
-    }
-  ]
+  "jobs": []
 }

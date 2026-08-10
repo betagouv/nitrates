@@ -697,11 +697,11 @@
     } else {
       dates = "des dates saisies";
     }
+    // #337 : on ne rappelle plus « Saisissez ces dates pour voir le
+    // calendrier » (le mini-form juste en dessous rend l'action evidente).
     intro.textContent =
       "Pour ce type d'interculture, la réglementation définit la période " +
-      `d'épandage autorisée en fonction ${dates}. Saisissez ` +
-      (inputs.length > 1 ? "ces dates" : "cette date") +
-      " pour voir le calendrier.";
+      `d'épandage autorisée en fonction ${dates}.`;
   }
 
   // Valeurs initiales : placeholder par defaut, MAIS si un query param porte
