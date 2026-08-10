@@ -52,7 +52,13 @@ Inputs (cf. templatetag calendrier_epandage) :
     </div>
 
     {% if bornes %}
-      <div class="calendrier-epandage__period">
+      {% comment %}
+      #107 : si au moins une borne porte un encadre (date_exemple), on marque le
+      .period pour lui reserver la hauteur de l'encadre (cf. CSS --a-encadre).
+      Classe posee cote serveur plutot que via :has() CSS, pour un comportement
+      deterministe et sans dependance au support :has du navigateur.
+      {% endcomment %}
+      <div class="calendrier-epandage__period{% for b in bornes %}{% if b.date_exemple %} calendrier-epandage__period--a-encadre{% endif %}{% endfor %}">
         {% for b in bornes %}
           {% comment %}
           #107 : une borne phenologique avec un exemple de date (derniere coupe
@@ -63,6 +69,8 @@ Inputs (cf. templatetag calendrier_epandage) :
           <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.couleur %} calendrier-epandage__period-date--{{ b.couleur }}{% endif %}{% if b.date_exemple %} calendrier-epandage__period-date--boite{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}"
                 style="left: {{ b.pct|unlocalize }}%">
             {% if b.date_exemple %}
+              <span class="calendrier-epandage__period-date-connecteur"
+                    aria-hidden="true"></span>
               <span class="calendrier-epandage__period-date-boite">
                 <span class="calendrier-epandage__period-date-label">{{ b.label }}</span>
                 <span class="calendrier-epandage__period-date-exemple">Ici exemple au {{ b.date_exemple }}</span>

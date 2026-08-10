@@ -186,6 +186,17 @@
   margin-top: 8px;
 }
 
+/* #107 : quand une borne porte un encadre (descendu a top:56px + ~46px de
+   hauteur), on reserve la place dans le flux via min-height, pour que l'encadre
+   POUSSE la legende/le contenu dessous au lieu de les chevaucher (l'encadre est
+   en position absolue, il ne pousse rien de lui-meme). La classe --a-encadre est
+   posee cote serveur (template) uniquement sur les calendriers concernes -> pas
+   de dependance au support :has() du navigateur, aucun effet hors de ce cas. */
+.calendrier-epandage__period--a-encadre {
+  height: auto;
+  min-height: 120px;
+}
+
 /* Calendrier DYNAMIQUE (calculatrice) : deux couches z-index DANS .period --
    les tics (::before) en bas, les LIBELLES en haut -- pour qu'aucune barre
    verticale ne coupe un texte quand deux dates sont proches. Tous les tics
@@ -401,31 +412,52 @@
 }
 
 /* #107 — Encadre d'une borne metier saisie (ex derniere coupe luzerne,
-   brunissement des soies). Le tic garde la couleur du regime (orange/rouge),
-   mais le texte sous la date passe dans un petit encadre : libelle en gras
-   noir + sous-texte « Ici exemple au <date> » en italique gris. */
+   brunissement des soies) : sous la date, un encadre porte le libelle (gras
+   noir) + un sous-texte « Ici exemple au <date> » (italique gris). Un trait
+   vertical (connecteur) relie la borne sur la barre a l'encadre, comme la
+   maquette.
 
-/* #107 : positionnement de l'encadre, comme la maquette.
-   - BORD GAUCHE aligne sous la borne (pas centre, sinon il deborde a gauche) :
-     on annule le translateX(-50%) global, `left: pct%` place alors le coin
-     haut-gauche de l'encadre pile sur la date.
-   - l'encadre DESCEND nettement sous la barre (top:56px, neutralise le --row2
-     de 18px) pour laisser au-dessus l'espace des bornes de dates fixes
-     (15 déc / 15 jan) ; le connecteur orange remonte de l'encadre jusqu'a la
-     barre en un long trait vertical bien visible. */
+   Positionnement (cf. iteration visuelle Playwright) :
+   - BORD GAUCHE de l'encadre aligne sous la borne : on annule le
+     translateX(-50%) global (`left: pct%` place alors le coin haut-gauche de
+     l'encadre pile sur la date = bord gauche de la zone reglementaire).
+   - l'encadre DESCEND sous la barre (top:56px, neutralise le --row2 de 18px)
+     pour laisser au-dessus l'espace des bornes de dates fixes (15 déc / 15 jan).
+   - le .period recoit une min-height qui inclut l'encadre : ainsi il COMPTE
+     dans le flux et POUSSE la legende dessous (pas de chevauchement). */
 .calendrier-epandage__period-date--boite {
   top: 56px;
   font-weight: 400;
   transform: translateX(0);
 }
 
-/* Le tic (connecteur) : au BORD GAUCHE de l'encadre (= la date), 2px pour
-   rester lisible, et assez haut pour relier l'encadre a la barre. */
+/* Pas de tic ::before pour l'encadre : le connecteur est un vrai element (voir
+   .period-date-connecteur) pour un controle total de sa hauteur/position,
+   independamment de la cascade des tics de bornes. */
 .calendrier-epandage__period-date--boite::before {
+  display: none;
+}
+
+/* Connecteur : trait vertical qui part du HAUT de la barre (comme les autres
+   bornes) et descend jusqu'au HAUT de l'encadre. Ancre au bord gauche du bloc
+   (= la date). Hauteur = descente de l'encadre (56px) + hauteur de la barre
+   (46px) + margin-top du .period (8px) = 110px. z-index eleve pour passer
+   devant le fond hachure de la zone. */
+.calendrier-epandage__period-date-connecteur {
+  position: absolute;
+  top: -110px;
   left: 0;
   width: 2px;
-  height: 64px; /* 56 (descente encadre) + 8 (jusqu'au bas de la barre) */
+  height: 110px;
+  background: var(--cal-orange-ink);
   transform: translateX(-50%);
+  z-index: 5;
+}
+
+/* Le connecteur d'une borne d'interdiction (rouge) suit la couleur de sa zone. */
+.calendrier-epandage__period-date--rouge
+  .calendrier-epandage__period-date-connecteur {
+  background: var(--cal-rouge-ink);
 }
 
 .calendrier-epandage__period-date-boite {
