@@ -191,6 +191,10 @@ AUTH_PASSWORD_VALIDATORS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "envergo.middleware.csp.ContentSecurityPolicyMiddleware",
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Headers de securite complementaires (Permissions-Policy, CORP) non geres
+    # nativement par Django 4.2. Findings ZAP DashLord #265.
+    "envergo.nitrates.middleware.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "envergo.contrib.middleware.SetUrlConfBasedOnSite",
     "envergo.middleware.rate_limiting.RateLimitingMiddleware",
