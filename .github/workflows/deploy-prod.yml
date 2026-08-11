@@ -1,0 +1,140 @@
+name: Deploy prod
+
+# CD production, declenche par la publication d'une release GitHub NORMALE
+# (non pre-release). Une pre-release part sur staging (deploy-staging.yml).
+#
+# Memes garde-fous que staging, plus :
+#   - l'environment `production` exige une APPROBATION MANUELLE (required
+#     reviewer) : le job se met en pause avant d'ecrire quoi que ce soit ;
+#   - un backup Postgres est declenche AVANT le deploiement.
+#
+# La prod vit sur SecNumCloud (osc-secnum-fr1), region distincte de
+# dev/staging : le token peut devoir etre different de celui d'osc-fr1.
+#
+# PREREQUIS avant la premiere execution :
+#   - `tofu apply` de envs/prod (l'app nitrates-prod doit exister) ;
+#   - secret SCALINGO_API_TOKEN pose dans l'environment `production` ;
+#   - device TOTP enrole pour chaque compte admin (DJANGO_ADMIN_OTP_REQUIRED
+#     est a True en prod : sans device, login impossible).
+
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag ou SHA a deployer en production"
+        required: true
+        type: string
+
+jobs:
+  gate-ci:
+    # Sur `release`, ne tourne QUE pour une release NON pre-release.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resoudre la ref a deployer
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            REF="$INPUT_REF"
+          else
+            REF="$TAG"
+          fi
+          git fetch --tags --force
+          SHA=$(git rev-parse "$REF")
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploiement cible : $REF ($SHA)"
+
+      - name: Gate — la CI du SHA est verte
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+
+  gate-e2e:
+    needs: gate-ci
+    uses: ./.github/workflows/e2e.yml
+
+  deploy-prod:
+    needs: [gate-ci, gate-e2e]
+    runs-on: ubuntu-latest
+    # C'est ICI que se joue la protection : l'environment `production` est
+    # configure avec un required reviewer -> le run attend l'approbation.
+    environment:
+      name: production
+      url: https://nitrates-prod.osc-secnum-fr1.scalingo.io/
+    env:
+      SCALINGO_REGION: osc-secnum-fr1
+      SCALINGO_APP: nitrates-prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.gate-ci.outputs.sha }}
+
+      - name: Installer la CLI Scalingo
+        run: |
+          curl -s -O https://cli-dl.scalingo.com/install && bash install
+          scalingo --version
+
+      # --- Backup DB AVANT tout ecrit -------------------------------------
+      # L'addon Postgres fait ses propres backups, mais on veut un point de
+      # restauration DATE SUR CE DEPLOIEMENT. Non bloquant : c'est un filet,
+      # et un backup indisponible ne doit pas empecher un correctif urgent
+      # de partir. L'echec est visible dans les logs.
+      - name: Backup Postgres (filet de securite)
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        continue-on-error: true
+        run: |
+          addon=$(scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" \
+                  addons 2>/dev/null | grep -i postgres | awk '{print $2}' | head -1)
+          if [ -z "$addon" ]; then
+            echo "Addon Postgres introuvable -- backup saute." >&2
+            exit 1
+          fi
+          echo "Declenchement d'un backup sur l'addon ${addon}"
+          scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" \
+            --addon "$addon" backups-create
+
+      - name: Deploy code
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_release_code.sh "${{ needs.gate-ci.outputs.sha }}"
+
+      - name: Smoke test
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_release_smoke.sh
+
+      - name: Recapitulatif
+        if: always()
+        run: |
+          {
+            echo "## Deploiement production"
+            echo ""
+            echo "- Ref deployee : \`${{ needs.gate-ci.outputs.ref }}\`"
+            echo "- SHA : \`${{ needs.gate-ci.outputs.sha }}\`"
+            echo "- App : \`nitrates-prod\` (osc-secnum-fr1)"
+            echo ""
+            echo "Rollback : workflow **Rollback** -> environnement \`production\` -> tag precedent."
+          } >> "$GITHUB_STEP_SUMMARY"
