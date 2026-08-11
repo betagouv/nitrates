@@ -406,7 +406,7 @@ pyproject-hooks==1.2.0
     #   -r base.txt
     #   build
     #   pip-tools
-pytest==8.4.1
+pytest==9.0.3
     # via
     #   -r local.in
     #   pytest-django
