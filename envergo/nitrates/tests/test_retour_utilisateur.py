@@ -114,6 +114,45 @@ def test_interet_region_sans_email_refuse(client):
     assert "email" in resp.json()["errors"]
 
 
+def test_attacher_email_a_un_feedback_existant(client):
+    """#284 volet email séquentiel : on crée d'abord un feedback (note seule),
+    puis on lui attache l'email via retour_id, sans créer de 2e ligne."""
+    r1 = _post(client, {"type": "feedback", "note": 5, "commentaire": "super"})
+    assert r1.status_code == 201
+    rid = r1.json()["id"]
+    n_avant = RetourUtilisateur.objects.count()
+
+    r2 = _post(
+        client,
+        {"retour_id": rid, "email": "tard@test.fr", "consentement_email": True},
+    )
+    assert r2.status_code == 200
+    # Pas de nouvelle ligne : on a mis à jour l'existante.
+    assert RetourUtilisateur.objects.count() == n_avant
+    r = RetourUtilisateur.objects.get(pk=rid)
+    assert r.email == "tard@test.fr"
+    assert r.consentement_email is True
+    assert r.note == 5  # inchangé
+
+
+def test_attacher_email_sans_consentement_refuse(client):
+    r1 = _post(client, {"type": "feedback", "note": 3})
+    rid = r1.json()["id"]
+    r2 = _post(
+        client,
+        {"retour_id": rid, "email": "x@y.fr", "consentement_email": False},
+    )
+    assert r2.status_code == 400
+
+
+def test_attacher_email_retour_inexistant(client):
+    resp = _post(
+        client,
+        {"retour_id": 999999, "email": "x@y.fr", "consentement_email": True},
+    )
+    assert resp.status_code == 404
+
+
 def test_get_refuse(client):
     resp = client.get(reverse("nitrates_retour"))
     assert resp.status_code == 405

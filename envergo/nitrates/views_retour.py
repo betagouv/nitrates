@@ -50,9 +50,48 @@ class RetourUtilisateurCreateView(View):
                 {"ok": False, "error": "Objet JSON attendu."}, status=400
             )
 
+        # Attachement d'email à un retour existant (#284, volet email séquentiel) :
+        # si `retour_id` est fourni, on ne crée pas une 2e ligne, on ajoute
+        # seulement l'email (avec consentement) au feedback déjà envoyé. Ainsi la
+        # note/commentaire et l'email restent découplés côté UX sans dupliquer.
+        retour_id = payload.get("retour_id")
+        if retour_id:
+            return self._attacher_email(payload, retour_id)
+
         form = RetourUtilisateurForm(payload)
         if not form.is_valid():
             return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
         retour = form.save()
         return JsonResponse({"ok": True, "id": retour.pk}, status=201)
+
+    def _attacher_email(self, payload, retour_id):
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+
+        from envergo.nitrates.models_retour import RetourUtilisateur
+
+        email = (payload.get("email") or "").strip()
+        consent = bool(payload.get("consentement_email"))
+        # RGPD : pas d'email sans consentement.
+        if not email or not consent:
+            return JsonResponse(
+                {"ok": False, "errors": {"email": ["Email + consentement requis."]}},
+                status=400,
+            )
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse(
+                {"ok": False, "errors": {"email": ["Email invalide."]}}, status=400
+            )
+        try:
+            retour = RetourUtilisateur.objects.get(pk=retour_id)
+        except (RetourUtilisateur.DoesNotExist, ValueError, TypeError):
+            return JsonResponse(
+                {"ok": False, "error": "Retour introuvable."}, status=404
+            )
+        retour.email = email
+        retour.consentement_email = True
+        retour.save(update_fields=["email", "consentement_email"])
+        return JsonResponse({"ok": True, "id": retour.pk}, status=200)

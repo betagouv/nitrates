@@ -53,38 +53,66 @@
   margin: 0 0 1rem;
 }
 
-/* Notes 0-5 : boutons ronds alignés. */
-.nitrates-feedback__notes {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
+/* Le titre du volet note est centré (étoiles centrées dessous). */
+.nitrates-feedback__volet[data-feedback-volet-note] .nitrates-feedback__titre {
+  text-align: center;
 }
 
-.nitrates-feedback__note {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid var(--border-action-high-blue-france, #000091);
+/* ── Notation par étoiles (jaunes, façon AlloCiné) ──────────────────────── */
+.nitrates-feedback__stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.35rem;
+}
+
+.nitrates-feedback__star {
+  border: 0;
   background: transparent;
-  color: var(--text-action-high-blue-france, #000091);
-  font-weight: 700;
-  font-size: 1rem;
+  padding: 2px;
   cursor: pointer;
+  line-height: 0;
+}
+
+.nitrates-feedback__star svg {
+  fill: #d9d9d9; /* étoile vide : gris clair */
   transition:
-    background 0.15s ease,
-    color 0.15s ease,
+    fill 0.12s ease,
     transform 0.1s ease;
 }
 
-.nitrates-feedback__note:hover {
-  background: var(--background-action-low-blue-france, #e3e3fd);
+/* Survol/sélection : l'étoile survolée/choisie ET toutes celles à sa gauche
+   deviennent jaunes (comportement barème classique). Géré par la classe
+   `is-on` posée par le JS au hover et à la sélection. */
+.nitrates-feedback__star.is-on svg {
+  fill: #ffb800; /* jaune AlloCiné */
 }
 
-.nitrates-feedback__note[aria-checked="true"] {
-  background: var(--background-action-high-blue-france, #000091);
-  color: #fff;
-  transform: scale(1.08);
+.nitrates-feedback__star:hover svg {
+  transform: scale(1.12);
+}
+
+/* Légende sous les étoiles : « Pas utile » à gauche, « Très utile » à droite. */
+.nitrates-feedback__stars-legende {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey, #666);
+}
+
+/* Séparateur entre le volet note et le volet email. */
+.nitrates-feedback__sep {
+  border: 0;
+  border-top: 1px solid var(--border-default-grey, #ddd);
+  margin: 1rem 0 1.25rem;
+}
+
+.nitrates-feedback__merci-note {
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-default-success, #18753c);
+  margin: 0 0 0.25rem;
 }
 
 .nitrates-feedback__rgpd {
@@ -99,7 +127,7 @@
   margin-top: 1.25rem;
 }
 
-.nitrates-feedback__merci {
+.nitrates-feedback__volet[data-feedback-merci] {
   text-align: center;
 }
 

@@ -36,8 +36,15 @@
     }
   }
 
-  function getCookie(name) {
-    var m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  // Récupère le token CSRF. Le cookie `csrftoken` est posé en HttpOnly
+  // (durcissement sécurité #265) -> JS ne peut PAS le lire via document.cookie.
+  // On lit donc le token depuis le champ caché rendu par {% csrf_token %} dans
+  // la page (méthode Django recommandée quand CSRF_COOKIE_HTTPONLY=True).
+  // Fallback cookie au cas où (si un jour le HttpOnly saute).
+  function getCsrfToken() {
+    var input = document.querySelector("input[name=csrfmiddlewaretoken]");
+    if (input && input.value) return input.value;
+    var m = document.cookie.match("(^|;)\\s*csrftoken\\s*=\\s*([^;]+)");
     return m ? decodeURIComponent(m.pop()) : "";
   }
 
@@ -46,51 +53,87 @@
     if (!root) return; // pas sur une page résultat
     if (dejaTraite()) return; // déjà envoyé ou esquivé une fois
 
-    var dialogForm = root.querySelector("[data-feedback-form]");
-    var dialogMerci = root.querySelector("[data-feedback-merci]");
+    var voletNote = root.querySelector("[data-feedback-volet-note]");
+    var voletEmail = root.querySelector("[data-feedback-volet-email]");
+    var voletMerci = root.querySelector("[data-feedback-merci]");
     var reward = root.querySelector("[data-feedback-reward]");
-    var erreur = root.querySelector("[data-feedback-erreur]");
-    var submitBtn = root.querySelector("[data-feedback-submit]");
+    var erreurNote = root.querySelector("[data-feedback-erreur-note]");
+    var erreurEmail = root.querySelector("[data-feedback-erreur-email]");
+    var submitNote = root.querySelector("[data-feedback-submit-note]");
+    var submitEmail = root.querySelector("[data-feedback-submit-email]");
     var commentaire = root.querySelector("#nitrates-feedback-commentaire");
     var email = root.querySelector("#nitrates-feedback-email");
     var consent = root.querySelector("#nitrates-feedback-consent");
-    var notesBtns = Array.prototype.slice.call(
+    var stars = Array.prototype.slice.call(
       root.querySelectorAll("[data-feedback-note]")
     );
 
     var noteChoisie = null;
+    var retourId = null; // id de l'entrée feedback créée au volet 1
     var ouvert = false;
     var traite = false;
     var timerInactivite = null;
 
-    // ── Sélection de la note ────────────────────────────────────────────────
-    notesBtns.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        noteChoisie = parseInt(btn.getAttribute("data-feedback-note"), 10);
-        notesBtns.forEach(function (b) {
-          b.setAttribute("aria-checked", b === btn ? "true" : "false");
+    // ── Étoiles : allumer jusqu'à l'indice n (0-based) ──────────────────────
+    function allumerJusqua(idx) {
+      stars.forEach(function (s, i) {
+        s.classList.toggle("is-on", i <= idx);
+      });
+    }
+    function refletSelection() {
+      // Réaffiche l'état sélectionné (après un mouseleave).
+      allumerJusqua(noteChoisie === null ? -1 : noteChoisie - 1);
+    }
+    stars.forEach(function (star, i) {
+      star.addEventListener("mouseenter", function () {
+        allumerJusqua(i);
+      });
+      star.addEventListener("click", function () {
+        noteChoisie = parseInt(star.getAttribute("data-feedback-note"), 10);
+        stars.forEach(function (s, j) {
+          s.setAttribute("aria-checked", j === i ? "true" : "false");
         });
-        // Le bouton Envoyer s'active dès qu'une note est choisie (le reste est
-        // facultatif). L'email est demandé quelle que soit la note.
-        submitBtn.disabled = false;
+        refletSelection();
+        submitNote.disabled = false; // envoi possible dès qu'une note est mise
       });
     });
+    root
+      .querySelector(".nitrates-feedback__stars")
+      .addEventListener("mouseleave", refletSelection);
 
     // ── Ouverture / fermeture ───────────────────────────────────────────────
     function ouvrir() {
       if (ouvert || traite || dejaTraite()) return;
       ouvert = true;
       root.hidden = false;
-      // focus sur la 1re note pour l'accessibilité clavier
-      if (notesBtns[0]) notesBtns[0].focus();
+      if (stars[0]) stars[0].focus();
       detacherDeclencheurs();
     }
 
+    function terminer() {
+      // Fin du parcours (email envoyé ou volets fermés) -> reward + fermeture.
+      traite = true;
+      marquerTraite("done");
+      voletNote.hidden = true;
+      voletEmail.hidden = true;
+      voletMerci.hidden = false;
+      if (window.nitratesVersReward && reward) {
+        window.nitratesVersReward(reward, { nombre: 5 });
+      }
+      window.setTimeout(function () {
+        root.hidden = true;
+      }, 4000);
+    }
+
     function esquiver() {
-      // Fermeture sans envoi = esquive -> on ne redemande plus jamais.
+      // Fermeture -> on ne redemande plus jamais. Si une note a été saisie mais
+      // pas encore envoyée, on l'envoie quand même (best-effort, sans bloquer).
       if (traite) return;
       traite = true;
       marquerTraite("dismissed");
+      if (noteChoisie !== null && retourId === null) {
+        envoyerNote(true); // fire-and-forget
+      }
       root.hidden = true;
     }
 
@@ -101,32 +144,23 @@
       if (ouvert && e.key === "Escape") esquiver();
     });
 
-    // ── Envoi ───────────────────────────────────────────────────────────────
-    submitBtn.addEventListener("click", function () {
-      if (noteChoisie === null) return;
-      submitBtn.disabled = true;
-      erreur.hidden = true;
-
-      var emailVal = (email.value || "").trim();
+    // ── Volet 1 : envoi de la note + commentaire (SANS email) ───────────────
+    function envoyerNote(silencieux) {
+      if (noteChoisie === null) return Promise.resolve();
+      submitNote.disabled = true;
+      erreurNote.hidden = true;
       var payload = {
         type: "feedback",
         note: noteChoisie,
         commentaire: (commentaire.value || "").trim(),
         region_code: root.getAttribute("data-region-code") || "",
-        // Métadonnées ANONYMES uniquement (aucune donnée de localisation).
         contexte: { source: "popup_resultat" },
       };
-      // Email seulement si consentement coché (le back re-vérifie de toute façon).
-      if (emailVal && consent.checked) {
-        payload.email = emailVal;
-        payload.consentement_email = true;
-      }
-
-      fetch("/api/retour/", {
+      return fetch("/api/retour/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
+          "X-CSRFToken": getCsrfToken(),
         },
         body: JSON.stringify(payload),
       })
@@ -134,23 +168,63 @@
           if (!r.ok) throw new Error("HTTP " + r.status);
           return r.json();
         })
-        .then(function () {
-          traite = true;
-          marquerTraite("sent");
-          // Écran de remerciement + animation reward.
-          dialogForm.hidden = true;
-          dialogMerci.hidden = false;
-          if (window.nitratesVersReward && reward) {
-            window.nitratesVersReward(reward, { nombre: 5 });
+        .then(function (data) {
+          retourId = data.id;
+          if (!silencieux) {
+            // On révèle le volet email (facultatif). L'utilisateur peut fermer
+            // sans le remplir : son avis est déjà enregistré.
+            voletNote.hidden = true;
+            voletEmail.hidden = false;
+            email.focus();
           }
-          // Fermeture automatique après avoir laissé savourer l'animation.
-          window.setTimeout(function () {
-            root.hidden = true;
-          }, 4000);
         })
         .catch(function () {
-          erreur.hidden = false;
-          submitBtn.disabled = false;
+          if (!silencieux) {
+            erreurNote.hidden = false;
+            submitNote.disabled = false;
+          }
+        });
+    }
+    submitNote.addEventListener("click", function () {
+      envoyerNote(false);
+    });
+
+    // ── Volet 2 : email optionnel, attaché à l'entrée du volet 1 ────────────
+    function majBoutonEmail() {
+      submitEmail.disabled = !(
+        (email.value || "").trim() && consent.checked
+      );
+    }
+    email.addEventListener("input", majBoutonEmail);
+    consent.addEventListener("change", majBoutonEmail);
+
+    submitEmail.addEventListener("click", function () {
+      var emailVal = (email.value || "").trim();
+      if (!emailVal || !consent.checked || retourId === null) return;
+      submitEmail.disabled = true;
+      erreurEmail.hidden = true;
+      fetch("/api/retour/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrfToken(),
+        },
+        body: JSON.stringify({
+          retour_id: retourId,
+          email: emailVal,
+          consentement_email: true,
+        }),
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function () {
+          terminer();
+        })
+        .catch(function () {
+          erreurEmail.hidden = false;
+          submitEmail.disabled = false;
         });
     });
 
