@@ -159,7 +159,7 @@ et-xmlfile==2.0.0
     # via
     #   -r base.txt
     #   openpyxl
-faker==40.21.0
+faker==40.28.1
     # via -r base.txt
 fiona==1.10.1
     # via -r base.txt
