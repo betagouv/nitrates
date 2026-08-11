@@ -90,6 +90,12 @@ const CONSOLE_TOLERE = [
   'wxs.ign.fr',
   'favicon',
   'ERR_INTERNET_DISCONNECTED',
+  // Artefact de l'environnement de test, pas une regression applicative :
+  // Chromium ignore l'en-tete Cross-Origin-Opener-Policy quand l'origine
+  // n'est ni HTTPS ni `localhost`. Or les runs tapent une IP/hostname en
+  // clair (127.0.0.1:8042 en CI, django:8000 en container) -> warning
+  // systematique. En prod le site est en HTTPS, l'en-tete est honore.
+  'Cross-Origin-Opener-Policy',
 ];
 
 function collecteErreursConsole(page: Page): string[] {

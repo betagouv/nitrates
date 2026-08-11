@@ -141,6 +141,12 @@ jobs:
       # --- Run --------------------------------------------------------------
       # `capture_*` exclu (outils de capture, pas de la non-reg) ainsi que les
       # specs prefixees `_` (scratchpads de mesure : _zoomj, _meas107, _iter107).
+      #
+      # `root_public_lockdown` est exclu AUSSI, mais pour une raison differente :
+      # ce n'est pas du bruit, c'est une suite qui exige la config INVERSE de ce
+      # job (LOCKDOWN_BEHIND_LOGIN=True). Elle tourne dans le job dedie
+      # `e2e-root-public-lockdown` ci-dessous. Sans cette exclusion, elle
+      # echouerait ici a chaque run (#202).
       - name: Run Playwright (hors specs de capture)
         env:
           NITRATES_BASE_URL: "http://127.0.0.1:8042"
@@ -151,6 +157,7 @@ jobs:
             $(ls e2e/nitrates/*.spec.ts \
                 | grep -v '/capture_' \
                 | grep -v '/_' \
+                | grep -v '/root_public_lockdown' \
                 | tr '\n' ' ')
 
       - name: Upload rapport Playwright
@@ -158,6 +165,148 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # =====================================================================
+  # Gate #202 — parcours client `/` sous CONFIG STAGING
+  # =====================================================================
+  # Job separe du precedent parce qu'il exige la config INVERSE :
+  # LOCKDOWN_BEHIND_LOGIN=True x NITRATES_ROOT_OUVERT=True. C'est la
+  # combinaison qui n'existe QUE sur staging, et c'est precisement le trou
+  # qui a laisse passer l'incident du 2026-07-02 (root public casse la veille
+  # d'un test utilisateur, aucun test ne le couvrait).
+  #
+  # Pourquoi deux jobs et pas un flag dans le premier : le lockdown est un
+  # middleware global. L'activer ferait echouer TOUTES les autres specs
+  # (elles naviguent en anonyme sur /simulateur/, ferme sous lockdown). Les
+  # deux configurations sont mutuellement exclusives -> deux serveurs, deux
+  # jobs. Ils tournent en parallele, donc pas de cout en temps de pipeline.
+  e2e-root-public-lockdown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      database:
+        image: postgis/postgis:14-master
+        env:
+          POSTGRES_USER: envergo
+          POSTGRES_PASSWORD: envergo
+          POSTGRES_DB: envergo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v7
+
+      - name: Installer la locale francaise
+        run: |
+          sudo apt update
+          sudo apt install -y language-pack-fr
+          sudo locale-gen
+          sudo update-locale LANG="fr_FR.UTF-8" LC_ALL="fr_FR.UTF-8"
+
+      - name: Dependances geo (GDAL/PROJ)
+        run: sudo apt install -y binutils libproj-dev gdal-bin gettext
+
+      - name: Extensions postgis sur template1
+        run: |
+          psql -d postgresql://envergo:envergo@localhost/template1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+          psql -d postgresql://envergo:envergo@localhost/template1 -c 'CREATE EXTENSION IF NOT EXISTS postgis_raster;'
+        env:
+          PGPASSWORD: envergo
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6.3.0
+        with:
+          python-version: 3.12.8
+
+      - name: Install python dependencies
+        run: pip install -r requirements/local.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install js dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: bash bin/build_assets.sh
+
+      - name: Preparer la base (migrate + referentiels + arbres)
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_referentiels
+          python manage.py load_arbres_actifs
+
+      # --- Serveur en CONFIG STAGING ---------------------------------------
+      # Les deux flags ci-dessous SONT le sujet du test. Ne pas les changer
+      # pour "faire passer" la suite : une suite verte obtenue en desarmant le
+      # lockdown ne teste plus rien (cf. #202).
+      #
+      # Le wait-for-ready ne peut pas se contenter d'un code != 000 : sous
+      # lockdown, une URL fermee repond 302 tres tot. On sonde donc `/`, qui
+      # doit repondre 200 (exempte via NITRATES_ROOT_OUVERT).
+      - name: Lancer le serveur Django (lockdown ON + root ouvert)
+        env:
+          DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost"
+          DJANGO_LOCKDOWN_BEHIND_LOGIN: "True"
+          DJANGO_NITRATES_ROOT_OUVERT: "True"
+        run: |
+          python manage.py runserver 127.0.0.1:8042 --noreload &
+          echo "Attente du serveur sur 127.0.0.1:8042..."
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/ || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "Serveur up et root ouvert (HTTP 200)"; exit 0
+            fi
+            sleep 2
+          done
+          echo "ECHEC : serveur absent ou root non ouvert en 120s" >&2
+          exit 1
+
+      # Verification de la config AVANT de lancer Playwright. Si le lockdown
+      # n'est pas actif, la suite ne teste rien : mieux vaut echouer ici avec
+      # un message clair qu'obtenir 9 verts qui ne prouvent rien.
+      - name: Verifier que le lockdown est bien actif
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/simulateur/)
+          echo "/simulateur/ -> HTTP ${code} (attendu 302)"
+          if [ "$code" != "302" ]; then
+            echo "ECHEC : /simulateur/ devrait etre ferme (302) sous lockdown." >&2
+            echo "Le serveur tourne sans lockdown -> la suite #202 ne testerait rien." >&2
+            exit 1
+          fi
+
+      - name: Installer les navigateurs Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright — parcours client sous lockdown
+        env:
+          NITRATES_BASE_URL: "http://127.0.0.1:8042"
+          CI: "true"
+        run: |
+          npx playwright test \
+            --config playwright.config.nitrates.ts \
+            e2e/nitrates/root_public_lockdown.spec.ts
+
+      - name: Upload rapport Playwright (root public)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-root-public
           path: |
             playwright-report/
             test-results/
