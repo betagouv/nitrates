@@ -234,7 +234,7 @@ ruamel-yaml==0.19.1
     # via -r base.in
 scipy==1.16.1
     # via -r base.in
-shapely==2.1.1
+shapely==2.1.2
     # via -r base.in
 six==1.17.0
     # via python-dateutil
