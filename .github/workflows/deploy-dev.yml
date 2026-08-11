@@ -3,12 +3,16 @@ name: Deploy dev
 # CD nitrates-dev (carte #50). Se declenche au merge sur main (= branche
 # d'integration de nitrates-dev). Sequence :
 #   1. safety : dump de l'etat ACTIF de dev (arbres + referentiels) -> artefact
-#      de rollback, AVANT tout ecrit.
+#      de tracabilite. Lecture seule.
 #   2. deploy code : git archive -> scalingo deploy (par archive, token API,
 #      pas de cle SSH). Le post_deploy joue migrate + imports SIG idempotents.
-#   3. reload data : load_arbres_actifs (draft->active) + seed_referentiels,
-#      puis restart web (cache lru).
+#   3. restart web (cache lru).
 #   4. smoke : root repond, cascade arbres OK.
+#
+# CE PIPELINE NE TOUCHE PAS AUX DONNEES METIER (arbres, referentiels). Il
+# deploie du code, rien d'autre. Les donnees suivent un cycle de vie inverse
+# -- editees sur l'environnement le plus eleve puis propagees vers le bas --
+# et sont donc propagees A LA MAIN, cf. docs/propagation-donnees.md.
 #
 # Secret requis : SCALINGO_API_TOKEN (repository secret). Aucun autre.
 
@@ -62,11 +66,14 @@ jobs:
           SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
         run: bash .github/scripts/deploy_dev_code.sh "${{ github.sha }}"
 
-      # --- 3. RELOAD DATA : arbres (draft->active) + referentiels + restart -
-      - name: Reload données canoniques
+      # --- 3. RESTART : invalide le cache lru. NE TOUCHE PAS AUX DONNEES ---
+      # Les arbres et referentiels sont propages a la main (operation ops),
+      # cf. docs/propagation-donnees.md. Un deploiement de code n'a pas a
+      # reecrire une regle metier saisie en base.
+      - name: Restart web
         env:
           SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
-        run: bash .github/scripts/deploy_dev_reload.sh
+        run: bash .github/scripts/deploy_dev_restart.sh
 
       # --- 4. SMOKE ---------------------------------------------------------
       - name: Smoke test
