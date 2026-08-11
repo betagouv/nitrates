@@ -85,7 +85,7 @@ django==4.2.30
     #   mozilla-django-oidc
 django-allauth==65.18.0
     # via -r base.in
-django-anymail[sendinblue]==13.0.1
+django-anymail[sendinblue]==14.0
     # via -r base.in
 django-appconf==1.1.0
     # via django-compressor
@@ -126,6 +126,7 @@ hiredis==3.2.1
 idna==3.15
     # via
     #   anyio
+    #   django-anymail
     #   requests
     #   yarl
 inflate64==1.0.4
