@@ -103,8 +103,6 @@ cligj==0.7.2
     # via
     #   -r base.txt
     #   fiona
-colorama==0.4.6
-    # via djlint
 coverage==7.11.0
     # via
     #   -r local.in
@@ -188,7 +186,7 @@ django-stubs-ext==5.2.2
     # via django-stubs
 djhtml==3.0.10
     # via -r local.in
-djlint==1.36.4
+djlint==1.40.4
     # via -r local.in
 editorconfig==0.17.1
     # via
@@ -508,9 +506,7 @@ texttable==1.7.0
 tomlkit==0.13.3
     # via pylint
 tqdm==4.68.3
-    # via
-    #   -r base.txt
-    #   djlint
+    # via -r base.txt
 traitlets==5.14.3
     # via
     #   ipython
