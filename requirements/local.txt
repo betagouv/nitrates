@@ -444,7 +444,7 @@ rcssmin==1.2.2
     # via
     #   -r base.txt
     #   django-compressor
-redis==8.0.0
+redis==8.0.1
     # via
     #   -r base.txt
     #   django-redis
