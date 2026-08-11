@@ -1018,3 +1018,6 @@ from envergo.nitrates.models_referentiels import (  # noqa: E402, F401
     GroupeCultureUI,
     NoteReglementaire,
 )
+from envergo.nitrates.models_retour import (  # noqa: E402, F401  (cartes #284/#287)
+    RetourUtilisateur,
+)

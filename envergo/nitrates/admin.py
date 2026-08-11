@@ -15,7 +15,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from envergo.nitrates.models import DecisionTree, RpgCulture
+from envergo.nitrates.models import DecisionTree, RetourUtilisateur, RpgCulture
 from envergo.nitrates.permissions import (
     can_change_tree,
     can_delete_tree,
@@ -584,3 +584,56 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
             "🔎 Prévisualiser le rendu</a>",
             url,
         )
+
+
+# ─── Retours utilisateurs (cartes #284/#287) ────────────────────────────────
+# Admin en lecture seule : les retours sont collectés côté public, on ne fait
+# que les consulter/exporter ici. On n'autorise pas la création/édition (ce
+# sont des données brutes d'utilisateurs, append-only).
+
+
+@admin.register(RetourUtilisateur)
+class RetourUtilisateurAdmin(admin.ModelAdmin):
+    list_display = (
+        "cree_le",
+        "type",
+        "note",
+        "a_email",
+        "region_code",
+        "apercu_commentaire",
+    )
+    list_filter = ("type", "consentement_email", "region_code")
+    search_fields = ("email", "commentaire", "region_code")
+    date_hierarchy = "cree_le"
+    ordering = ("-cree_le",)
+    readonly_fields = (
+        "type",
+        "note",
+        "commentaire",
+        "email",
+        "consentement_email",
+        "region_code",
+        "contexte",
+        "cree_le",
+    )
+
+    @admin.display(description="A un email", boolean=True)
+    def a_email(self, obj):
+        return obj.a_email
+
+    @admin.display(description="Commentaire")
+    def apercu_commentaire(self, obj):
+        txt = (obj.commentaire or "").strip()
+        return (txt[:60] + "…") if len(txt) > 60 else txt
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Lecture seule : on autorise l'accès à la fiche (consultation) mais pas
+        # l'édition (tous les champs sont readonly ci-dessus).
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        # On garde la possibilité de purge RGPD (droit à l'effacement).
+        return True
