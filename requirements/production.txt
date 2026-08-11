@@ -123,7 +123,7 @@ django==4.2.30
     #   django-redis
     #   django-storages
     #   mozilla-django-oidc
-django-allauth==65.14.1
+django-allauth==65.18.0
     # via -r base.txt
 django-anymail[sendinblue]==13.0.1
     # via -r base.txt
