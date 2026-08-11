@@ -1,0 +1,165 @@
+name: E2E nitrates
+
+# Suite Playwright nitrates, montee sur une base ephemere.
+#
+# Workflow REUTILISABLE (workflow_call) : appele en GATE par deploy-staging et
+# deploy-prod. Il n'est VOLONTAIREMENT pas branche sur les PR : le lot e2e dure
+# plusieurs minutes et ralentirait la boucle de dev. Le contrat est : une
+# version TAGGEE ne part sur staging/prod que si l'e2e est verte.
+#
+# Aussi appelable a la main (workflow_dispatch) et en nocturne (schedule) sur
+# main, pour ne pas decouvrir une regression e2e le jour de la release.
+#
+# Les specs `capture_*` sont EXCLUES : ce sont des outils de production de
+# captures d'ecran pour la validation juriste (elles ecrivent des manifestes),
+# pas des tests de non-regression.
+
+permissions:
+  contents: read
+
+on:
+  workflow_call: {}
+  workflow_dispatch: {}
+  schedule:
+    # Tous les jours a 03:17 UTC. Heure decalee (pas pile) pour eviter le pic
+    # de charge des runners GitHub a l'heure ronde.
+    - cron: "17 3 * * *"
+
+env:
+  DATABASE_URL: "postgis://envergo:envergo@localhost:5432/envergo"
+  USE_DOCKER: "False"
+  LANG: "fr_FR.UTF-8"
+  LC_ALL: "fr_FR.UTF-8"
+  DJANGO_SETTINGS_MODULE: "config.settings.ci"
+
+jobs:
+  e2e-nitrates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      database:
+        image: postgis/postgis:14-master
+        env:
+          POSTGRES_USER: envergo
+          POSTGRES_PASSWORD: envergo
+          POSTGRES_DB: envergo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v7
+
+      # --- Locale FR : les specs assertent des libelles francais (dates,
+      # intitules de cultures). Sans la locale, les tests echouent sur du
+      # texte anglais.
+      - name: Installer la locale francaise
+        run: |
+          sudo apt update
+          sudo apt install -y language-pack-fr
+          sudo locale-gen
+          sudo update-locale LANG="fr_FR.UTF-8" LC_ALL="fr_FR.UTF-8"
+
+      - name: Dependances geo (GDAL/PROJ)
+        run: sudo apt install -y binutils libproj-dev gdal-bin gettext
+
+      - name: Extensions postgis sur template1
+        run: |
+          psql -d postgresql://envergo:envergo@localhost/template1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+          psql -d postgresql://envergo:envergo@localhost/template1 -c 'CREATE EXTENSION IF NOT EXISTS postgis_raster;'
+        env:
+          PGPASSWORD: envergo
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6.3.0
+        with:
+          python-version: 3.12.8
+
+      - name: Install python dependencies
+        run: pip install -r requirements/local.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install js dependencies
+        run: npm ci
+
+      # Les specs testent le JS compile (cascade, flow couvert, carte Leaflet).
+      # Sans build, le serveur sert des assets absents -> tout casse.
+      - name: Build assets
+        run: bash bin/build_assets.sh
+
+      # --- Base : migrations + referentiels + arbres canoniques ------------
+      # Les specs interrogent /api/referentiels/ et /api/arbre/ (qui doit
+      # renvoyer l'arbre PAN, noeud racine n_zvn) : il faut donc les
+      # referentiels seedes ET au moins l'arbre PAN actif en DB.
+      - name: Preparer la base (migrate + referentiels + arbres)
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_referentiels
+          python manage.py load_arbres_actifs
+
+      # --- Serveur de test -------------------------------------------------
+      # Le middleware SetUrlConfBasedOnSite force l'urlconf nitrates quel que
+      # soit le Host, donc pas besoin de bricoler une Site id=3 ici. On ajoute
+      # quand meme 127.0.0.1 aux ALLOWED_HOSTS (ci.py ne liste que localhost)
+      # car playwright.config.nitrates.ts cible 127.0.0.1.
+      #
+      # LOCKDOWN_BEHIND_LOGIN doit rester desactive : sinon toute requete
+      # anonyme est redirigee vers le login admin et les specs ne voient que
+      # la page de connexion.
+      - name: Lancer le serveur Django
+        env:
+          DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost"
+          DJANGO_LOCKDOWN_BEHIND_LOGIN: "False"
+          DJANGO_NITRATES_ROOT_OUVERT: "True"
+        run: |
+          python manage.py runserver 127.0.0.1:8042 --noreload &
+          echo "Attente du serveur sur 127.0.0.1:8042..."
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/ || echo "000")
+            if [ "$code" != "000" ]; then
+              echo "Serveur up (HTTP $code)"; exit 0
+            fi
+            sleep 2
+          done
+          echo "ECHEC : le serveur n'a pas demarre en 120s" >&2
+          exit 1
+
+      - name: Installer les navigateurs Playwright
+        run: npx playwright install --with-deps chromium
+
+      # --- Run --------------------------------------------------------------
+      # `capture_*` exclu (outils de capture, pas de la non-reg) ainsi que les
+      # specs prefixees `_` (scratchpads de mesure : _zoomj, _meas107, _iter107).
+      - name: Run Playwright (hors specs de capture)
+        env:
+          NITRATES_BASE_URL: "http://127.0.0.1:8042"
+          CI: "true"
+        run: |
+          npx playwright test \
+            --config playwright.config.nitrates.ts \
+            $(ls e2e/nitrates/*.spec.ts \
+                | grep -v '/capture_' \
+                | grep -v '/_' \
+                | tr '\n' ' ')
+
+      - name: Upload rapport Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn

@@ -393,6 +393,12 @@ ANALYTICS = {
         "SITE_ID": env("DJANGO_HAIE_SITE_ID", default=""),
         "SECURITY_TOKEN": env("DJANGO_HAIE_MATOMO_SECURITY_TOKEN", default=""),
     },
+    "NITRATES": {
+        "TRACKER_ENABLED": env("DJANGO_NITRATES_TRACKER_ENABLED", default=False),
+        "TRACKER_URL": env("DJANGO_NITRATES_TRACKER_URL", default=""),
+        "SITE_ID": env("DJANGO_NITRATES_SITE_ID", default=""),
+        "SECURITY_TOKEN": env("DJANGO_NITRATES_MATOMO_SECURITY_TOKEN", default=""),
+    },
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
