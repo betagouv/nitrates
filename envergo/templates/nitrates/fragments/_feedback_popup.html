@@ -29,9 +29,7 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
 
     {# ── Volet 1 : note (étoiles) + commentaire ─────────────────────────── #}
     <div class="nitrates-feedback__volet" data-feedback-volet-note>
-      <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">
-        Cet outil vous a-t-il été utile&nbsp;?
-      </p>
+      <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">Cet outil vous a-t-il été utile&nbsp;?</p>
 
       <div class="nitrates-feedback__stars"
            role="radiogroup"
@@ -44,7 +42,7 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
                   aria-checked="false"
                   aria-label="{{ n }} étoile{% if n != '1' %}s{% endif %}">
             <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
-              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.6 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z"/>
+              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.6 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z" />
             </svg>
           </button>
         {% endfor %}
@@ -54,9 +52,7 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
         <span>Très utile</span>
       </div>
 
-      <label class="fr-label fr-mt-2w" for="nitrates-feedback-commentaire">
-        Un commentaire&nbsp;? (facultatif)
-      </label>
+      <label class="fr-label fr-mt-2w" for="nitrates-feedback-commentaire">Un commentaire&nbsp;? (facultatif)</label>
       <textarea class="fr-input"
                 id="nitrates-feedback-commentaire"
                 rows="3"
@@ -66,10 +62,7 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
         <button type="button"
                 class="fr-btn fr-btn--tertiary-no-outline"
                 data-feedback-dismiss>Non merci</button>
-        <button type="button"
-                class="fr-btn"
-                data-feedback-submit-note
-                disabled>Envoyer mon avis</button>
+        <button type="button" class="fr-btn" data-feedback-submit-note disabled>Envoyer mon avis</button>
       </div>
       <p class="nitrates-feedback__erreur fr-error-text"
          data-feedback-erreur-note
@@ -80,12 +73,8 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
     <div class="nitrates-feedback__volet" data-feedback-volet-email hidden>
       <p class="nitrates-feedback__merci-note">Merci pour votre avis&nbsp;!</p>
       <hr class="nitrates-feedback__sep">
-      <p class="nitrates-feedback__titre fr-h6">
-        Envie de devenir alpha-testeur&nbsp;?
-      </p>
-      <label class="fr-label" for="nitrates-feedback-email">
-        Laissez votre email (facultatif)
-      </label>
+      <p class="nitrates-feedback__titre fr-h6">Envie de devenir alpha-testeur&nbsp;?</p>
+      <label class="fr-label" for="nitrates-feedback-email">Laissez votre email (facultatif)</label>
       <input type="email"
              class="fr-input"
              id="nitrates-feedback-email"
@@ -110,10 +99,7 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
         <button type="button"
                 class="fr-btn fr-btn--tertiary-no-outline"
                 data-feedback-dismiss>Non merci</button>
-        <button type="button"
-                class="fr-btn"
-                data-feedback-submit-email
-                disabled>Envoyer mon email</button>
+        <button type="button" class="fr-btn" data-feedback-submit-email disabled>Envoyer mon email</button>
       </div>
       <p class="nitrates-feedback__erreur fr-error-text"
          data-feedback-erreur-email
