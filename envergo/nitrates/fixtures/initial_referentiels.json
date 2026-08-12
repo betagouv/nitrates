@@ -7266,7 +7266,11 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.420Z"
+    "updated_at": "2026-08-12T11:39:26.420Z",
+    "type_contenu": "general",
+    "titre_public": "",
+    "categorie": "",
+    "termes_declencheurs": []
   }
 },
 {
@@ -7285,7 +7289,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.429Z"
+    "updated_at": "2026-08-12T11:39:26.429Z",
+    "type_contenu": "definition",
+    "titre_public": "Azote efficace",
+    "categorie": "azote-bilans",
+    "termes_declencheurs": [
+      "azote efficace"
+    ]
   }
 },
 {
@@ -7304,7 +7314,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.429Z"
+    "updated_at": "2026-08-12T11:39:26.429Z",
+    "type_contenu": "definition",
+    "titre_public": "Azote potentiellement libéré jusqu'en sortie d'hiver",
+    "categorie": "azote-bilans",
+    "termes_declencheurs": [
+      "azote potentiellement libéré"
+    ]
   }
 },
 {
@@ -7323,7 +7339,15 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.430Z"
+    "updated_at": "2026-08-12T11:39:26.430Z",
+    "type_contenu": "definition",
+    "titre_public": "C / N (Carbone / Azote)",
+    "categorie": "azote-bilans",
+    "termes_declencheurs": [
+      "C/N",
+      "rapport C/N",
+      "rapport carbone/azote"
+    ]
   }
 },
 {
@@ -7342,7 +7366,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.431Z"
+    "updated_at": "2026-08-12T11:39:26.431Z",
+    "type_contenu": "definition",
+    "titre_public": "Nmin / Ntot",
+    "categorie": "azote-bilans",
+    "termes_declencheurs": [
+      "Nmin/Ntot"
+    ]
   }
 },
 {
@@ -7361,7 +7391,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.432Z"
+    "updated_at": "2026-08-12T11:39:26.432Z",
+    "type_contenu": "definition",
+    "titre_public": "Campagne culturale",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "campagne culturale"
+    ]
   }
 },
 {
@@ -7380,7 +7416,14 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.432Z"
+    "updated_at": "2026-08-12T11:39:26.432Z",
+    "type_contenu": "definition",
+    "titre_public": "Couvert végétal d'interculture (CI)",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "couvert végétal d'interculture",
+      "couvert d'interculture"
+    ]
   }
 },
 {
@@ -7399,7 +7442,14 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.433Z"
+    "updated_at": "2026-08-12T11:39:26.433Z",
+    "type_contenu": "definition",
+    "titre_public": "Effluents peu chargés",
+    "categorie": "fertilisants-effluents",
+    "termes_declencheurs": [
+      "effluents peu chargés",
+      "effluent peu chargé"
+    ]
   }
 },
 {
@@ -7456,7 +7506,21 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.434Z"
+    "updated_at": "2026-08-12T11:39:26.434Z",
+    "type_contenu": "definition",
+    "titre_public": "Fertilisants de type 0, Ia, Ib, II et III",
+    "categorie": "fertilisants-effluents",
+    "termes_declencheurs": [
+      "type 0",
+      "type Ia",
+      "type Ib",
+      "type II",
+      "type III",
+      "type I.a",
+      "type I.b",
+      "I.a",
+      "I.b"
+    ]
   }
 },
 {
@@ -7475,7 +7539,15 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.435Z"
+    "updated_at": "2026-08-12T11:39:26.435Z",
+    "type_contenu": "definition",
+    "titre_public": "Fertirrigation (fertigation ou ferti-irrigation)",
+    "categorie": "fertilisants-effluents",
+    "termes_declencheurs": [
+      "fertirrigation",
+      "fertigation",
+      "ferti-irrigation"
+    ]
   }
 },
 {
@@ -7494,7 +7566,14 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.435Z"
+    "updated_at": "2026-08-12T11:39:26.435Z",
+    "type_contenu": "definition",
+    "titre_public": "Fumier compact non susceptible d'écoulement",
+    "categorie": "fertilisants-effluents",
+    "termes_declencheurs": [
+      "fumier compact",
+      "fumiers compacts"
+    ]
   }
 },
 {
@@ -7513,7 +7592,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.436Z"
+    "updated_at": "2026-08-12T11:39:26.436Z",
+    "type_contenu": "definition",
+    "titre_public": "ICPE",
+    "categorie": "reglementation-zonage",
+    "termes_declencheurs": [
+      "ICPE"
+    ]
   }
 },
 {
@@ -7532,7 +7617,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.437Z"
+    "updated_at": "2026-08-12T11:39:26.437Z",
+    "type_contenu": "definition",
+    "titre_public": "ISMO",
+    "categorie": "fertilisants-effluents",
+    "termes_declencheurs": [
+      "ISMO"
+    ]
   }
 },
 {
@@ -7551,7 +7642,15 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.437Z"
+    "updated_at": "2026-08-12T11:39:26.437Z",
+    "type_contenu": "definition",
+    "titre_public": "Ilot cultural",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "ilot cultural",
+      "îlot cultural",
+      "îlots culturaux"
+    ]
   }
 },
 {
@@ -7570,7 +7669,11 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.438Z"
+    "updated_at": "2026-08-12T11:39:26.438Z",
+    "type_contenu": "definition",
+    "titre_public": "Interculture",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": []
   }
 },
 {
@@ -7589,7 +7692,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.439Z"
+    "updated_at": "2026-08-12T11:39:26.439Z",
+    "type_contenu": "definition",
+    "titre_public": "Interculture longue",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "intercultures longues"
+    ]
   }
 },
 {
@@ -7608,7 +7717,13 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.440Z"
+    "updated_at": "2026-08-12T11:39:26.440Z",
+    "type_contenu": "definition",
+    "titre_public": "Interculture courte",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "intercultures courtes"
+    ]
   }
 },
 {
@@ -7627,7 +7742,14 @@
       ],
       "schema": 1
     },
-    "updated_at": "2026-08-12T11:39:26.441Z"
+    "updated_at": "2026-08-12T11:39:26.441Z",
+    "type_contenu": "definition",
+    "titre_public": "Sol non cultivé",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "sol non cultivé",
+      "sols non cultivés"
+    ]
   }
 }
 ]
