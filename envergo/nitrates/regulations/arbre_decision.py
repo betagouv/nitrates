@@ -46,7 +46,9 @@ from envergo.nitrates.yaml_tree import (
     RenvoiArbre,
     Resultat,
     candidat_by_id,
+    load_referentiels,
     parcours,
+    resoudre_codes_prescription,
     select_active_trees,
 )
 
@@ -439,6 +441,29 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         self._result_code = res.regle_id
         self._result = result
 
+        # Selection geo des prescriptions (#147) : la feuille porte des codes
+        # de BASE (post-surcharges d'arbre) ; la redaction affichee (fusion,
+        # puis declinaison PAR/ZAR) est resolue selon la geo de la parcelle,
+        # INDEPENDAMMENT de l'arbre qui a matche -- une feuille PAN atteinte
+        # par fallback de cascade en Grand Est affiche la version Grand Est.
+        # Tout l'aval (drawer, plafonds inline, calendrier, JSON) consomme
+        # res.codes_prescription : on remappe ici, une seule fois.
+        codes_feuille = list(res.codes_prescription)
+        if codes_feuille:
+            referentiel = load_referentiels().get("codes_prescription", {})
+            res.codes_prescription = resoudre_codes_prescription(
+                codes_feuille,
+                referentiel,
+                region_code=self.catalog.get("region_code"),
+                en_zar=bool(self.catalog.get("en_zar")),
+            )
+            self._pc_resolution = {
+                "feuille": codes_feuille,
+                "affiches": list(res.codes_prescription),
+                "region_code": self.catalog.get("region_code"),
+                "en_zar": bool(self.catalog.get("en_zar")),
+            }
+
         # Infos metier copiees pour acces template.
         self._regle_yaml = res
         self._chemin = res.chemin
@@ -528,6 +553,14 @@ class ArbreDecisionEvaluator(CriterionEvaluator):
         """Trace de la cascade : [{candidat, statut}] (selectionne -> no-match /
         renvoi / matche). Pour le panel debug resultat."""
         return getattr(self, "_cascade_trace", [])
+
+    @property
+    def pc_resolution(self):
+        """Trace de la selection geo des PC (#147) : codes portes par la
+        feuille vs codes affiches apres fusion + declinaison, et la geo
+        utilisee. Pour le panel debug juriste. None si la feuille ne porte
+        aucun code."""
+        return getattr(self, "_pc_resolution", None)
 
     @property
     def catalogue_manquant(self):
