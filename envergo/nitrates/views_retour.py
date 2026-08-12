@@ -7,6 +7,8 @@ fermée) poste ici en JSON avec le token CSRF. Rate-limité par IP.
 
 import json
 
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
@@ -14,6 +16,7 @@ from django.views.generic import View
 from django_ratelimit.decorators import ratelimit
 
 from envergo.nitrates.forms_retour import RetourUtilisateurForm
+from envergo.nitrates.models_retour import RetourUtilisateur
 
 
 @method_decorator(
@@ -66,11 +69,6 @@ class RetourUtilisateurCreateView(View):
         return JsonResponse({"ok": True, "id": retour.pk}, status=201)
 
     def _attacher_email(self, payload, retour_id):
-        from django.core.validators import validate_email
-        from django.core.exceptions import ValidationError
-
-        from envergo.nitrates.models_retour import RetourUtilisateur
-
         email = (payload.get("email") or "").strip()
         consent = bool(payload.get("consentement_email"))
         # RGPD : pas d'email sans consentement.
