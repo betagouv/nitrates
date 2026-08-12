@@ -1,0 +1,270 @@
+// Glossaire cliquable + carte flottante de définition (carte #110).
+//
+// Trois responsabilités :
+//   1. LINKIFICATION CLIENT : wrapper les termes définis dans les textes
+//      générés côté navigateur (radios cascade.js, parcours
+//      question_couvert_flow.js, swaps de question_reformat.js) — le filtre
+//      serveur |glossaire ne les voit jamais. Même balise <a.def-terme> que
+//      le serveur : un seul style, un seul handler.
+//   2. RÉ-APPLICATION : MutationObserver sur le <main>, debouncé par
+//      requestAnimationFrame, avec un verrou anti-boucle (nos propres
+//      wrappings déclenchent des mutations qu'on doit ignorer).
+//   3. CARTE FLOTTANTE : délégation de clic sur [data-def-cle] ->
+//      preventDefault + slide-in de #def-carte remplie depuis le JSON
+//      embarqué par {% glossaire_json %} (HTML précompilé serveur, on
+//      n'assemble JAMAIS de HTML depuis des chaînes en JS).
+//
+// Ordre de chargement : EN DERNIER dans extra_js (les <script defer>
+// s'exécutent dans l'ordre du document), après question_reformat.js.
+(function () {
+  "use strict";
+
+  // En Node (tests unitaires), on n'expose que les helpers PURS (matching /
+  // découpage en segments, pas de DOM) puis on sort. cf. question_reformat.js.
+  const _isNode =
+    typeof module !== "undefined" &&
+    module.exports &&
+    typeof document === "undefined";
+
+  // ── Helpers purs (testés en Node, parité avec le filtre Python) ─────────
+
+  // Échappe les métacaractères regex d'une variante (équivalent re.escape).
+  function echapperRegex(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  // Regex d'alternation des variantes. `termes` = [[variante, cle], ...]
+  // DÉJÀ trié longest-first par le serveur (glossaire.py) : la 1re branche
+  // qui matche gagne -> longest-match. Frontières en lookarounds unicode
+  // (\p{L}\p{N}_) : « azote efficacement » ne matche pas « azote efficace »,
+  // frontière accentuée comprise (parité avec le (?<!\w) Python).
+  function construireRegex(termes) {
+    if (!termes || !termes.length) return null;
+    const alternation = termes
+      .map(function (t) {
+        return echapperRegex(t[0]);
+      })
+      .join("|");
+    try {
+      return new RegExp(
+        "(?<![\\p{L}\\p{N}_])(?:" + alternation + ")(?![\\p{L}\\p{N}_])",
+        "giu"
+      );
+    } catch (e) {
+      // Vieux Safari sans lookbehind : on dégrade proprement (pas de
+      // linkification client ; les liens posés côté serveur restent actifs).
+      return null;
+    }
+  }
+
+  // Découpe un texte brut en segments [{texte} | {texte, cle}] selon les
+  // matches. Pur : pas de DOM, testable en Node.
+  function decouperTexte(texte, regex, parVariante) {
+    const segments = [];
+    if (!texte) return segments;
+    if (!regex) return [{ texte: texte }];
+    let dernier = 0;
+    regex.lastIndex = 0;
+    let m;
+    while ((m = regex.exec(texte)) !== null) {
+      const cle = parVariante[m[0].toLowerCase()];
+      if (cle === undefined) continue;
+      if (m.index > dernier) segments.push({ texte: texte.slice(dernier, m.index) });
+      segments.push({ texte: m[0], cle: cle });
+      dernier = m.index + m[0].length;
+    }
+    if (dernier < (texte || "").length) segments.push({ texte: texte.slice(dernier) });
+    return segments;
+  }
+
+  if (_isNode) {
+    module.exports = {
+      echapperRegex: echapperRegex,
+      construireRegex: construireRegex,
+      decouperTexte: decouperTexte,
+    };
+    return;
+  }
+
+  // ── Chargement du glossaire embarqué ────────────────────────────────────
+
+  const dataEl = document.getElementById("glossaire-data");
+  if (!dataEl) return; // pas de glossaire sur cette page
+  let GLOSSAIRE;
+  try {
+    GLOSSAIRE = JSON.parse(dataEl.textContent);
+  } catch (e) {
+    return;
+  }
+  if (!GLOSSAIRE || !GLOSSAIRE.termes || !GLOSSAIRE.termes.length) return;
+
+  const REGEX = construireRegex(GLOSSAIRE.termes);
+  const PAR_VARIANTE = {};
+  GLOSSAIRE.termes.forEach(function (t) {
+    PAR_VARIANTE[t[0].toLowerCase()] = t[1];
+  });
+
+  // ── Linkification DOM ───────────────────────────────────────────────────
+
+  // Où linkifier : les textes de question et les labels de radios (toutes
+  // sources : statiques, cascade, couvert-flow, QC), ainsi que les contenus
+  // riches du panneau résultat. Volontairement PAS tout le <main> : on ne
+  // touche ni aux boutons, ni au calendrier, ni aux champs.
+  const SELECTEURS = [
+    ".form-question-text",
+    ".fr-label",
+    ".fr-hint-text",
+    ".contenu-rich",
+  ].join(", ");
+
+  // Balises dont on ne traverse JAMAIS le contenu.
+  const BALISES_EXCLUES = { A: 1, BUTTON: 1, SCRIPT: 1, STYLE: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1 };
+
+  let verrou = false; // anti-boucle : nos wrappings déclenchent des mutations
+
+  function linkifierNoeudTexte(node) {
+    const segments = decouperTexte(node.nodeValue, REGEX, PAR_VARIANTE);
+    if (!segments.some(function (s) { return s.cle !== undefined; })) return;
+    const frag = document.createDocumentFragment();
+    segments.forEach(function (s) {
+      if (s.cle === undefined) {
+        frag.appendChild(document.createTextNode(s.texte));
+        return;
+      }
+      const def = GLOSSAIRE.defs[s.cle] || {};
+      const a = document.createElement("a");
+      a.className = "def-terme";
+      a.dataset.defCle = s.cle;
+      a.href = GLOSSAIRE.url_definitions + "#" + (def.ancre || "");
+      a.textContent = s.texte;
+      frag.appendChild(a);
+    });
+    node.parentNode.replaceChild(frag, node);
+  }
+
+  function linkifierConteneur(racine) {
+    const zones = racine.matches && racine.matches(SELECTEURS)
+      ? [racine]
+      : Array.prototype.slice.call(racine.querySelectorAll ? racine.querySelectorAll(SELECTEURS) : []);
+    if (!zones.length) return;
+    verrou = true;
+    try {
+      zones.forEach(function (zone) {
+        const walker = document.createTreeWalker(zone, NodeFilter.SHOW_TEXT, {
+          acceptNode: function (n) {
+            // Refuse les textes déjà dans un lien/bouton/terme wrappé.
+            let p = n.parentNode;
+            while (p && p !== zone) {
+              if (BALISES_EXCLUES[p.tagName] || (p.classList && p.classList.contains("def-terme"))) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              p = p.parentNode;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          },
+        });
+        // Matérialise la liste AVANT de modifier le DOM (le walker se perd si
+        // on remplace les nœuds pendant l'itération).
+        const textes = [];
+        while (walker.nextNode()) textes.push(walker.currentNode);
+        textes.forEach(linkifierNoeudTexte);
+      });
+    } finally {
+      verrou = false;
+    }
+  }
+
+  // ── Carte flottante ─────────────────────────────────────────────────────
+
+  let carteOuverte = null; // { declencheur }
+
+  // Hauteur visible du bandeau construction (cf. drawer_conditions.js).
+  function hauteurBandeau() {
+    const bandeau = document.querySelector(".nitrates-construction__bar");
+    if (!bandeau) return 0;
+    const r = bandeau.getBoundingClientRect();
+    const style = window.getComputedStyle(bandeau);
+    if (r.height > 0 && parseFloat(style.opacity) > 0.1) return r.height;
+    return 0;
+  }
+
+  function carte() {
+    return document.getElementById("def-carte");
+  }
+
+  function ouvrirCarte(cle, declencheur) {
+    const el = carte();
+    const def = GLOSSAIRE.defs[cle];
+    if (!el || !def) return;
+    // Reparentage sous <body> : la carte est fixed et serait clippée par
+    // .results-row { overflow: clip } (cf. drawer_conditions.js).
+    if (el.parentNode !== document.body) document.body.appendChild(el);
+    el.querySelector("#def-carte-titre").textContent = def.titre;
+    // HTML précompilé côté serveur (compile_dsfr, tout texte échappé) : seul
+    // endroit où on injecte du HTML, et il est de confiance.
+    el.querySelector(".def-carte__corps").innerHTML = def.html;
+    const lien = el.querySelector("#def-carte-toutes");
+    lien.href = GLOSSAIRE.url_definitions + "#" + def.ancre;
+    el.style.top = 16 + hauteurBandeau() + "px";
+    el.hidden = false;
+    void el.offsetWidth; // reflow avant la classe pour jouer la transition
+    el.classList.add("def-carte--ouverte");
+    carteOuverte = { declencheur: declencheur };
+    const fermerBtn = el.querySelector("[data-def-fermer]");
+    if (fermerBtn && fermerBtn.focus) fermerBtn.focus();
+  }
+
+  function fermerCarte() {
+    const el = carte();
+    if (!el || !carteOuverte) return;
+    const declencheur = carteOuverte.declencheur;
+    carteOuverte = null;
+    el.classList.remove("def-carte--ouverte");
+    el.hidden = true;
+    // Restitue le focus au terme cliqué (accessibilité), s'il est toujours là.
+    if (declencheur && document.contains(declencheur) && declencheur.focus) {
+      declencheur.focus();
+    }
+  }
+
+  // ── Branchement ─────────────────────────────────────────────────────────
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const main = document.querySelector("main") || document.body;
+
+    linkifierConteneur(main);
+
+    // Ré-application après chaque re-rendu client (cascade.js recrée les
+    // radios, question_couvert_flow.js avance le parcours,
+    // question_reformat.js écrase les innerHTML). Debounce rAF : les rendus
+    // arrivent en rafales. Le verrou ignore nos propres mutations.
+    let rafPrevu = false;
+    const observer = new MutationObserver(function () {
+      if (verrou || rafPrevu) return;
+      rafPrevu = true;
+      requestAnimationFrame(function () {
+        rafPrevu = false;
+        linkifierConteneur(main);
+      });
+    });
+    observer.observe(main, { childList: true, subtree: true });
+
+    // Clic sur un terme -> carte (un seul handler, délégation : couvre les
+    // liens serveur ET client, y compris créés après coup).
+    document.addEventListener("click", function (e) {
+      const terme = e.target.closest && e.target.closest("[data-def-cle]");
+      if (terme) {
+        e.preventDefault();
+        ouvrirCarte(terme.dataset.defCle, terme);
+        return;
+      }
+      if (e.target.closest && e.target.closest("[data-def-fermer]")) {
+        fermerCarte();
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") fermerCarte();
+    });
+  });
+})();

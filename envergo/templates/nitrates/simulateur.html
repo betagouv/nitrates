@@ -9,6 +9,7 @@
   <link href="{% static_v 'nitrates/home.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/simulateur.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/glossaire.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block extra_js %}
@@ -79,6 +80,13 @@
     {# #271 : drawer lateral « Conditions d'epandage » (notes PC + dates ASC). #}
     <script defer src="{% static_v 'nitrates/drawer_conditions.js' %}"></script>
   {% endif %}
+  {% comment %}
+  #110 : glossaire cliquable + carte flottante de definition. EN DERNIER :
+  il re-linkifie les textes produits par cascade.js / question_couvert_flow.js
+  / question_reformat.js (les defer s'executent dans l'ordre du document).
+  {% endcomment %}
+  {% glossaire_json %}
+  <script defer src="{% static_v 'nitrates/glossaire.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -152,5 +160,8 @@
     QC en attente). Tant qu'une QC est en attente, colonne unique (#112).
     {% endcomment %}
     {% include "nitrates/fragments/_panneau_form.html" %}
+
+    {# #110 : carte flottante de definition (remplie/ouverte par glossaire.js) #}
+    {% include "nitrates/fragments/_panneau_definition.html" %}
   </div>
 {% endblock %}

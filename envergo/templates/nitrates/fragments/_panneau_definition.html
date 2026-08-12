@@ -1,0 +1,36 @@
+{% comment %}
+Carte flottante de définition (carte #110, design Coralie V2).
+
+Ouverte par glossaire.js au clic sur un terme [data-def-cle] du simulateur :
+slide-in par la droite (~380px, plein largeur en mobile), une seule à la
+fois, PAS de mode modal (aria-modal=false, pas d'overlay ni de scroll lock :
+le formulaire reste consultable pendant la lecture — spec Coralie).
+
+Reparentée sous <body> à l'ouverture (cf. drawer_conditions.js : un
+position:fixed serait clippé par .results-row { overflow: clip }).
+
+Le titre et le corps sont remplis par glossaire.js depuis le JSON embarqué
+{% glossaire_json %} (HTML précompilé côté serveur, aucun HTML construit en
+JS depuis des données non maîtrisées).
+{% endcomment %}
+<aside id="def-carte"
+       class="def-carte"
+       role="dialog"
+       aria-modal="false"
+       aria-labelledby="def-carte-titre"
+       hidden>
+  <div class="def-carte__entete">
+    <button type="button"
+            class="fr-link fr-link--sm def-carte__fermer"
+            data-def-fermer>
+      Fermer <span class="fr-icon-close-line" aria-hidden="true"></span>
+    </button>
+  </div>
+  <h2 class="def-carte__titre" id="def-carte-titre"></h2>
+  <div class="def-carte__corps"></div>
+  <p class="fr-mb-0">
+    <a class="fr-btn fr-btn--secondary fr-btn--sm"
+       id="def-carte-toutes"
+       href="{% url 'nitrates_definitions' %}">Voir toutes les définitions</a>
+  </p>
+</aside>

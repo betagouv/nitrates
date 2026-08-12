@@ -1013,3 +1013,45 @@ def glossaire(texte):
         )
 
     return mark_safe(regex.sub(_remplacer, echappe))
+
+
+@register.simple_tag
+def glossaire_json(element_id: str = "glossaire-data"):
+    """Embarque le glossaire complet en <script type="application/json">.
+
+    Consommé par glossaire.js (carte #110) pour :
+      - linkifier les labels générés côté client (cascade.js,
+        question_couvert_flow.js) — `termes` est déjà trié longest-first ;
+      - remplir la carte flottante de définition sans appel réseau — `defs`
+        porte le HTML précompilé de chaque définition.
+
+    id_prefix "def-panel-<ancre>" : DISTINCT du préfixe de la page
+    /definitions/ ("def-<ancre>") pour qu'un accordéon rendu dans la carte
+    flottante n'entre jamais en collision d'id avec la page (carte #157).
+
+    ~20 définitions courtes -> quelques dizaines de Ko, acceptable inline.
+    json_script échappe `<` en \\u003c : aucune fermeture de balise possible.
+    """
+    from django.utils.html import json_script
+
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+    from envergo.nitrates.contenu_rich.glossaire import (
+        load_definitions,
+        load_index_termes,
+    )
+
+    defs = {}
+    for d in load_definitions():
+        defs[d.cle] = {
+            "titre": d.titre_public,
+            "ancre": d.ancre,
+            "html": compile_dsfr(
+                d.liste_blocs, niveau_base=5, id_prefix=f"def-panel-{d.ancre}"
+            ),
+        }
+    payload = {
+        "termes": [[v, cle] for v, cle in load_index_termes()],
+        "defs": defs,
+        "url_definitions": _url_definitions(),
+    }
+    return json_script(payload, element_id)
