@@ -37,26 +37,26 @@
   transform: scaleX(-1);
 }
 
-/* Les deux sens parcourent EXACTEMENT la même distance (100% du conteneur +
-   140px de marge de part et d'autre pour entrer/sortir hors-champ), dans le même
-   référentiel (%). Ainsi une même `--dur` = une même vitesse perçue, quel que
-   soit le sens. (Avant : droite en `vw`, gauche en `%` -> vitesses différentes,
-   d'où l'impression que droite->gauche était plus lent.) */
+/* Distance parcourue = --trajet (largeur RÉELLE de la scène + un ver), calculée
+   en pixels par le JS (le `%` d'un translateX réfère à l'élément, pas au
+   conteneur -> il fallait la vraie largeur). Le ver part hors-champ (-120px) et
+   sort à droite (--trajet). Les deux sens utilisent la MÊME distance -> une même
+   `--dur` = une même vitesse quel que soit le sens. */
 @keyframes vg-traverse-droite {
   from {
-    transform: translateX(-140px);
+    transform: translateX(-120px);
   }
   to {
-    transform: translateX(calc(100% + 140px));
+    transform: translateX(var(--trajet, 100%));
   }
 }
 
 @keyframes vg-traverse-gauche {
   from {
-    transform: translateX(calc(100% + 140px));
+    transform: translateX(var(--trajet, 100%));
   }
   to {
-    transform: translateX(-140px);
+    transform: translateX(-120px);
   }
 }
 

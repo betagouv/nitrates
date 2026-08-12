@@ -99,11 +99,30 @@
     { top: 70, dir: 1, dur: 6.8, delai: 1.4 },
   ];
 
+  var VER_W = 120; // largeur d'un ver (px), cf. .vg-ver
+
   function nitratesVersGroovy(conteneur, opts) {
     if (!conteneur) return;
     var nombre = Math.max(1, Math.min((opts && opts.nombre) || 4, VOIES.length));
     conteneur.classList.add("vg-scene");
     conteneur.innerHTML = "";
+
+    // Distance à parcourir = largeur RÉELLE de la scène + un ver (pour entrer et
+    // sortir hors-champ). On la mesure ici et on la passe en variable CSS : dans
+    // un `transform: translateX(%)`, le `%` réfère à l'ÉLÉMENT (120px), pas au
+    // conteneur -> le ver ne traversait qu'une fraction. On calcule donc la
+    // distance en pixels réels. Un ResizeObserver la met à jour au redimensionnement.
+    function majTrajet() {
+      var w = conteneur.clientWidth || 0;
+      conteneur.style.setProperty("--trajet", w + VER_W + "px");
+    }
+    majTrajet();
+    if (window.ResizeObserver) {
+      new window.ResizeObserver(majTrajet).observe(conteneur);
+    } else {
+      window.addEventListener("resize", majTrajet);
+    }
+
     for (var i = 0; i < nombre; i++) {
       var v = VOIES[i];
       var el = document.createElement("div");
