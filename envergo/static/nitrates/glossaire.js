@@ -122,22 +122,44 @@
 
   let verrou = false; // anti-boucle : nos wrappings déclenchent des mutations
 
+  function creerLien(cle) {
+    const def = GLOSSAIRE.defs[cle] || {};
+    const a = document.createElement("a");
+    a.dataset.defCle = cle;
+    a.href = GLOSSAIRE.url_definitions + "#" + (def.ancre || "");
+    return a;
+  }
+
   function linkifierNoeudTexte(node) {
     const segments = decouperTexte(node.nodeValue, REGEX, PAR_VARIANTE);
     if (!segments.some(function (s) { return s.cle !== undefined; })) return;
+    // Dans un <label> radio/checkbox, on ne wrappe PAS le texte du terme :
+    // un label comme « Sol non cultivé (…) » deviendrait presque entièrement
+    // un lien et cliquer dessus ne cocherait plus le radio (constaté sur la
+    // Q1 #335). Le texte garde le souligné pointillé (span) et SEULE l'icône
+    // ⓘ accolée ouvre la définition.
+    const dansLabel = !!(node.parentNode && node.parentNode.closest("label"));
     const frag = document.createDocumentFragment();
     segments.forEach(function (s) {
       if (s.cle === undefined) {
         frag.appendChild(document.createTextNode(s.texte));
         return;
       }
-      const def = GLOSSAIRE.defs[s.cle] || {};
-      const a = document.createElement("a");
-      a.className = "def-terme";
-      a.dataset.defCle = s.cle;
-      a.href = GLOSSAIRE.url_definitions + "#" + (def.ancre || "");
-      a.textContent = s.texte;
-      frag.appendChild(a);
+      if (dansLabel) {
+        const span = document.createElement("span");
+        span.className = "def-terme-libelle";
+        span.textContent = s.texte;
+        frag.appendChild(span);
+        const icone = creerLien(s.cle);
+        icone.className = "def-terme def-terme--icone";
+        icone.setAttribute("aria-label", "Définition : " + s.texte);
+        frag.appendChild(icone);
+      } else {
+        const a = creerLien(s.cle);
+        a.className = "def-terme";
+        a.textContent = s.texte;
+        frag.appendChild(a);
+      }
     });
     node.parentNode.replaceChild(frag, node);
   }
@@ -155,7 +177,12 @@
             // Refuse les textes déjà dans un lien/bouton/terme wrappé.
             let p = n.parentNode;
             while (p && p !== zone) {
-              if (BALISES_EXCLUES[p.tagName] || (p.classList && p.classList.contains("def-terme"))) {
+              if (
+                BALISES_EXCLUES[p.tagName] ||
+                (p.classList &&
+                  (p.classList.contains("def-terme") ||
+                    p.classList.contains("def-terme-libelle")))
+              ) {
                 return NodeFilter.FILTER_REJECT;
               }
               p = p.parentNode;

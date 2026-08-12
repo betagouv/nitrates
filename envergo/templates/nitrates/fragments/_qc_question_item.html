@@ -38,8 +38,11 @@ Inputs du partial :
                    value="{{ valeur_str }}"
                    {% if selected_valeur|stringformat:"s" == valeur_str %}checked{% endif %}>
             <label class="fr-label" for="{{ id }}">
+              {# Pas de |glossaire ici : dans un label radio, seule l'icône doit #}
+              {# ouvrir la définition (sinon le clic ne coche plus le radio) ; #}
+              {# c'est glossaire.js qui pose le motif span + icône (carte #110). #}
               {% if c.libelle %}
-                {{ c.libelle|glossaire }}
+                {{ c.libelle }}
               {% else %}
                 {{ valeur_str }}
               {% endif %}
