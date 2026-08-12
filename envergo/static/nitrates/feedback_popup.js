@@ -1,14 +1,15 @@
 /* #284 — Popup de feedback fin de simulation.
  *
- * Déclenchement « au moment le moins gênant » :
- *   - une seule fois par visiteur (flag localStorage : envoyé OU esquivé) ;
- *   - seulement sur la page résultat (le fragment #nitrates-feedback n'est rendu
- *     que là) et après un délai minimal (on laisse lire le résultat) ;
- *   - au bout de INACTIVITE_MS d'inactivité (pas de scroll / clic / clavier),
- *     OU quand l'utilisateur s'apprête à quitter (souris qui sort vers le haut,
- *     onglet qui passe en arrière-plan) — pour attraper avant la fermeture.
- *   - on NE pop PAS pendant que l'utilisateur scrolle/lit : tout scroll ou
- *     interaction réarme le timer d'inactivité.
+ * Déclenchement (SIMPLE, décision Max 2026-08-12) :
+ *   - une seule fois par visiteur (flag localStorage : traité -> plus jamais) ;
+ *   - seulement sur la page résultat (le fragment #nitrates-feedback n'y est
+ *     rendu que là) ;
+ *   - dès qu'un premier résultat est affiché, on attend DELAI_AFFICHAGE_MS puis
+ *     on affiche la popup. Le compteur tourne en temps RÉEL (Date.now), il ne se
+ *     remet pas à zéro quand l'utilisateur change d'onglet. On évite juste de
+ *     faire apparaître la popup PENDANT que l'onglet est masqué : si l'échéance
+ *     tombe alors que l'onglet est en arrière-plan, on montre la popup à son
+ *     retour (visibilitychange).
  *
  * Envoi : POST JSON /api/retour/ avec token CSRF. Succès -> écran de
  * remerciement + animation « vers contents » (feedback_vers.js).
@@ -16,9 +17,8 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "nitrates_feedback_v1"; // présence = déjà traité (envoyé/esquivé)
-  var INACTIVITE_MS = 30000; // 30 s d'inactivité
-  var DELAI_MIN_MS = 8000; // on laisse au moins 8 s pour lire avant tout pop
+  var STORAGE_KEY = "nitrates_feedback_v1"; // présence = déjà traité
+  var DELAI_AFFICHAGE_MS = 20000; // 20 s après l'affichage du résultat
 
   function dejaTraite() {
     try {
@@ -72,7 +72,6 @@
     var retourId = null; // id de l'entrée feedback créée au volet 1
     var ouvert = false;
     var traite = false;
-    var timerInactivite = null;
 
     // ── Étoiles : allumer jusqu'à l'indice n (0-based) ──────────────────────
     function allumerJusqua(idx) {
@@ -107,7 +106,6 @@
       ouvert = true;
       root.hidden = false;
       if (stars[0]) stars[0].focus();
-      detacherDeclencheurs();
     }
 
     function terminer() {
@@ -228,50 +226,94 @@
         });
     });
 
-    // ── Déclencheurs d'ouverture ────────────────────────────────────────────
-    // 1) inactivité : réarmé à chaque interaction (scroll/clic/clavier/souris).
-    function armerInactivite() {
-      if (timerInactivite) window.clearTimeout(timerInactivite);
-      timerInactivite = window.setTimeout(ouvrir, INACTIVITE_MS);
-    }
-    var evtsActivite = ["scroll", "mousemove", "keydown", "click", "touchstart"];
-    function onActivite() {
-      armerInactivite();
+    // ── Déclenchement (simple) : échéance = maintenant + DELAI_AFFICHAGE_MS ──
+    // Le compteur tourne en temps réel (horloge), il n'est PAS remis à zéro par
+    // un changement d'onglet. On poll chaque seconde : dès que l'échéance est
+    // atteinte ET que l'onglet est visible, on ouvre. Si l'échéance tombe onglet
+    // masqué, on ouvre à son retour (on ne pop pas dans le dos de l'utilisateur).
+    var echeance = Date.now() + DELAI_AFFICHAGE_MS;
+    var pollTimer = null;
+
+    function debug(restantMs, etat) {
+      if (!DEBUG) return;
+      majDebugPanel({
+        restant: Math.max(0, Math.ceil(restantMs / 1000)),
+        visible: document.visibilityState,
+        traite: traite,
+        etat: etat,
+      });
     }
 
-    // 2) intention de quitter : souris qui sort par le haut (vers les onglets),
-    //    ou onglet masqué (l'utilisateur part) -> on tente le pop avant la sortie.
-    function onSortieHaut(e) {
-      if (e.clientY <= 0) ouvrir();
-    }
-    function onVisibilite() {
-      if (document.visibilityState === "hidden") {
-        // On ne peut pas ouvrir une modale sur un onglet masqué ; on la prépare
-        // pour qu'elle soit visible au retour (si pas déjà traitée).
-        ouvrir();
+    function tick() {
+      var restant = echeance - Date.now();
+      if (traite || dejaTraite()) {
+        debug(restant, "déjà traité — stop");
+        window.clearInterval(pollTimer);
+        return;
+      }
+      if (restant <= 0) {
+        if (document.visibilityState === "visible") {
+          debug(0, "échéance atteinte → OUVERTURE");
+          window.clearInterval(pollTimer);
+          ouvrir();
+        } else {
+          // échéance atteinte mais onglet masqué : on attend le retour.
+          debug(0, "échéance atteinte, onglet masqué → attente retour");
+        }
+      } else {
+        debug(restant, "compte à rebours");
       }
     }
 
-    function attacherDeclencheurs() {
-      evtsActivite.forEach(function (ev) {
-        window.addEventListener(ev, onActivite, { passive: true });
-      });
-      document.addEventListener("mouseout", onSortieHaut);
-      document.addEventListener("visibilitychange", onVisibilite);
-      armerInactivite();
-    }
-    function detacherDeclencheurs() {
-      evtsActivite.forEach(function (ev) {
-        window.removeEventListener(ev, onActivite);
-      });
-      document.removeEventListener("mouseout", onSortieHaut);
-      document.removeEventListener("visibilitychange", onVisibilite);
-      if (timerInactivite) window.clearTimeout(timerInactivite);
-    }
+    // Au retour sur l'onglet, si l'échéance est déjà passée, on ouvre tout de
+    // suite (le compteur a continué de tourner en arrière-plan).
+    document.addEventListener("visibilitychange", function () {
+      if (
+        document.visibilityState === "visible" &&
+        !traite &&
+        !dejaTraite() &&
+        Date.now() >= echeance
+      ) {
+        debug(0, "retour onglet, échéance passée → OUVERTURE");
+        window.clearInterval(pollTimer);
+        ouvrir();
+      }
+    });
 
-    // On laisse un délai minimal (lecture du résultat) avant d'armer quoi que
-    // ce soit, pour ne jamais pop pile au chargement.
-    window.setTimeout(attacherDeclencheurs, DELAI_MIN_MS);
+    pollTimer = window.setInterval(tick, 1000);
+    tick();
+  }
+
+  // ── Mini panneau de debug (TEMPORAIRE, retiré en fin de dev) ──────────────
+  // Activé si DEBUG=true (constante ci-dessous). Affiche à droite, hors flux,
+  // le compteur restant + l'état des triggers. À SUPPRIMER avec le reste.
+  var DEBUG = true;
+  var debugPanel = null;
+  function majDebugPanel(info) {
+    if (!debugPanel) {
+      debugPanel = document.createElement("div");
+      debugPanel.id = "nitrates-feedback-debug";
+      debugPanel.style.cssText =
+        "position:fixed;top:80px;right:8px;z-index:3000;" +
+        "background:#161616;color:#0f0;font:12px/1.5 monospace;" +
+        "padding:8px 10px;border-radius:6px;max-width:230px;" +
+        "box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;opacity:.92";
+      document.body.appendChild(debugPanel);
+    }
+    debugPanel.innerHTML =
+      "<b>DEBUG feedback #284</b><br>" +
+      "délai : 20 s après résultat<br>" +
+      "restant : <b>" +
+      info.restant +
+      " s</b><br>" +
+      "onglet : " +
+      info.visible +
+      "<br>" +
+      "traité : " +
+      info.traite +
+      "<br>" +
+      "état : " +
+      info.etat;
   }
 
   // Robuste au chargement `defer` : si le DOM est déjà prêt (DOMContentLoaded
