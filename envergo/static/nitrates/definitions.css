@@ -1,0 +1,70 @@
+/* Page « Aide & définitions » (cartes #110 / #288).
+ *
+ * Uniquement des tokens DSFR (var(--...)) : le thème sombre est géré
+ * gratuitement par data-fr-theme, aucune couleur en dur. */
+
+.definitions-page {
+  padding-bottom: 3rem;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+
+.definitions-section {
+  margin-top: 2.5rem;
+}
+
+.definitions-section__titre {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-default-grey);
+  padding-bottom: 0.75rem;
+}
+
+/* L'icône DSFR hérite de la couleur du texte via mask ; on la teinte bleu
+ * France comme les pictos du design. */
+.definitions-section__icone {
+  color: var(--text-title-blue-france);
+}
+
+/* ── Définition ───────────────────────────────────────────────────────── */
+
+/* scroll-margin-top : ne pas caler le titre sous le bandeau construction /
+ * la barre de progression (éléments fixed en haut de page) au scroll d'ancre. */
+.definition-item {
+  border-bottom: 1px solid var(--border-default-grey);
+  padding: 1.25rem 0;
+  scroll-margin-top: 4.5rem;
+}
+
+.definition-item:last-child {
+  border-bottom: none;
+}
+
+.definition-item__titre {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Exergue de la définition ciblée par l'ancre (clic sommaire, lien
+ * « Voir toutes les définitions » de la carte flottante, lien terme). */
+.definition-item:target {
+  background-color: var(--background-contrast-info);
+  outline: 2px solid var(--border-plain-info);
+  outline-offset: -2px;
+  border-radius: 0.25rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+/* ── Sommaire ─────────────────────────────────────────────────────────── */
+
+/* En desktop le sommaire reste visible pendant le scroll (fr-sidemenu--sticky
+ * gère le sticky) ; on borne juste la hauteur pour les longues listes. */
+@media (width >= 768px) {
+  .definitions-page .fr-sidemenu__inner {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}

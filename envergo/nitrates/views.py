@@ -82,6 +82,96 @@ class HomeView(View):
         return view.get(request, *args, **kwargs)
 
 
+class AideDefinitionsView(View):
+    """Page « Aide & définitions » (cartes #110 / #288).
+
+    Contenu 100% DB : les ContenuRichDSFR de type `definition`, groupés par
+    catégorie (sections du design Coralie), + les éventuelles entrées FAQ
+    (clés `faq.*`) en accordéons. Publique (exemptée du lockdown quand
+    NITRATES_ROOT_OUVERT, cf. middleware)."""
+
+    def get(self, request, *args, **kwargs):
+        from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+        from envergo.nitrates.contenu_rich.glossaire import load_definitions
+        from envergo.nitrates.models_contenu_rich import (
+            CATEGORIES_DEFINITION,
+            TYPE_GENERAL,
+            ContenuRichDSFR,
+        )
+
+        par_categorie = {code: [] for code, _ in CATEGORIES_DEFINITION}
+        sans_categorie = []
+        for d in load_definitions():
+            # id_prefix DISTINCT par définition : deux accordéons « détail
+            # réglementaire » sur la même page ne doivent jamais partager un
+            # id/aria-controls (carte #157). niveau_base=4 : h1 page > h2
+            # section > h3 terme (rendus par le template) > h4 foldables.
+            html = compile_dsfr(
+                d.liste_blocs, niveau_base=4, id_prefix=f"def-{d.ancre}"
+            )
+            entree = {"titre": d.titre_public, "ancre": d.ancre, "html": html}
+            if d.categorie in par_categorie:
+                par_categorie[d.categorie].append(entree)
+            else:
+                sans_categorie.append(entree)
+
+        # Icônes DSFR par section (classes fr-icon-* du set utility
+        # icons.main.css chargé par multisite_base — vérifier la dispo avant
+        # d'en changer, le set est un sous-ensemble de Remix Icon).
+        icones = {
+            "fertilisants-effluents": "fr-icon-leaf-line",
+            "azote-bilans": "fr-icon-drop-line",
+            "pratique-documents": "fr-icon-draft-line",
+            "reglementation-zonage": "fr-icon-france-line",
+        }
+        sections = [
+            {
+                "code": code,
+                "titre": libelle,
+                "icone": icones.get(code, ""),
+                "definitions": sorted(par_categorie[code], key=lambda e: e["titre"]),
+            }
+            for code, libelle in CATEGORIES_DEFINITION
+            if par_categorie[code]
+        ]
+        # Filet de sécurité : une définition sans catégorie reste visible
+        # (section « Autres définitions ») plutôt que silencieusement absente.
+        if sans_categorie:
+            sections.append(
+                {
+                    "code": "autres",
+                    "titre": "Autres définitions",
+                    "icone": "",
+                    "definitions": sorted(sans_categorie, key=lambda e: e["titre"]),
+                }
+            )
+
+        faqs = [
+            {
+                "titre": c.titre_public or c.libelle_admin,
+                "ancre": f"faq-{c.ancre}",
+                "html": compile_dsfr(
+                    c.liste_blocs, niveau_base=4, id_prefix=f"faq-{c.ancre}"
+                ),
+            }
+            for c in ContenuRichDSFR.objects.filter(
+                cle__startswith="faq.", type_contenu=TYPE_GENERAL
+            )
+        ]
+
+        return render(
+            request,
+            "nitrates/definitions.html",
+            {
+                "sections": sections,
+                "faqs": faqs,
+                # Bandeau « site en construction » : cohérent avec le root
+                # public d'où provient la navigation (cf. HomeView).
+                "is_building": True,
+            },
+        )
+
+
 @method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
 class ZoneVulnerableGeoJSONView(View):
     """Renvoie les polygones ZV nitrates au format GeoJSON.

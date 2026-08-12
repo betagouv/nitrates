@@ -102,6 +102,11 @@ class RequireLoginEverywhere:
             # l'exempte AVANT le prefixe /simulateur/ (qui, lui, reste ferme).
             if path.startswith("/simulateur/debug/"):
                 return True
+            # Page « Aide & définitions » (carte #110) : contenu éditorial
+            # public (définitions réglementaires), accessible depuis l'onglet
+            # de navigation du root ouvert. Chemin exact, rien d'autre.
+            if path == "/definitions/":
+                return True
         return False
 
     def __call__(self, request):

@@ -1,0 +1,122 @@
+{% extends "nitrates/base.html" %}
+
+{% load static nitrates_tags %}
+
+{% block title %}Aide & définitions{% endblock %}
+
+{% block description %}
+  Définitions et réponses aux questions fréquentes sur la réglementation nitrates prise en compte par le simulateur.
+{% endblock %}
+
+{% block extra_css %}
+  <link href="{% static_v 'nitrates/definitions.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+  <div class="fr-container definitions-page">
+
+    {# Fil d'Ariane DSFR — « Accueil » ramène au simulateur (design Coralie #110) #}
+    <nav role="navigation" class="fr-breadcrumb" aria-label="vous êtes ici :">
+      <button type="button"
+              class="fr-breadcrumb__button"
+              aria-expanded="false"
+              aria-controls="breadcrumb-definitions">Voir le fil d'Ariane</button>
+      <div class="fr-collapse" id="breadcrumb-definitions">
+        <ol class="fr-breadcrumb__list">
+          <li>
+            <a class="fr-breadcrumb__link" href="{% url 'home' %}">Accueil</a>
+          </li>
+          <li>
+            <a class="fr-breadcrumb__link" aria-current="page">Aide et définitions</a>
+          </li>
+        </ol>
+      </div>
+    </nav>
+
+    <div class="fr-grid-row fr-grid-row--gutters">
+
+      {% comment %}
+      Sommaire latéral (1/4 desktop, accordéon natif fr-sidemenu en mobile).
+      Ancres vers les sections ; la section FAQ n'apparaît que si du contenu
+      FAQ existe en DB (même logique que le corps de page).
+      {% endcomment %}
+      <div class="fr-col-12 fr-col-md-4 fr-col-lg-3">
+        <nav class="fr-sidemenu fr-sidemenu--sticky"
+             role="navigation"
+             aria-labelledby="fr-sidemenu-title">
+          <div class="fr-sidemenu__inner">
+            <button type="button"
+                    class="fr-sidemenu__btn"
+                    aria-controls="sommaire-definitions"
+                    aria-expanded="false">Sommaire</button>
+            <div class="fr-collapse" id="sommaire-definitions">
+              <p class="fr-sidemenu__title" id="fr-sidemenu-title">Sommaire</p>
+              <ul class="fr-sidemenu__list">
+                {% for section in sections %}
+                  <li class="fr-sidemenu__item">
+                    <a class="fr-sidemenu__link" href="#section-{{ section.code }}">{{ section.titre }}</a>
+                  </li>
+                {% endfor %}
+                {% if faqs %}
+                  <li class="fr-sidemenu__item">
+                    <a class="fr-sidemenu__link" href="#section-faq">Questions fréquentes</a>
+                  </li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        </nav>
+      </div>
+
+      <div class="fr-col-12 fr-col-md-8 fr-col-lg-9">
+        <h1 class="fr-mt-2w">Aide & définitions</h1>
+        <p class="fr-text--lead">
+          Consultez les définitions et les réponses aux questions fréquentes
+          sur la réglementation nitrates prise en compte par le simulateur.
+        </p>
+
+        {% if not sections and not faqs %}
+          {# DB pas encore seedée : page honnête plutôt que vide (jamais de 500) #}
+          <p>Les définitions seront bientôt disponibles.</p>
+        {% endif %}
+
+        {% for section in sections %}
+          <section id="section-{{ section.code }}" class="definitions-section">
+            <h2 class="definitions-section__titre">
+              {% if section.icone %}
+                <span class="{{ section.icone }} definitions-section__icone"
+                      aria-hidden="true"></span>
+              {% endif %}
+              {{ section.titre }}
+            </h2>
+            {% for def in section.definitions %}
+              <article id="{{ def.ancre }}" class="definition-item">
+                <h3 class="definition-item__titre">{{ def.titre }}</h3>
+                {{ def.html }}
+              </article>
+            {% endfor %}
+          </section>
+        {% endfor %}
+
+        {% if faqs %}
+          <section id="section-faq" class="definitions-section">
+            <h2 class="definitions-section__titre">Questions fréquentes</h2>
+            <div class="fr-accordions-group">
+              {% for faq in faqs %}
+                <section class="fr-accordion">
+                  <h3 class="fr-accordion__title">
+                    <button type="button"
+                            class="fr-accordion__btn"
+                            aria-expanded="false"
+                            aria-controls="{{ faq.ancre }}-corps">{{ faq.titre }}</button>
+                  </h3>
+                  <div class="fr-collapse" id="{{ faq.ancre }}-corps">{{ faq.html }}</div>
+                </section>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
