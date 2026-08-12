@@ -1115,7 +1115,6 @@
           "data": {
             "texte": [
               {
-                "gras": false,
                 "texte": "La dose maximale "
               },
               {
@@ -1123,7 +1122,6 @@
                 "texte": "par hectare"
               },
               {
-                "gras": false,
                 "texte": ", depuis la récolte de la culture précédente, peut être portée à "
               },
               {
@@ -1131,7 +1129,6 @@
                 "texte": "100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver"
               },
               {
-                "gras": false,
                 "texte": "."
               }
             ]
@@ -1171,7 +1168,11 @@
     "note_reglementaire": [
       "note_1"
     ],
-    "ordre_affichage": 0
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": []
   }
 },
 {
@@ -1385,7 +1386,11 @@
     "note_reglementaire": [
       "note_1"
     ],
-    "ordre_affichage": 1
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 1,
+    "composants_fusion": []
   }
 },
 {
@@ -1450,6 +1455,7 @@
           "data": {
             "texte": [
               {
+                "gras": false,
                 "texte": "La dose maximale peut être portée à "
               },
               {
@@ -1457,9 +1463,16 @@
                 "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
+                "gras": false,
                 "texte": ", depuis la récolte du précédent."
               }
             ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         },
@@ -1596,7 +1609,11 @@
     "note_reglementaire": [
       "note_2"
     ],
-    "ordre_affichage": 2
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 2,
+    "composants_fusion": []
   }
 },
 {
@@ -1642,15 +1659,7 @@
           "data": {
             "items": [
               {
-                "texte": "les conditions définies par le programme d'actions régional sont respectées, notamment sur :",
-                "enfants": [
-                  {
-                    "texte": "la durée et la période de présence du couvert"
-                  },
-                  {
-                    "texte": "le plafonnement des apports à cette période"
-                  }
-                ]
+                "texte": "les conditions définies par le programme d'actions régional sont respectées, notamment sur :"
               },
               {
                 "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage"
@@ -1666,7 +1675,7 @@
                 "data": {
                   "texte": "Un suivi d'indicateurs de risque de lixiviation"
                 },
-                "type": "titre_paragraphe"
+                "type": "titre_principal"
               },
               {
                 "data": {
@@ -1678,7 +1687,7 @@
                 "data": {
                   "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
                 },
-                "type": "titre_paragraphe"
+                "type": "titre_principal"
               },
               {
                 "data": {
@@ -1697,7 +1706,7 @@
                 "data": {
                   "texte": "Le protocole et le nombre d'analyses"
                 },
-                "type": "titre_paragraphe"
+                "type": "titre_principal"
               },
               {
                 "data": {
@@ -1721,11 +1730,11 @@
                 "data": {
                   "texte": "Surface de l'exploitation concernée par ces épandages ÷ 20"
                 },
-                "type": "citation"
+                "type": "paragraphe"
               },
               {
                 "data": {
-                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée.\nLes familles de précédent cultural sont :"
                 },
                 "type": "paragraphe"
               },
@@ -1764,7 +1773,11 @@
     "note_reglementaire": [
       "note_3"
     ],
-    "ordre_affichage": 3
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 3,
+    "composants_fusion": []
   }
 },
 {
@@ -1780,7 +1793,11 @@
     "note_reglementaire": [
       "note_4"
     ],
-    "ordre_affichage": 4
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 4,
+    "composants_fusion": []
   }
 },
 {
@@ -1866,7 +1883,11 @@
     "note_reglementaire": [
       "note_8"
     ],
-    "ordre_affichage": 5
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 5,
+    "composants_fusion": []
   }
 },
 {
@@ -1906,6 +1927,7 @@
           "data": {
             "texte": [
               {
+                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -1913,9 +1935,16 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
+                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "⚠️ Ces apports comptent dans le plafond sur prairie, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         },
@@ -1952,7 +1981,11 @@
     "note_reglementaire": [
       "note_9"
     ],
-    "ordre_affichage": 6
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 6,
+    "composants_fusion": []
   }
 },
 {
@@ -1992,6 +2025,7 @@
           "data": {
             "texte": [
               {
+                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -1999,6 +2033,7 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
+                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
@@ -2007,19 +2042,7 @@
         },
         {
           "data": {
-            "texte": "Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture"
-          },
-          "type": "titre_paragraphe"
-        },
-        {
-          "data": {
-            "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total."
-          },
-          "type": "paragraphe"
-        },
-        {
-          "data": {
-            "texte": "Les apports réalisés entre le 15 octobre et le 15 novembre comptent dans ce plafonnement cumulé."
+            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         }
@@ -2031,7 +2054,11 @@
     "note_reglementaire": [
       "note_10"
     ],
-    "ordre_affichage": 7
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 7,
+    "composants_fusion": []
   }
 },
 {
@@ -2059,6 +2086,7 @@
           "data": {
             "texte": [
               {
+                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -2066,6 +2094,7 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
+                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
@@ -2074,19 +2103,7 @@
         },
         {
           "data": {
-            "texte": "Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture"
-          },
-          "type": "titre_paragraphe"
-        },
-        {
-          "data": {
-            "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total."
-          },
-          "type": "paragraphe"
-        },
-        {
-          "data": {
-            "texte": "Les apports réalisés pendant la période autorisée comptent dans ce plafonnement cumulé."
+            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         }
@@ -2098,7 +2115,11 @@
     "note_reglementaire": [
       "note_11"
     ],
-    "ordre_affichage": 8
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 8,
+    "composants_fusion": []
   }
 },
 {
@@ -2260,7 +2281,11 @@
     "note_reglementaire": [
       "note_12"
     ],
-    "ordre_affichage": 9
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 9,
+    "composants_fusion": []
   }
 },
 {
@@ -2331,19 +2356,23 @@
                 "texte": "et votre semis de colza est réalisé avant le 25 août,"
               },
               {
-                "texte": "et au moins une des conditions suivantes est respectée :",
-                "enfants": [
-                  {
-                    "texte": "implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
-                  },
-                  {
-                    "texte": "ou sols à faible disponibilité en azote (précisés par le programme d'actions régional)."
-                  }
-                ]
+                "texte": "et au moins une des conditions suivantes est respectée : "
               }
             ]
           },
           "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "             - implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "              - ou sols à faible disponibilité en azote (précisés par le programme d'actions régional)."
+          },
+          "type": "paragraphe"
         }
       ],
       "schema": 1
@@ -2353,7 +2382,11 @@
     "note_reglementaire": [
       "note_13"
     ],
-    "ordre_affichage": 10
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 10,
+    "composants_fusion": []
   }
 },
 {
@@ -2367,7 +2400,7 @@
       "blocs": [
         {
           "data": {
-            "texte": "Plafonnement annuel des apports azotés sur l'année d'implantation du couvert d'interculture"
+            "texte": "Plafonnement des apports azotés&nbsp; pour les&nbsp;couverts d'interculture"
           },
           "type": "titre_principal"
         },
@@ -2385,6 +2418,7 @@
                 "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
+                "gras": false,
                 "texte": " au total."
               }
             ]
@@ -2452,7 +2486,11 @@
     "toujours_affiche": false,
     "plafond": true,
     "note_reglementaire": null,
-    "ordre_affichage": 11
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 11,
+    "composants_fusion": []
   }
 },
 {
@@ -2539,7 +2577,11 @@
     "toujours_affiche": false,
     "plafond": true,
     "note_reglementaire": null,
-    "ordre_affichage": 12
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 12,
+    "composants_fusion": []
   }
 },
 {
@@ -2629,7 +2671,11 @@
     "toujours_affiche": false,
     "plafond": true,
     "note_reglementaire": null,
-    "ordre_affichage": 13
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 13,
+    "composants_fusion": []
   }
 },
 {
@@ -2713,7 +2759,11 @@
     "toujours_affiche": false,
     "plafond": true,
     "note_reglementaire": null,
-    "ordre_affichage": 14
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 14,
+    "composants_fusion": []
   }
 },
 {
@@ -2800,7 +2850,11 @@
     "toujours_affiche": false,
     "plafond": true,
     "note_reglementaire": null,
-    "ordre_affichage": 15
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 15,
+    "composants_fusion": []
   }
 },
 {
@@ -2912,7 +2966,4172 @@
     "toujours_affiche": false,
     "plafond": false,
     "note_reglementaire": null,
-    "ordre_affichage": 16
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 16,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc_ge",
+    "mots_cles": "PAR GE \"plafond de 30 kg d'azote minéral\"",
+    "texte_court": "Sur les cultures principales, autre que le colza, récoltées l'année\r\nsuivante (notamment des céréales d'automne), l'épandage est autorisé dès\r\n15 jours avant semis, jusqu'au 1er octobre de l'année d'implantation, et\r\ndans la limité de 30 kg d'azote minéral (en lien avec l'analyse du\r\ndigestat) à l'hectare sur la période (*) , puis du 1er février jusqu'à la\r\nrécolte",
+    "texte_redaction_initiale": "Sur les cultures principales, autre que le colza, récoltées l'année\r\nsuivante (notamment des céréales d'automne), l'épandage est autorisé dès\r\n15 jours avant semis, jusqu'au 1er octobre de l'année d'implantation, et\r\ndans la limité de 30 kg d'azote minéral (en lien avec l'analyse du\r\ndigestat) à l'hectare sur la période (*) , puis du 1er février jusqu'à la\r\nrécolte\r\n(*) À compter du 1\" septembre 2027, cette période d'autorisation\r\nd'épandage ne pourra s'appliquer que si l’actualisation des connaissances\r\nscientifiques et techniques a démontré l’absence de risques de lixiviation\r\nou de volatilisation supplémentaires et que les effets de cette\r\ndisposition du point de vue des apports totaux d'azote ont été documentés.\r\nEn raison du caractère expérimental de l'encadrement de l'épandage des\r\ndigestats de méthanisation à l'automne sur céréales d'hiver, celui-ci ne\r\nsera pas soumis au principe de non régression environnementale lors de la\r\nrévision du présent programme d'actions (article 2 de l'arrêté du\r\n30 janvier 2023 relatif aux programmes d'actions régionaux précité).",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Plafonnement des apports azotés pour les cultures principales d'hiver, autres que le colza"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "Le plafond"
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "30 kg d'azote minéral (en lien avec l'analyse du digestat) à l'hectare sur la période."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "Période sur laquelle le plafond s'applique"
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Dès 15 jours avant semis, jusqu'au 1er octobre de l'année d'implantation."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "Ce qui compte dans le calcul du plafond"
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "- Digestats de méthanisation (type II)"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": [
+                    {
+                      "gras": true,
+                      "texte": "Conditions de cette autorisation"
+                    }
+                  ]
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "- l’actualisation des connaissances scientifiques et techniques a démontré l’absence de risques de lixiviation ou de volatilisation supplémentaires"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "- les effets de cette disposition du point de vue des apports totaux d'azote ont été documentés"
+                },
+                "type": "paragraphe"
+              }
+            ],
+            "titre": "A compter du 1er septembre 2027"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": null,
+    "ordre_affichage": 16,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc4_ge",
+    "mots_cles": "",
+    "texte_court": "PC4 GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains effluents d'élevage peut être autorisé, le cas échéant, en période d'interdiction d'épandage, jusqu'à 20 jours avant la récolte ou la destruction du couvert végétal."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc4"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_ge",
+    "mots_cles": "",
+    "texte_court": "pc1 GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "La dose maximale "
+              },
+              {
+                "gras": true,
+                "texte": "par hectare"
+              },
+              {
+                "gras": false,
+                "texte": ", depuis la récolte de la culture précédente, peut être portée à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver"
+              },
+              {
+                "gras": false,
+                "texte": "."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture (CI)"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc1"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc12",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC12 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc1"
+      ],
+      [
+        "pc12"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_ge",
+    "mots_cles": "",
+    "texte_court": "pc2 ge",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "La dose maximale peut être portée à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": ", depuis la récolte de la culture précédente."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc2"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc13",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC13 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc1"
+      ],
+      [
+        "pc13"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc14",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC14 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc1"
+      ],
+      [
+        "pc14"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc16",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC16 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, à compter du 1er septembre, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc1"
+      ],
+      [
+        "pc16"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc12",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC12 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare "
+              },
+              {
+                "gras": false,
+                "texte": "au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface concernée (ha) ÷ 20 = nombre d'analyses"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc2"
+      ],
+      [
+        "pc12"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc13",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC13 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg "
+              },
+              {
+                "gras": false,
+                "texte": "si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface concernée (ha) ÷ 20 = nombre d'analyses"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc2"
+      ],
+      [
+        "pc13"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc14",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC14 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place"
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": ""
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface concernée (ha) ÷ 20 = nombre d'analyses"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 0,
+    "composants_fusion": [
+      [
+        "pc2"
+      ],
+      [
+        "pc14"
+      ]
+    ]
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc11_hdf",
+    "mots_cles": "PAR HdF colza",
+    "texte_court": "PC colza",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Vous pouvez réaliser un apport supplémentaire de fertilisants azotés sous forme minérale sur votre colza en végétation, dans les conditions ci-dessous."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La dose et la période"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Dose maximale : 30 unités d'azote sous forme minérale"
+              },
+              {
+                "texte": "Quand : à partir du stade \"4 feuilles\""
+              },
+              {
+                "texte": "Entre le 1er septembre et le 14 octobre inclus"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Les situations où cet apport est possible"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet apport est possible dans les situations où la disponibilité en azote du sol pendant l'automne est limitée, c'est-à-dire dans les cas où :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "vous n'avez pas réalisé d'apport de fertilisants azotés de types 0, I.a, I.b et II avant le 1er septembre correspondant à plus de 30 unités d'azote efficaces,"
+              },
+              {
+                "texte": "et votre semis de colza est réalisé avant le 25 août,"
+              },
+              {
+                "texte": "et au moins une des conditions suivantes est respectée : "
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
+              },
+              {
+                "texte": " ou sols à faible disponibilité en azote : "
+              }
+            ],
+            "indent": 1
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Les cranettes sèches ;"
+              }
+            ],
+            "indent": 2
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Les sols argilo-calcaires ;"
+              }
+            ],
+            "indent": 2
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Les sols non calcaires à texture de surface sableuse."
+              }
+            ],
+            "indent": 2
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc11"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc3_ge",
+    "mots_cles": "",
+    "texte_court": "pc3 ge",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés issus d'activités agroalimentaires peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à déclaration ou enregistrement"
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, sous le couvert installé et avant épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "La dose maximale peut être portée à "
+              },
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": ", depuis la récolte du précédent."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc3"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc10_ge",
+    "mots_cles": "",
+    "texte_court": "PC10 GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de fertilisants azotés issus du traitement et de la transformation des matières premières destinées à la fabrication de produits alimentaires ou d'aliments pour animaux peut être autorisé sur luzerne, après la dernière coupe de l'année."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, avant l'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc10"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc11_ge",
+    "mots_cles": "",
+    "texte_court": "pc11 ge",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Vous pouvez réaliser un apport supplémentaire de fertilisants azotés sous forme minérale sur votre colza en végétation, dans les conditions ci-dessous."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La dose et la période"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Dose maximale : 30 unités d'azote sous forme minérale"
+              },
+              {
+                "texte": "Quand : à partir du stade \"4 feuilles\""
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Les situations où cet apport est possible"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet apport est possible dans les situations où la disponibilité en azote du sol pendant l'automne est limitée, c'est-à-dire dans les cas où :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "vous n'avez pas réalisé d'apport de fertilisants azotés de types 0, I.a, I.b et II avant le 1er septembre correspondant à plus de 30 unités d'azote efficaces,"
+              },
+              {
+                "texte": "et votre semis de colza est réalisé avant le 25 août,"
+              },
+              {
+                "texte": "et au moins une des conditions suivantes est respectée : "
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "             - implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "              - ou sols à faible disponibilité en azote (pour connaître les sols concernés, cliquez ici : )."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc11"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc12_zar_ge",
+    "mots_cles": "",
+    "texte_court": "pc zar ge",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Plafonnement des apports azotés pour les couverts d'interculture en ZAR"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Période sur laquelle le plafond s'applique"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "À compter de la récolte du précédent jusqu'à la destruction/récolte du couvert."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Ce qui compte dans le calcul du plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports des fertilisants suivants, cumulés sur la période :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "type 0"
+              },
+              {
+                "texte": "type I.a"
+              },
+              {
+                "texte": "type I.b"
+              },
+              {
+                "texte": "type II"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Cas particulier : apport de type III en sortie d'hiver"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Si votre couvert d'interculture est récolté suffisamment tard l'année suivante pour permettre un apport de fertilisant de type III en sortie d'hiver, vos apports de type III rentrent également dans le calcul du plafond."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc13_zar_ge",
+    "mots_cles": "",
+    "texte_court": "pc zar",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Plafonnement des apports azotés pour les couverts d'interculture en ZAR"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Période sur laquelle le plafond s'applique"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "À compter de la récolte du précédent jusqu'à la destruction du couvert."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Ce qui compte dans le calcul du plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports des fertilisants suivants, cumulés sur la période :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "type 0"
+              },
+              {
+                "texte": "type I.a"
+              },
+              {
+                "texte": "type I.b"
+              },
+              {
+                "texte": "type II"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc14_zar_ge",
+    "mots_cles": "",
+    "texte_court": "pc zar",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Plafonnement des apports azotés pour les couverts d'interculture en ZAR"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Période à laquelle s'applique le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "À compter de la récolte du précédent jusqu'à la récolte/destruction du couvert."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Ce qui compte dans le calcul du plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports des fertilisants suivants, cumulés sur la période :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "type 0"
+              },
+              {
+                "texte": "type I.a"
+              },
+              {
+                "texte": "type I.b"
+              },
+              {
+                "texte": "type II"
+              },
+              {
+                "texte": "type III"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc14"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc15_zar_ge",
+    "mots_cles": "",
+    "texte_court": "pc zar",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Plafonnement des apports azotés pour les couverts d'interculture en ZAR"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Période à laquelle s'applique le plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "À compter de la récolte du précédent jusqu'à la récolte/destruction du couvert."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Ce qui compte dans le calcul du plafond"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports des fertilisants suivants, cumulés sur la période :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "type 0"
+              },
+              {
+                "texte": "type I.a"
+              },
+              {
+                "texte": "type I.b"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc15"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc12_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC12 (plafond) pour GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc12_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC12 (plafond) en ZAR GE\r\n=> subtilité : seul le plafond de 35 s'applique car on est en ZAR.",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc13_ge",
+    "mots_cles": "",
+    "texte_court": "fusion PC1_PC13 pour GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc13_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC13 (plafond) en ZAR GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc14_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC14 (plafond) GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc14"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc14_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC14 (plafond) en ZAR GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc14"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc16_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC16 (plafond) GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, à compter du 1er septembre, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc1_pc16"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc12_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC12 (plafond) GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare "
+              },
+              {
+                "gras": false,
+                "texte": "au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc12_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC12 (plafond) en ZAR GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare "
+              },
+              {
+                "gras": false,
+                "texte": "au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc13_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC13 (plafond) en GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg "
+              },
+              {
+                "gras": false,
+                "texte": "si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc13_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC13 (plafond) en ZAR GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc14_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC14 (plafond) en GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc14"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc14_zar_ge",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC14 (plafond) en GE",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              },
+              {
+                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "35 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib, II et III cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "zar",
+    "region_code": "44",
+    "variante_de": [
+      "pc2_pc14"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
   }
 },
 {
@@ -3048,6 +7267,367 @@
       "schema": 1
     },
     "updated_at": "2026-06-17T12:25:29.664Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.azote-efficace",
+    "libelle_admin": "Définition — Azote efficace",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Somme de l'azote présent dans un fertilisant azoté sous forme minérale et sous forme organique minéralisable pendant le temps d'absorption d'azote de la culture en place ou de la culture implantée à la suite de l'apport. L'azote efficace peut être estimé par période en fonction du modèle utilisé."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.497Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.azote-libere-sortie-hiver",
+    "libelle_admin": "Définition — Azote potentiellement libéré jusqu'en sortie d'hiver",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Somme de l'azote présent dans un fertilisant azoté sous forme minérale et sous forme organique minéralisable jusqu'à la sortie de l'hiver."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.499Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.c-n",
+    "libelle_admin": "Définition — C / N (Carbone / Azote)",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Rapport entre les quantités de carbone total et d'azote total contenues dans un fertilisant donné."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.500Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.nmin-ntot",
+    "libelle_admin": "Définition — Nmin / Ntot",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Proportion d'azote minéral (nitrique, uréique et ammoniacal) dans la quantité totale d'azote."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.504Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.campagne-culturale",
+    "libelle_admin": "Définition — Campagne culturale",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Période allant du 1er septembre au 31 août de l'année suivante ou une période de douze mois choisie par l'exploitant. Cette période vaut pour toute l'exploitation et est identique pour le plan de fumure et le cahier d'enregistrement définis dans le programme d'actions national."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.509Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.couvert-vegetal-interculture",
+    "libelle_admin": "Définition — Couvert végétal d'interculture (CI)",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Peuplement végétal semé présent sur une parcelle pendant l'interculture, qui n'est pas issu des repousses de la culture précédente."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.515Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.effluents-peu-charges",
+    "libelle_admin": "Définition — Effluents peu chargés",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Effluents issus d'un traitement d'effluents bruts et ayant une quantité d'azote inférieure à 0,5 kg par m3."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.516Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.types-fertilisants",
+    "libelle_admin": "Définition — Fertilisants de type 0, Ia, Ib, II et III",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "lignes": [
+              [
+                "Type",
+                "Caractéristiques",
+                "Exemples",
+                "Valeurs guides"
+              ],
+              [
+                "0",
+                "Produits organiques caractérisés par une organisation nette à moyen terme de l'azote",
+                "Boues de papeterie, marcs de raisins frais, composts de déchets verts jeunes et ligneux",
+                "C/N > 20 ; Nmin/Ntot < 20 %"
+              ],
+              [
+                "Ia",
+                "Produits organiques à minéralisation d'azote très lente",
+                "Fumiers compacts non susceptibles d'écoulement, composts d'effluents d'élevage à l'exception des composts de fientes de volailles. Composts d'ordures ménagères résiduelles. Composts de fractions solides de digestats de méthanisation",
+                "C/N > 10 ; Nmin/Ntot < 20 % ; ISMO > 70 %"
+              ],
+              [
+                "Ib",
+                "Produits organiques à minéralisation d'azote lente",
+                "Déjections animales avec litière susceptibles d'écoulement, à l'exception des fumiers de volaille. Composts de MIATE (matières d'intérêt agronomique issues du traitement des eaux) mélangées à un support carboné, composts de biodéchets",
+                "C/N > 8 ; 20 % < Nmin/Ntot ≤ 40 % ; ISMO > 50 %"
+              ],
+              [
+                "II",
+                "Produits organiques à minéralisation d'azote rapide",
+                "Lisiers, fumiers de volaille, effluents peu chargés, vinasses de betterave. Farines de plumes, de poisson, de sang, d'os, tourteaux de ricin. Digestats bruts de méthanisation, fractions liquides des digestats de méthanisation.",
+                "Tout effluent organique qui n'entre pas dans les catégories précédentes."
+              ],
+              [
+                "III",
+                "Engrais azotés minéraux",
+                "Ammonitrates, urée…",
+                "-"
+              ]
+            ],
+            "avec_entetes": true
+          },
+          "type": "tableau"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.518Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.fertirrigation",
+    "libelle_admin": "Définition — Fertirrigation",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Technique agricole consistant à appliquer des éléments fertilisants solubles dans l'eau par l'intermédiaire d'un système d'irrigation."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.522Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.fumier-compact",
+    "libelle_admin": "Définition — Fumier compact non susceptible d'écoulement",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Fumier contenant les déjections d'herbivores ou de lapins ou de porcins, un matériau absorbant (paille, sciure...), ayant subi un stockage d'au moins deux mois sous les animaux ou sur une fumière et ne présentant pas de risque d'écoulement."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.529Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.icpe",
+    "libelle_admin": "Définition — ICPE",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Installation Classée pour la Protection de l'Environnement."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.533Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.ismo",
+    "libelle_admin": "Définition — ISMO",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Indice de Stabilité de la Matière Organique."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.536Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.ilot-cultural",
+    "libelle_admin": "Définition — Ilot cultural",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Regroupement de parcelles contiguës, entières ou partielles, homogène du point de vue de la culture, de l'histoire culturale (successions de cultures et apports de fertilisants) et de la nature du terrain."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.538Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.interculture",
+    "libelle_admin": "Définition — Interculture",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Période, dans la rotation culturale, comprise entre la récolte d'une culture principale et le semis de la suivante."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.540Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.interculture-longue",
+    "libelle_admin": "Définition — Interculture longue",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Période, dans la rotation culturale, comprise entre la récolte d'une culture principale et le semis, l'année civile suivante, de la culture principale d'après."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.544Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.interculture-courte",
+    "libelle_admin": "Définition — Interculture courte",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Période, dans la rotation culturale, comprise entre la récolte d'une culture principale et le semis, dans la même année civile, de la culture principale suivante."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.556Z"
+  }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.sol-non-cultive",
+    "libelle_admin": "Définition — Sol non cultivé",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Surface non utilisée en vue d'une production agricole, ni semée, ni récoltée, ni fauchée, ni pâturée pendant une campagne culturale."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-08-12T07:55:47.559Z"
   }
 }
 ]
