@@ -98,6 +98,63 @@
   }
   if (!GLOSSAIRE || !GLOSSAIRE.termes || !GLOSSAIRE.termes.length) return;
 
+  // ── Assainissement des données embarquées ───────────────────────────────
+  // Le JSON vient de {% glossaire_json %} (rendu serveur, HTML produit par
+  // compile_dsfr qui échappe tout texte saisi) : il est de confiance. On le
+  // durcit quand même côté client — défense en profondeur, et l'analyse
+  // statique (CodeQL js/xss-through-dom) ne peut pas connaître cette
+  // garantie distante puisqu'elle voit une valeur lue dans le DOM.
+
+  // URL de la page définitions : on n'accepte qu'un chemin absolu simple
+  // (pas de javascript:, pas de //hote-externe). Sinon repli sur le défaut.
+  const URL_DEFINITIONS = /^\/[\w\-/]*$/.test(GLOSSAIRE.url_definitions || "")
+    ? GLOSSAIRE.url_definitions
+    : "/definitions/";
+
+  // Ancre d'une définition : seulement [a-z0-9-], jamais rien d'autre.
+  function ancreSure(valeur) {
+    return String(valeur || "").replace(/[^\w-]/g, "");
+  }
+
+  // Lien vers une définition, construit à partir de valeurs validées.
+  function urlDefinition(ancre) {
+    const a = ancreSure(ancre);
+    return a ? URL_DEFINITIONS + "#" + a : URL_DEFINITIONS;
+  }
+
+  // Parse le HTML d'une définition dans un document INERTE (DOMParser) : les
+  // <script> n'y sont jamais exécutés, contrairement à innerHTML sur un nœud
+  // du document courant. On retire ensuite scripts et handlers inline avant
+  // d'adopter le contenu. Renvoie un DocumentFragment prêt à insérer.
+  function fragmentSur(html) {
+    const doc = new DOMParser().parseFromString(
+      "<body>" + String(html || "") + "</body>",
+      "text/html"
+    );
+    doc.querySelectorAll("script, style, iframe, object, embed").forEach(
+      function (n) {
+        n.remove();
+      }
+    );
+    doc.querySelectorAll("*").forEach(function (n) {
+      Array.prototype.slice.call(n.attributes).forEach(function (attr) {
+        const nom = attr.name.toLowerCase();
+        const val = attr.value.trim().toLowerCase();
+        // Handlers inline (onclick…) et URL exécutables.
+        if (
+          nom.indexOf("on") === 0 ||
+          ((nom === "href" || nom === "src") &&
+            (val.indexOf("javascript:") === 0 || val.indexOf("data:") === 0))
+        ) {
+          n.removeAttribute(attr.name);
+        }
+      });
+    });
+    const frag = document.createDocumentFragment();
+    while (doc.body.firstChild) frag.appendChild(doc.body.firstChild);
+    return frag;
+  }
+
   const REGEX = construireRegex(GLOSSAIRE.termes);
   const PAR_VARIANTE = {};
   GLOSSAIRE.termes.forEach(function (t) {
@@ -129,7 +186,7 @@
     const def = GLOSSAIRE.defs[cle] || {};
     const a = document.createElement("a");
     a.dataset.defCle = cle;
-    a.href = GLOSSAIRE.url_definitions + "#" + (def.ancre || "");
+    a.setAttribute("href", urlDefinition(def.ancre));
     return a;
   }
 
@@ -241,11 +298,14 @@
     // .results-row { overflow: clip } (cf. drawer_conditions.js).
     if (el.parentNode !== document.body) document.body.appendChild(el);
     el.querySelector("#def-carte-titre").textContent = def.titre;
-    // HTML précompilé côté serveur (compile_dsfr, tout texte échappé) : seul
-    // endroit où on injecte du HTML, et il est de confiance.
-    el.querySelector(".def-carte__corps").innerHTML = def.html;
+    // Corps de la définition : HTML précompilé côté serveur (compile_dsfr,
+    // tout texte saisi échappé). On l'insère via un parsing INERTE plutôt
+    // qu'innerHTML : le fragment est construit hors document, aucun script
+    // ni handler inline n'y est exécuté, et on les retire par sécurité.
+    const corps = el.querySelector(".def-carte__corps");
+    corps.replaceChildren(fragmentSur(def.html));
     const lien = el.querySelector("#def-carte-toutes");
-    lien.href = GLOSSAIRE.url_definitions + "#" + def.ancre;
+    lien.setAttribute("href", urlDefinition(def.ancre));
     // Depuis le drawer conditions (ancré à droite) : la carte arrive par la
     // GAUCHE, sinon elle serait posée sur le drawer (batch 2).
     const dansDrawer = !!(
