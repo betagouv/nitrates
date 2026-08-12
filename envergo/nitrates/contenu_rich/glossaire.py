@@ -11,6 +11,7 @@ définitions (~20), on construit tout d'un coup :
   "longest-first" du filtre |glossaire et du JS soit gratuit à chaque rendu.
 """
 
+import re
 from functools import lru_cache
 
 
@@ -37,7 +38,16 @@ def _load_glossaire_cache() -> dict:
     # Longest-first : « interculture longue » doit matcher avant
     # « interculture », quel que soit l'ordre de saisie dans l'admin/YAML.
     index.sort(key=lambda t: len(t[0]), reverse=True)
-    return {"definitions": definitions, "index_termes": index}
+    # Regex d'alternation compilée UNE fois (le filtre |glossaire tourne sur
+    # chaque question rendue). La 1re branche qui matche gagne -> l'ordre
+    # longest-first de l'alternation fait le longest-match. Frontières de mots
+    # en lookarounds unicode : \b ASCII traiterait « é » comme une frontière
+    # (« azote efficacement » matcherait « azote efficace »).
+    regex = None
+    if index:
+        alternation = "|".join(re.escape(v) for v, _ in index)
+        regex = re.compile(rf"(?<!\w)(?:{alternation})(?!\w)", re.IGNORECASE)
+    return {"definitions": definitions, "index_termes": index, "regex": regex}
 
 
 def load_definitions() -> list:
@@ -48,6 +58,12 @@ def load_definitions() -> list:
 def load_index_termes() -> list:
     """[(variante, cle)...] trié par longueur de variante décroissante."""
     return _load_glossaire_cache()["index_termes"]
+
+
+def load_regex():
+    """Regex compilée des variantes (longest-first, IGNORECASE), ou None si
+    le glossaire est vide."""
+    return _load_glossaire_cache()["regex"]
 
 
 def invalider_cache_glossaire(*args, **kwargs) -> None:

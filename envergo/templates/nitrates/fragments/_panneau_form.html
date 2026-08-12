@@ -17,6 +17,8 @@ login au clic sur "Lancer la simulation". MoulinetteView sert les deux chemins
 (`/` via HomeView et `/simulateur/`), donc resoumettre sur place fonctionne
 dans les deux cas.
 {% endcomment %}
+{% load nitrates_tags %}
+
 {# djlint:off H025 #}
 {% comment %}
 #271 : le <form> enveloppe la carte (pleine largeur) PUIS la grille
@@ -320,12 +322,14 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
           <h2 class="form-section-title">Fertilisant</h2>
 
           <div class="form-question-group" id="categorie_fertilisant-wrapper" hidden>
-            <p class="form-question-text">Quel fertilisant souhaitez-vous épandre ? *</p>
+            {# Termes du glossaire cliquables (carte #110) — texte en dur passé au filtre #}
+            <p class="form-question-text">{{ "Quel fertilisant souhaitez-vous épandre ? *"|glossaire }}</p>
             <div data-cascade="categorie_fertilisant"></div>
           </div>
 
           <div class="form-question-group" id="sous_fertilisant-wrapper" hidden>
-            <p class="form-question-text">Précisez la catégorie de fertilisant utilisé&nbsp;: *</p>
+            {# NBSP réel (U+00A0) dans la chaîne : une entité &nbsp; serait échappée par le filtre #}
+            <p class="form-question-text">{{ "Précisez la catégorie de fertilisant utilisé : *"|glossaire }}</p>
             <div data-cascade="sous_fertilisant"></div>
             <p class="fr-hint-text" style="margin: 0;">Le type réglementaire (type_0/Ia/Ib/II/III) est résolu automatiquement.</p>
           </div>
