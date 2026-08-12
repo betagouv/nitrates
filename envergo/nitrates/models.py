@@ -25,6 +25,13 @@ from envergo.nitrates.bassins import (
     bassin_code_from_attributes,
     bassin_label_from_attributes,
 )
+from envergo.nitrates.constants import (
+    SCOPE_CHOICES,
+    SCOPE_NATIONAL,
+    SCOPE_REGION,
+    SCOPE_WEIGHT,
+    SCOPE_ZAR,
+)
 from envergo.nitrates.forms import MoulinetteFormNitrates
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.zonage_montagne import (
@@ -94,22 +101,16 @@ class DecisionTree(models.Model):
     #   region   : PAR regional (ex Grand Est R44), actif sur la region + ZV.
     #   zar      : PAR en zone d'action renforcee, actif sur une couche SIG.
     # Le PAN est declaratif (scope=national), jamais deduit de l'absence de FK.
-    SCOPE_NATIONAL = "national"
-    SCOPE_REGION = "region"
-    SCOPE_ZAR = "zar"
-    SCOPE_CHOICES = [
-        (SCOPE_NATIONAL, "National (PAN)"),
-        (SCOPE_REGION, "Régional (PAR)"),
-        (SCOPE_ZAR, "Zone d'action renforcée (ZAR)"),
-    ]
+    # Constantes partagees avec CodePrescription (cf. constants.py, #147) :
+    # la selection des PC replique ce modele scope + region + poids.
+    SCOPE_NATIONAL = SCOPE_NATIONAL
+    SCOPE_REGION = SCOPE_REGION
+    SCOPE_ZAR = SCOPE_ZAR
+    SCOPE_CHOICES = SCOPE_CHOICES
     # Poids de resolution : le candidat active de poids MAX gagne. Trous
     # volontaires pour inserer un scope intermediaire (ex dept=15) plus tard
     # sans rejouer les poids existants.
-    DEFAULT_WEIGHT_BY_SCOPE = {
-        SCOPE_NATIONAL: 1,
-        SCOPE_REGION: 10,
-        SCOPE_ZAR: 20,
-    }
+    DEFAULT_WEIGHT_BY_SCOPE = SCOPE_WEIGHT
 
     name = models.CharField(max_length=255)
     status = models.CharField(
