@@ -21,6 +21,10 @@ def nitrates_site(settings):
 
 @pytest.fixture(autouse=True)
 def _cache_glossaire_propre():
+    """Table ET cache vides : la fixture référentiels embarque désormais les
+    définitions seedées, or ces tests vérifient le rendu de la page à partir
+    des seules définitions qu'ils créent (dont le cas « page vide »)."""
+    ContenuRichDSFR.objects.all().delete()
     invalider_cache_glossaire()
     yield
     invalider_cache_glossaire()

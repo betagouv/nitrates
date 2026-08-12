@@ -113,6 +113,13 @@ STORAGES = {
     "upload": {"BACKEND": "envergo.utils.storages.UploadS3Boto3Storage"},
 }
 
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+# ZAP DashLord #265 : WhiteNoise ajoute par defaut `Access-Control-Allow-Origin: *`
+# sur tous les statiques (utile pour servir des fonts depuis un CDN cross-origin).
+# Nitrates sert tout en same-origin (pas de CDN), donc ce CORS ouvert est inutile
+# et remonte comme finding. On le desactive : plus d'en-tete ACAO sur les statiques.
+WHITENOISE_ALLOW_ALL_ORIGINS = False
+
 
 # TEMPLATES
 # ------------------------------------------------------------------------------

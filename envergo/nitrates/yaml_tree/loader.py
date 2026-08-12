@@ -77,6 +77,7 @@ def _build_referentiels() -> dict:
     # Import retardé pour eviter les cycles (loader est importe tôt).
     from envergo.nitrates.constants import (
         REGIONS_FR,
+        SCOPE_NATIONAL,
         CategorieFertilisant,
         OccupationSol,
         StatutICPE,
@@ -142,7 +143,9 @@ def _build_referentiels() -> dict:
 
     # 6. codes_prescription
     codes_prescription = {}
-    for pc in CodePrescription.objects.select_related("note_reglementaire").all():
+    for pc in CodePrescription.objects.select_related(
+        "note_reglementaire", "variante_de"
+    ).prefetch_related("composants_fusion"):
         entry = {
             "mots_cles": pc.mots_cles,
             "texte_court": pc.texte_court,
@@ -166,6 +169,18 @@ def _build_referentiels() -> dict:
         # peinture VERTE des périodes ASC quand une règle n'a QUE des plafonds.
         if pc.plafond:
             entry["plafond"] = True
+        # #147 : zone d'application + liens déclinaison/fusion, consommés par
+        # le résolveur (yaml_tree/prescriptions.py) pour choisir la rédaction
+        # applicable selon la géo. Clés posées seulement hors défaut (une PC
+        # nationale simple garde une entrée identique à l'historique).
+        if pc.scope != SCOPE_NATIONAL:
+            entry["scope"] = pc.scope
+            entry["region_code"] = pc.region_code
+        if pc.variante_de_id:
+            entry["variante_de"] = pc.variante_de.identifiant
+        composants = [c.identifiant for c in pc.composants_fusion.all()]
+        if composants:
+            entry["composants_fusion"] = sorted(composants)
         codes_prescription[pc.identifiant] = entry
 
     # 7. notes

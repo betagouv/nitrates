@@ -1,0 +1,185 @@
+/* #284 — Popup de feedback fin de simulation. Modale légère, centrée, sobre
+   DSFR. Masquée par défaut (l'élément #nitrates-feedback porte [hidden]) ;
+   révélée par feedback_popup.js. */
+
+.nitrates-feedback[hidden] {
+  display: none;
+}
+
+/* Les messages d'erreur portent la classe DSFR `fr-error-text` qui force un
+   `display`, ce qui ÉCRASE l'attribut `hidden` -> le message « Une erreur est
+   survenue » s'affichait tout le temps. On rétablit la priorité de [hidden]. */
+.nitrates-feedback [hidden] {
+  display: none !important;
+}
+
+.nitrates-feedback {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.nitrates-feedback__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 40%);
+  animation: nitrates-feedback-fade 0.2s ease;
+}
+
+.nitrates-feedback__dialog {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.75rem;
+  background: var(--background-default-grey, #fff);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 25%);
+  animation: nitrates-feedback-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nitrates-feedback__close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.4rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-mention-grey, #666);
+  transition: background 0.12s ease;
+}
+
+.nitrates-feedback__close:hover {
+  background: var(--background-contrast-grey, #eee);
+  color: #161616;
+}
+
+.nitrates-feedback__titre {
+  margin: 0 0 1rem;
+}
+
+/* Le titre du volet note est centré (étoiles centrées dessous). */
+.nitrates-feedback__volet[data-feedback-volet-note] .nitrates-feedback__titre {
+  text-align: center;
+}
+
+/* ── Notation par étoiles (jaunes, façon AlloCiné) ──────────────────────── */
+.nitrates-feedback__stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.35rem;
+}
+
+.nitrates-feedback__star {
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.nitrates-feedback__star svg {
+  fill: #d9d9d9; /* étoile vide : gris clair */
+  transition:
+    fill 0.12s ease,
+    transform 0.1s ease;
+}
+
+/* Survol/sélection : l'étoile survolée/choisie ET toutes celles à sa gauche
+   deviennent jaunes (comportement barème classique). Géré par la classe
+   `is-on` posée par le JS au hover et à la sélection. */
+.nitrates-feedback__star.is-on svg {
+  fill: #ffb800; /* jaune AlloCiné */
+}
+
+.nitrates-feedback__star:hover svg {
+  transform: scale(1.12);
+}
+
+/* Légende sous les étoiles : « Pas utile » à gauche, « Très utile » à droite. */
+.nitrates-feedback__stars-legende {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-mention-grey, #666);
+}
+
+/* Séparateur entre le volet note et le volet email. */
+.nitrates-feedback__sep {
+  border: 0;
+  border-top: 1px solid var(--border-default-grey, #ddd);
+  margin: 1rem 0 1.25rem;
+}
+
+.nitrates-feedback__merci-note {
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-default-success, #18753c);
+  margin: 0 0 0.25rem;
+}
+
+.nitrates-feedback__rgpd {
+  color: var(--text-mention-grey, #666);
+  margin-top: 0.75rem;
+}
+
+.nitrates-feedback__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between; /* « Non merci » à gauche, submit à droite */
+  margin-top: 1.25rem;
+}
+
+.nitrates-feedback__volet[data-feedback-merci] {
+  text-align: center;
+}
+
+.nitrates-feedback__reward {
+  margin-top: 1rem;
+}
+
+@keyframes nitrates-feedback-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nitrates-feedback-pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nitrates-feedback__backdrop,
+  .nitrates-feedback__dialog {
+    animation: none;
+  }
+}

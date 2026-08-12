@@ -15,7 +15,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from envergo.nitrates.models import DecisionTree, RpgCulture
+from envergo.nitrates.models import DecisionTree, RetourUtilisateur, RpgCulture
 from envergo.nitrates.permissions import (
     can_change_tree,
     can_delete_tree,
@@ -462,7 +462,11 @@ class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
 
 class CodePrescriptionForm(forms.ModelForm):
     """Form admin du PC : le champ `blocs` est édité via l'éditeur WYSIWYG
-    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot."""
+    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot.
+
+    Valide aussi la cohérence des composants de fusion (#147) — un M2M
+    n'est pas vérifiable dans Model.clean() (instance pas encore sauvée).
+    """
 
     class Meta:
         model = CodePrescription
@@ -472,6 +476,35 @@ class CodePrescriptionForm(forms.ModelForm):
     def clean_blocs(self):
         return _clean_blocs_json(self.cleaned_data.get("blocs"))
 
+    def clean(self):
+        cleaned = super().clean()
+        composants = cleaned.get("composants_fusion")
+        if not composants:
+            return cleaned
+        if cleaned.get("variante_de"):
+            raise forms.ValidationError(
+                "Une déclinaison géographique ne porte pas de composants : "
+                "les composants vivent sur la fusion de base, la déclinaison "
+                "n'a que « déclinaison de »."
+            )
+        for composant in composants:
+            if self.instance.pk and composant.pk == self.instance.pk:
+                raise forms.ValidationError(
+                    "Une fusion ne peut pas se contenir elle-même."
+                )
+            if composant.variante_de_id:
+                raise forms.ValidationError(
+                    f"Composant « {composant.identifiant} » : une fusion "
+                    "regroupe des PC de base, pas des déclinaisons "
+                    "géographiques."
+                )
+            if composant.composants_fusion.exists():
+                raise forms.ValidationError(
+                    f"Composant « {composant.identifiant} » : pas de fusion "
+                    "de fusions."
+                )
+        return cleaned
+
 
 @admin.register(CodePrescription)
 class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
@@ -479,15 +512,19 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = (
         "identifiant",
         "mots_cles",
+        "scope",
+        "region_code",
+        "variante_de",
         "a_du_contenu_riche",
         "toujours_affiche",
         "plafond",
         "note_reglementaire",
         "ordre_affichage",
     )
-    list_filter = ("plafond", "toujours_affiche")
+    list_filter = ("scope", "region_code", "plafond", "toujours_affiche")
     search_fields = ("identifiant", "mots_cles", "texte_court")
-    autocomplete_fields = ("note_reglementaire",)
+    autocomplete_fields = ("note_reglementaire", "variante_de")
+    filter_horizontal = ("composants_fusion",)
     ordering = ("ordre_affichage", "identifiant")
     readonly_fields = ("apercu_rendu",)
 
@@ -635,3 +672,56 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
             "🔎 Prévisualiser le rendu</a>",
             url,
         )
+
+
+# ─── Retours utilisateurs (cartes #284/#287) ────────────────────────────────
+# Admin en lecture seule : les retours sont collectés côté public, on ne fait
+# que les consulter/exporter ici. On n'autorise pas la création/édition (ce
+# sont des données brutes d'utilisateurs, append-only).
+
+
+@admin.register(RetourUtilisateur)
+class RetourUtilisateurAdmin(admin.ModelAdmin):
+    list_display = (
+        "cree_le",
+        "type",
+        "note",
+        "a_email",
+        "region_code",
+        "apercu_commentaire",
+    )
+    list_filter = ("type", "consentement_email", "region_code")
+    search_fields = ("email", "commentaire", "region_code")
+    date_hierarchy = "cree_le"
+    ordering = ("-cree_le",)
+    readonly_fields = (
+        "type",
+        "note",
+        "commentaire",
+        "email",
+        "consentement_email",
+        "region_code",
+        "contexte",
+        "cree_le",
+    )
+
+    @admin.display(description="A un email", boolean=True)
+    def a_email(self, obj):
+        return obj.a_email
+
+    @admin.display(description="Commentaire")
+    def apercu_commentaire(self, obj):
+        txt = (obj.commentaire or "").strip()
+        return (txt[:60] + "…") if len(txt) > 60 else txt
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Lecture seule : on autorise l'accès à la fiche (consultation) mais pas
+        # l'édition (tous les champs sont readonly ci-dessus).
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        # On garde la possibilité de purge RGPD (droit à l'effacement).
+        return True

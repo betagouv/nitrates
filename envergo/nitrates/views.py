@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.generic import View
@@ -14,7 +14,7 @@ from envergo.nitrates.bassins import (
     bassin_label_from_attributes,
 )
 from envergo.nitrates.form_backfill import backfill_form_fields
-from envergo.nitrates.models import DecisionTree, MoulinetteNitrates
+from envergo.nitrates.models import CodePrescription, DecisionTree, MoulinetteNitrates
 from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
@@ -168,6 +168,28 @@ class AideDefinitionsView(View):
                 # public d'où provient la navigation (cf. HomeView).
                 "is_building": True,
             },
+        )
+
+
+class PrescriptionDetailView(View):
+    """Page publique d'un code de prescription (#147, demande juristes).
+
+    Sert n'importe quel PC (base, déclinaison géographique, fusion) par son
+    identifiant, pour que les rédactions puissent pointer l'une vers l'autre
+    par lien direct (ex « voir PC11 Grand Est » -> /prescription/pc11_ge/).
+    Contenu réglementaire public, même nature que /api/referentiels/ ;
+    exempté du lockdown quand le root public est ouvert (cf. middleware).
+    """
+
+    def get(self, request, identifiant):
+        pc = get_object_or_404(CodePrescription, identifiant=identifiant)
+        blocs = pc.blocs
+        if isinstance(blocs, dict):
+            blocs = blocs.get("blocs") or []
+        return render(
+            request,
+            "nitrates/prescription_detail.html",
+            {"pc": pc, "blocs": blocs or None},
         )
 
 

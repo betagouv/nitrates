@@ -92,6 +92,11 @@ class RequireLoginEverywhere:
             # ni /api/arbre/ qui restent fermes).
             if path.startswith("/geojson/") or path.startswith("/api/referentiels/"):
                 return True
+            # Pages publiques des codes de prescription (#147) : contenu
+            # reglementaire read-only, linke depuis les resultats du root
+            # public (renvois "voir PC11 Grand Est" inseres par les juristes).
+            if path.startswith("/prescription/"):
+                return True
             # /simulateur/debug/ (mal nomme : ce n'est PAS un panneau debug mais
             # l'endpoint de GEOLOCALISATION appele au clic sur la carte, carte
             # #57). Sa reponse porte `simulateur_ouvert` qui pilote l'affichage

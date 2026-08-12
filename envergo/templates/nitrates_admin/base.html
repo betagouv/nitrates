@@ -86,6 +86,9 @@
         <a href="{% url 'nitrates_admin_yaml_tree' %}" style="color:#fff;">Arbre actif</a>
         <a href="{% url 'nitrates_admin_validation_index' %}" style="color:#fff">Validation des feuilles</a>
         <a href="{% url 'nitrates_admin_ouverture_index' %}" style="color:#fff;">Ouverture géographique</a>
+        {% if debug %}
+          <a href="{% url 'nitrates_admin_nuclei_index' %}" style="color:#fff;">Rapports Nuclei</a>
+        {% endif %}
       </nav>
       <span style="margin-left:auto;color:#cdd6e4;">
         {% if user.is_authenticated %}{{ user.email }}{% endif %}

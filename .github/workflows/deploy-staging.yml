@@ -1,0 +1,125 @@
+name: Deploy staging
+
+# CD staging, declenche par la publication d'une PRE-RELEASE GitHub.
+#
+#   Release marquee "pre-release"  -> staging  (ce workflow)
+#   Release normale                -> prod     (deploy-prod.yml)
+#
+# Sequence, volontairement SANS reload de donnees (les arbres, referentiels et
+# jeux SIG de staging sont pilotes a la main) :
+#   1. gate CI  : le SHA du tag a ses checks verts
+#   2. gate e2e : suite Playwright complete sur base ephemere
+#   3. deploy   : git archive -> scalingo deploy (post_deploy joue migrate)
+#   4. smoke    : HTTP + aucune migration en attente
+#
+# Secret requis : SCALINGO_API_TOKEN, dans l'environment `staging`.
+
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+  # Rejeu manuel (et deploiement d'un tag arbitraire sur staging).
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag ou SHA a deployer sur staging"
+        required: true
+        type: string
+
+jobs:
+  # --- 1. Gate CI --------------------------------------------------------
+  # Job separe et prealable : inutile de payer 10 min d'e2e si le SHA est
+  # deja rouge.
+  gate-ci:
+    # Sur `release`, ne tourne QUE pour une pre-release (une release normale
+    # part en prod). Sur workflow_dispatch, toujours.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.release.prerelease == true
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resoudre la ref a deployer
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            REF="$INPUT_REF"
+          else
+            REF="$TAG"
+          fi
+          git fetch --tags --force
+          SHA=$(git rev-parse "$REF")
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploiement cible : $REF ($SHA)"
+
+      - name: Gate — la CI du SHA est verte
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+
+  # --- 2. Gate e2e -------------------------------------------------------
+  # Reutilise le workflow e2e (meme definition que le run nocturne).
+  gate-e2e:
+    needs: gate-ci
+    uses: ./.github/workflows/e2e.yml
+
+  # --- 3+4. Deploy + smoke -----------------------------------------------
+  deploy-staging:
+    needs: [gate-ci, gate-e2e]
+    runs-on: ubuntu-latest
+    # L'environment porte le secret et restreint qui peut le lire.
+    environment:
+      name: staging
+      url: https://nitrates-staging.osc-fr1.scalingo.io/
+    env:
+      SCALINGO_REGION: osc-fr1
+      SCALINGO_APP: nitrates-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.gate-ci.outputs.sha }}
+
+      - name: Installer la CLI Scalingo
+        run: |
+          curl -s -O https://cli-dl.scalingo.com/install && bash install
+          scalingo --version
+
+      - name: Deploy code
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_release_code.sh "${{ needs.gate-ci.outputs.sha }}"
+
+      - name: Smoke test
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: bash .github/scripts/deploy_release_smoke.sh
+
+      - name: Recapitulatif
+        if: always()
+        run: |
+          {
+            echo "## Deploiement staging"
+            echo ""
+            echo "- Ref deployee : \`${{ needs.gate-ci.outputs.ref }}\`"
+            echo "- SHA : \`${{ needs.gate-ci.outputs.sha }}\`"
+            echo "- App : \`nitrates-staging\` (osc-fr1)"
+            echo "- URL : https://nitrates-staging.osc-fr1.scalingo.io/"
+            echo ""
+            echo "Rollback : workflow **Rollback** -> environnement \`staging\` -> tag precedent."
+          } >> "$GITHUB_STEP_SUMMARY"

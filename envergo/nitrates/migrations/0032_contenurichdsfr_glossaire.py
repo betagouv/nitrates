@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0028_codeprescription_plafond"),
+        ("nitrates", "0031_codeprescription_remplir_zone_application"),
     ]
 
     operations = [

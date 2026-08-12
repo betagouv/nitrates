@@ -123,9 +123,9 @@ django==4.2.30
     #   django-redis
     #   django-storages
     #   mozilla-django-oidc
-django-allauth==65.14.1
+django-allauth==65.18.0
     # via -r base.txt
-django-anymail[sendinblue]==13.0.1
+django-anymail[sendinblue]==14.0
     # via -r base.txt
 django-appconf==1.1.0
     # via
@@ -159,7 +159,7 @@ et-xmlfile==2.0.0
     # via
     #   -r base.txt
     #   openpyxl
-faker==40.21.0
+faker==40.28.1
     # via -r base.txt
 fiona==1.10.1
     # via -r base.txt
@@ -177,6 +177,7 @@ idna==3.15
     # via
     #   -r base.txt
     #   anyio
+    #   django-anymail
     #   requests
     #   yarl
 inflate64==1.0.4
@@ -197,7 +198,7 @@ kombu==5.5.4
     # via
     #   -r base.txt
     #   celery
-markdown==3.10.2
+markdown==3.10.3
     # via -r base.txt
 mozilla-django-oidc==5.0.2
     # via -r base.txt
@@ -305,7 +306,7 @@ rcssmin==1.2.2
     # via
     #   -r base.txt
     #   django-compressor
-redis==8.0.0
+redis==8.0.1
     # via
     #   -r base.txt
     #   django-redis
@@ -339,7 +340,7 @@ scipy==1.16.1
     # via -r base.txt
 sentry-sdk==2.34.1
     # via -r production.in
-shapely==2.1.1
+shapely==2.1.2
     # via -r base.txt
 six==1.17.0
     # via

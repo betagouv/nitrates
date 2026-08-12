@@ -108,7 +108,8 @@ def test_prairie_plus_6_type_0_icpe_a(setup):
     assert ev.regle.regle_id == "r_prairie_plus_6_type_0_icpe_a"
     assert ev.regle.type == "autorisation_sous_condition"
     assert ev.regle.periodes == [{"du": "15/12", "au": "15/01"}]
-    assert ev.regle.code_prescription == "pc1"
+    # #147 : point de test en Grand Est -> déclinaison GE sélectionnée.
+    assert ev.regle.code_prescription == "pc1_ge"
 
 
 # ─── 1b. type_0 + plan_epandage=autre ──────────────────────────────────────

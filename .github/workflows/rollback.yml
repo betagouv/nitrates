@@ -1,0 +1,138 @@
+name: Rollback
+
+# ROLLBACK EN 1 CLIC : redeploie une version anterieure sur staging ou prod.
+#
+# Usage : onglet Actions -> "Rollback" -> "Run workflow" -> choisir
+# l'environnement et le tag a restaurer -> Run.
+#
+# Principe : Scalingo n'offre pas de rollback atomique fiable en CLI. Le
+# mecanisme le plus previsible est de REDEPLOYER l'archive d'un tag anterieur,
+# c'est-a-dire exactement le meme chemin que le deploiement nominal. Ce qui a
+# ete teste au deploiement l'est donc aussi au rollback.
+#
+# ATTENTION -- LIMITE ASSUMEE : ceci restaure le CODE, pas le SCHEMA DB.
+# Django ne joue pas de migration inverse. Si la version qu'on quitte a
+# introduit une migration DESTRUCTIVE (RemoveField, DeleteModel), redeployer
+# l'ancien code laisse la base dans le nouvel etat -> l'ancien code peut
+# planter. D'ou la regle : entre deux releases, migrations ADDITIVE-ONLY.
+# En cas de migration destructive, le rollback passe par la restauration du
+# backup Postgres (cf. runbook), pas par ce workflow.
+#
+# Le gate e2e est VOLONTAIREMENT absent : un rollback est une mesure
+# d'urgence, vers une version qui a deja ete testee et deployee. Rajouter
+# 10 minutes d'e2e pendant un incident serait contre-productif.
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: "Environnement a restaurer"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: "Tag (ou SHA) a restaurer, ex. v0.4.0"
+        required: true
+        type: string
+      motif:
+        description: "Motif du rollback (trace dans le recapitulatif)"
+        required: false
+        type: string
+        default: "non precise"
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environnement }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # La cible (app + region) depend de l'environnement choisi. On la
+      # resout ici plutot que de dupliquer deux jobs quasi identiques.
+      - name: Resoudre la cible et la version
+        id: cible
+        env:
+          ENVIRONNEMENT: ${{ inputs.environnement }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$ENVIRONNEMENT" in
+            staging)
+              echo "region=osc-fr1" >> "$GITHUB_OUTPUT"
+              echo "app=nitrates-staging" >> "$GITHUB_OUTPUT"
+              ;;
+            production)
+              echo "region=osc-secnum-fr1" >> "$GITHUB_OUTPUT"
+              echo "app=nitrates-prod" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Environnement inconnu : $ENVIRONNEMENT" >&2; exit 1;;
+          esac
+          git fetch --tags --force
+          # Echoue proprement si le tag n'existe pas, AVANT de toucher a
+          # l'app (message clair plutot qu'un git archive cryptique).
+          if ! SHA=$(git rev-parse --verify "${VERSION}^{commit}" 2>/dev/null); then
+            echo "ECHEC : la version '${VERSION}' n'existe pas dans le repo." >&2
+            echo "Tags disponibles (10 derniers) :" >&2
+            git tag --sort=-creatordate | head -10 >&2
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Rollback de $ENVIRONNEMENT vers $VERSION ($SHA)"
+
+      - name: Installer la CLI Scalingo
+        run: |
+          curl -s -O https://cli-dl.scalingo.com/install && bash install
+          scalingo --version
+
+      # Trace de l'etat qu'on quitte : indispensable pour le post-mortem, et
+      # pour savoir vers quoi "re-avancer" une fois le correctif pret.
+      - name: Tracer la version actuellement deployee
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+          SCALINGO_REGION: ${{ steps.cible.outputs.region }}
+          SCALINGO_APP: ${{ steps.cible.outputs.app }}
+        continue-on-error: true
+        run: |
+          echo "== Derniers deploiements AVANT rollback =="
+          scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" \
+            deployments 2>/dev/null | head -5
+
+      - name: Redeployer la version cible
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+          SCALINGO_REGION: ${{ steps.cible.outputs.region }}
+          SCALINGO_APP: ${{ steps.cible.outputs.app }}
+        run: bash .github/scripts/deploy_release_code.sh "${{ steps.cible.outputs.sha }}"
+
+      - name: Smoke test
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+          SCALINGO_REGION: ${{ steps.cible.outputs.region }}
+          SCALINGO_APP: ${{ steps.cible.outputs.app }}
+        run: bash .github/scripts/deploy_release_smoke.sh
+
+      - name: Recapitulatif
+        if: always()
+        run: |
+          {
+            echo "## Rollback ${{ inputs.environnement }}"
+            echo ""
+            echo "- Version restauree : \`${{ inputs.version }}\`"
+            echo "- SHA : \`${{ steps.cible.outputs.sha }}\`"
+            echo "- App : \`${{ steps.cible.outputs.app }}\` (${{ steps.cible.outputs.region }})"
+            echo "- Motif : ${{ inputs.motif }}"
+            echo "- Declenche par : @${{ github.actor }}"
+            echo ""
+            echo "> Rappel : ce rollback restaure le CODE. Si la version quittee"
+            echo "> a introduit une migration destructive, restaurer aussi le"
+            echo "> backup Postgres (cf. runbook)."
+          } >> "$GITHUB_STEP_SUMMARY"

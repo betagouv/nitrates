@@ -103,9 +103,7 @@ cligj==0.7.2
     # via
     #   -r base.txt
     #   fiona
-colorama==0.4.6
-    # via djlint
-coverage==7.11.0
+coverage==7.15.0
     # via
     #   -r local.in
     #   django-coverage-plugin
@@ -146,9 +144,9 @@ django==4.2.30
     #   django-stubs
     #   django-stubs-ext
     #   mozilla-django-oidc
-django-allauth==65.14.1
+django-allauth==65.18.0
     # via -r base.txt
-django-anymail[sendinblue]==13.0.1
+django-anymail[sendinblue]==14.0
     # via -r base.txt
 django-appconf==1.1.0
     # via
@@ -186,9 +184,9 @@ django-stubs==5.2.2
     # via -r local.in
 django-stubs-ext==5.2.2
     # via django-stubs
-djhtml==3.0.10
+djhtml==3.0.11
     # via -r local.in
-djlint==1.36.4
+djlint==1.40.4
     # via -r local.in
 editorconfig==0.17.1
     # via
@@ -202,7 +200,7 @@ executing==2.2.0
     # via stack-data
 factory-boy==3.3.3
     # via -r local.in
-faker==40.21.0
+faker==40.28.1
     # via
     #   -r base.txt
     #   factory-boy
@@ -230,6 +228,7 @@ idna==3.15
     # via
     #   -r base.txt
     #   anyio
+    #   django-anymail
     #   requests
     #   yarl
 inflate64==1.0.4
@@ -268,7 +267,7 @@ kombu==5.5.4
     #   celery
 librt==0.7.7
     # via mypy
-markdown==3.10.2
+markdown==3.10.3
     # via -r base.txt
 markupsafe==3.0.2
     # via werkzeug
@@ -310,7 +309,6 @@ packaging==25.0
     #   build
     #   kombu
     #   pytest
-    #   pytest-sugar
     #   wheel
 parso==0.8.4
     # via jedi
@@ -408,14 +406,14 @@ pyproject-hooks==1.2.0
     #   -r base.txt
     #   build
     #   pip-tools
-pytest==8.4.1
+pytest==9.0.3
     # via
     #   -r local.in
     #   pytest-django
     #   pytest-sugar
 pytest-django==4.12.0
     # via -r local.in
-pytest-sugar==1.0.0
+pytest-sugar==1.1.1
     # via -r local.in
 python-dateutil==2.9.0.post0
     # via
@@ -444,7 +442,7 @@ rcssmin==1.2.2
     # via
     #   -r base.txt
     #   django-compressor
-redis==8.0.0
+redis==8.0.1
     # via
     #   -r base.txt
     #   django-redis
@@ -476,7 +474,7 @@ ruamel-yaml==0.19.1
     # via -r base.txt
 scipy==1.16.1
     # via -r base.txt
-shapely==2.1.1
+shapely==2.1.2
     # via -r base.txt
 six==1.17.0
     # via
@@ -508,9 +506,7 @@ texttable==1.7.0
 tomlkit==0.13.3
     # via pylint
 tqdm==4.68.3
-    # via
-    #   -r base.txt
-    #   djlint
+    # via -r base.txt
 traitlets==5.14.3
     # via
     #   ipython

@@ -38,7 +38,7 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
     <div class="map-container">
       <p class="fr-label">
         <span style="font-weight: 700;">Localisez votre parcelle *</span>
-        <span class="fr-hint-text">Recherchez une commune, puis cliquez pour placer le marqueur.</span>
+        <span class="fr-hint-text">Recherchez votre commune ou naviguez sur la carte pour sélectionner votre parcelle et afficher le formulaire.</span>
       </p>
 
       {# Recherche commune (BAN) #}
@@ -132,22 +132,15 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
     <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-3{% endif %} form-col">
 
       {% comment %}
-  Issues #89 + #96 : tant que l'utilisateur n'a pas clique sur la carte,
-  on cache les sections Culture / Fertilisant / Submit et on affiche un
-  message d'invite. Decache au clic carte (cf. simulator.js).
-  L'attribut hidden initial est applique cote serveur en fonction de
-  data.lat / data.lng (utile sur rechargement avec params dans l'URL).
+  Issues #89 + #96 : tant que l'utilisateur n'a pas clique sur la carte, on
+  cache les sections Culture / Fertilisant / Submit (cf. simulator.js, qui
+  s'appuie sur le `hidden` de #form-after-localisation). #338 : les DEUX textes
+  qui encadraient la carte ont ete fusionnes en une seule invite AU-DESSUS de la
+  carte (« Recherchez votre commune ou naviguez sur la carte… »), pour ne plus
+  avoir deux messages redondants. Le message d'etat qui figurait ICI est donc
+  supprime ; le verrouillage du formulaire reste porte par le `hidden` de
+  #form-after-localisation (revele au clic carte).
       {% endcomment %}
-      {% if data.lat and data.lng %}
-        {% with form_locked=False %}{% endwith %}
-      {% else %}
-        <div id="form-locked-message" class="form-locked-message" role="status">
-          <p>
-            <strong>Cliquez sur la carte</strong> pour saisir votre localisation.
-            Le formulaire de simulation s'affichera dès que votre parcelle sera renseignée.
-          </p>
-        </div>
-      {% endif %}
 
       {% comment %}
     Carte #57 — bornage géographique. Masqué par défaut ; révélé par
@@ -157,13 +150,51 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
       <section id="form-region-fermee"
                class="form-region-fermee"
                role="status"
-               hidden>
+               hidden
+               data-region-code="">
         <p class="form-region-fermee__titre">
           <span class="form-region-fermee__cadenas" aria-hidden="true">🔒</span>
           Le simulateur n'est pas encore ouvert dans
           <strong id="form-region-fermee-lieu">votre secteur</strong>.
         </p>
         <p class="form-region-fermee__texte">Revenez bientôt&nbsp;: votre secteur sera prochainement pris en charge.</p>
+
+        {% comment %}
+        #287 — Recueil de l'email pour être prévenu à l'ouverture de la région.
+        Génère une liste d'intérêt par région (POST type=interet_region). RGPD :
+        email seul, avec consentement, non associé à des données de simulation.
+        Le {% templatetag openblock %} csrf_token {% templatetag closeblock %}
+        ci-dessous pose le champ + le cookie CSRF pour le POST (le form principal
+        est en method=get, il n'y avait pas de token disponible avant résultat).
+        {% endcomment %}
+        {% csrf_token %}
+        <div class="form-region-fermee__alerte" data-region-alerte>
+          <label class="fr-label" for="form-region-fermee-email">
+            Laissez votre email pour être prévenu(e) à l'ouverture de votre région&nbsp;:
+          </label>
+          <div class="form-region-fermee__ligne">
+            <input type="email"
+                   class="fr-input"
+                   id="form-region-fermee-email"
+                   autocomplete="email"
+                   placeholder="prenom.nom@exemple.fr">
+            <button type="button" class="fr-btn" data-region-alerte-submit disabled>Me prévenir</button>
+          </div>
+          <div class="fr-checkbox-group fr-mt-1w">
+            <input type="checkbox" id="form-region-fermee-consent">
+            <label class="fr-label" for="form-region-fermee-consent">
+              J'accepte d'être recontacté(e) à cette adresse. Mon email est
+              conservé seul, sans lien avec ma simulation, et n'est transmis à
+              aucun organisme tiers.
+            </label>
+          </div>
+          <p class="fr-error-text fr-mt-1w" data-region-alerte-erreur hidden>
+            Votre email n'a pas pu être enregistré. Vérifiez son format et réessayez.
+          </p>
+        </div>
+        <p class="form-region-fermee__merci" data-region-alerte-merci hidden>
+          Merci&nbsp;! Nous vous préviendrons dès l'ouverture. 🌱
+        </p>
       </section>
 
       {% comment %}

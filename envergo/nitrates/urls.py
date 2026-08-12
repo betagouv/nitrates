@@ -8,10 +8,12 @@ from envergo.nitrates.views import (
     DecisionTreeView,
     HomeView,
     MoulinetteView,
+    PrescriptionDetailView,
     ReferentielsView,
     ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_nuclei import nuclei_index, nuclei_report
 from envergo.nitrates.views_admin_ouverture import (
     ouverture_index,
     ouverture_toggle,
@@ -62,6 +64,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     ValidateTreeView,
 )
 from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
+from envergo.nitrates.views_retour import RetourUtilisateurCreateView
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
     YamlBrowserListView,
@@ -95,6 +98,11 @@ urlpatterns = [
         name="nitrates_zar_geojson",
     ),
     path(
+        "prescription/<slug:identifiant>/",
+        PrescriptionDetailView.as_view(),
+        name="nitrates_prescription_detail",
+    ),
+    path(
         "api/referentiels/",
         ReferentielsView.as_view(),
         name="nitrates_referentiels",
@@ -103,6 +111,11 @@ urlpatterns = [
         "api/arbre/",
         DecisionTreeView.as_view(),
         name="nitrates_arbre",
+    ),
+    path(
+        "api/retour/",
+        RetourUtilisateurCreateView.as_view(),
+        name="nitrates_retour",
     ),
     path(
         "admin/nitrates/contenu-rich/preview/",
@@ -267,6 +280,23 @@ urlpatterns = [
         TemplateView.as_view(template_name="nitrates/contact_us.html"),
         name="contact_us",
     ),
+    # Pages légales du pied de page DSFR (#63). Contenu placeholder à
+    # compléter côté métier/juridique.
+    path(
+        _("mentions-legales/"),
+        TemplateView.as_view(template_name="nitrates/mentions_legales.html"),
+        name="nitrates_mentions_legales",
+    ),
+    path(
+        _("donnees-personnelles/"),
+        TemplateView.as_view(template_name="nitrates/donnees_personnelles.html"),
+        name="nitrates_donnees_personnelles",
+    ),
+    path(
+        _("accessibilite/"),
+        TemplateView.as_view(template_name="nitrates/accessibilite.html"),
+        name="nitrates_accessibilite",
+    ),
     # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)
     path(
         "admin/nitrates/validation/",
@@ -333,5 +363,16 @@ urlpatterns = [
         "admin/nitrates/ouverture-geographique/toggle-region/",
         ouverture_toggle_region,
         name="nitrates_admin_ouverture_toggle_region",
+    ),
+    # Rapports de scan Nuclei (spike securite #97). LOCAL ONLY.
+    path(
+        "admin/nitrates/nuclei/",
+        nuclei_index,
+        name="nitrates_admin_nuclei_index",
+    ),
+    path(
+        "admin/nitrates/nuclei/<str:stamp>/",
+        nuclei_report,
+        name="nitrates_admin_nuclei_report",
     ),
 ]

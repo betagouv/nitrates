@@ -168,7 +168,9 @@ def test_colza_type_III_zone_note_5(setup):
     )
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_colza_type_III_note5"
-    assert ev.regle.code_prescription == "pc11"
+    # #147 : le point de test est en Grand Est (Marne) -> la déclinaison
+    # GE de pc11 est sélectionnée par le résolveur géo.
+    assert ev.regle.code_prescription == "pc11_ge"
     assert ev.regle.note == "note_5"
     assert ev.regle.periodes == [
         {
@@ -189,7 +191,9 @@ def test_colza_type_III_hors_note_5(setup):
     ev = _evaluator(_moulinette(type_fertilisant="type_III", code_insee=INSEE_REIMS_51))
     assert ev.result == RESULTS.interdit
     assert ev.regle.regle_id == "r_colza_type_III_autres"
-    assert ev.regle.code_prescription == "pc11"
+    # #147 : le point de test est en Grand Est (Marne) -> la déclinaison
+    # GE de pc11 est sélectionnée par le résolveur géo.
+    assert ev.regle.code_prescription == "pc11_ge"
     assert ev.regle.periodes == [
         {
             "du": "01/09",

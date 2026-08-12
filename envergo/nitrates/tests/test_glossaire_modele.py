@@ -16,7 +16,14 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(autouse=True)
 def _cache_glossaire_propre():
-    """Chaque test part d'un cache vide (le lru_cache est process-local)."""
+    """Chaque test part d'une table ET d'un cache vides.
+
+    La fixture `initial_referentiels.json` (chargée par la fixture session
+    `seed_referentiels_nitrates`) embarque désormais les contenus riches, dont
+    les 17 définitions seedées. Ces tests raisonnent sur un glossaire qu'ils
+    construisent eux-mêmes : on vide la table d'abord, sinon les clés entrent
+    en collision et l'index contient des termes non prévus."""
+    ContenuRichDSFR.objects.all().delete()
     invalider_cache_glossaire()
     yield
     invalider_cache_glossaire()

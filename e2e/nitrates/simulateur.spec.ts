@@ -142,10 +142,10 @@ test.describe('Simulateur nitrates : page formulaire', () => {
     await page.goto('/simulateur/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
-    // Etat initial : message d'invite visible, zone form cachee.
-    await expect(page.locator('#form-locked-message')).toBeVisible();
-    await expect(page.locator('#form-locked-message')).toContainText(
-      'Cliquez sur la carte'
+    // Etat initial (#338) : invite fusionnee visible au-dessus de la carte,
+    // zone form cachee (verrouillage porte par #form-after-localisation).
+    await expect(page.locator('#section-localisation .fr-hint-text')).toContainText(
+      'naviguez sur la carte'
     );
     await expect(page.locator('#form-after-localisation')).toBeHidden();
     // Le bouton submit fait partie de la zone cachee.
@@ -153,14 +153,13 @@ test.describe('Simulateur nitrates : page formulaire', () => {
       page.locator('button[type="submit"]', { hasText: 'Lancer la simulation' })
     ).toBeHidden();
 
-    // Clic carte : devoile la zone form, masque le message d'invite.
+    // Clic carte : devoile la zone form.
     await page.evaluate(([lng, lat]) => {
       const w = window as any;
       w.nitratesMap.fire('click', { latlng: w.L.latLng(lat, lng) });
     }, [REIMS_LNG, REIMS_LAT]);
 
     await expect(page.locator('#form-after-localisation')).toBeVisible();
-    await expect(page.locator('#form-locked-message')).toBeHidden();
     await expect(
       page.locator('button[type="submit"]', { hasText: 'Lancer la simulation' })
     ).toBeVisible();
@@ -173,8 +172,6 @@ test.describe('Simulateur nitrates : page formulaire', () => {
     // pas de clic carte necessaire.
     await page.goto(`/simulateur/?lat=${REIMS_LAT}&lng=${REIMS_LNG}`);
     await expect(page.locator('#form-after-localisation')).toBeVisible();
-    // Message d'invite pas rendu (cote serveur).
-    await expect(page.locator('#form-locked-message')).toHaveCount(0);
   });
 });
 
@@ -202,11 +199,10 @@ test.describe('Simulateur nitrates : pas de parcelle pre-selectionnee (#153)', (
       await page.waitForTimeout(1000);
       await expect(page.locator('#nitrates-map .leaflet-marker-icon')).toHaveCount(0);
 
-      // Le message d'invite est visible et le form reste verrouille : donc
-      // pas de devoilement ni d'auto-scroll vers les questions.
-      await expect(page.locator('#form-locked-message')).toBeVisible();
-      await expect(page.locator('#form-locked-message')).toContainText(
-        'Cliquez sur la carte'
+      // Le form reste verrouille (zone cachee) : donc pas de devoilement ni
+      // d'auto-scroll vers les questions. L'invite #338 est au-dessus de la carte.
+      await expect(page.locator('#section-localisation .fr-hint-text')).toContainText(
+        'naviguez sur la carte'
       );
       await expect(page.locator('#form-after-localisation')).toBeHidden();
     });

@@ -13,6 +13,10 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(autouse=True)
 def _cache_glossaire_propre():
+    """Table ET cache vides : la fixture référentiels embarque désormais les
+    définitions seedées, qui pollueraient l'index de ces tests (cf.
+    test_glossaire_modele)."""
+    ContenuRichDSFR.objects.all().delete()
     invalider_cache_glossaire()
     yield
     invalider_cache_glossaire()

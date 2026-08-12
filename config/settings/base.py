@@ -191,6 +191,10 @@ AUTH_PASSWORD_VALIDATORS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "envergo.middleware.csp.ContentSecurityPolicyMiddleware",
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+    # Headers de securite complementaires (Permissions-Policy, CORP) non geres
+    # nativement par Django 4.2. Findings ZAP DashLord #265.
+    "envergo.nitrates.middleware.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "envergo.contrib.middleware.SetUrlConfBasedOnSite",
     "envergo.middleware.rate_limiting.RateLimitingMiddleware",
@@ -392,6 +396,12 @@ ANALYTICS = {
         "TRACKER_URL": env("DJANGO_HAIE_TRACKER_URL", default=""),
         "SITE_ID": env("DJANGO_HAIE_SITE_ID", default=""),
         "SECURITY_TOKEN": env("DJANGO_HAIE_MATOMO_SECURITY_TOKEN", default=""),
+    },
+    "NITRATES": {
+        "TRACKER_ENABLED": env("DJANGO_NITRATES_TRACKER_ENABLED", default=False),
+        "TRACKER_URL": env("DJANGO_NITRATES_TRACKER_URL", default=""),
+        "SITE_ID": env("DJANGO_NITRATES_SITE_ID", default=""),
+        "SECURITY_TOKEN": env("DJANGO_NITRATES_MATOMO_SECURITY_TOKEN", default=""),
     },
 }
 
