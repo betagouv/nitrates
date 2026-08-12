@@ -188,6 +188,69 @@ def test_echappement_html_anti_injection():
     assert "&amp;" in html
 
 
+def test_tableau_avec_entetes():
+    # Bloc tableau (carte #110) : structure fr-table DSFR complète, 1re ligne
+    # en <thead>/<th scope="col"> quand avec_entetes.
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {
+                    "avec_entetes": True,
+                    "lignes": [
+                        ["Type", "Exemples"],
+                        ["Ia", "Fumiers compacts"],
+                    ],
+                },
+            }
+        ]
+    )
+    assert '<div class="fr-table fr-table--bordered">' in html
+    assert '<div class="fr-table__wrapper">' in html
+    assert '<th scope="col">Type</th>' in html
+    assert "<td>Fumiers compacts</td>" in html
+
+
+def test_tableau_sans_entetes():
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {"avec_entetes": False, "lignes": [["a", "b"]]},
+            }
+        ]
+    )
+    assert "<thead>" not in html
+    assert "<td>a</td>" in html
+
+
+def test_tableau_cellules_riches_et_echappement():
+    # Cellule en segments {texte, gras} + tentative d'injection échappée.
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {
+                    "avec_entetes": False,
+                    "lignes": [
+                        [
+                            [{"texte": "C/N > 20", "gras": True}],
+                            "<script>alert(1)</script>",
+                        ]
+                    ],
+                },
+            }
+        ]
+    )
+    assert "<strong>C/N &gt; 20</strong>" in html
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_tableau_vide_rend_rien():
+    assert compile_dsfr([{"type": "tableau", "data": {"lignes": []}}]) == ""
+
+
 def test_type_inconnu_ignore_silencieusement():
     html = compile_dsfr(
         [

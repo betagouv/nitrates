@@ -47,6 +47,7 @@ class ContenuRichEditorWidget(forms.Textarea):
             "nitrates_admin/vendor/editorjs/header.umd.min.js",
             "nitrates_admin/vendor/editorjs/list.umd.min.js",
             "nitrates_admin/vendor/editorjs/quote.umd.min.js",
+            "nitrates_admin/vendor/editorjs/table.umd.min.js",
             "nitrates_admin/foldable_tool.js",
             "nitrates_admin/indent_tune.js",
             "nitrates_admin/contenu_rich_editor.js",

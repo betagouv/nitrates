@@ -11,6 +11,7 @@
  *   liste             <-> list (puces plates)
  *   citation          <-> quote
  *   foldable          <-> bloc custom `foldable` (FoldableTool, nested editor)
+ *   tableau           <-> table (@editorjs/table, carte #110)
  */
 (function () {
   "use strict";
@@ -30,6 +31,13 @@
         tunes: ["indent"],
       },
       quote: { class: window.Quote, inlineToolbar: true, tunes: ["indent"] },
+      // Tableau (carte #110). withHeadings par défaut : nos tableaux métier
+      // (types de fertilisants) ont toujours une ligne d'entêtes.
+      table: {
+        class: window.Table,
+        inlineToolbar: true,
+        config: { withHeadings: true },
+      },
       // Tune d'indentation (carte #136), partagé par les blocs ci-dessus.
       indent: { class: window.IndentTune },
     };
@@ -161,6 +169,18 @@
             blocks: dsfrToEditor(d.blocs || []),
           },
         };
+      case "tableau":
+        // Cellules = texte riche DSFR (string ou segments) -> HTML inline
+        // pour Editor.js, via texteToHtml (échappement conservé).
+        return {
+          type: "table",
+          data: {
+            withHeadings: d.avec_entetes !== false,
+            content: (d.lignes || []).map(function (ligne) {
+              return (ligne || []).map(texteToHtml);
+            }),
+          },
+        };
       default:
         return null;
     }
@@ -207,6 +227,18 @@
           data: {
             titre: d.titre || "",
             blocs: editorToDsfr(d.blocks || []),
+          },
+        };
+      case "table":
+        // HTML inline des cellules -> texte riche structuré (htmlToTexte),
+        // JAMAIS de HTML brut stocké en DB (invariant sécurité du compilateur).
+        return {
+          type: "tableau",
+          data: {
+            avec_entetes: d.withHeadings !== false,
+            lignes: (d.content || []).map(function (ligne) {
+              return (ligne || []).map(htmlToTexte);
+            }),
           },
         };
       default:
