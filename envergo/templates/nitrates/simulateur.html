@@ -62,6 +62,8 @@
   {# Charge avant simulator.js pour que ses listeners d'events soient prets. #}
   <script defer src="{% static_v 'nitrates/nitrates_analytics.js' %}"></script>
   <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
+  {# #287 : recueil email « prévenez-moi à l'ouverture de ma région » (zone fermée). #}
+  <script defer src="{% static_v 'nitrates/region_alerte.js' %}"></script>
   <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
   {# Barre de progression du parcours, fixee top (#154). #}
   <script defer src="{% static_v 'nitrates/progress.js' %}"></script>

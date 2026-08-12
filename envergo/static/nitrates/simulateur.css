@@ -958,6 +958,35 @@ body {
   color: #45474d;
 }
 
+/* #287 — Recueil d'email « prévenez-moi à l'ouverture de ma région ». */
+.form-region-fermee__alerte {
+  padding-left: 2rem;
+  margin-top: 1rem;
+}
+
+.form-region-fermee__ligne {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.form-region-fermee__ligne .fr-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.form-region-fermee__ligne .fr-btn {
+  flex: 0 0 auto;
+}
+
+.form-region-fermee__merci {
+  padding-left: 2rem;
+  margin-top: 1rem;
+  font-weight: 700;
+  color: var(--text-default-success, #18753c);
+}
+
 /* Plafond d'azote : encart DSFR avec la valeur chiffree mise en avant
    (cf. retour Max 2026-06-18 : le plafond etait plaque en texte brut). */
 .nitrates-plafond__valeur {
