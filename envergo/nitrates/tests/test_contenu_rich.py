@@ -308,6 +308,26 @@ def test_seed_idempotent():
 
 
 @pytest.mark.django_db
+def test_seed_definitions_glossaire():
+    # Carte #110 : les 17 définitions juristes arrivent typées et catégorisées.
+    call_command("seed_contenus_rich")
+    defs = ContenuRichDSFR.objects.filter(type_contenu="definition")
+    assert defs.count() == 17
+    ic = defs.get(cle="definition.interculture-longue")
+    assert ic.titre_public == "Interculture longue"
+    assert ic.categorie == "pratique-documents"
+    cn = defs.get(cle="definition.c-n")
+    assert "C/N" in cn.liste_termes
+    # Le tableau des types est bien un bloc tableau (compilable fr-table).
+    types = defs.get(cle="definition.types-fertilisants")
+    assert types.liste_blocs[0]["type"] == "tableau"
+    assert "fr-table" in compile_dsfr(types.liste_blocs)
+    # L'entrée historique n'a pas changé de type.
+    rp = ContenuRichDSFR.objects.get(cle="resultat.regles_permanentes")
+    assert rp.type_contenu == "general"
+
+
+@pytest.mark.django_db
 def test_seed_contenu_compile_selon_maquette():
     # Contenu de départ calé sur la maquette (Frame 35) : titre + intro + 4
     # sections dépliables (Cours d'eau, Sols en forte pente, etc.).
