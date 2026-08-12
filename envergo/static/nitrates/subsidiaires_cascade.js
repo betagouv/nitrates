@@ -41,8 +41,14 @@
   function rafraichirVisibilite(parentChamp) {
     const valeur = valeurActuelle(parentChamp);
     for (const g of dependants.get(parentChamp) || []) {
-      const attendue = g.dataset.qcParentValeur;
-      if (valeur !== null && String(valeur) === String(attendue)) {
+      // #213 : une QC atteignable depuis plusieurs branches du meme parent
+      // (diamant via renvoi_vers) declare ses valeurs declenchantes jointes
+      // par "|" (ex "icpe_a|icpe_ed"). On revele si la valeur cochee en est.
+      const attendues = String(g.dataset.qcParentValeur).split("|");
+      if (
+        valeur !== null &&
+        attendues.some((a) => String(valeur) === a)
+      ) {
         g.hidden = false;
       } else {
         g.hidden = true;

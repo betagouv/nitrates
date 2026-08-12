@@ -436,6 +436,7 @@ class MoulinetteView(View):
             "geo_appliquee": self.geo_appliquee,
             "cascade_fields": cascade_fields,
             "qc_actifs": [],
+            "qc_panel": [],
             "qc_repondues_champs": [],
         }
 
@@ -547,12 +548,14 @@ class MoulinetteView(View):
                 if any(x.champ == q.champ for x in qc_collectees):
                     continue
                 qc_collectees.append(q)
-        qc_repondues = []
+        # Panneau QC unifie (#213) : les QC du chemin (repondues + bloquante)
+        # ET les QC prefetchees des branches non prises, dans une seule liste
+        # ordonnee. Chaque entree porte son annotation parent (champ + valeurs
+        # declenchantes, jointes par "|") : le template rend cachees les
+        # conditionnelles, subsidiaires_cascade.js revele/masque au changement
+        # de reponse, sans aller-retour serveur.
+        qc_panel = []
         for q in qc_collectees:
-            if q.champ in qc_actifs:
-                # Deja en cours de saisie dans le panneau resultat (a droite),
-                # on ne le redouble pas a gauche.
-                continue
             raw = request.GET.get(q.champ) or ""
             # Stringify les valeurs des choix pour comparer avec ce qui
             # arrive par URL (toujours str). Sinon bool True != "True"
@@ -569,15 +572,54 @@ class MoulinetteView(View):
                 (c["libelle"] for c in choix if c["valeur"] == valeur),
                 valeur,
             )
-            qc_repondues.append(
+            parent_vals = (
+                q.parent_valeur
+                if isinstance(q.parent_valeur, list)
+                else ([] if q.parent_valeur is None else [q.parent_valeur])
+            )
+            qc_panel.append(
                 {
                     "champ": q.champ,
                     "valeur": valeur,
                     "texte": q.texte or q.champ,
                     "libelle": libelle,
                     "choix": choix,
+                    "parent_champ": q.parent_champ or "",
+                    "parent_valeur": "|".join(str(v) for v in parent_vals),
+                    "en_attente": q.champ in qc_actifs,
                 }
             )
+        # Filet de securite : si l'evaluateur a bute sur des questions que la
+        # collecte n'a pas retrouvees (divergence de descente), on les ajoute
+        # telles quelles (inconditionnelles) pour ne jamais perdre une QC en
+        # attente a l'ecran.
+        champs_panel = {e["champ"] for e in qc_panel}
+        if premier_qc is not None:
+            for q in premier_qc.questions_subsidiaires.questions:
+                if q.champ in champs_panel:
+                    continue
+                qc_panel.append(
+                    {
+                        "champ": q.champ,
+                        "valeur": request.GET.get(q.champ) or "",
+                        "texte": q.texte or q.champ,
+                        "libelle": "",
+                        "choix": [
+                            {
+                                "valeur": str(c["valeur"]),
+                                "libelle": c.get("libelle") or str(c["valeur"]),
+                            }
+                            for c in (q.choix or [])
+                        ],
+                        "parent_champ": q.parent_champ or "",
+                        "parent_valeur": (
+                            "" if q.parent_valeur is None else str(q.parent_valeur)
+                        ),
+                        "en_attente": True,
+                    }
+                )
+        # Sous-liste "repondues" (badge compteur du recap localisation).
+        qc_repondues = [e for e in qc_panel if e["valeur"] and not e["en_attente"]]
 
         ctx.update(
             {
@@ -592,8 +634,12 @@ class MoulinetteView(View):
                 "regulations_evaluees": regulations_evaluees,
                 "premier_evaluator_avec_questions": premier_qc,
                 "qc_actifs": qc_actifs,
+                "qc_panel": qc_panel,
                 "qc_repondues": qc_repondues,
-                "qc_repondues_champs": [e["champ"] for e in qc_repondues],
+                # Tous les champs QC presents dans le panneau ont des radios
+                # dans le form (visibles ou prefetchees cachees) : aucun ne
+                # doit etre re-injecte en hidden passthrough (double cle).
+                "qc_repondues_champs": [e["champ"] for e in qc_panel],
             }
         )
         return render(request, "nitrates/simulateur.html", ctx)
