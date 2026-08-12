@@ -1,0 +1,23 @@
+/* Barre d'onglets sous le header (carte #110).
+ *
+ * fr-nav standalone : hors du fr-header__menu DSFR, le composant passe en
+ * liste VERTICALE sous le breakpoint lg (il est conçu pour vivre dans la
+ * modale burger). Avec 2 items on force la ligne en mobile. Tokens DSFR
+ * uniquement -> thème sombre géré par data-fr-theme. */
+
+.nitrates-nav {
+  background-color: var(--background-default-grey);
+  box-shadow: 0 1px 0 0 var(--border-default-grey);
+}
+
+.nitrates-nav .fr-nav__list {
+  flex-flow: row wrap;
+}
+
+/* Hors desktop, le fr-nav vertical donne des liens pleine largeur ; on
+ * neutralise pour garder deux onglets côte à côte. */
+@media (width < 992px) {
+  .nitrates-nav .fr-nav__link {
+    width: auto;
+  }
+}

@@ -973,3 +973,116 @@ def compile_blocs(blocs, niveau_base: int = 3, id_prefix: str = "contenu-rich"):
 
     prefix = f"cr-{slugify(str(id_prefix))}" if id_prefix else "contenu-rich"
     return compile_dsfr(blocs or [], niveau_base=niveau_base, id_prefix=prefix)
+
+
+# ─── Glossaire : termes cliquables (carte #110) ──────────────────────────────
+
+
+def _url_definitions() -> str:
+    """URL de la page Aide & définitions, résolue par son nom de route.
+
+    Fallback sur le chemin littéral si la route n'est pas résolvable (tests
+    unitaires du filtre hors urlconf nitrates) : le filtre ne doit jamais
+    faire 500 pour une histoire de reverse."""
+    from django.urls import NoReverseMatch, reverse
+
+    try:
+        return reverse("nitrates_definitions")
+    except NoReverseMatch:
+        return "/definitions/"
+
+
+@register.filter
+def glossaire(texte):
+    """Rend un texte brut avec les termes du glossaire cliquables (carte #110).
+
+    Le texte est TOUJOURS échappé d'abord (il peut venir du YAML de l'arbre),
+    puis les variantes connues (ContenuRichDSFR type definition, cache
+    process-local) sont enveloppées dans un lien :
+
+      <a class="def-terme" data-def-cle="<cle>" href="/definitions/#<ancre>">
+
+    Le lien (et pas un <button> : un button est invalide dans un <label>, et
+    le href donne un fallback sans JS) est intercepté par glossaire.js qui
+    ouvre la carte flottante de définition. Glossaire vide -> texte échappé
+    tel quel (jamais de 500).
+
+    IMPORTANT : le matching se fait sur le texte ÉCHAPPÉ. Les variantes ne
+    contiennent que lettres/chiffres/espaces/tirets//, elles ne peuvent pas
+    chevaucher une entité (&amp;...) : une entité contient ; et & qui cassent
+    toute variante qui tenterait de la traverser.
+
+    Usage : {{ q.texte|glossaire }}
+    """
+    from django.utils.html import conditional_escape, format_html
+    from django.utils.safestring import mark_safe
+
+    from envergo.nitrates.contenu_rich.glossaire import load_index_termes, load_regex
+
+    if texte is None:
+        return ""
+    regex = load_regex()
+    echappe = conditional_escape(str(texte))
+    if regex is None:
+        return mark_safe(echappe)
+
+    par_variante = {v.lower(): cle for v, cle in load_index_termes()}
+    url_base = _url_definitions()
+
+    def _remplacer(match):
+        cle = par_variante.get(match.group(0).lower())
+        if cle is None:  # collision de casse improbable, on ne touche pas
+            return match.group(0)
+        ancre = cle.split(".", 1)[-1].replace(".", "-")
+        return format_html(
+            '<a class="def-terme" data-def-cle="{0}" href="{1}#{2}">{3}</a>',
+            cle,
+            url_base,
+            ancre,
+            mark_safe(match.group(0)),
+        )
+
+    return mark_safe(regex.sub(_remplacer, echappe))
+
+
+@register.simple_tag
+def glossaire_json(element_id: str = "glossaire-data"):
+    """Embarque le glossaire complet en <script type="application/json">.
+
+    Consommé par glossaire.js (carte #110) pour :
+      - linkifier les labels générés côté client (cascade.js,
+        question_couvert_flow.js) — `termes` est déjà trié longest-first ;
+      - remplir la carte flottante de définition sans appel réseau — `defs`
+        porte le HTML précompilé de chaque définition.
+
+    id_prefix "def-panel-<ancre>" : DISTINCT du préfixe de la page
+    /definitions/ ("def-<ancre>") pour qu'un accordéon rendu dans la carte
+    flottante n'entre jamais en collision d'id avec la page (carte #157).
+
+    ~20 définitions courtes -> quelques dizaines de Ko, acceptable inline.
+    json_script échappe `<` en \\u003c : aucune fermeture de balise possible.
+    """
+    from django.utils.html import json_script
+
+    from envergo.nitrates.contenu_rich.glossaire import (
+        load_definitions,
+        load_index_termes,
+    )
+
+    # On expose les BLOCS (JSON typé), pas du HTML : glossaire.js construit le
+    # DOM lui-même via createElement/textContent. Aucune chaîne HTML ne
+    # traverse le client -> aucune réinterprétation possible, et l'analyse
+    # statique (CodeQL js/xss-through-dom) n'a plus de sink à signaler.
+    defs = {}
+    for d in load_definitions():
+        defs[d.cle] = {
+            "titre": d.titre_public,
+            "ancre": d.ancre,
+            "blocs": d.liste_blocs,
+        }
+    payload = {
+        "termes": [[v, cle] for v, cle in load_index_termes()],
+        "defs": defs,
+        "url_definitions": _url_definitions(),
+    }
+    return json_script(payload, element_id)

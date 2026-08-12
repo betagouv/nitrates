@@ -9,6 +9,7 @@
   <link href="{% static_v 'nitrates/home.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/simulateur.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/glossaire.css' %}" rel="stylesheet">
   {% if afficher_resultat and not qc_en_attente %}
     {# #284 : popup de feedback fin de simulation + animation reward. #}
     <link href="{% static_v 'nitrates/feedback_popup.css' %}" rel="stylesheet">
@@ -94,6 +95,13 @@
       <script defer src="{% static_v 'nitrates/feedback_popup.js' %}"></script>
     {% endif %}
   {% endif %}
+  {% comment %}
+  #110 : glossaire cliquable + carte flottante de definition. EN DERNIER :
+  il re-linkifie les textes produits par cascade.js / question_couvert_flow.js
+  / question_reformat.js (les defer s'executent dans l'ordre du document).
+  {% endcomment %}
+  {% glossaire_json %}
+  <script defer src="{% static_v 'nitrates/glossaire.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -166,6 +174,9 @@
     QC en attente). Tant qu'une QC est en attente, colonne unique (#112).
     {% endcomment %}
     {% include "nitrates/fragments/_panneau_form.html" %}
+
+    {# #110 : carte flottante de definition (remplie/ouverte par glossaire.js) #}
+    {% include "nitrates/fragments/_panneau_definition.html" %}
 
     {% comment %}
     #281 : mention « *Champs obligatoires » deplacee en bas de page (juste

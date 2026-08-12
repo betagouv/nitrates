@@ -75,6 +75,12 @@ class Command(BaseCommand):
                 defaults={
                     "libelle_admin": entree.get("libelle_admin", cle),
                     "blocs": blocs_payload,
+                    # Champs glossaire (carte #110). Défauts rétro-compatibles :
+                    # les entrées historiques sans ces clés restent `general`.
+                    "type_contenu": entree.get("type_contenu", "general"),
+                    "titre_public": entree.get("titre_public", ""),
+                    "categorie": entree.get("categorie", ""),
+                    "termes_declencheurs": entree.get("termes_declencheurs", []) or [],
                 },
             )
             if was_created:

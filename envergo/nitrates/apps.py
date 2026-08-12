@@ -69,3 +69,18 @@ class NitratesConfig(AppConfig):
             sender=ContenuRichDSFR,
             dispatch_uid="invalider_contenu_rich_delete",
         )
+
+        # Cache du glossaire (carte #110) : invalidé sur les mêmes signaux,
+        # sinon définitions fantômes après édition admin jusqu'au restart.
+        from envergo.nitrates.contenu_rich.glossaire import invalider_cache_glossaire
+
+        post_save.connect(
+            invalider_cache_glossaire,
+            sender=ContenuRichDSFR,
+            dispatch_uid="invalider_glossaire_save",
+        )
+        post_delete.connect(
+            invalider_cache_glossaire,
+            sender=ContenuRichDSFR,
+            dispatch_uid="invalider_glossaire_delete",
+        )

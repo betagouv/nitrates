@@ -1,0 +1,120 @@
+/* Page « Aide & définitions » (cartes #110 / #288).
+ *
+ * Uniquement des tokens DSFR (var(--...)) : le thème sombre est géré
+ * gratuitement par data-fr-theme, aucune couleur en dur. */
+
+.definitions-page {
+  padding-bottom: 3rem;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+
+.definitions-section {
+  margin-top: 2.5rem;
+}
+
+.definitions-section__titre {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-default-grey);
+  padding-bottom: 0.75rem;
+}
+
+/* Pictos SVG exportés du Figma de la designeuse (palette DSFR embarquée
+ * dans le fichier : bleu France / rouge Marianne / violet clair). */
+.definitions-section__icone {
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+}
+
+/* ── Scrollspy du sommaire (batch 2) ──────────────────────────────────── */
+
+/* Entrée active du sommaire : liseré + texte dans le violet du parcours
+ * (même teinte que la barre de progression #154). aria-current est posé par
+ * definitions.js. Le liseré actif DSFR est le ::before du lien (bleu
+ * France) : c'est LUI qu'on teinte, sinon les deux liserés se superposent
+ * et le bleu reste visible. */
+.definitions-page .fr-sidemenu__link[aria-current] {
+  color: #6a6af5;
+  font-weight: 700;
+}
+
+.definitions-page .fr-sidemenu__link[aria-current]::before {
+  background-color: #6a6af5;
+}
+
+[data-fr-theme="dark"] .definitions-page .fr-sidemenu__link[aria-current] {
+  color: #8585f6;
+}
+
+[data-fr-theme="dark"]
+  .definitions-page
+  .fr-sidemenu__link[aria-current]::before {
+  background-color: #8585f6;
+}
+
+/* ── Définition ───────────────────────────────────────────────────────── */
+
+/* scroll-margin-top : ne pas caler le titre sous le bandeau construction /
+ * la barre de progression (éléments fixed en haut de page) au scroll d'ancre. */
+.definition-item {
+  border-bottom: 1px solid var(--border-default-grey);
+  padding: 1.25rem 0;
+  scroll-margin-top: 4.5rem;
+}
+
+.definition-item:last-child {
+  border-bottom: none;
+}
+
+.definition-item__titre {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Exergue de la définition ciblée par l'ancre (clic sommaire, lien
+ * « Voir toutes les définitions » de la carte flottante, lien terme). */
+.definition-item:target {
+  background-color: var(--background-contrast-info);
+  outline: 2px solid var(--border-plain-info);
+  outline-offset: -2px;
+  border-radius: 0.25rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+/* ── Tableau (types de fertilisants) ──────────────────────────────────── */
+
+/* Retour Max (batch 3) : PAS de scroll horizontal, le tableau tient dans la
+ * colonne de contenu. On réactive le retour à la ligne dans les cellules
+ * (le DSFR met white-space: nowrap par défaut) : l'auto-layout redistribue
+ * alors les largeurs, la colonne Exemples (contenu le plus long) récupère
+ * la place gagnée sur Caractéristiques. */
+.definitions-page .fr-table table {
+  width: 100%;
+}
+
+.definitions-page .fr-table th,
+.definitions-page .fr-table td {
+  white-space: normal;
+}
+
+/* La colonne Type reste étroite (codes courts : 0, Ia, Ib, II, III). */
+.definitions-page .fr-table th:first-child,
+.definitions-page .fr-table td:first-child {
+  width: 4.5rem;
+}
+
+/* ── Sommaire ─────────────────────────────────────────────────────────── */
+
+/* En desktop le sommaire reste visible pendant le scroll (fr-sidemenu--sticky
+ * gère le sticky) ; on borne juste la hauteur pour les longues listes. */
+@media (width >= 768px) {
+  .definitions-page .fr-sidemenu__inner {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}

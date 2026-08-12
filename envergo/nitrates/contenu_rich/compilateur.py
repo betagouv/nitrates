@@ -16,7 +16,8 @@ brut dans le champ texte.
 
 Types de blocs supportés (ensemble fini, cf. spec §3) :
   titre_principal, titre_paragraphe, paragraphe, liste (multi-niveaux),
-  foldable (récursif, fr-accordion), citation (fr-callout).
+  foldable (récursif, fr-accordion), citation (fr-callout),
+  tableau (fr-table, carte #110).
 """
 
 from django.utils.html import format_html
@@ -161,6 +162,59 @@ def _compile_foldable(data, niveau, ctx):
     )
 
 
+def _compile_tableau(data, niveau, ctx):
+    # Tableau DSFR (carte #110 : types de fertilisants 0/Ia/Ib/II/III).
+    # Format stocké : {"avec_entetes": bool, "lignes": [[cellule, ...], ...]}
+    # où chaque cellule est du texte riche (string ou segments {texte, gras}).
+    # Structure fr-table complète (wrapper/container/content) : requise depuis
+    # DSFR 1.10 pour le scroll horizontal natif sur mobile.
+    d = data or {}
+    lignes = [ligne for ligne in (d.get("lignes") or []) if isinstance(ligne, list)]
+    if not lignes:
+        return ""
+    avec_entetes = bool(d.get("avec_entetes", True))
+
+    def _cellules(ligne, balise, scope=""):
+        return mark_safe(
+            "".join(
+                format_html(
+                    "<{b}{s}>{c}</{b}>",
+                    b=mark_safe(balise),
+                    s=mark_safe(' scope="col"' if scope else ""),
+                    c=_rich(cellule),
+                )
+                for cellule in ligne
+            )
+        )
+
+    corps_lignes = lignes
+    thead = ""
+    if avec_entetes:
+        thead = format_html(
+            "<thead><tr>{0}</tr></thead>", _cellules(lignes[0], "th", scope="col")
+        )
+        corps_lignes = lignes[1:]
+    tbody = format_html(
+        "<tbody>{0}</tbody>",
+        mark_safe(
+            "".join(
+                format_html("<tr>{0}</tr>", _cellules(ligne, "td"))
+                for ligne in corps_lignes
+            )
+        ),
+    )
+    return format_html(
+        '<div class="fr-table fr-table--bordered">'
+        '<div class="fr-table__wrapper">'
+        '<div class="fr-table__container">'
+        '<div class="fr-table__content">'
+        "<table>{thead}{tbody}</table>"
+        "</div></div></div></div>",
+        thead=thead,
+        tbody=tbody,
+    )
+
+
 # Table de dispatch type -> fonction de rendu. Tout type inconnu est ignoré
 # silencieusement (robustesse : un JSON futur avec un type non géré ne crashe
 # pas le rendu public ; le bloc est juste omis).
@@ -171,6 +225,7 @@ _COMPILERS = {
     "liste": _compile_liste,
     "foldable": _compile_foldable,
     "citation": _compile_citation,
+    "tableau": _compile_tableau,
 }
 
 

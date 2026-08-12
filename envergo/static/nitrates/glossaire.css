@@ -1,0 +1,150 @@
+/* Glossaire cliquable + carte flottante de définition (carte #110).
+ *
+ * Tokens DSFR uniquement -> thème sombre géré par data-fr-theme. */
+
+/* ── Terme cliquable ──────────────────────────────────────────────────── */
+
+/* Souligné pointillé + icône ⓘ (design Coralie). border-bottom plutôt que
+ * text-decoration : le style lien DSFR est porté par background-image, on le
+ * neutralise pour ne pas cumuler deux soulignés. Texte en bleu lien (batch 2 :
+ * l'affordance « c'est cliquable » doit se voir sans survol). */
+.def-terme {
+  background-image: none;
+  border-bottom: 1px dashed currentcolor;
+  color: var(--text-action-high-blue-france);
+  cursor: pointer;
+}
+
+.def-terme::after {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 0.15em;
+  vertical-align: -0.05em;
+  background-color: var(--text-action-high-blue-france);
+  mask-image: url("../@gouvfr/dsfr/dist/icons/system/information-line.svg");
+  mask-size: 100% 100%;
+}
+
+/* Variante « dans un label radio » : le TEXTE du terme reste un simple span
+ * souligné pointillé (cliquer dessus coche le radio, comportement label
+ * normal) ; SEULE l'icône ⓘ accolée est le lien qui ouvre la définition.
+ * Même bleu lien que .def-terme (batch 2). */
+.def-terme-libelle {
+  border-bottom: 1px dashed currentcolor;
+  color: var(--text-action-high-blue-france);
+}
+
+.def-terme--icone {
+  border-bottom: none;
+
+  /* Zone de clic confortable autour de l'icône (cible tactile). */
+  padding: 0 0.2em;
+}
+
+.def-terme--icone::after {
+  margin-left: 0;
+}
+
+/* ── Carte flottante ──────────────────────────────────────────────────── */
+
+/* Positionnée en JS au niveau vertical du terme cliqué (batch 2, Loom
+ * Coralie) ; slide-in par la droite un peu plus lent. Passe AU-DESSUS du
+ * drawer conditions (z-index 2000) : sans ça, une définition ouverte depuis
+ * le drawer était invisible derrière lui. */
+.def-carte {
+  position: fixed;
+  right: 16px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  z-index: 2100;
+  padding: 1.25rem;
+  background-color: var(--background-default-grey);
+  border-left: 4px solid var(--border-active-blue-france);
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 18px rgb(0 0 18 / 16%);
+  transform: translateX(48px);
+  opacity: 0;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+}
+
+/* Variante « depuis le drawer » : le drawer occupe la droite -> la carte
+ * arrive par la GAUCHE pour rester lisible à côté de lui. */
+.def-carte--gauche {
+  right: auto;
+  left: 16px;
+  transform: translateX(-48px);
+}
+
+.def-carte--ouverte {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.def-carte__entete {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.def-carte__titre {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* Le corps est du contenu riche compilé (paragraphes, tableau, accordéons). */
+.def-carte__corps {
+  font-size: 0.925rem;
+}
+
+/* Tableau dans la carte : cellules qui wrappent plutôt qu'un scroll
+ * horizontal (même retour que sur la page définitions). Layout fixe, sinon
+ * l'auto-layout exige la largeur du plus long mot par colonne et déborde. */
+.def-carte__corps .fr-table table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.def-carte__corps .fr-table th,
+.def-carte__corps .fr-table td {
+  white-space: normal;
+
+  /* Coupe des mots seulement en dernier recours (« méthanisation » sur une
+   * colonne étroite), jamais lettre à lettre comme le ferait `anywhere`. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Tableau en carte étroite : corps un cran plus petit. */
+.def-carte__corps .fr-table {
+  font-size: 0.9em;
+}
+
+/* Répartition des colonnes du tableau des types (Type étroit, Exemples
+ * large). Sur un tableau à moins de colonnes, le reliquat va à la dernière. */
+.def-carte__corps .fr-table th:nth-child(1) {
+  width: 13%;
+}
+
+.def-carte__corps .fr-table th:nth-child(2) {
+  width: 27%;
+}
+
+.def-carte__corps .fr-table th:nth-child(3) {
+  width: 36%;
+}
+
+/* En mobile, la carte prend la largeur de l'écran (moins les marges). */
+@media (width < 576px) {
+  .def-carte {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+  }
+}

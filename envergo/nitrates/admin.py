@@ -47,6 +47,7 @@ class ContenuRichEditorWidget(forms.Textarea):
             "nitrates_admin/vendor/editorjs/header.umd.min.js",
             "nitrates_admin/vendor/editorjs/list.umd.min.js",
             "nitrates_admin/vendor/editorjs/quote.umd.min.js",
+            "nitrates_admin/vendor/editorjs/table.umd.min.js",
             "nitrates_admin/foldable_tool.js",
             "nitrates_admin/indent_tune.js",
             "nitrates_admin/contenu_rich_editor.js",
@@ -593,21 +594,71 @@ from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
 
 
 class ContenuRichDSFRForm(forms.ModelForm):
+    # Les juristes n'écrivent pas de JSON : les termes déclencheurs s'éditent
+    # en « une variante par ligne » et sont convertis ↔ liste (carte #110).
+    termes_declencheurs = forms.CharField(
+        required=False,
+        label="Termes déclencheurs",
+        widget=forms.Textarea(attrs={"rows": 4}),
+        help_text=(
+            "Une variante par ligne (ex. « C/N » puis « rapport C/N »). "
+            "Le titre public est toujours cliquable, inutile de le répéter."
+        ),
+    )
+
     class Meta:
         model = ContenuRichDSFR
         fields = "__all__"
         widgets = {"blocs": ContenuRichEditorWidget}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.initial["termes_declencheurs"] = "\n".join(self.instance.liste_termes)
+
     def clean_blocs(self):
         return _clean_blocs_json(self.cleaned_data.get("blocs"))
+
+    def clean_termes_declencheurs(self):
+        brut = self.cleaned_data.get("termes_declencheurs") or ""
+        return [ligne.strip() for ligne in brut.splitlines() if ligne.strip()]
 
 
 @admin.register(ContenuRichDSFR)
 class ContenuRichDSFRAdmin(admin.ModelAdmin):
     form = ContenuRichDSFRForm
-    list_display = ("cle", "libelle_admin", "updated_at")
-    search_fields = ("cle", "libelle_admin")
+    list_display = (
+        "cle",
+        "libelle_admin",
+        "type_contenu",
+        "titre_public",
+        "categorie",
+        "updated_at",
+    )
+    list_filter = ("type_contenu", "categorie")
+    search_fields = ("cle", "libelle_admin", "titre_public")
     readonly_fields = ("updated_at", "apercu_rendu")
+    fieldsets = (
+        (
+            None,
+            {"fields": ("cle", "libelle_admin", "blocs", "updated_at", "apercu_rendu")},
+        ),
+        (
+            "Glossaire (définitions — carte #110)",
+            {
+                "fields": (
+                    "type_contenu",
+                    "titre_public",
+                    "categorie",
+                    "termes_declencheurs",
+                ),
+                "description": (
+                    "Une « définition » apparaît sur la page Aide & définitions "
+                    "et rend son terme cliquable dans le simulateur."
+                ),
+            },
+        ),
+    )
 
     @admin.display(description="Aperçu du rendu")
     def apercu_rendu(self, obj):

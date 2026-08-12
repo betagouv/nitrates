@@ -2,6 +2,17 @@
 # Source de SEED uniquement ; vérité runtime = table ContenuRichDSFR.
 # Réservé aux textes 'volants' (règles permanentes, etc.). Les PC ont
 # leur propre champ blocs sur CodePrescription (carte #136).
+#
+# Depuis la carte #110, porte aussi les DÉFINITIONS du glossaire
+# (type_contenu: definition) : page « Aide & définitions » + termes
+# cliquables du simulateur. Textes = SPEC Définitions des juristes
+# (Notion), repris verbatim. Champs spécifiques :
+#   type_contenu        : definition | general (défaut)
+#   titre_public        : le terme affiché (obligatoire pour une définition)
+#   categorie           : fertilisants-effluents | azote-bilans |
+#                         pratique-documents | reglementation-zonage
+#   termes_declencheurs : variantes cliquables dans le simulateur (le titre
+#                         public est toujours cliquable, inutile de le répéter)
 
 contenus:
 - cle: resultat.regles_permanentes
@@ -61,3 +72,299 @@ contenus:
             enneigés. L'épandage de tous les fertilisants azotés autres que les fumiers compacts non susceptibles
             d'écoulement, les composts d'effluents d'élevage et les autres produits organiques solides
             dont l'apport vise à prévenir l'érosion est interdit en zone vulnérable sur les sols gelés.
+
+# ─── Définitions du glossaire (carte #110) — SPEC juristes verbatim ─────────
+
+- cle: definition.azote-efficace
+  libelle_admin: Définition — Azote efficace
+  type_contenu: definition
+  titre_public: Azote efficace
+  categorie: azote-bilans
+  termes_declencheurs:
+  - azote efficace
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Somme de l'azote présent dans un fertilisant azoté sous forme minérale\
+        \ et sous forme organique minéralisable pendant le temps d'absorption d'azote\
+        \ de la culture en place ou de la culture implantée à la suite de l'apport.\
+        \ L'azote efficace peut être estimé par période en fonction du modèle utilisé."
+
+- cle: definition.azote-libere-sortie-hiver
+  libelle_admin: Définition — Azote potentiellement libéré jusqu'en sortie d'hiver
+  type_contenu: definition
+  titre_public: Azote potentiellement libéré jusqu'en sortie d'hiver
+  categorie: azote-bilans
+  termes_declencheurs:
+  - azote potentiellement libéré
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Somme de l'azote présent dans un fertilisant azoté sous forme minérale\
+        \ et sous forme organique minéralisable jusqu'à la sortie de l'hiver."
+
+- cle: definition.c-n
+  libelle_admin: Définition — C / N (Carbone / Azote)
+  type_contenu: definition
+  titre_public: C / N (Carbone / Azote)
+  categorie: azote-bilans
+  termes_declencheurs:
+  - C/N
+  - rapport C/N
+  - rapport carbone/azote
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Rapport entre les quantités de carbone total et d'azote total contenues\
+        \ dans un fertilisant donné."
+
+- cle: definition.nmin-ntot
+  libelle_admin: Définition — Nmin / Ntot
+  type_contenu: definition
+  titre_public: Nmin / Ntot
+  categorie: azote-bilans
+  termes_declencheurs:
+  - Nmin/Ntot
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Proportion d'azote minéral (nitrique, uréique et ammoniacal) dans la\
+        \ quantité totale d'azote."
+
+- cle: definition.campagne-culturale
+  libelle_admin: Définition — Campagne culturale
+  type_contenu: definition
+  titre_public: Campagne culturale
+  categorie: pratique-documents
+  termes_declencheurs:
+  - campagne culturale
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Période allant du 1er septembre au 31 août de l'année suivante ou une\
+        \ période de douze mois choisie par l'exploitant. Cette période vaut pour toute\
+        \ l'exploitation et est identique pour le plan de fumure et le cahier d'enregistrement\
+        \ définis dans le programme d'actions national."
+
+- cle: definition.couvert-vegetal-interculture
+  libelle_admin: Définition — Couvert végétal d'interculture (CI)
+  type_contenu: definition
+  titre_public: Couvert végétal d'interculture (CI)
+  categorie: pratique-documents
+  termes_declencheurs:
+  - couvert végétal d'interculture
+  - couvert d'interculture
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Peuplement végétal semé présent sur une parcelle pendant l'interculture,\
+        \ qui n'est pas issu des repousses de la culture précédente."
+
+- cle: definition.effluents-peu-charges
+  libelle_admin: Définition — Effluents peu chargés
+  type_contenu: definition
+  titre_public: Effluents peu chargés
+  categorie: fertilisants-effluents
+  termes_declencheurs:
+  - effluents peu chargés
+  - effluent peu chargé
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Effluents issus d'un traitement d'effluents bruts et ayant une quantité\
+        \ d'azote inférieure à 0,5 kg par m3."
+
+- cle: definition.types-fertilisants
+  libelle_admin: Définition — Fertilisants de type 0, Ia, Ib, II et III
+  type_contenu: definition
+  titre_public: Fertilisants de type 0, Ia, Ib, II et III
+  categorie: fertilisants-effluents
+  termes_declencheurs:
+  - type 0
+  - type Ia
+  - type Ib
+  - type II
+  - type III
+  # Graphies des textes PC réglementaires (drawer conditions) : « type I.a »
+  # et les énumérations « de types 0, I.a, I.b et II » où I.a/I.b sont seuls.
+  - type I.a
+  - type I.b
+  - I.a
+  - I.b
+  schema: 1
+  blocs:
+  - type: tableau
+    data:
+      avec_entetes: true
+      lignes:
+      - [Type, Caractéristiques, Exemples, Valeurs guides]
+      - - "0"
+        - "Produits organiques caractérisés par une organisation nette à moyen terme\
+          \ de l'azote"
+        - "Boues de papeterie, marcs de raisins frais, composts de déchets verts jeunes\
+          \ et ligneux"
+        - "C/N > 20 ; Nmin/Ntot < 20 %"
+      - - Ia
+        - "Produits organiques à minéralisation d'azote très lente"
+        - "Fumiers compacts non susceptibles d'écoulement, composts d'effluents d'élevage\
+          \ à l'exception des composts de fientes de volailles. Composts d'ordures\
+          \ ménagères résiduelles. Composts de fractions solides de digestats de méthanisation"
+        - "C/N > 10 ; Nmin/Ntot < 20 % ; ISMO > 70 %"
+      - - Ib
+        - "Produits organiques à minéralisation d'azote lente"
+        - "Déjections animales avec litière susceptibles d'écoulement, à l'exception\
+          \ des fumiers de volaille. Composts de MIATE (matières d'intérêt agronomique\
+          \ issues du traitement des eaux) mélangées à un support carboné, composts\
+          \ de biodéchets"
+        - "C/N > 8 ; 20 % < Nmin/Ntot ≤ 40 % ; ISMO > 50 %"
+      - - II
+        - "Produits organiques à minéralisation d'azote rapide"
+        - "Lisiers, fumiers de volaille, effluents peu chargés, vinasses de betterave.\
+          \ Farines de plumes, de poisson, de sang, d'os, tourteaux de ricin. Digestats\
+          \ bruts de méthanisation, fractions liquides des digestats de méthanisation."
+        - "Tout effluent organique qui n'entre pas dans les catégories précédentes."
+      - - III
+        - "Engrais azotés minéraux"
+        - "Ammonitrates, urée…"
+        - "-"
+
+- cle: definition.fertirrigation
+  libelle_admin: Définition — Fertirrigation
+  type_contenu: definition
+  titre_public: Fertirrigation (fertigation ou ferti-irrigation)
+  categorie: fertilisants-effluents
+  termes_declencheurs:
+  - fertirrigation
+  - fertigation
+  - ferti-irrigation
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Technique agricole consistant à appliquer des éléments fertilisants\
+        \ solubles dans l'eau par l'intermédiaire d'un système d'irrigation."
+
+- cle: definition.fumier-compact
+  libelle_admin: Définition — Fumier compact non susceptible d'écoulement
+  type_contenu: definition
+  titre_public: Fumier compact non susceptible d'écoulement
+  categorie: fertilisants-effluents
+  termes_declencheurs:
+  - fumier compact
+  - fumiers compacts
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Fumier contenant les déjections d'herbivores ou de lapins ou de porcins,\
+        \ un matériau absorbant (paille, sciure...), ayant subi un stockage d'au moins\
+        \ deux mois sous les animaux ou sur une fumière et ne présentant pas de risque\
+        \ d'écoulement."
+
+- cle: definition.icpe
+  libelle_admin: Définition — ICPE
+  type_contenu: definition
+  titre_public: ICPE
+  categorie: reglementation-zonage
+  termes_declencheurs:
+  - ICPE
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Installation Classée pour la Protection de l'Environnement."
+
+- cle: definition.ismo
+  libelle_admin: Définition — ISMO
+  type_contenu: definition
+  titre_public: ISMO
+  categorie: fertilisants-effluents
+  termes_declencheurs:
+  - ISMO
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Indice de Stabilité de la Matière Organique."
+
+- cle: definition.ilot-cultural
+  libelle_admin: Définition — Ilot cultural
+  type_contenu: definition
+  titre_public: Ilot cultural
+  categorie: pratique-documents
+  termes_declencheurs:
+  - ilot cultural
+  - îlot cultural
+  - îlots culturaux
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Regroupement de parcelles contiguës, entières ou partielles, homogène\
+        \ du point de vue de la culture, de l'histoire culturale (successions de cultures\
+        \ et apports de fertilisants) et de la nature du terrain."
+
+- cle: definition.interculture
+  libelle_admin: Définition — Interculture
+  type_contenu: definition
+  titre_public: Interculture
+  categorie: pratique-documents
+  termes_declencheurs: []
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Période, dans la rotation culturale, comprise entre la récolte d'une\
+        \ culture principale et le semis de la suivante."
+
+- cle: definition.interculture-longue
+  libelle_admin: Définition — Interculture longue
+  type_contenu: definition
+  titre_public: Interculture longue
+  categorie: pratique-documents
+  termes_declencheurs:
+  - intercultures longues
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Période, dans la rotation culturale, comprise entre la récolte d'une\
+        \ culture principale et le semis, l'année civile suivante, de la culture principale\
+        \ d'après."
+
+- cle: definition.interculture-courte
+  libelle_admin: Définition — Interculture courte
+  type_contenu: definition
+  titre_public: Interculture courte
+  categorie: pratique-documents
+  termes_declencheurs:
+  - intercultures courtes
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Période, dans la rotation culturale, comprise entre la récolte d'une\
+        \ culture principale et le semis, dans la même année civile, de la culture\
+        \ principale suivante."
+
+- cle: definition.sol-non-cultive
+  libelle_admin: Définition — Sol non cultivé
+  type_contenu: definition
+  titre_public: Sol non cultivé
+  categorie: pratique-documents
+  termes_declencheurs:
+  - sol non cultivé
+  - sols non cultivés
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Surface non utilisée en vue d'une production agricole, ni semée, ni\
+        \ récoltée, ni fauchée, ni pâturée pendant une campagne culturale."

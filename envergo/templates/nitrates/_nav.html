@@ -1,0 +1,29 @@
+{% comment %}
+Barre d'onglets sous le header (carte #110, design Coralie) :
+Simulateur | Aide & définitions. Composant fr-nav DSFR standalone (hors
+fr-header__menu : pas de burger, 2 items seulement, toujours visibles —
+l'override mobile est dans nav.css). Le liseré de l'onglet actif est le
+style natif DSFR de aria-current.
+« Simulateur » couvre `/` (root public) ET `/simulateur/` (même vue).
+{% endcomment %}
+{% url 'home' as url_home %}
+{% url 'nitrates_simulateur' as url_simulateur %}
+{% url 'nitrates_definitions' as url_definitions %}
+<div class="nitrates-nav">
+  <div class="fr-container">
+    <nav class="fr-nav" role="navigation" aria-label="Menu principal">
+      <ul class="fr-nav__list">
+        <li class="fr-nav__item">
+          <a class="fr-nav__link"
+             href="{{ url_home }}"
+             {% if request.path == url_home or request.path == url_simulateur %}aria-current="page"{% endif %}>Simulateur</a>
+        </li>
+        <li class="fr-nav__item">
+          <a class="fr-nav__link"
+             href="{{ url_definitions }}"
+             {% if request.path == url_definitions %}aria-current="page"{% endif %}>Aide & définitions</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>

@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
 from envergo.nitrates.views import (
+    AideDefinitionsView,
     DebugView,
     DecisionTreeView,
     HomeView,
@@ -71,6 +72,11 @@ from envergo.nitrates.views_yaml_browser import (
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
+    path(
+        "definitions/",
+        AideDefinitionsView.as_view(),
+        name="nitrates_definitions",
+    ),
     path(
         _("simulateur/"),
         MoulinetteView.as_view(),

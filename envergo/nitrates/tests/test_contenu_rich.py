@@ -188,6 +188,69 @@ def test_echappement_html_anti_injection():
     assert "&amp;" in html
 
 
+def test_tableau_avec_entetes():
+    # Bloc tableau (carte #110) : structure fr-table DSFR complète, 1re ligne
+    # en <thead>/<th scope="col"> quand avec_entetes.
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {
+                    "avec_entetes": True,
+                    "lignes": [
+                        ["Type", "Exemples"],
+                        ["Ia", "Fumiers compacts"],
+                    ],
+                },
+            }
+        ]
+    )
+    assert '<div class="fr-table fr-table--bordered">' in html
+    assert '<div class="fr-table__wrapper">' in html
+    assert '<th scope="col">Type</th>' in html
+    assert "<td>Fumiers compacts</td>" in html
+
+
+def test_tableau_sans_entetes():
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {"avec_entetes": False, "lignes": [["a", "b"]]},
+            }
+        ]
+    )
+    assert "<thead>" not in html
+    assert "<td>a</td>" in html
+
+
+def test_tableau_cellules_riches_et_echappement():
+    # Cellule en segments {texte, gras} + tentative d'injection échappée.
+    html = compile_dsfr(
+        [
+            {
+                "type": "tableau",
+                "data": {
+                    "avec_entetes": False,
+                    "lignes": [
+                        [
+                            [{"texte": "C/N > 20", "gras": True}],
+                            "<script>alert(1)</script>",
+                        ]
+                    ],
+                },
+            }
+        ]
+    )
+    assert "<strong>C/N &gt; 20</strong>" in html
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_tableau_vide_rend_rien():
+    assert compile_dsfr([{"type": "tableau", "data": {"lignes": []}}]) == ""
+
+
 def test_type_inconnu_ignore_silencieusement():
     html = compile_dsfr(
         [
@@ -242,6 +305,26 @@ def test_seed_idempotent():
     # 2e passage : aucun nouveau créé.
     call_command("seed_contenus_rich")
     assert ContenuRichDSFR.objects.count() == n1
+
+
+@pytest.mark.django_db
+def test_seed_definitions_glossaire():
+    # Carte #110 : les 17 définitions juristes arrivent typées et catégorisées.
+    call_command("seed_contenus_rich")
+    defs = ContenuRichDSFR.objects.filter(type_contenu="definition")
+    assert defs.count() == 17
+    ic = defs.get(cle="definition.interculture-longue")
+    assert ic.titre_public == "Interculture longue"
+    assert ic.categorie == "pratique-documents"
+    cn = defs.get(cle="definition.c-n")
+    assert "C/N" in cn.liste_termes
+    # Le tableau des types est bien un bloc tableau (compilable fr-table).
+    types = defs.get(cle="definition.types-fertilisants")
+    assert types.liste_blocs[0]["type"] == "tableau"
+    assert "fr-table" in compile_dsfr(types.liste_blocs)
+    # L'entrée historique n'a pas changé de type.
+    rp = ContenuRichDSFR.objects.get(cle="resultat.regles_permanentes")
+    assert rp.type_contenu == "general"
 
 
 @pytest.mark.django_db
