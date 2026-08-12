@@ -8,54 +8,61 @@
 (function () {
   "use strict";
 
-  // Palette lombric : rosé-brun terreux, avec une variante plus claire pour le
-  // ventre/segments et un liseré plus foncé pour le contour.
-  const CORPS = "#c4756a"; // ver de terre rosé-brun
-  const CORPS_CLAIR = "#d99a90"; // segments/ventre
-  const CONTOUR = "#9c574e"; // liseré
-  const CLITELLUM = "#e2b7ab"; // l'anneau clair caractéristique du lombric
+  // Palette lombric : rosé-brun terreux. Dégradé pour donner du volume (plus
+  // joli qu'un aplat), liseré foncé, clitellum clair (l'anneau du lombric).
+  const CORPS = "#cf847a"; // rosé-brun principal
+  const CORPS_FONCE = "#b56458"; // bas du dégradé (ombre)
+  const CORPS_CLAIR = "#e6a89e"; // haut du dégradé (lumière)
+  const CONTOUR = "#95504a"; // liseré
+  const CLITELLUM = "#eec4ba"; // anneau clair
 
-  // SVG d'un lombric souriant, courbé en U doux. viewBox 0 0 64 64.
+  // SVG d'un lombric souriant, dodu et arrondi. viewBox 0 0 64 64.
+  // Un dégradé vertical par ver (id unique via `index`) donne le volume.
   function svgVer(index) {
-    // On alterne l'orientation (miroir) pour varier un peu.
-    const flip = index % 2 === 1 ? " transform=\"scale(-1,1) translate(-64,0)\"" : "";
+    const flip =
+      index % 2 === 1 ? ' transform="scale(-1,1) translate(-64,0)"' : "";
+    const gid = "nver-grad-" + index;
+    const corpsPath =
+      "M16 48 C 10 32, 20 15, 33 16 C 47 17, 52 31, 47 41";
     return `
 <svg viewBox="0 0 64 64" width="64" height="64" role="img" aria-hidden="true"
      xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${CORPS_CLAIR}"/>
+      <stop offset="0.5" stop-color="${CORPS}"/>
+      <stop offset="1" stop-color="${CORPS_FONCE}"/>
+    </linearGradient>
+  </defs>
   <g${flip}>
-    <!-- corps courbé (chemin épais arrondi) -->
-    <path d="M14 46
-             C 10 30, 20 16, 34 18
-             C 46 20, 50 30, 46 38"
-          fill="none" stroke="${CONTOUR}" stroke-width="16"
+    <!-- liseré + corps dodu avec dégradé -->
+    <path d="${corpsPath}" fill="none" stroke="${CONTOUR}" stroke-width="18"
           stroke-linecap="round"/>
-    <path d="M14 46
-             C 10 30, 20 16, 34 18
-             C 46 20, 50 30, 46 38"
-          fill="none" stroke="${CORPS}" stroke-width="13"
+    <path d="${corpsPath}" fill="none" stroke="url(#${gid})" stroke-width="15"
           stroke-linecap="round"/>
-    <!-- segments (petits traits clairs le long du corps) -->
-    <path d="M14 46
-             C 10 30, 20 16, 34 18
-             C 46 20, 50 30, 46 38"
-          fill="none" stroke="${CORPS_CLAIR}" stroke-width="13"
-          stroke-linecap="round" stroke-dasharray="1.5 6" opacity="0.55"/>
-    <!-- clitellum : anneau clair vers le milieu du corps -->
-    <circle cx="34" cy="18" r="7.5" fill="${CLITELLUM}"/>
-    <!-- tête (extrémité haute droite) + visage -->
-    <circle cx="46" cy="38" r="8.5" fill="${CORPS}" stroke="${CONTOUR}" stroke-width="1.5"/>
-    <!-- yeux -->
-    <circle cx="44" cy="36" r="1.6" fill="#3a2420"/>
-    <circle cx="49" cy="36" r="1.6" fill="#3a2420"/>
-    <!-- petites brillances d'yeux -->
-    <circle cx="43.5" cy="35.4" r="0.5" fill="#fff"/>
-    <circle cx="48.5" cy="35.4" r="0.5" fill="#fff"/>
-    <!-- sourire -->
-    <path d="M43 40 Q46.5 43.5, 50 40" fill="none" stroke="#3a2420"
-          stroke-width="1.6" stroke-linecap="round"/>
-    <!-- petites joues roses -->
-    <circle cx="42.5" cy="39.5" r="1.3" fill="#e88" opacity="0.5"/>
-    <circle cx="50.5" cy="39.5" r="1.3" fill="#e88" opacity="0.5"/>
+    <!-- reflet doux le long du dos -->
+    <path d="${corpsPath}" fill="none" stroke="#fff" stroke-width="3.5"
+          stroke-linecap="round" opacity="0.22"
+          transform="translate(-2,-2)"/>
+    <!-- clitellum : anneau clair vers le milieu -->
+    <ellipse cx="33" cy="16.5" rx="6.5" ry="8" fill="${CLITELLUM}"
+             opacity="0.85"/>
+    <!-- tête (extrémité) bien ronde -->
+    <circle cx="47" cy="41" r="9" fill="url(#${gid})" stroke="${CONTOUR}"
+            stroke-width="1.5"/>
+    <!-- yeux (grands, expressifs) -->
+    <circle cx="44.5" cy="39" r="2" fill="#fff"/>
+    <circle cx="50" cy="39" r="2" fill="#fff"/>
+    <circle cx="44.9" cy="39.3" r="1.15" fill="#33221f"/>
+    <circle cx="50.4" cy="39.3" r="1.15" fill="#33221f"/>
+    <circle cx="45.3" cy="38.8" r="0.4" fill="#fff"/>
+    <circle cx="50.8" cy="38.8" r="0.4" fill="#fff"/>
+    <!-- sourire arrondi -->
+    <path d="M43.6 43 Q47.3 47, 51 43" fill="none" stroke="#33221f"
+          stroke-width="1.7" stroke-linecap="round"/>
+    <!-- joues roses -->
+    <circle cx="42.8" cy="42.6" r="1.5" fill="#ff9a8a" opacity="0.55"/>
+    <circle cx="51.7" cy="42.6" r="1.5" fill="#ff9a8a" opacity="0.55"/>
   </g>
 </svg>`;
   }

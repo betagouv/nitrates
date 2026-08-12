@@ -6,6 +6,13 @@
   display: none;
 }
 
+/* Les messages d'erreur portent la classe DSFR `fr-error-text` qui force un
+   `display`, ce qui ÉCRASE l'attribut `hidden` -> le message « Une erreur est
+   survenue » s'affichait tout le temps. On rétablit la priorité de [hidden]. */
+.nitrates-feedback [hidden] {
+  display: none !important;
+}
+
 .nitrates-feedback {
   position: fixed;
   inset: 0;
@@ -39,14 +46,26 @@
 
 .nitrates-feedback__close {
   position: absolute;
-  top: 0.5rem;
-  right: 0.75rem;
+  top: 0.25rem;
+  right: 0.4rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
+  border-radius: 50%;
   background: transparent;
-  font-size: 1.1rem;
+  font-size: 1.6rem;
   line-height: 1;
   cursor: pointer;
   color: var(--text-mention-grey, #666);
+  transition: background 0.12s ease;
+}
+
+.nitrates-feedback__close:hover {
+  background: var(--background-contrast-grey, #eee);
+  color: #161616;
 }
 
 .nitrates-feedback__titre {
@@ -124,6 +143,7 @@
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  justify-content: space-between; /* « Non merci » à gauche, submit à droite */
   margin-top: 1.25rem;
 }
 
