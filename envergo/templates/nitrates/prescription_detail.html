@@ -1,0 +1,45 @@
+{% extends "nitrates/base.html" %}
+
+{% load nitrates_tags %}
+
+{% block title %}
+  {{ pc.identifiant|upper }}
+  {% if pc.mots_cles %}· {{ pc.mots_cles }}{% endif %}
+{% endblock %}
+
+{% block article %}
+  <p class="fr-text--sm fr-mb-1w">Prescription conditionnée</p>
+  <h1 class="fr-h3">
+    {{ pc.identifiant|upper }}
+    {% if pc.mots_cles %}<span class="fr-text--regular">— {{ pc.mots_cles }}</span>{% endif %}
+  </h1>
+
+  {% if blocs %}
+    {# Contenu riche (#136) : source unique du rendu DSFR quand renseigné. #}
+    <div class="fr-accordions-group fr-mt-3w">{% compile_blocs blocs id_prefix=pc.identifiant %}</div>
+  {% elif pc.texte_court %}
+    <p>{{ pc.texte_court|linebreaksbr }}</p>
+  {% else %}
+    <p class="fr-text--sm">Le texte de cette prescription n'est pas encore rédigé.</p>
+  {% endif %}
+
+  {% if pc.texte_redaction_initiale and not blocs %}
+    <section class="fr-accordion fr-mt-3w">
+      <h3 class="fr-accordion__title">
+        <button class="fr-accordion__btn"
+                aria-expanded="false"
+                aria-controls="accordion-redaction-{{ pc.identifiant }}">Rédaction juridique initiale</button>
+      </h3>
+      <div class="fr-collapse" id="accordion-redaction-{{ pc.identifiant }}">
+        <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if pc.note_reglementaire %}
+    <p class="fr-text--sm fr-mt-3w">
+      <strong>{{ pc.note_reglementaire.identifiant }}</strong> —
+      {{ pc.note_reglementaire.libelle_court }}
+    </p>
+  {% endif %}
+{% endblock %}

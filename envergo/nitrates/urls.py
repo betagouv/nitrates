@@ -7,6 +7,7 @@ from envergo.nitrates.views import (
     DecisionTreeView,
     HomeView,
     MoulinetteView,
+    PrescriptionDetailView,
     ReferentielsView,
     ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
@@ -89,6 +90,11 @@ urlpatterns = [
         "geojson/zar/",
         ZoneActionRenforceeGeoJSONView.as_view(),
         name="nitrates_zar_geojson",
+    ),
+    path(
+        "prescription/<slug:identifiant>/",
+        PrescriptionDetailView.as_view(),
+        name="nitrates_prescription_detail",
     ),
     path(
         "api/referentiels/",
