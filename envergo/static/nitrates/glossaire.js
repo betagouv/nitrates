@@ -139,7 +139,12 @@
     // Q1 #335). Le texte garde le souligné pointillé (span) et SEULE l'icône
     // ⓘ accolée ouvre la définition.
     const dansLabel = !!(node.parentNode && node.parentNode.closest("label"));
-    const frag = document.createDocumentFragment();
+    // Un SEUL conteneur pour tous les segments : le nœud texte d'origine était
+    // un unique enfant ; certains labels sont des conteneurs flex (couvert
+    // flow) où chaque enfant devient un item -> sans wrapper, l'icône et les
+    // bouts de texte partent chacun à la ligne.
+    const frag = document.createElement("span");
+    frag.className = "def-terme-groupe";
     segments.forEach(function (s) {
       if (s.cle === undefined) {
         frag.appendChild(document.createTextNode(s.texte));
@@ -181,7 +186,8 @@
                 BALISES_EXCLUES[p.tagName] ||
                 (p.classList &&
                   (p.classList.contains("def-terme") ||
-                    p.classList.contains("def-terme-libelle")))
+                    p.classList.contains("def-terme-libelle") ||
+                    p.classList.contains("def-terme-groupe")))
               ) {
                 return NodeFilter.FILTER_REJECT;
               }
