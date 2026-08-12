@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
@@ -353,22 +352,3 @@ urlpatterns = [
         name="nitrates_admin_ouverture_toggle_region",
     ),
 ]
-
-# SANDBOX #284 (temporaire, DEBUG uniquement) : page de test de l'animation
-# "vers contents" de fin de feedback, pour la valider visuellement. À retirer
-# (avec le template + les statics) une fois le dev fini.
-if settings.DEBUG:
-    urlpatterns += [
-        path(
-            "sandbox/vers/",
-            TemplateView.as_view(template_name="nitrates/sandbox_vers.html"),
-            name="nitrates_sandbox_vers",
-        ),
-        path(
-            "sandbox/vers-design/",
-            TemplateView.as_view(
-                template_name="nitrates/sandbox_vers_design.html"
-            ),
-            name="nitrates_sandbox_vers_design",
-        ),
-    ]

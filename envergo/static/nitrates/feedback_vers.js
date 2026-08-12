@@ -1,99 +1,134 @@
-/* #284 — Génère l'animation "reward" : N petits lombrics contents qui
- * flottent et sourient dans un conteneur. Sobre mais mignon, couleur ver de
- * terre (lombric), pas façon caca (formes rondes lisses, sourire net, yeux).
+/* #284 — Animation "reward" de fin de feedback : des petits vers de terre
+ * souriants qui traversent horizontalement et se croisent (les uns vers la
+ * droite, les autres vers la gauche), en ondulant façon groove.
+ *
+ * Référence visuelle : mascotte lombric mignonne (corps rosé-brun segmenté,
+ * grands yeux, large sourire, contour net).
  *
  * API : window.nitratesVersReward(conteneur, {nombre}) monte l'animation.
- * Exposé aussi comme module Node pour tests éventuels.
  */
 (function () {
   "use strict";
 
-  // Palette lombric : rosé-brun terreux. Dégradé pour donner du volume (plus
-  // joli qu'un aplat), liseré foncé, clitellum clair (l'anneau du lombric).
-  const CORPS = "#cf847a"; // rosé-brun principal
-  const CORPS_FONCE = "#b56458"; // bas du dégradé (ombre)
-  const CORPS_CLAIR = "#e6a89e"; // haut du dégradé (lumière)
-  const CONTOUR = "#95504a"; // liseré
-  const CLITELLUM = "#eec4ba"; // anneau clair
+  // Palette lombric (rosé-brun terreux), dégradé pour le volume.
+  var CORPS = "#cf847a";
+  var CORPS_FONCE = "#b56458";
+  var CORPS_CLAIR = "#e6a89e";
+  var CONTOUR = "#95504a";
+  var CLITELLUM = "#eec4ba";
 
-  // SVG d'un lombric souriant, dodu et arrondi. viewBox 0 0 64 64.
-  // Un dégradé vertical par ver (id unique via `index`) donne le volume.
-  function svgVer(index) {
-    const flip =
-      index % 2 === 1 ? ' transform="scale(-1,1) translate(-64,0)"' : "";
-    const gid = "nver-grad-" + index;
-    const corpsPath =
-      "M16 48 C 10 32, 20 15, 33 16 C 47 17, 52 31, 47 41";
-    return `
-<svg viewBox="0 0 64 64" width="64" height="64" role="img" aria-hidden="true"
-     xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${CORPS_CLAIR}"/>
-      <stop offset="0.5" stop-color="${CORPS}"/>
-      <stop offset="1" stop-color="${CORPS_FONCE}"/>
-    </linearGradient>
-  </defs>
-  <g${flip}>
-    <!-- liseré + corps dodu avec dégradé -->
-    <path d="${corpsPath}" fill="none" stroke="${CONTOUR}" stroke-width="18"
-          stroke-linecap="round"/>
-    <path d="${corpsPath}" fill="none" stroke="url(#${gid})" stroke-width="15"
-          stroke-linecap="round"/>
-    <!-- reflet doux le long du dos -->
-    <path d="${corpsPath}" fill="none" stroke="#fff" stroke-width="3.5"
-          stroke-linecap="round" opacity="0.22"
-          transform="translate(-2,-2)"/>
-    <!-- clitellum : anneau clair vers le milieu -->
-    <ellipse cx="33" cy="16.5" rx="6.5" ry="8" fill="${CLITELLUM}"
-             opacity="0.85"/>
-    <!-- tête (extrémité) bien ronde -->
-    <circle cx="47" cy="41" r="9" fill="url(#${gid})" stroke="${CONTOUR}"
-            stroke-width="1.5"/>
-    <!-- yeux (grands, expressifs) -->
-    <circle cx="44.5" cy="39" r="2" fill="#fff"/>
-    <circle cx="50" cy="39" r="2" fill="#fff"/>
-    <circle cx="44.9" cy="39.3" r="1.15" fill="#33221f"/>
-    <circle cx="50.4" cy="39.3" r="1.15" fill="#33221f"/>
-    <circle cx="45.3" cy="38.8" r="0.4" fill="#fff"/>
-    <circle cx="50.8" cy="38.8" r="0.4" fill="#fff"/>
-    <!-- sourire arrondi -->
-    <path d="M43.6 43 Q47.3 47, 51 43" fill="none" stroke="#33221f"
-          stroke-width="1.7" stroke-linecap="round"/>
-    <!-- joues roses -->
-    <circle cx="42.8" cy="42.6" r="1.5" fill="#ff9a8a" opacity="0.55"/>
-    <circle cx="51.7" cy="42.6" r="1.5" fill="#ff9a8a" opacity="0.55"/>
-  </g>
-</svg>`;
+  // Un ver vu de PROFIL, orienté vers la droite (tête à droite), qui ondule.
+  // viewBox large (0 0 120 48) : corps allongé horizontal. Le corps est un
+  // chemin animé (les points montent/descendent) -> effet reptation groovy.
+  // Ici on pose la forme de base ; l'ondulation se fait en CSS (transform sur
+  // des segments) + un léger "bob". id unique par ver via `k`.
+  function svgVer(k) {
+    var gid = "vg-" + k;
+    return (
+      '<svg class="vg-svg" viewBox="0 0 120 48" width="120" height="48" ' +
+      'aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      "<defs>" +
+      '<linearGradient id="' +
+      gid +
+      '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' +
+      CORPS_CLAIR +
+      '"/>' +
+      '<stop offset="0.55" stop-color="' +
+      CORPS +
+      '"/>' +
+      '<stop offset="1" stop-color="' +
+      CORPS_FONCE +
+      '"/>' +
+      "</linearGradient>" +
+      "</defs>" +
+      // corps ondulé (queue à gauche, tête à droite)
+      '<path class="vg-corps" d="M8 30 Q26 14 46 28 T88 26 T112 26" ' +
+      'fill="none" stroke="' +
+      CONTOUR +
+      '" stroke-width="18" stroke-linecap="round"/>' +
+      '<path class="vg-corps" d="M8 30 Q26 14 46 28 T88 26 T112 26" ' +
+      'fill="none" stroke="url(#' +
+      gid +
+      ')" stroke-width="15" stroke-linecap="round"/>' +
+      // reflet dorsal
+      '<path class="vg-corps" d="M8 30 Q26 14 46 28 T88 26 T112 26" ' +
+      'fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" ' +
+      'opacity="0.22" transform="translate(0,-3)"/>' +
+      // clitellum (anneau clair vers le tiers avant)
+      '<ellipse cx="74" cy="26" rx="6" ry="9" fill="' +
+      CLITELLUM +
+      '" opacity="0.8"/>' +
+      // tête ronde à droite
+      '<circle cx="110" cy="26" r="10" fill="url(#' +
+      gid +
+      ')" stroke="' +
+      CONTOUR +
+      '" stroke-width="1.6"/>' +
+      // yeux
+      '<circle cx="108" cy="23" r="2.3" fill="#fff"/>' +
+      '<circle cx="114" cy="23" r="2.3" fill="#fff"/>' +
+      '<circle cx="108.5" cy="23.4" r="1.3" fill="#33221f"/>' +
+      '<circle cx="114.5" cy="23.4" r="1.3" fill="#33221f"/>' +
+      '<circle cx="108.9" cy="22.8" r="0.45" fill="#fff"/>' +
+      '<circle cx="114.9" cy="22.8" r="0.45" fill="#fff"/>' +
+      // sourire groovy
+      '<path d="M106.5 28 Q111 32.5 115.5 28" fill="none" stroke="#33221f" ' +
+      'stroke-width="1.8" stroke-linecap="round"/>' +
+      // joues
+      '<circle cx="105.5" cy="27.5" r="1.6" fill="#ff9a8a" opacity="0.55"/>' +
+      '<circle cx="116.5" cy="27.5" r="1.6" fill="#ff9a8a" opacity="0.55"/>' +
+      "</svg>"
+    );
   }
 
-  // Positions relatives (en %) réparties, avec rotation/amplitude variées pour
-  // un rendu vivant mais non aléatoire (déterministe -> pas de flicker).
-  const PLACEMENTS = [
-    { left: 12, top: 20, rot: -8, delai: 0.0, scale: 1.0 },
-    { left: 40, top: 6, rot: 5, delai: 0.12, scale: 1.15 },
-    { left: 68, top: 22, rot: -4, delai: 0.24, scale: 0.95 },
-    { left: 26, top: 50, rot: 7, delai: 0.34, scale: 0.85 },
-    { left: 58, top: 52, rot: -6, delai: 0.44, scale: 0.9 },
+  // Voies horizontales : chaque ver a une hauteur (top %), un sens (dir : +1
+  // vers la droite, -1 vers la gauche), une durée (vitesse), un délai. Les sens
+  // alternés + hauteurs proches -> ils se croisent.
+  //
+  // Vitesse : la référence agréable (retour Max) est celle du sens gauche->droite
+  // de la version précédente (~6.5-7 s). Maintenant que les deux sens parcourent
+  // la même distance (cf. CSS), on STABILISE toutes les durées autour de cette
+  // valeur, avec une variation minime (±0.4 s) pour garder l'effet « individus
+  // séparés » sans qu'aucun ne traîne.
+  var VOIES = [
+    { top: 8, dir: -1, dur: 6.6, delai: 0.0 },
+    { top: 30, dir: 1, dur: 6.4, delai: 0.9 },
+    { top: 52, dir: -1, dur: 7.0, delai: 0.4 },
+    { top: 70, dir: 1, dur: 6.8, delai: 1.4 },
   ];
+
+  var VER_W = 120; // largeur d'un ver (px), cf. .vg-ver
 
   function nitratesVersReward(conteneur, opts) {
     if (!conteneur) return;
-    const nombre = Math.max(1, Math.min((opts && opts.nombre) || 5, PLACEMENTS.length));
-    conteneur.classList.add("nitrates-vers");
-    conteneur.setAttribute("aria-hidden", "true");
+    var nombre = Math.max(1, Math.min((opts && opts.nombre) || 4, VOIES.length));
+    conteneur.classList.add("vg-scene");
     conteneur.innerHTML = "";
-    for (let i = 0; i < nombre; i++) {
-      const p = PLACEMENTS[i];
-      const el = document.createElement("div");
-      el.className = "nitrates-ver";
-      el.style.left = p.left + "%";
-      el.style.top = p.top + "%";
-      el.style.setProperty("--rot", p.rot + "deg");
-      el.style.setProperty("--delai", p.delai + "s");
-      // taille via scale appliqué au wrapper (garde le float sur transform)
-      el.style.width = 64 * p.scale + "px";
-      el.style.height = 64 * p.scale + "px";
+
+    // Distance à parcourir = largeur RÉELLE de la scène + un ver (pour entrer et
+    // sortir hors-champ). On la mesure ici et on la passe en variable CSS : dans
+    // un `transform: translateX(%)`, le `%` réfère à l'ÉLÉMENT (120px), pas au
+    // conteneur -> le ver ne traversait qu'une fraction. On calcule donc la
+    // distance en pixels réels. Un ResizeObserver la met à jour au redimensionnement.
+    function majTrajet() {
+      var w = conteneur.clientWidth || 0;
+      conteneur.style.setProperty("--trajet", w + VER_W + "px");
+    }
+    majTrajet();
+    if (window.ResizeObserver) {
+      new window.ResizeObserver(majTrajet).observe(conteneur);
+    } else {
+      window.addEventListener("resize", majTrajet);
+    }
+
+    for (var i = 0; i < nombre; i++) {
+      var v = VOIES[i];
+      var el = document.createElement("div");
+      el.className = "vg-ver " + (v.dir === 1 ? "vg-vers-droite" : "vg-vers-gauche");
+      el.style.top = v.top + "%";
+      el.style.setProperty("--dur", v.dur + "s");
+      el.style.setProperty("--delai", v.delai + "s");
       el.innerHTML = svgVer(i);
       conteneur.appendChild(el);
     }
@@ -103,6 +138,6 @@
     window.nitratesVersReward = nitratesVersReward;
   }
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { nitratesVersReward, svgVer, PLACEMENTS };
+    module.exports = { nitratesVersReward: nitratesVersReward, svgVer: svgVer };
   }
 })();
