@@ -297,6 +297,11 @@ data.*
 /playwright/.cache/
 .playwright-mcp/
 
+# Rapports de scan securite Nuclei (spike #97). LOCAL ONLY : ces rapports
+# exposent des details de securite (donnees publiques sensibles), ils ne
+# doivent JAMAIS etre commites ni partir en CI.
+/nuclei_reports/
+
 altis/
 
 # Local docker-compose override (ports, dev-only tweaks)

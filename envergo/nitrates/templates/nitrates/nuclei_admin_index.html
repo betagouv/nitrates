@@ -1,0 +1,44 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block content %}
+  <div style="padding:1.5rem;">
+    <h1>Rapports de scan Nuclei</h1>
+
+    <p style="color:#555;max-width:60ch">
+      Scans de sécurité <strong>locaux</strong> générés par
+      <code>python manage.py nuclei_scan</code>. Les rapports vivent dans
+      <code>{{ reports_dir }}</code> (non versionné) et ne sont consultables qu'en
+      local. Ils ne partent jamais en CI ni sur staging/prod.
+    </p>
+
+    {% if has_reports %}
+      <p>
+        <a class="button"
+           href="{% url 'nitrates_admin_nuclei_report' 'latest' %}"
+           target="_blank">Voir le dernier rapport</a>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Date du scan (UTC)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+            <tr>
+              <td>{{ run.name }}</td>
+              <td>
+                <a href="{% url 'nitrates_admin_nuclei_report' run.name %}"
+                   target="_blank">Ouvrir</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Aucun rapport pour l'instant. Lance un scan :</p>
+      <pre>python manage.py nuclei_scan</pre>
+    {% endif %}
+  </div>
+{% endblock %}

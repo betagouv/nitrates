@@ -1,0 +1,142 @@
+{# Rapport interne (noindex) : les meta SEO description/keywords n'ont pas de sens. #}
+{# djlint:off H030,H031 #}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Rapport Nuclei - {{ stamp }}</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 2rem;
+        color: #1e1e1e;
+        background: #fff;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+      }
+
+      .meta {
+        color: #555;
+        font-size: .9rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .meta code {
+        background: #f0f0f0;
+        padding: .1rem .3rem;
+        border-radius: 3px;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: .5rem .6rem;
+        border-bottom: 1px solid #e0e0e0;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f6f6f6;
+        font-size: .85rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+      }
+
+      .sev {
+        font-weight: 600;
+        padding: .1rem .5rem;
+        border-radius: 3px;
+        font-size: .8rem;
+        white-space: nowrap;
+      }
+
+      .sev-critical {
+        background: #7d1128;
+        color: #fff;
+      }
+
+      .sev-high {
+        background: #c9302c;
+        color: #fff;
+      }
+
+      .sev-medium {
+        background: #ec971f;
+        color: #fff;
+      }
+
+      .sev-low {
+        background: #5bc0de;
+        color: #fff;
+      }
+
+      .sev-info {
+        background: #ddd;
+        color: #333;
+      }
+
+      .empty {
+        padding: 2rem;
+        text-align: center;
+        color: #2a7a2a;
+        font-size: 1.1rem;
+      }
+
+      .matched {
+        font-family: monospace;
+        font-size: .8rem;
+        color: #444;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Rapport de scan Nuclei</h1>
+    <p class="meta">
+      Cible : <code>{{ target }}</code>
+      <br>
+      Sévérités scannées : <code>{{ severity }}</code>
+      <br>
+      Date (UTC) : <code>{{ stamp }}</code>
+      <br>
+      Findings : <strong>{{ count }}</strong>
+    </p>
+
+    {% if findings %}
+      <table>
+        <thead>
+          <tr>
+            <th>Sévérité</th>
+            <th>Template</th>
+            <th>Nom</th>
+            <th>URL / élément touché</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in findings %}
+            <tr>
+              <td>
+                <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+              </td>
+              <td>
+                <code>{{ f.template_id }}</code>
+              </td>
+              <td>{{ f.name }}</td>
+              <td class="matched">{{ f.matched_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">Aucun finding pour les sévérités scannées. Rien à signaler.</p>
+    {% endif %}
+  </body>
+</html>
