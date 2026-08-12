@@ -461,7 +461,11 @@ class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
 
 class CodePrescriptionForm(forms.ModelForm):
     """Form admin du PC : le champ `blocs` est édité via l'éditeur WYSIWYG
-    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot."""
+    (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot.
+
+    Valide aussi la cohérence des composants de fusion (#147) — un M2M
+    n'est pas vérifiable dans Model.clean() (instance pas encore sauvée).
+    """
 
     class Meta:
         model = CodePrescription
@@ -471,6 +475,35 @@ class CodePrescriptionForm(forms.ModelForm):
     def clean_blocs(self):
         return _clean_blocs_json(self.cleaned_data.get("blocs"))
 
+    def clean(self):
+        cleaned = super().clean()
+        composants = cleaned.get("composants_fusion")
+        if not composants:
+            return cleaned
+        if cleaned.get("variante_de"):
+            raise forms.ValidationError(
+                "Une déclinaison géographique ne porte pas de composants : "
+                "les composants vivent sur la fusion de base, la déclinaison "
+                "n'a que « déclinaison de »."
+            )
+        for composant in composants:
+            if self.instance.pk and composant.pk == self.instance.pk:
+                raise forms.ValidationError(
+                    "Une fusion ne peut pas se contenir elle-même."
+                )
+            if composant.variante_de_id:
+                raise forms.ValidationError(
+                    f"Composant « {composant.identifiant} » : une fusion "
+                    "regroupe des PC de base, pas des déclinaisons "
+                    "géographiques."
+                )
+            if composant.composants_fusion.exists():
+                raise forms.ValidationError(
+                    f"Composant « {composant.identifiant} » : pas de fusion "
+                    "de fusions."
+                )
+        return cleaned
+
 
 @admin.register(CodePrescription)
 class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
@@ -478,15 +511,19 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = (
         "identifiant",
         "mots_cles",
+        "scope",
+        "region_code",
+        "variante_de",
         "a_du_contenu_riche",
         "toujours_affiche",
         "plafond",
         "note_reglementaire",
         "ordre_affichage",
     )
-    list_filter = ("plafond", "toujours_affiche")
+    list_filter = ("scope", "region_code", "plafond", "toujours_affiche")
     search_fields = ("identifiant", "mots_cles", "texte_court")
-    autocomplete_fields = ("note_reglementaire",)
+    autocomplete_fields = ("note_reglementaire", "variante_de")
+    filter_horizontal = ("composants_fusion",)
     ordering = ("ordre_affichage", "identifiant")
     readonly_fields = ("apercu_rendu",)
 

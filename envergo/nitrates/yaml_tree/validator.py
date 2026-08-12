@@ -128,9 +128,15 @@ def _referentiels_depuis_orm() -> dict:
         return {}
 
     try:
-        codes = dict.fromkeys(
-            CodePrescription.objects.values_list("identifiant", flat=True), {}
-        )
+        # `variante_de` remonte pour que le check de reference refuse une
+        # declinaison geographique dans une feuille (#147) : les arbres ne
+        # referencent que des PC de base, la geo est resolue par le moteur.
+        codes = {
+            ident: ({"variante_de": base} if base else {})
+            for ident, base in CodePrescription.objects.values_list(
+                "identifiant", "variante_de__identifiant"
+            )
+        }
         notes = dict.fromkeys(
             NoteReglementaire.objects.values_list("identifiant", flat=True), {}
         )
@@ -957,6 +963,15 @@ def _check_niveau_ajout(
 # ─── References referentiels ────────────────────────────────────────────────
 
 
+def _pc_declinaison_de(referentiels: dict, code: str) -> str | None:
+    """Identifiant de la PC de base si `code` est une declinaison
+    geographique (#147), None sinon. Tolere des entrees non-dict (tests)."""
+    entry = referentiels.get("codes_prescription", {}).get(code)
+    if isinstance(entry, dict):
+        return entry.get("variante_de")
+    return None
+
+
 def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]:
     errors = []
     codes_pc = set(referentiels.get("codes_prescription", {}).keys())
@@ -974,6 +989,17 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
                 errors.append(
                     f"[reference] regle '{obj.get('id')}' : code_prescription "
                     f"'{cp}' inconnu dans le référentiel (DB)"
+                )
+            elif _pc_declinaison_de(referentiels, cp):
+                # #147 : une feuille reference la PC de BASE ; la declinaison
+                # geographique est selectionnee par le moteur selon la geo de
+                # la parcelle. En autoriser une en dur court-circuiterait la
+                # selection (et s'afficherait hors de sa zone).
+                errors.append(
+                    f"[reference] regle '{obj.get('id')}' : code_prescription "
+                    f"'{cp}' est une déclinaison géographique de "
+                    f"'{_pc_declinaison_de(referentiels, cp)}' — référencer la "
+                    f"PC de base, la déclinaison est choisie selon la géo (#147)"
                 )
             if cp in vus:
                 errors.append(
@@ -1000,6 +1026,13 @@ def _check_references_referentiels(arbre: dict, referentiels: dict) -> list[str]
                     errors.append(
                         f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
                         f" : code_prescription '{pc}' inconnu dans le référentiel (DB)"
+                    )
+                elif _pc_declinaison_de(referentiels, pc):
+                    errors.append(
+                        f"[reference] patch renvoi_vers '{branche.get('renvoi_vers')}'"
+                        f" : code_prescription '{pc}' est une déclinaison "
+                        f"géographique — remapper entre PC de base, la "
+                        f"déclinaison est choisie selon la géo (#147)"
                     )
     return errors
 

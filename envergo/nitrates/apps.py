@@ -44,6 +44,16 @@ class NitratesConfig(AppConfig):
                 dispatch_uid=f"invalider_ref_{modele.__name__}_delete",
             )
 
+        # Les composants de fusion (#147) sont un M2M : une edition via
+        # .set()/.add() hors admin ne declenche pas post_save sur le PC.
+        from django.db.models.signals import m2m_changed
+
+        m2m_changed.connect(
+            invalider_cache_referentiels,
+            sender=CodePrescription.composants_fusion.through,
+            dispatch_uid="invalider_ref_CodePrescription_composants",
+        )
+
         # Meme mecanisme pour les contenus riches editables (carte #131) :
         # invalider le cache des qu'un ContenuRichDSFR est edite dans l'admin.
         from envergo.nitrates.contenu_rich.loader import invalider_cache_contenu_rich
