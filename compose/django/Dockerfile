@@ -56,6 +56,21 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
   && apt-get install -y nodejs
 
+# Nuclei (scanner de securite, spike #97) -- DEV LOCAL UNIQUEMENT.
+# Ce Dockerfile ne sert qu'au dev local (la prod Scalingo build via buildpacks,
+# cf. .buildpacks), et l'install est en plus gardee par BUILD_ENV=local : nuclei
+# n'atterrit jamais dans un runtime de production. Binaire Go autonome.
+RUN if [ "$BUILD_ENV" = "local" ]; then \
+  NUCLEI_VERSION=3.3.7 \
+  && ARCH=$(dpkg --print-architecture) \
+  && curl -fsSL -o /tmp/nuclei.zip \
+     "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_${ARCH}.zip" \
+  && (command -v unzip >/dev/null || (apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*)) \
+  && unzip -o /tmp/nuclei.zip -d /usr/local/bin nuclei \
+  && chmod +x /usr/local/bin/nuclei \
+  && rm -f /tmp/nuclei.zip ; \
+  fi
+
 RUN locale-gen fr_FR.UTF-8 && update-locale LANG="fr_FR.UTF-8" LC_ALL="fr_FR.UTF-8"
 
 ENV LANG fr_FR.UTF-8

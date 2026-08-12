@@ -11,6 +11,7 @@ from envergo.nitrates.views import (
     ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_nuclei import nuclei_index, nuclei_report
 from envergo.nitrates.views_admin_ouverture import (
     ouverture_index,
     ouverture_toggle,
@@ -344,5 +345,16 @@ urlpatterns = [
         "admin/nitrates/ouverture-geographique/toggle-region/",
         ouverture_toggle_region,
         name="nitrates_admin_ouverture_toggle_region",
+    ),
+    # Rapports de scan Nuclei (spike securite #97). LOCAL ONLY.
+    path(
+        "admin/nitrates/nuclei/",
+        nuclei_index,
+        name="nitrates_admin_nuclei_index",
+    ),
+    path(
+        "admin/nitrates/nuclei/<str:stamp>/",
+        nuclei_report,
+        name="nitrates_admin_nuclei_report",
     ),
 ]
