@@ -1,0 +1,92 @@
+/* #284 — WIP animation "vers groovy" : ils traversent horizontalement (des uns
+   vers la droite, des autres vers la gauche -> ils se croisent), en ondulant
+   façon danse. Page de design dédiée, on itère avant intégration. */
+
+.vg-scene {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+}
+
+.vg-ver {
+  position: absolute;
+  width: 120px;
+  height: 48px;
+  will-change: transform;
+}
+
+/* Déplacement horizontal complet (de hors-champ gauche à hors-champ droite) +
+   petit dandinement vertical (bob) qui donne le côté groovy. */
+.vg-vers-droite {
+  left: 0;
+  animation:
+    vg-traverse-droite var(--dur, 6s) linear var(--delai, 0s) infinite,
+    vg-bob 0.9s ease-in-out infinite;
+}
+
+.vg-vers-gauche {
+  left: 0;
+  /* miroir horizontal : la tête (dessinée à droite) pointe vers la gauche */
+  animation:
+    vg-traverse-gauche var(--dur, 6s) linear var(--delai, 0s) infinite,
+    vg-bob 0.9s ease-in-out infinite;
+}
+
+.vg-vers-gauche .vg-svg {
+  transform: scaleX(-1);
+}
+
+@keyframes vg-traverse-droite {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(calc(100vw + 140px));
+  }
+}
+
+@keyframes vg-traverse-gauche {
+  from {
+    transform: translateX(calc(100% + 140px));
+  }
+  to {
+    transform: translateX(-260px);
+  }
+}
+
+/* Dandinement vertical : petit bob + inclinaison, façon groove. */
+@keyframes vg-bob {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+  50% {
+    margin-top: -8px;
+  }
+}
+
+/* Ondulation "reptation" du corps : on fait légèrement pulser l'échelle
+   verticale du corps pour simuler la vague qui parcourt le ver. */
+.vg-corps {
+  animation: vg-onde 0.7s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes vg-onde {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.86);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vg-vers-droite,
+  .vg-vers-gauche,
+  .vg-corps {
+    animation-duration: 0s;
+  }
+}

@@ -364,4 +364,11 @@ if settings.DEBUG:
             TemplateView.as_view(template_name="nitrates/sandbox_vers.html"),
             name="nitrates_sandbox_vers",
         ),
+        path(
+            "sandbox/vers-design/",
+            TemplateView.as_view(
+                template_name="nitrates/sandbox_vers_design.html"
+            ),
+            name="nitrates_sandbox_vers_design",
+        ),
     ]
