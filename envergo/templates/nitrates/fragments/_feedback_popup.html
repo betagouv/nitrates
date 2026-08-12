@@ -1,0 +1,116 @@
+{% comment %}
+#284 — Popup de feedback de fin de simulation.
+
+Affiché UNIQUEMENT sur la page résultat (afficher_resultat, hors QC en attente).
+Masqué par défaut (hidden) ; révélé par feedback_popup.js au moment le moins
+gênant (inactivité prolongée OU intention de quitter la page), une seule fois
+par visiteur (flag localStorage : traité -> plus jamais).
+
+Deux volets SÉQUENTIELS et INDÉPENDANTS :
+  1. la note (étoiles) + un commentaire facultatif -> « Envoyer mon commentaire » ;
+  2. seulement APRÈS, un volet email « devenir alpha-testeur » (facultatif).
+La note/commentaire ne sont JAMAIS liés à l'email : on peut noter sans laisser
+d'email. RGPD : email collecté seulement avec consentement, stocké seul.
+{% endcomment %}
+
+<div class="nitrates-feedback"
+     id="nitrates-feedback"
+     data-region-code="{{ moulinette.catalog.region_code|default:'' }}"
+     hidden>
+  <div class="nitrates-feedback__backdrop" data-feedback-dismiss></div>
+  <div class="nitrates-feedback__dialog"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="nitrates-feedback-titre">
+    <button type="button"
+            class="nitrates-feedback__close"
+            aria-label="Fermer"
+            data-feedback-dismiss>✕</button>
+
+    {# ── Volet 1 : note (étoiles) + commentaire ─────────────────────────── #}
+    <div class="nitrates-feedback__volet" data-feedback-volet-note>
+      <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">Cet outil vous a-t-il été utile&nbsp;?</p>
+
+      <div class="nitrates-feedback__stars"
+           role="radiogroup"
+           aria-label="Note d'utilité de 1 à 5 étoiles">
+        {% for n in "12345"|make_list %}
+          <button type="button"
+                  class="nitrates-feedback__star"
+                  data-feedback-note="{{ n }}"
+                  role="radio"
+                  aria-checked="false"
+                  aria-label="{{ n }} étoile{% if n != '1' %}s{% endif %}">
+            <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.6 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z" />
+            </svg>
+          </button>
+        {% endfor %}
+      </div>
+      <div class="nitrates-feedback__stars-legende">
+        <span>Pas utile</span>
+        <span>Très utile</span>
+      </div>
+
+      <label class="fr-label fr-mt-2w" for="nitrates-feedback-commentaire">Un commentaire&nbsp;? (facultatif)</label>
+      <textarea class="fr-input"
+                id="nitrates-feedback-commentaire"
+                rows="3"
+                maxlength="2000"></textarea>
+
+      <div class="nitrates-feedback__actions">
+        <button type="button"
+                class="fr-btn fr-btn--tertiary-no-outline"
+                data-feedback-dismiss>Non merci</button>
+        <button type="button" class="fr-btn" data-feedback-submit-note disabled>Envoyer mon avis</button>
+      </div>
+      <p class="nitrates-feedback__erreur fr-error-text"
+         data-feedback-erreur-note
+         hidden>Une erreur est survenue. Réessayez plus tard.</p>
+    </div>
+
+    {# ── Séparateur + Volet 2 : email (révélé après le volet 1) ─────────── #}
+    <div class="nitrates-feedback__volet" data-feedback-volet-email hidden>
+      <p class="nitrates-feedback__merci-note">Merci pour votre avis&nbsp;!</p>
+      <hr class="nitrates-feedback__sep">
+      <p class="nitrates-feedback__titre fr-h6">Envie de devenir alpha-testeur&nbsp;?</p>
+      <label class="fr-label" for="nitrates-feedback-email">Laissez votre email (facultatif)</label>
+      <input type="email"
+             class="fr-input"
+             id="nitrates-feedback-email"
+             autocomplete="email"
+             placeholder="prenom.nom@exemple.fr">
+
+      <div class="fr-checkbox-group fr-mt-2w">
+        <input type="checkbox" id="nitrates-feedback-consent">
+        <label class="fr-label" for="nitrates-feedback-consent">
+          J'accepte d'être recontacté à cette adresse. Mon email est conservé
+          seul, sans lien avec mon avis ni ma simulation.
+        </label>
+      </div>
+
+      <p class="nitrates-feedback__rgpd fr-text--xs">
+        Aucune donnée personnelle n'est collectée sur votre simulation&nbsp;:
+        tout est anonymisé. Vos réponses ne sont transmises à aucun organisme
+        régional, externe ni instance de contrôle, quels qu'ils soient.
+      </p>
+
+      <div class="nitrates-feedback__actions">
+        <button type="button"
+                class="fr-btn fr-btn--tertiary-no-outline"
+                data-feedback-dismiss>Non merci</button>
+        <button type="button" class="fr-btn" data-feedback-submit-email disabled>Envoyer mon email</button>
+      </div>
+      <p class="nitrates-feedback__erreur fr-error-text"
+         data-feedback-erreur-email
+         hidden>Une erreur est survenue. Réessayez plus tard.</p>
+    </div>
+
+    {# ── Volet final : remerciement + animation reward ──────────────────── #}
+    <div class="nitrates-feedback__volet" data-feedback-merci hidden>
+      <p class="nitrates-feedback__titre fr-h6">Merci beaucoup&nbsp;!</p>
+      <p>Votre retour nous aide à améliorer l'outil.</p>
+      <div class="nitrates-feedback__reward" data-feedback-reward></div>
+    </div>
+  </div>
+</div>

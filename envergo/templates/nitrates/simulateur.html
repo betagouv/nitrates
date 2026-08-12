@@ -9,6 +9,11 @@
   <link href="{% static_v 'nitrates/home.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/simulateur.css' %}" rel="stylesheet">
+  {% if afficher_resultat and not qc_en_attente %}
+    {# #284 : popup de feedback fin de simulation + animation reward. #}
+    <link href="{% static_v 'nitrates/feedback_popup.css' %}" rel="stylesheet">
+    <link href="{% static_v 'nitrates/feedback_vers.css' %}" rel="stylesheet">
+  {% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -57,6 +62,8 @@
   {# Charge avant simulator.js pour que ses listeners d'events soient prets. #}
   <script defer src="{% static_v 'nitrates/nitrates_analytics.js' %}"></script>
   <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
+  {# #287 : recueil email « prévenez-moi à l'ouverture de ma région » (zone fermée). #}
+  <script defer src="{% static_v 'nitrates/region_alerte.js' %}"></script>
   <script defer src="{% static_v 'nitrates/cascade.js' %}"></script>
   {# Barre de progression du parcours, fixee top (#154). #}
   <script defer src="{% static_v 'nitrates/progress.js' %}"></script>
@@ -81,6 +88,11 @@
     <script defer src="{% static_v 'nitrates/recap_choix.js' %}"></script>
     {# #271 : drawer lateral « Conditions d'epandage » (notes PC + dates ASC). #}
     <script defer src="{% static_v 'nitrates/drawer_conditions.js' %}"></script>
+    {% if not qc_en_attente %}
+      {# #284 : feedback fin de simulation (popup + animation vers). #}
+      <script defer src="{% static_v 'nitrates/feedback_vers.js' %}"></script>
+      <script defer src="{% static_v 'nitrates/feedback_popup.js' %}"></script>
+    {% endif %}
   {% endif %}
 {% endblock %}
 
@@ -163,4 +175,15 @@
     {% endcomment %}
     <p class="fr-text--sm fr-text-mention--grey fr-mt-4w">*Champs obligatoires</p>
   </div>
+
+  {% if afficher_resultat and not qc_en_attente %}
+    {% comment %}
+    #284 : popup de feedback fin de simulation. Rendu seulement sur la page
+    résultat. Le {% templatetag openblock %} csrf_token {% templatetag closeblock %}
+    ci-dessous pose le cookie `csrftoken` que feedback_popup.js lit pour le POST
+    (tout le reste du simulateur est en GET, il n'y avait pas de cookie CSRF).
+    {% endcomment %}
+    {% csrf_token %}
+    {% include "nitrates/fragments/_feedback_popup.html" %}
+  {% endif %}
 {% endblock %}

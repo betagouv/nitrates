@@ -171,7 +171,7 @@
     if (fermee) fermee.hidden = true;
   }
 
-  function afficherMessageFerme(regionLabel, departmentCode) {
+  function afficherMessageFerme(regionLabel, departmentCode, regionCode) {
     const fermee = document.getElementById("form-region-fermee");
     if (!fermee) return;
     const lieu = document.getElementById("form-region-fermee-lieu");
@@ -184,6 +184,13 @@
         lieu.textContent = "votre secteur";
       }
     }
+    // #287 : mémorise la région tentée (envoyée avec l'email d'intérêt) et
+    // réarme le mini-formulaire (au cas où on reclique une autre zone fermée).
+    fermee.setAttribute("data-region-code", regionCode || "");
+    const alerte = fermee.querySelector("[data-region-alerte]");
+    const merci = fermee.querySelector("[data-region-alerte-merci]");
+    if (alerte) alerte.hidden = false;
+    if (merci) merci.hidden = true;
     fermee.hidden = false;
   }
 
@@ -632,7 +639,11 @@
           revealFormAfterLocalisation();
         } else {
           masquerFormulaire();
-          afficherMessageFerme(data.region_label, data.department_code);
+          afficherMessageFerme(
+            data.region_label,
+            data.department_code,
+            data.region_code
+          );
         }
         // Pousse le code INSEE dans le hidden : il sera soumis avec
         // le form et utilise cote backend pour resoudre la zone

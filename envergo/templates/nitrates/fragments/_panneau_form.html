@@ -148,13 +148,51 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
       <section id="form-region-fermee"
                class="form-region-fermee"
                role="status"
-               hidden>
+               hidden
+               data-region-code="">
         <p class="form-region-fermee__titre">
           <span class="form-region-fermee__cadenas" aria-hidden="true">🔒</span>
           Le simulateur n'est pas encore ouvert dans
           <strong id="form-region-fermee-lieu">votre secteur</strong>.
         </p>
         <p class="form-region-fermee__texte">Revenez bientôt&nbsp;: votre secteur sera prochainement pris en charge.</p>
+
+        {% comment %}
+        #287 — Recueil de l'email pour être prévenu à l'ouverture de la région.
+        Génère une liste d'intérêt par région (POST type=interet_region). RGPD :
+        email seul, avec consentement, non associé à des données de simulation.
+        Le {% templatetag openblock %} csrf_token {% templatetag closeblock %}
+        ci-dessous pose le champ + le cookie CSRF pour le POST (le form principal
+        est en method=get, il n'y avait pas de token disponible avant résultat).
+        {% endcomment %}
+        {% csrf_token %}
+        <div class="form-region-fermee__alerte" data-region-alerte>
+          <label class="fr-label" for="form-region-fermee-email">
+            Laissez votre email pour être prévenu(e) à l'ouverture de votre région&nbsp;:
+          </label>
+          <div class="form-region-fermee__ligne">
+            <input type="email"
+                   class="fr-input"
+                   id="form-region-fermee-email"
+                   autocomplete="email"
+                   placeholder="prenom.nom@exemple.fr">
+            <button type="button" class="fr-btn" data-region-alerte-submit disabled>Me prévenir</button>
+          </div>
+          <div class="fr-checkbox-group fr-mt-1w">
+            <input type="checkbox" id="form-region-fermee-consent">
+            <label class="fr-label" for="form-region-fermee-consent">
+              J'accepte d'être recontacté(e) à cette adresse. Mon email est
+              conservé seul, sans lien avec ma simulation, et n'est transmis à
+              aucun organisme tiers.
+            </label>
+          </div>
+          <p class="fr-error-text fr-mt-1w" data-region-alerte-erreur hidden>
+            Votre email n'a pas pu être enregistré. Vérifiez son format et réessayez.
+          </p>
+        </div>
+        <p class="form-region-fermee__merci" data-region-alerte-merci hidden>
+          Merci&nbsp;! Nous vous préviendrons dès l'ouverture. 🌱
+        </p>
       </section>
 
       {% comment %}

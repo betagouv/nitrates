@@ -958,6 +958,70 @@ body {
   color: #45474d;
 }
 
+/* #287 — Recueil d'email « prévenez-moi à l'ouverture de ma région ». */
+.form-region-fermee__alerte {
+  padding-left: 2rem;
+  margin-top: 1.5rem;
+}
+
+.form-region-fermee__alerte .fr-label {
+  margin-bottom: 0.5rem;
+}
+
+.form-region-fermee__ligne {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.form-region-fermee__ligne .fr-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.form-region-fermee__ligne .fr-btn {
+  flex: 0 0 auto;
+}
+
+/* Case de consentement : taille normale (sans le CSS DSFR complet, la case
+   pouvait s'étirer). On borne la case et on aère le label. */
+.form-region-fermee__alerte .fr-checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-region-fermee__alerte .fr-checkbox-group input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+}
+
+.form-region-fermee__alerte .fr-checkbox-group .fr-label {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-mention-grey, #666);
+}
+
+/* Le message d'erreur porte la classe DSFR fr-error-text qui force un display :
+   ça écrasait l'attribut [hidden] -> l'erreur s'affichait tout le temps. On
+   rétablit la priorité de [hidden]. */
+.form-region-fermee__alerte [hidden] {
+  display: none !important;
+}
+
+.form-region-fermee__merci {
+  padding-left: 2rem;
+  margin-top: 1.25rem;
+  font-weight: 700;
+  color: var(--text-default-success, #18753c);
+}
+
 /* Plafond d'azote : encart DSFR avec la valeur chiffree mise en avant
    (cf. retour Max 2026-06-18 : le plafond etait plaque en texte brut). */
 .nitrates-plafond__valeur {
