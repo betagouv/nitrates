@@ -416,14 +416,14 @@ def test_referentiel_expose_zone_application():
 
 
 def test_data_migration_parse_identifiants():
-    """La fonction de la migration 0030 remplit scope/région/liens depuis
+    """La fonction de la migration 0031 remplit scope/région/liens depuis
     les conventions de nommage, et normalise la casse."""
     import importlib
 
     from django.apps import apps
 
     mig = importlib.import_module(
-        "envergo.nitrates.migrations.0030_codeprescription_remplir_zone_application"
+        "envergo.nitrates.migrations.0031_codeprescription_remplir_zone_application"
     )
 
     CodePrescription.objects.create(identifiant="pc77", texte_court="t")

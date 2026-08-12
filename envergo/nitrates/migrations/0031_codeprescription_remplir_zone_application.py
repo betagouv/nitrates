@@ -87,7 +87,7 @@ def noop(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("nitrates", "0029_codeprescription_zone_application"),
+        ("nitrates", "0030_codeprescription_zone_application"),
     ]
 
     operations = [

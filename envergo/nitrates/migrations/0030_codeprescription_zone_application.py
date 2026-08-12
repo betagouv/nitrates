@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0028_codeprescription_plafond"),
+        ("nitrates", "0029_retourutilisateur"),
     ]
 
     operations = [
