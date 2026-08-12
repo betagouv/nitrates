@@ -77,6 +77,28 @@
   padding-right: 0.75rem;
 }
 
+/* ── Tableau (types de fertilisants) ──────────────────────────────────── */
+
+/* Retour Max (batch 3) : PAS de scroll horizontal, le tableau tient dans la
+ * colonne de contenu. On réactive le retour à la ligne dans les cellules
+ * (le DSFR met white-space: nowrap par défaut) : l'auto-layout redistribue
+ * alors les largeurs, la colonne Exemples (contenu le plus long) récupère
+ * la place gagnée sur Caractéristiques. */
+.definitions-page .fr-table table {
+  width: 100%;
+}
+
+.definitions-page .fr-table th,
+.definitions-page .fr-table td {
+  white-space: normal;
+}
+
+/* La colonne Type reste étroite (codes courts : 0, Ia, Ib, II, III). */
+.definitions-page .fr-table th:first-child,
+.definitions-page .fr-table td:first-child {
+  width: 4.5rem;
+}
+
 /* ── Sommaire ─────────────────────────────────────────────────────────── */
 
 /* En desktop le sommaire reste visible pendant le scroll (fr-sidemenu--sticky

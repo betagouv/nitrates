@@ -102,6 +102,17 @@
   font-size: 0.925rem;
 }
 
+/* Tableau dans la carte (380px) : cellules qui wrappent plutôt qu'un scroll
+ * horizontal (même retour que sur la page définitions). */
+.def-carte__corps .fr-table table {
+  width: 100%;
+}
+
+.def-carte__corps .fr-table th,
+.def-carte__corps .fr-table td {
+  white-space: normal;
+}
+
 /* En mobile, la carte prend la largeur de l'écran (moins les marges). */
 @media (width < 576px) {
   .def-carte {
