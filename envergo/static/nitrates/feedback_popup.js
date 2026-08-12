@@ -235,7 +235,6 @@
     // atteinte ET onglet visible -> ouverture (sinon au retour sur l'onglet).
     var echeance = Date.now() + DELAI_INACTION_MS;
     var pollTimer = null;
-    var nbClics = 0;
 
     // Tout clic RÉARME le compteur (sauf une fois la popup ouverte : les clics
     // dans la popup ne doivent pas repousser une échéance déjà consommée).
@@ -243,41 +242,22 @@
       "click",
       function () {
         if (traite || ouvert) return;
-        nbClics += 1;
         echeance = Date.now() + DELAI_INACTION_MS;
       },
       true
     );
 
-    function debug(restantMs, etat) {
-      if (!DEBUG) return;
-      majDebugPanel({
-        restant: Math.max(0, Math.ceil(restantMs / 1000)),
-        visible: document.visibilityState,
-        clics: nbClics,
-        traite: traite,
-        etat: etat,
-      });
-    }
-
     function tick() {
       var restant = echeance - Date.now();
       if (traite || dejaTraite()) {
-        debug(restant, "déjà traité — stop");
         window.clearInterval(pollTimer);
         return;
       }
-      if (restant <= 0) {
-        if (document.visibilityState === "visible") {
-          debug(0, "échéance atteinte → OUVERTURE");
-          window.clearInterval(pollTimer);
-          ouvrir();
-        } else {
-          // échéance atteinte mais onglet masqué : on attend le retour.
-          debug(0, "échéance atteinte, onglet masqué → attente retour");
-        }
-      } else {
-        debug(restant, "inaction (compte à rebours)");
+      // Échéance atteinte + onglet visible -> ouverture. Onglet masqué : on
+      // attend le retour (cf. visibilitychange ci-dessous).
+      if (restant <= 0 && document.visibilityState === "visible") {
+        window.clearInterval(pollTimer);
+        ouvrir();
       }
     }
 
@@ -290,7 +270,6 @@
         !dejaTraite() &&
         Date.now() >= echeance
       ) {
-        debug(0, "retour onglet, échéance passée → OUVERTURE");
         window.clearInterval(pollTimer);
         ouvrir();
       }
@@ -298,59 +277,6 @@
 
     pollTimer = window.setInterval(tick, 1000);
     tick();
-  }
-
-  // ── Mini panneau de debug (TEMPORAIRE, retiré en fin de dev) ──────────────
-  // Activé si DEBUG=true (constante ci-dessous). Affiche à droite, hors flux,
-  // le compteur restant + l'état des triggers. À SUPPRIMER avec le reste.
-  var DEBUG = true;
-  var debugPanel = null;
-  var debugInfoEl = null;
-  function majDebugPanel(info) {
-    if (!debugPanel) {
-      debugPanel = document.createElement("div");
-      debugPanel.id = "nitrates-feedback-debug";
-      debugPanel.style.cssText =
-        "position:fixed;top:80px;right:8px;z-index:3000;" +
-        "background:#161616;color:#0f0;font:12px/1.5 monospace;" +
-        "padding:8px 10px;border-radius:6px;max-width:240px;" +
-        "box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:.94";
-      debugInfoEl = document.createElement("div");
-      debugInfoEl.style.pointerEvents = "none";
-      var resetBtn = document.createElement("button");
-      resetBtn.textContent = "↻ Reset (rejouer)";
-      resetBtn.style.cssText =
-        "margin-top:6px;width:100%;cursor:pointer;background:#0f0;color:#161616;" +
-        "border:0;border-radius:4px;font:11px monospace;padding:4px;font-weight:700";
-      resetBtn.addEventListener("click", function () {
-        try {
-          window.localStorage.removeItem(STORAGE_KEY);
-        } catch (e) {
-          /* ignore */
-        }
-        window.location.reload();
-      });
-      debugPanel.appendChild(debugInfoEl);
-      debugPanel.appendChild(resetBtn);
-      document.body.appendChild(debugPanel);
-    }
-    debugInfoEl.innerHTML =
-      "<b>DEBUG feedback #284</b><br>" +
-      "règle : 15 s sans clic<br>" +
-      "restant : <b>" +
-      info.restant +
-      " s</b><br>" +
-      "clics (réarme) : " +
-      info.clics +
-      "<br>" +
-      "onglet : " +
-      info.visible +
-      "<br>" +
-      "traité (localStorage) : " +
-      info.traite +
-      "<br>" +
-      "état : " +
-      info.etat;
   }
 
   // Robuste au chargement `defer` : si le DOM est déjà prêt (DOMContentLoaded
