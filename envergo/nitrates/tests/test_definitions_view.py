@@ -117,6 +117,22 @@ def test_accordeons_id_prefix_par_definition(client, nitrates_site):
     assert 'id="def-epandage-accordion-1"' in html
 
 
+def test_nav_onglets_presente_et_active(client, nitrates_site):
+    # Barre d'onglets héritée par toutes les pages nitrates ; aria-current
+    # sur l'onglet correspondant à la page.
+    html_home = client.get("/").content.decode()
+    assert 'aria-label="Menu principal"' in html_home
+    assert "Aide & définitions" in html_home
+
+    html_defs = client.get("/definitions/").content.decode()
+    assert 'aria-label="Menu principal"' in html_defs
+    # L'onglet actif de /definitions/ est « Aide & définitions ».
+    assert 'aria-current="page">Aide & définitions</a>' in html_defs
+    assert 'aria-current="page">Simulateur</a>' not in html_defs
+    # Et inversement sur la home.
+    assert 'aria-current="page">Simulateur</a>' in html_home
+
+
 def test_exemption_lockdown_root_ouvert(client, nitrates_site, settings):
     # LE piège silencieux : sans exemption, OK en local mais redirect login
     # sur staging public (lockdown ProConnect).

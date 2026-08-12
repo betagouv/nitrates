@@ -1,5 +1,7 @@
 {% extends "multisite_base.html" %}
 
+{% load nitrates_tags %}
+
 {% block app_title %}
   {% block title %}
   {% endblock title %}
@@ -10,6 +12,26 @@
 
 {% block include_header %}
   {% include 'nitrates/_header.html' %}
+{% endblock %}
+
+{% comment %}
+Barre d'onglets Simulateur | Aide & définitions (carte #110), rendue APRÈS
+les deux headers de multisite_base ({{ block.super }}) pour ne pas perturber
+l'IntersectionObserver qui observe .fr-header.header-legacy (sticky slim).
+Héritée par toutes les pages nitrates.
+{% endcomment %}
+{% block header %}
+  {{ block.super }}
+  {% include 'nitrates/_nav.html' %}
+{% endblock %}
+
+{% comment %}
+nav.css chargé via site_css (toutes les pages nitrates, pas seulement le
+simulateur). static_v : cache-busting en dev (cf. nitrates_tags).
+{% endcomment %}
+{% block site_css %}
+  {{ block.super }}
+  <link href="{% static_v 'nitrates/nav.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block footer %}
