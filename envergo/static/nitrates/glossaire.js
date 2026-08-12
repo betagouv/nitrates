@@ -115,6 +115,9 @@
     ".fr-label",
     ".fr-hint-text",
     ".contenu-rich",
+    // Drawer « Conditions d'épandage » : les textes PC hors contenu riche
+    // (texte_court legacy, notes) contiennent aussi des termes (batch 2).
+    ".drawer-conditions__panel",
   ].join(", ");
 
   // Balises dont on ne traverse JAMAIS le contenu.
@@ -229,6 +232,11 @@
     const el = carte();
     const def = GLOSSAIRE.defs[cle];
     if (!el || !def) return;
+    // Ré-ouverture sur un autre terme : détacher le suivi scroll précédent.
+    if (el._detacherSuivi) {
+      el._detacherSuivi();
+      el._detacherSuivi = null;
+    }
     // Reparentage sous <body> : la carte est fixed et serait clippée par
     // .results-row { overflow: clip } (cf. drawer_conditions.js).
     if (el.parentNode !== document.body) document.body.appendChild(el);
@@ -238,8 +246,49 @@
     el.querySelector(".def-carte__corps").innerHTML = def.html;
     const lien = el.querySelector("#def-carte-toutes");
     lien.href = GLOSSAIRE.url_definitions + "#" + def.ancre;
-    el.style.top = 16 + hauteurBandeau() + "px";
+    // Depuis le drawer conditions (ancré à droite) : la carte arrive par la
+    // GAUCHE, sinon elle serait posée sur le drawer (batch 2).
+    const dansDrawer = !!(
+      declencheur &&
+      declencheur.closest &&
+      declencheur.closest(".drawer-conditions__panel")
+    );
+    el.classList.toggle("def-carte--gauche", dansDrawer);
+    // Position verticale : au niveau du terme cliqué (Loom Coralie), bornée
+    // au viewport. Il faut la hauteur réelle -> dévoiler d'abord (opacité 0
+    // tant que --ouverte n'est pas posée, pas de flash).
     el.hidden = false;
+    function positionner() {
+      const minTop = 16 + hauteurBandeau();
+      let top = minTop;
+      if (declencheur && declencheur.getBoundingClientRect) {
+        top = declencheur.getBoundingClientRect().top - 8;
+      }
+      const maxTop = Math.max(
+        minTop,
+        window.innerHeight - el.offsetHeight - 16
+      );
+      el.style.top = Math.min(Math.max(top, minTop), maxTop) + "px";
+    }
+    positionner();
+    // La carte reste calée au niveau du terme tant qu'elle est ouverte : la
+    // page peut encore bouger APRÈS l'ouverture (autoscrolls du parcours,
+    // scroll utilisateur) et une position figée se retrouvait décorrélée du
+    // terme cliqué. Suivi passif throttlé rAF, détaché à la fermeture.
+    let rafSuivi = false;
+    function suivre() {
+      if (rafSuivi) return;
+      rafSuivi = true;
+      requestAnimationFrame(function () {
+        rafSuivi = false;
+        // Terme retiré du DOM (re-rendu cascade) : on garde la position.
+        if (declencheur && document.contains(declencheur)) positionner();
+      });
+    }
+    window.addEventListener("scroll", suivre, { passive: true });
+    el._detacherSuivi = function () {
+      window.removeEventListener("scroll", suivre);
+    };
     void el.offsetWidth; // reflow avant la classe pour jouer la transition
     el.classList.add("def-carte--ouverte");
     carteOuverte = { declencheur: declencheur };
@@ -252,6 +301,10 @@
     if (!el || !carteOuverte) return;
     const declencheur = carteOuverte.declencheur;
     carteOuverte = null;
+    if (el._detacherSuivi) {
+      el._detacherSuivi();
+      el._detacherSuivi = null;
+    }
     el.classList.remove("def-carte--ouverte");
     el.hidden = true;
     // Restitue le focus au terme cliqué (accessibilité), s'il est toujours là.

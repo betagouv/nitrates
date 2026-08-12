@@ -21,10 +21,29 @@
   padding-bottom: 0.75rem;
 }
 
-/* L'icône DSFR hérite de la couleur du texte via mask ; on la teinte bleu
- * France comme les pictos du design. */
+/* Pictos SVG exportés du Figma de la designeuse (palette DSFR embarquée
+ * dans le fichier : bleu France / rouge Marianne / violet clair). */
 .definitions-section__icone {
-  color: var(--text-title-blue-france);
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+}
+
+/* ── Scrollspy du sommaire (batch 2) ──────────────────────────────────── */
+
+/* Entrée active du sommaire : liseré + texte dans le violet du parcours
+ * (même teinte que la barre de progression #154). aria-current est posé par
+ * definitions.js ; on surcharge le style actif DSFR (bleu France) du
+ * sidemenu, uniquement sur cette page. */
+.definitions-page .fr-sidemenu__link[aria-current] {
+  color: #6a6af5;
+  box-shadow: inset 2px 0 0 0 #6a6af5;
+  font-weight: 700;
+}
+
+[data-fr-theme="dark"] .definitions-page .fr-sidemenu__link[aria-current] {
+  color: #8585f6;
+  box-shadow: inset 2px 0 0 0 #8585f6;
 }
 
 /* ── Définition ───────────────────────────────────────────────────────── */

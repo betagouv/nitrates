@@ -192,6 +192,12 @@ contenus:
   - type Ib
   - type II
   - type III
+  # Graphies des textes PC réglementaires (drawer conditions) : « type I.a »
+  # et les énumérations « de types 0, I.a, I.b et II » où I.a/I.b sont seuls.
+  - type I.a
+  - type I.b
+  - I.a
+  - I.b
   schema: 1
   blocs:
   - type: tableau

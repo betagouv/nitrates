@@ -6,11 +6,12 @@
 
 /* Souligné pointillé + icône ⓘ (design Coralie). border-bottom plutôt que
  * text-decoration : le style lien DSFR est porté par background-image, on le
- * neutralise pour ne pas cumuler deux soulignés. */
+ * neutralise pour ne pas cumuler deux soulignés. Texte en bleu lien (batch 2 :
+ * l'affordance « c'est cliquable » doit se voir sans survol). */
 .def-terme {
   background-image: none;
   border-bottom: 1px dashed currentcolor;
-  color: inherit;
+  color: var(--text-action-high-blue-france);
   cursor: pointer;
 }
 
@@ -26,15 +27,13 @@
   mask-size: 100% 100%;
 }
 
-.def-terme:hover {
-  color: var(--text-action-high-blue-france);
-}
-
 /* Variante « dans un label radio » : le TEXTE du terme reste un simple span
  * souligné pointillé (cliquer dessus coche le radio, comportement label
- * normal) ; SEULE l'icône ⓘ accolée est le lien qui ouvre la définition. */
+ * normal) ; SEULE l'icône ⓘ accolée est le lien qui ouvre la définition.
+ * Même bleu lien que .def-terme (batch 2). */
 .def-terme-libelle {
   border-bottom: 1px dashed currentcolor;
+  color: var(--text-action-high-blue-france);
 }
 
 .def-terme--icone {
@@ -50,6 +49,10 @@
 
 /* ── Carte flottante ──────────────────────────────────────────────────── */
 
+/* Positionnée en JS au niveau vertical du terme cliqué (batch 2, Loom
+ * Coralie) ; slide-in par la droite un peu plus lent. Passe AU-DESSUS du
+ * drawer conditions (z-index 2000) : sans ça, une définition ouverte depuis
+ * le drawer était invisible derrière lui. */
 .def-carte {
   position: fixed;
   right: 16px;
@@ -57,17 +60,25 @@
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 96px);
   overflow-y: auto;
-  z-index: 1200; /* au-dessus du contenu, sous les modales DSFR (1750) */
+  z-index: 2100;
   padding: 1.25rem;
   background-color: var(--background-default-grey);
   border-left: 4px solid var(--border-active-blue-france);
   border-radius: 0.25rem;
   box-shadow: 0 6px 18px rgb(0 0 18 / 16%);
-  transform: translateX(24px);
+  transform: translateX(48px);
   opacity: 0;
   transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+}
+
+/* Variante « depuis le drawer » : le drawer occupe la droite -> la carte
+ * arrive par la GAUCHE pour rester lisible à côté de lui. */
+.def-carte--gauche {
+  right: auto;
+  left: 16px;
+  transform: translateX(-48px);
 }
 
 .def-carte--ouverte {

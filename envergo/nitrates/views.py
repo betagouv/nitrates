@@ -115,14 +115,13 @@ class AideDefinitionsView(View):
             else:
                 sans_categorie.append(entree)
 
-        # Icônes DSFR par section (classes fr-icon-* du set utility
-        # icons.main.css chargé par multisite_base — vérifier la dispo avant
-        # d'en changer, le set est un sous-ensemble de Remix Icon).
+        # Pictos SVG de la designeuse (batch 2 #110) : fichiers exportés du
+        # Figma, palette DSFR (#000091 / #E1000F / #ECECFE), rendus en <img>.
         icones = {
-            "fertilisants-effluents": "fr-icon-leaf-line",
-            "azote-bilans": "fr-icon-drop-line",
-            "pratique-documents": "fr-icon-draft-line",
-            "reglementation-zonage": "fr-icon-france-line",
+            "fertilisants-effluents": "nitrates/icones_definitions/leaf.svg",
+            "azote-bilans": "nitrates/icones_definitions/environment.svg",
+            "pratique-documents": "nitrates/icones_definitions/document.svg",
+            "reglementation-zonage": "nitrates/icones_definitions/map.svg",
         }
         sections = [
             {

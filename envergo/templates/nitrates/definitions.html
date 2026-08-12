@@ -12,6 +12,11 @@
   <link href="{% static_v 'nitrates/definitions.css' %}" rel="stylesheet">
 {% endblock %}
 
+{% block extra_js %}
+  {# Scrollspy du sommaire (batch 2 #110) #}
+  <script defer src="{% static_v 'nitrates/definitions.js' %}"></script>
+{% endblock %}
+
 {% block content %}
   <div class="fr-container definitions-page">
 
@@ -84,8 +89,12 @@
           <section id="section-{{ section.code }}" class="definitions-section">
             <h2 class="definitions-section__titre">
               {% if section.icone %}
-                <span class="{{ section.icone }} definitions-section__icone"
-                      aria-hidden="true"></span>
+                <img class="definitions-section__icone"
+                     src="{% static section.icone %}"
+                     alt=""
+                     aria-hidden="true"
+                     width="43"
+                     height="43">
               {% endif %}
               {{ section.titre }}
             </h2>
