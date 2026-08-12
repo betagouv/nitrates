@@ -1,15 +1,16 @@
 /* #284 — Popup de feedback fin de simulation.
  *
- * Déclenchement (SIMPLE, décision Max 2026-08-12) :
+ * Déclenchement (décision Max 2026-08-12) :
  *   - une seule fois par visiteur (flag localStorage : traité -> plus jamais) ;
  *   - seulement sur la page résultat (le fragment #nitrates-feedback n'y est
  *     rendu que là) ;
- *   - dès qu'un premier résultat est affiché, on attend DELAI_AFFICHAGE_MS puis
- *     on affiche la popup. Le compteur tourne en temps RÉEL (Date.now), il ne se
- *     remet pas à zéro quand l'utilisateur change d'onglet. On évite juste de
- *     faire apparaître la popup PENDANT que l'onglet est masqué : si l'échéance
- *     tombe alors que l'onglet est en arrière-plan, on montre la popup à son
- *     retour (visibilitychange).
+ *   - « inaction » = pas de CLIC (le scroll et les mouvements de souris ne
+ *     comptent PAS : on peut lire/scroller, ça reste de l'inaction). Le compteur
+ *     démarre à l'affichage du résultat et se remet à zéro UNIQUEMENT sur un
+ *     clic. Après DELAI_INACTION_MS sans clic -> on ouvre la popup ;
+ *   - le compteur tourne en temps réel : un changement d'onglet ne le remet pas
+ *     à zéro. Si l'échéance tombe onglet masqué, on ouvre au retour (jamais dans
+ *     le dos de l'utilisateur).
  *
  * Envoi : POST JSON /api/retour/ avec token CSRF. Succès -> écran de
  * remerciement + animation « vers contents » (feedback_vers.js).
@@ -18,7 +19,7 @@
   "use strict";
 
   var STORAGE_KEY = "nitrates_feedback_v1"; // présence = déjà traité
-  var DELAI_AFFICHAGE_MS = 20000; // 20 s après l'affichage du résultat
+  var DELAI_INACTION_MS = 15000; // 15 s sans clic après l'affichage du résultat
 
   function dejaTraite() {
     try {
@@ -226,19 +227,34 @@
         });
     });
 
-    // ── Déclenchement (simple) : échéance = maintenant + DELAI_AFFICHAGE_MS ──
-    // Le compteur tourne en temps réel (horloge), il n'est PAS remis à zéro par
-    // un changement d'onglet. On poll chaque seconde : dès que l'échéance est
-    // atteinte ET que l'onglet est visible, on ouvre. Si l'échéance tombe onglet
-    // masqué, on ouvre à son retour (on ne pop pas dans le dos de l'utilisateur).
-    var echeance = Date.now() + DELAI_AFFICHAGE_MS;
+    // ── Déclenchement : échéance = dernier clic + DELAI_INACTION_MS ─────────
+    // « Inaction » = pas de clic. Le scroll et les mouvements de souris ne
+    // comptent PAS (on peut lire/scroller sans réarmer). Seul un CLIC recale
+    // l'échéance. Le compteur tourne en temps réel (horloge) : un changement
+    // d'onglet ne le remet pas à zéro. On poll chaque seconde ; dès l'échéance
+    // atteinte ET onglet visible -> ouverture (sinon au retour sur l'onglet).
+    var echeance = Date.now() + DELAI_INACTION_MS;
     var pollTimer = null;
+    var nbClics = 0;
+
+    // Tout clic RÉARME le compteur (sauf une fois la popup ouverte : les clics
+    // dans la popup ne doivent pas repousser une échéance déjà consommée).
+    document.addEventListener(
+      "click",
+      function () {
+        if (traite || ouvert) return;
+        nbClics += 1;
+        echeance = Date.now() + DELAI_INACTION_MS;
+      },
+      true
+    );
 
     function debug(restantMs, etat) {
       if (!DEBUG) return;
       majDebugPanel({
         restant: Math.max(0, Math.ceil(restantMs / 1000)),
         visible: document.visibilityState,
+        clics: nbClics,
         traite: traite,
         etat: etat,
       });
@@ -261,7 +277,7 @@
           debug(0, "échéance atteinte, onglet masqué → attente retour");
         }
       } else {
-        debug(restant, "compte à rebours");
+        debug(restant, "inaction (compte à rebours)");
       }
     }
 
@@ -302,10 +318,13 @@
     }
     debugPanel.innerHTML =
       "<b>DEBUG feedback #284</b><br>" +
-      "délai : 20 s après résultat<br>" +
+      "règle : 15 s sans clic<br>" +
       "restant : <b>" +
       info.restant +
       " s</b><br>" +
+      "clics (réarme) : " +
+      info.clics +
+      "<br>" +
       "onglet : " +
       info.visible +
       "<br>" +
