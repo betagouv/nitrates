@@ -20,14 +20,26 @@ régions, catégories fertilisants) sont dans `constants.py` comme
 choices Python.
 """
 
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import Q
 
 from envergo.nitrates.constants import (
+    SCOPE_CHOICES,
+    SCOPE_NATIONAL,
     CategorieFertilisant,
     OccupationSol,
     TypeFertilisant,
 )
+from envergo.nitrates.regions import REGIONS
+
+# Choices lisibles pour le code region INSEE des declinaisons de PC (meme
+# convention que DecisionTree.region_code et catalog["region_code"] : code
+# sans prefixe R, ex "44"). Le libelle n'est que du confort admin.
+REGION_CODE_CHOICES = [
+    (code, f"{label} ({code})") for code, label in sorted(REGIONS.items())
+]
 
 # ─── Support clefs naturelles (seed fixture idempotent, #226) ─────────────────
 #
@@ -284,10 +296,25 @@ class NoteReglementaire(_NaturalKeyByIdentifiant):
 
 
 class CodePrescription(_NaturalKeyByIdentifiant):
-    """Code de prescription PC (pc1 à pc16) référencé par les feuilles
-    de l'arbre de décision."""
+    """Code de prescription PC référencé par les feuilles de l'arbre de
+    décision.
 
-    identifiant = models.SlugField(max_length=16, unique=True)
+    Depuis #147, la table porte aussi les DÉCLINAISONS géographiques et les
+    FUSIONS rédigées par les juristes, sélectionnées par le moteur (cf.
+    `yaml_tree/prescriptions.py`) :
+
+      - une feuille d'arbre ne référence que des codes de BASE (pc1, pc12…) ;
+      - la déclinaison affichée (ex pc12_zar_ge) est résolue selon la géo de
+        la parcelle (zar > region > national, fallback base), même modèle que
+        la sélection d'arbres — et indépendamment de l'arbre qui a matché :
+        une feuille PAN atteinte par fallback de cascade en Grand Est doit
+        afficher la version Grand Est de la PC ;
+      - quand tous les composants d'une fusion (ex pc1_pc12 = pc1 + pc12)
+        sont présents sur une feuille, la fusion remplace ses composants,
+        puis est déclinée géographiquement comme les autres.
+    """
+
+    identifiant = models.SlugField(max_length=32, unique=True)
     mots_cles = models.CharField(max_length=255, blank=True)
     texte_court = models.TextField(
         help_text="Rédaction simplifiée pour affichage utilisateur."
@@ -341,12 +368,114 @@ class CodePrescription(_NaturalKeyByIdentifiant):
             "toujours une note attachée."
         ),
     )
+    # ─── Zone d'application (sélection scope + région, #147) ──────────────
+    scope = models.CharField(
+        "Périmètre",
+        max_length=16,
+        choices=SCOPE_CHOICES,
+        default=SCOPE_NATIONAL,
+        help_text=(
+            "Territoire où cette rédaction s'applique. Le moteur choisit, "
+            "parmi une PC de base et ses déclinaisons, celle du périmètre "
+            "le plus spécifique activé pour la parcelle (ZAR > PAR > PAN)."
+        ),
+    )
+    region_code = models.CharField(
+        "Région",
+        max_length=3,
+        blank=True,
+        default="",
+        choices=REGION_CODE_CHOICES,
+        help_text="Requis pour un périmètre régional (PAR) ou ZAR.",
+    )
+    variante_de = models.ForeignKey(
+        "self",
+        verbose_name="Déclinaison de",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="variantes",
+        limit_choices_to={"variante_de__isnull": True},
+        help_text=(
+            "PC de base dont cette ligne est la déclinaison géographique "
+            "(ex pc12_zar_ge → pc12). Vide pour une PC de base."
+        ),
+    )
+    composants_fusion = models.ManyToManyField(
+        "self",
+        verbose_name="Fusion des PC",
+        symmetrical=False,
+        blank=True,
+        related_name="fusions",
+        help_text=(
+            "PC de base que cette rédaction fusionne (ex pc1_pc12 = pc1 + "
+            "pc12). Quand une feuille d'arbre liste tous les composants, la "
+            "fusion s'affiche à leur place. Vide pour une PC simple."
+        ),
+    )
     ordre_affichage = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ("ordre_affichage", "identifiant")
         verbose_name = "Code de prescription"
         verbose_name_plural = "Codes de prescription"
+        constraints = [
+            # Cohérence scope / région : une PC nationale n'a pas de région,
+            # une déclinaison PAR ou ZAR en a forcément une.
+            models.CheckConstraint(
+                check=(
+                    Q(scope=SCOPE_NATIONAL, region_code="")
+                    | (~Q(scope=SCOPE_NATIONAL) & ~Q(region_code=""))
+                ),
+                name="codeprescription_scope_region_coherents",
+                violation_error_message=(
+                    "Une PC nationale ne porte pas de région ; une PC "
+                    "régionale ou ZAR doit en porter une."
+                ),
+            ),
+            # Une seule déclinaison d'une PC de base par zone d'application.
+            models.UniqueConstraint(
+                fields=["variante_de", "scope", "region_code"],
+                condition=Q(variante_de__isnull=False),
+                name="codeprescription_unique_variante_par_zone",
+                violation_error_message=(
+                    "Cette PC de base a déjà une déclinaison pour cette "
+                    "zone d'application."
+                ),
+            ),
+        ]
+
+    def clean(self):
+        """Cohérence déclarative de la zone d'application (#147).
+
+        Appelé par full_clean()/forms admin. Les garanties d'unicité et la
+        cohérence scope/région sont aussi tenues par les contraintes DB.
+        La cohérence des composants de fusion (M2M) est validée côté form
+        admin (pas accessible ici avant save).
+        """
+        super().clean()
+        if self.scope == SCOPE_NATIONAL:
+            if self.region_code:
+                raise ValidationError(
+                    "Une PC nationale (PAN) ne doit pas porter de code région."
+                )
+        elif not self.region_code:
+            raise ValidationError(
+                "Une PC régionale (PAR) ou ZAR doit porter un code région."
+            )
+        if self.variante_de_id is not None:
+            if self.variante_de_id == self.pk:
+                raise ValidationError("Une PC ne peut pas être sa propre déclinaison.")
+            if self.scope == SCOPE_NATIONAL:
+                raise ValidationError(
+                    "Une déclinaison porte un périmètre régional ou ZAR "
+                    "(la version nationale EST la PC de base)."
+                )
+            if self.variante_de.variante_de_id is not None:
+                raise ValidationError(
+                    "Une déclinaison doit pointer une PC de base (pas de "
+                    "chaîne de déclinaisons)."
+                )
 
     def __str__(self):
         return f"{self.identifiant.upper()} — {self.mots_cles}"

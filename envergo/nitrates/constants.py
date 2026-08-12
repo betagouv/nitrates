@@ -80,3 +80,26 @@ REGIONS_FR = {
     "R93": "Provence-Alpes-Côte d'Azur",
     "R94": "Corse",
 }
+
+
+# ─── Périmètre d'application (sélection scope + région) ──────────────────────
+#
+# Zone d'activation déclarative PARTAGÉE entre les arbres de décision
+# (`DecisionTree`) et les codes de prescription (`CodePrescription`, carte
+# #147) : parmi les candidats activés pour un point donné, celui de poids
+# MAX gagne. Trous volontaires dans les poids pour insérer un scope
+# intermédiaire (ex département) plus tard sans rejouer l'existant.
+
+SCOPE_NATIONAL = "national"
+SCOPE_REGION = "region"
+SCOPE_ZAR = "zar"
+SCOPE_CHOICES = [
+    (SCOPE_NATIONAL, "National (PAN)"),
+    (SCOPE_REGION, "Régional (PAR)"),
+    (SCOPE_ZAR, "Zone d'action renforcée (ZAR)"),
+]
+SCOPE_WEIGHT = {
+    SCOPE_NATIONAL: 1,
+    SCOPE_REGION: 10,
+    SCOPE_ZAR: 20,
+}

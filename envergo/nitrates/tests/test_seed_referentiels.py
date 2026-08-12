@@ -36,6 +36,9 @@ def _seed():
 
 def _reset():
     """Vide les 7 tables pour partir d'une base propre."""
+    # Les déclinaisons géographiques (#147) protègent leur PC de base
+    # (variante_de PROTECT) : on les supprime d'abord.
+    CodePrescription.objects.exclude(variante_de__isnull=True).delete()
     CodePrescription.objects.all().delete()
     NoteReglementaire.objects.all().delete()
     EvenementPhenologique.objects.all().delete()
@@ -67,7 +70,9 @@ def test_seed_produit_volumes_attendus():
     # fertilisants" (options "Autre de type X" de la colonne Digestats).
     assert Fertilisant.objects.count() == 33
     assert NoteReglementaire.objects.count() == 13
-    assert CodePrescription.objects.count() == 17
+    # 49 depuis #147 : 17 PC de base + déclinaisons géographiques (_ge,
+    # _zar_ge, _hdf) + fusions (pc1_pc12...) rédigées par les juristes.
+    assert CodePrescription.objects.count() == 49
     assert EvenementPhenologique.objects.count() == 6
 
 

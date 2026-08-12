@@ -10,6 +10,8 @@ Modules :
     validator   : checks semantiques en plus du schema (id unique, renvois,
                   references referentiels, etc.)
     parcours    : descente stateless de l'arbre depuis un contexte de reponses
+    prescriptions : selection des codes de prescription applicables
+                  (fusions + declinaisons geographiques, #147)
 """
 
 from envergo.nitrates.yaml_tree.loader import load_arbre, load_referentiels
@@ -36,6 +38,7 @@ from envergo.nitrates.yaml_tree.parcours import (
     collecter_qc_du_chemin,
     parcours,
 )
+from envergo.nitrates.yaml_tree.prescriptions import resoudre_codes_prescription
 from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
 
 __all__ = [
@@ -55,6 +58,7 @@ __all__ = [
     "validate_arbre",
     "ValidationError",
     "parcours",
+    "resoudre_codes_prescription",
     "Resultat",
     "QuestionsSubsidiaires",
     "QuestionFormulaire",

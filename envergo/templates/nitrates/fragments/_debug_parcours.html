@@ -50,6 +50,22 @@ moulinette, request (pour draft_tree_id).
           <code>—</code>
         {% endfor %}
       </dd>
+      {% comment %}
+      Sélection géo des PC (#147) : la feuille porte des codes de base, la
+      rédaction affichée (fusion + déclinaison PAR/ZAR) dépend de la géo de
+      la parcelle. On trace la transformation quand elle a eu lieu.
+      {% endcomment %}
+      {% if ev.pc_resolution and ev.pc_resolution.feuille != ev.pc_resolution.affiches %}
+        <dt>sélection PC (géo)</dt>
+        <dd>
+          <code>{{ ev.pc_resolution.feuille|join:", " }}</code>
+          → <code>{{ ev.pc_resolution.affiches|join:", " }}</code>
+          <br>
+          (région {{ ev.pc_resolution.region_code|default:"?" }}
+          {% if ev.pc_resolution.en_zar %}, en ZAR{% endif %}
+          )
+        </dd>
+      {% endif %}
       {% comment %}Texte libre du YAML (message / texte) : affiche ici (#85) -- il ne s'affiche plus au-dessus du calendrier.{% endcomment %}
       {% if ev.regle.message or ev.regle.texte %}
         <dt>message / texte (YAML)</dt>
