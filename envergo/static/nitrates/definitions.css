@@ -33,17 +33,26 @@
 
 /* Entrée active du sommaire : liseré + texte dans le violet du parcours
  * (même teinte que la barre de progression #154). aria-current est posé par
- * definitions.js ; on surcharge le style actif DSFR (bleu France) du
- * sidemenu, uniquement sur cette page. */
+ * definitions.js. Le liseré actif DSFR est le ::before du lien (bleu
+ * France) : c'est LUI qu'on teinte, sinon les deux liserés se superposent
+ * et le bleu reste visible. */
 .definitions-page .fr-sidemenu__link[aria-current] {
   color: #6a6af5;
-  box-shadow: inset 2px 0 0 0 #6a6af5;
   font-weight: 700;
+}
+
+.definitions-page .fr-sidemenu__link[aria-current]::before {
+  background-color: #6a6af5;
 }
 
 [data-fr-theme="dark"] .definitions-page .fr-sidemenu__link[aria-current] {
   color: #8585f6;
-  box-shadow: inset 2px 0 0 0 #8585f6;
+}
+
+[data-fr-theme="dark"]
+  .definitions-page
+  .fr-sidemenu__link[aria-current]::before {
+  background-color: #8585f6;
 }
 
 /* ── Définition ───────────────────────────────────────────────────────── */
