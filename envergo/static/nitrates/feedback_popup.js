@@ -305,6 +305,7 @@
   // le compteur restant + l'état des triggers. À SUPPRIMER avec le reste.
   var DEBUG = true;
   var debugPanel = null;
+  var debugInfoEl = null;
   function majDebugPanel(info) {
     if (!debugPanel) {
       debugPanel = document.createElement("div");
@@ -312,11 +313,28 @@
       debugPanel.style.cssText =
         "position:fixed;top:80px;right:8px;z-index:3000;" +
         "background:#161616;color:#0f0;font:12px/1.5 monospace;" +
-        "padding:8px 10px;border-radius:6px;max-width:230px;" +
-        "box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;opacity:.92";
+        "padding:8px 10px;border-radius:6px;max-width:240px;" +
+        "box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:.94";
+      debugInfoEl = document.createElement("div");
+      debugInfoEl.style.pointerEvents = "none";
+      var resetBtn = document.createElement("button");
+      resetBtn.textContent = "↻ Reset (rejouer)";
+      resetBtn.style.cssText =
+        "margin-top:6px;width:100%;cursor:pointer;background:#0f0;color:#161616;" +
+        "border:0;border-radius:4px;font:11px monospace;padding:4px;font-weight:700";
+      resetBtn.addEventListener("click", function () {
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+        window.location.reload();
+      });
+      debugPanel.appendChild(debugInfoEl);
+      debugPanel.appendChild(resetBtn);
       document.body.appendChild(debugPanel);
     }
-    debugPanel.innerHTML =
+    debugInfoEl.innerHTML =
       "<b>DEBUG feedback #284</b><br>" +
       "règle : 15 s sans clic<br>" +
       "restant : <b>" +
@@ -328,7 +346,7 @@
       "onglet : " +
       info.visible +
       "<br>" +
-      "traité : " +
+      "traité (localStorage) : " +
       info.traite +
       "<br>" +
       "état : " +
