@@ -86,11 +86,16 @@
   // Voies horizontales : chaque ver a une hauteur (top %), un sens (dir : +1
   // vers la droite, -1 vers la gauche), une durée (vitesse), un délai. Les sens
   // alternés + hauteurs proches -> ils se croisent.
+  //
+  // Vitesse : la référence agréable (retour Max) est ~6.5 s (le sens
+  // droite->gauche). On reste AUTOUR de cette valeur, plus lent globalement,
+  // avec une petite variation individuelle (chaque ver a son propre tempo,
+  // comme des individus séparés) — mais jamais rapide au point de fatiguer.
   var VOIES = [
-    { top: 8, dir: 1, dur: 5.5, delai: 0.0 },
-    { top: 30, dir: -1, dur: 6.5, delai: 0.8 },
-    { top: 52, dir: 1, dur: 5.0, delai: 0.3 },
-    { top: 70, dir: -1, dur: 7.0, delai: 1.2 },
+    { top: 8, dir: -1, dur: 7.4, delai: 0.0 },
+    { top: 30, dir: 1, dur: 6.6, delai: 0.9 },
+    { top: 52, dir: -1, dur: 8.2, delai: 0.4 },
+    { top: 70, dir: 1, dur: 7.0, delai: 1.4 },
   ];
 
   function nitratesVersGroovy(conteneur, opts) {
