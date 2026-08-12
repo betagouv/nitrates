@@ -37,12 +37,17 @@
   transform: scaleX(-1);
 }
 
+/* Les deux sens parcourent EXACTEMENT la même distance (100% du conteneur +
+   140px de marge de part et d'autre pour entrer/sortir hors-champ), dans le même
+   référentiel (%). Ainsi une même `--dur` = une même vitesse perçue, quel que
+   soit le sens. (Avant : droite en `vw`, gauche en `%` -> vitesses différentes,
+   d'où l'impression que droite->gauche était plus lent.) */
 @keyframes vg-traverse-droite {
   from {
     transform: translateX(-140px);
   }
   to {
-    transform: translateX(calc(100vw + 140px));
+    transform: translateX(calc(100% + 140px));
   }
 }
 
@@ -51,7 +56,7 @@
     transform: translateX(calc(100% + 140px));
   }
   to {
-    transform: translateX(-260px);
+    transform: translateX(-140px);
   }
 }
 

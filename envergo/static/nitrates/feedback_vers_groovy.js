@@ -87,15 +87,16 @@
   // vers la droite, -1 vers la gauche), une durée (vitesse), un délai. Les sens
   // alternés + hauteurs proches -> ils se croisent.
   //
-  // Vitesse : la référence agréable (retour Max) est ~6.5 s (le sens
-  // droite->gauche). On reste AUTOUR de cette valeur, plus lent globalement,
-  // avec une petite variation individuelle (chaque ver a son propre tempo,
-  // comme des individus séparés) — mais jamais rapide au point de fatiguer.
+  // Vitesse : la référence agréable (retour Max) est celle du sens gauche->droite
+  // de la version précédente (~6.5-7 s). Maintenant que les deux sens parcourent
+  // la même distance (cf. CSS), on STABILISE toutes les durées autour de cette
+  // valeur, avec une variation minime (±0.4 s) pour garder l'effet « individus
+  // séparés » sans qu'aucun ne traîne.
   var VOIES = [
-    { top: 8, dir: -1, dur: 7.4, delai: 0.0 },
-    { top: 30, dir: 1, dur: 6.6, delai: 0.9 },
-    { top: 52, dir: -1, dur: 8.2, delai: 0.4 },
-    { top: 70, dir: 1, dur: 7.0, delai: 1.4 },
+    { top: 8, dir: -1, dur: 6.6, delai: 0.0 },
+    { top: 30, dir: 1, dur: 6.4, delai: 0.9 },
+    { top: 52, dir: -1, dur: 7.0, delai: 0.4 },
+    { top: 70, dir: 1, dur: 6.8, delai: 1.4 },
   ];
 
   function nitratesVersGroovy(conteneur, opts) {
