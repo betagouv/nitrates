@@ -1034,20 +1034,21 @@ def glossaire_json(element_id: str = "glossaire-data"):
     """
     from django.utils.html import json_script
 
-    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
     from envergo.nitrates.contenu_rich.glossaire import (
         load_definitions,
         load_index_termes,
     )
 
+    # On expose les BLOCS (JSON typé), pas du HTML : glossaire.js construit le
+    # DOM lui-même via createElement/textContent. Aucune chaîne HTML ne
+    # traverse le client -> aucune réinterprétation possible, et l'analyse
+    # statique (CodeQL js/xss-through-dom) n'a plus de sink à signaler.
     defs = {}
     for d in load_definitions():
         defs[d.cle] = {
             "titre": d.titre_public,
             "ancre": d.ancre,
-            "html": compile_dsfr(
-                d.liste_blocs, niveau_base=5, id_prefix=f"def-panel-{d.ancre}"
-            ),
+            "blocs": d.liste_blocs,
         }
     payload = {
         "termes": [[v, cle] for v, cle in load_index_termes()],

@@ -122,55 +122,193 @@
     return a ? URL_DEFINITIONS + "#" + a : URL_DEFINITIONS;
   }
 
-  // Balises et attributs autorisés dans le corps d'une définition. Liste
-  // BLANCHE stricte, alignée sur ce que produit compile_dsfr côté serveur
-  // (paragraphes, listes, accordéons DSFR, tableaux, gras). Tout le reste
-  // est ignoré : pas de <script>, pas d'événement inline, pas d'URL — donc
-  // aucun schéma exécutable (javascript:, data:, vbscript:…) à filtrer,
-  // puisqu'aucun attribut d'URL n'est recopié.
-  const BALISES_OK = {
-    DIV: 1, P: 1, SPAN: 1, STRONG: 1, EM: 1, BR: 1,
-    UL: 1, OL: 1, LI: 1,
-    H3: 1, H4: 1, H5: 1, H6: 1,
-    SECTION: 1, BUTTON: 1,
-    TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1,
-  };
-  const ATTRS_OK = {
-    class: 1, id: 1, scope: 1, colspan: 1, rowspan: 1,
-    "aria-expanded": 1, "aria-controls": 1, "aria-label": 1, type: 1,
-  };
+  // ── Rendu des blocs de définition ───────────────────────────────────────
+  // Le serveur envoie les BLOCS JSON typés (cf. glossaire_json), pas du HTML :
+  // on construit le DOM avec createElement/textContent. Aucune chaîne HTML
+  // n'est interprétée côté client, donc aucune injection possible quelle que
+  // soit la donnée. Équivalent JS de compile_dsfr (contenu_rich/compilateur.py)
+  // pour les types de blocs affichables dans la carte ; un type inconnu est
+  // ignoré silencieusement, comme côté serveur.
 
-  // Reconstruit le HTML d'une définition en ne recopiant QUE les nœuds
-  // autorisés, dans un document inerte (DOMParser : les <script> n'y sont
-  // jamais exécutés, contrairement à innerHTML sur le document courant).
-  // Renvoie un DocumentFragment prêt à insérer.
-  function fragmentSur(html) {
-    const doc = new DOMParser().parseFromString(
-      "<body>" + String(html || "") + "</body>",
-      "text/html"
-    );
-
-    function copier(source, cible) {
-      source.childNodes.forEach(function (n) {
-        if (n.nodeType === 3) {
-          cible.appendChild(document.createTextNode(n.nodeValue));
-          return;
-        }
-        if (n.nodeType !== 1 || !BALISES_OK[n.tagName]) return;
-        const el = document.createElement(n.tagName.toLowerCase());
-        Array.prototype.slice.call(n.attributes).forEach(function (attr) {
-          if (ATTRS_OK[attr.name.toLowerCase()]) {
-            el.setAttribute(attr.name, attr.value);
-          }
-        });
-        copier(n, el);
-        cible.appendChild(el);
-      });
+  // Texte riche : chaîne simple, ou liste de segments {texte, gras}.
+  function poserTexte(cible, valeur) {
+    if (valeur === null || valeur === undefined) return;
+    if (typeof valeur === "string") {
+      cible.appendChild(document.createTextNode(valeur));
+      return;
     }
+    if (!Array.isArray(valeur)) {
+      cible.appendChild(document.createTextNode(String(valeur)));
+      return;
+    }
+    valeur.forEach(function (seg) {
+      if (typeof seg === "string") {
+        cible.appendChild(document.createTextNode(seg));
+        return;
+      }
+      if (!seg || typeof seg !== "object") return;
+      const txt = document.createTextNode(seg.texte || "");
+      if (seg.gras) {
+        const strong = document.createElement("strong");
+        strong.appendChild(txt);
+        cible.appendChild(strong);
+      } else {
+        cible.appendChild(txt);
+      }
+    });
+  }
 
-    const frag = document.createDocumentFragment();
-    copier(doc.body, frag);
-    return frag;
+  function creerAvecTexte(balise, classe, valeur) {
+    const el = document.createElement(balise);
+    if (classe) el.className = classe;
+    poserTexte(el, valeur);
+    return el;
+  }
+
+  function rendreItemsListe(items, ul) {
+    (items || []).forEach(function (item) {
+      const li = document.createElement("li");
+      poserTexte(li, (item || {}).texte || "");
+      const enfants = (item || {}).enfants;
+      if (enfants && enfants.length) {
+        const sousListe = document.createElement("ul");
+        rendreItemsListe(enfants, sousListe);
+        li.appendChild(sousListe);
+      }
+      ul.appendChild(li);
+    });
+  }
+
+  function rendreTableau(data, ctx) {
+    const lignes = (data.lignes || []).filter(Array.isArray);
+    if (!lignes.length) return null;
+    const wrapper = document.createElement("div");
+    wrapper.className = "fr-table fr-table--bordered";
+    const inner = document.createElement("div");
+    inner.className = "fr-table__wrapper";
+    const conteneur = document.createElement("div");
+    conteneur.className = "fr-table__container";
+    const contenu = document.createElement("div");
+    contenu.className = "fr-table__content";
+    const table = document.createElement("table");
+
+    let corpsLignes = lignes;
+    if (data.avec_entetes !== false) {
+      const thead = document.createElement("thead");
+      const tr = document.createElement("tr");
+      lignes[0].forEach(function (cellule) {
+        const th = document.createElement("th");
+        th.setAttribute("scope", "col");
+        poserTexte(th, cellule);
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+      table.appendChild(thead);
+      corpsLignes = lignes.slice(1);
+    }
+    const tbody = document.createElement("tbody");
+    corpsLignes.forEach(function (ligne) {
+      const tr = document.createElement("tr");
+      ligne.forEach(function (cellule) {
+        const td = document.createElement("td");
+        poserTexte(td, cellule);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    contenu.appendChild(table);
+    conteneur.appendChild(contenu);
+    inner.appendChild(conteneur);
+    wrapper.appendChild(inner);
+    return wrapper;
+  }
+
+  function rendreFoldable(data, ctx) {
+    // Accordéon DSFR. id unique par carte : le préfixe vient de l'ancre de
+    // la définition, comme l'id_prefix côté serveur (collisions, carte #157).
+    ctx.seq += 1;
+    const id = ctx.prefixe + "-accordion-" + ctx.seq;
+    const section = document.createElement("section");
+    section.className = "fr-accordion";
+    const titre = document.createElement("h5");
+    titre.className = "fr-accordion__title";
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "fr-accordion__btn";
+    bouton.setAttribute("aria-expanded", "false");
+    bouton.setAttribute("aria-controls", id);
+    poserTexte(bouton, data.titre || "");
+    titre.appendChild(bouton);
+    const collapse = document.createElement("div");
+    collapse.className = "fr-collapse";
+    collapse.id = id;
+    rendreBlocs(data.blocs || [], collapse, ctx);
+    section.appendChild(titre);
+    section.appendChild(collapse);
+    return section;
+  }
+
+  function rendreBloc(bloc, ctx) {
+    const data = bloc.data || {};
+    switch (bloc.type) {
+      case "titre_principal":
+        return creerAvecTexte("h5", "fr-h5", data.texte);
+      case "titre_paragraphe":
+        return creerAvecTexte("h6", "fr-h6", data.texte);
+      case "paragraphe":
+        return creerAvecTexte("p", "", data.texte);
+      case "citation": {
+        const callout = document.createElement("div");
+        callout.className = "fr-callout";
+        callout.appendChild(creerAvecTexte("p", "fr-callout__text", data.texte));
+        return callout;
+      }
+      case "liste": {
+        const ul = document.createElement("ul");
+        ul.className = "fr-mb-0";
+        rendreItemsListe(data.items || [], ul);
+        return ul;
+      }
+      case "foldable":
+        return rendreFoldable(data, ctx);
+      case "tableau":
+        return rendreTableau(data, ctx);
+      default:
+        return null; // type inconnu ignoré, comme côté serveur
+    }
+  }
+
+  function rendreBlocs(blocs, cible, ctx) {
+    (blocs || []).forEach(function (bloc) {
+      if (!bloc || typeof bloc !== "object") return;
+      const el = rendreBloc(bloc, ctx);
+      if (!el) return;
+      // Indentation « façon Notion » (data.indent), bornée comme au serveur.
+      const indent = Math.max(
+        0,
+        Math.min(6, parseInt((bloc.data || {}).indent, 10) || 0)
+      );
+      if (indent > 0) {
+        const wrap = document.createElement("div");
+        wrap.style.marginLeft = indent * 1.5 + "rem";
+        wrap.appendChild(el);
+        cible.appendChild(wrap);
+      } else {
+        cible.appendChild(el);
+      }
+    });
+  }
+
+  // Construit le contenu d'une définition. Renvoie un élément prêt à insérer.
+  function rendreDefinition(def) {
+    const racine = document.createElement("div");
+    racine.className = "contenu-rich";
+    rendreBlocs(def.blocs || [], racine, {
+      prefixe: "def-panel-" + ancreSure(def.ancre),
+      seq: 0,
+    });
+    return racine;
   }
 
   const REGEX = construireRegex(GLOSSAIRE.termes);
@@ -316,12 +454,10 @@
     // .results-row { overflow: clip } (cf. drawer_conditions.js).
     if (el.parentNode !== document.body) document.body.appendChild(el);
     el.querySelector("#def-carte-titre").textContent = def.titre;
-    // Corps de la définition : HTML précompilé côté serveur (compile_dsfr,
-    // tout texte saisi échappé). On l'insère via un parsing INERTE plutôt
-    // qu'innerHTML : le fragment est construit hors document, aucun script
-    // ni handler inline n'y est exécuté, et on les retire par sécurité.
+    // Corps : construit depuis les blocs JSON typés (createElement /
+    // textContent). Aucune chaîne HTML n'est interprétée côté client.
     const corps = el.querySelector(".def-carte__corps");
-    corps.replaceChildren(fragmentSur(def.html));
+    corps.replaceChildren(rendreDefinition(def));
     const lien = el.querySelector("#def-carte-toutes");
     lien.setAttribute("href", urlDefinition(def.ancre));
     // Depuis le drawer conditions (ancré à droite) : la carte arrive par la
