@@ -49,6 +49,15 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // (rien a relancer).
     await expect(page.locator('#form-submit-row')).toBeHidden();
 
+    // #271 : sur la page de resultat, le formulaire est replie derriere un
+    // encart recap des choix ; recap_choix.js pose `hidden` sur
+    // #form-after-localisation. Les radios existent donc toujours dans le DOM
+    // mais ne sont plus visibles -> un clic direct timeout ("element is not
+    // visible"). Il faut d'abord rouvrir le formulaire via « Modifier »,
+    // exactement comme le fait l'utilisateur.
+    await page.locator('[data-recap-modifier]').click();
+    await expect(page.locator('#form-after-localisation')).toBeVisible();
+
     // L'user change la categorie de fertilisant (composts).
     await page.locator('label[for="id_categorie_fertilisant__composts"]').click();
 
