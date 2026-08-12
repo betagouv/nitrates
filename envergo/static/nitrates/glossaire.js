@@ -122,36 +122,54 @@
     return a ? URL_DEFINITIONS + "#" + a : URL_DEFINITIONS;
   }
 
-  // Parse le HTML d'une définition dans un document INERTE (DOMParser) : les
-  // <script> n'y sont jamais exécutés, contrairement à innerHTML sur un nœud
-  // du document courant. On retire ensuite scripts et handlers inline avant
-  // d'adopter le contenu. Renvoie un DocumentFragment prêt à insérer.
+  // Balises et attributs autorisés dans le corps d'une définition. Liste
+  // BLANCHE stricte, alignée sur ce que produit compile_dsfr côté serveur
+  // (paragraphes, listes, accordéons DSFR, tableaux, gras). Tout le reste
+  // est ignoré : pas de <script>, pas d'événement inline, pas d'URL — donc
+  // aucun schéma exécutable (javascript:, data:, vbscript:…) à filtrer,
+  // puisqu'aucun attribut d'URL n'est recopié.
+  const BALISES_OK = {
+    DIV: 1, P: 1, SPAN: 1, STRONG: 1, EM: 1, BR: 1,
+    UL: 1, OL: 1, LI: 1,
+    H3: 1, H4: 1, H5: 1, H6: 1,
+    SECTION: 1, BUTTON: 1,
+    TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1,
+  };
+  const ATTRS_OK = {
+    class: 1, id: 1, scope: 1, colspan: 1, rowspan: 1,
+    "aria-expanded": 1, "aria-controls": 1, "aria-label": 1, type: 1,
+  };
+
+  // Reconstruit le HTML d'une définition en ne recopiant QUE les nœuds
+  // autorisés, dans un document inerte (DOMParser : les <script> n'y sont
+  // jamais exécutés, contrairement à innerHTML sur le document courant).
+  // Renvoie un DocumentFragment prêt à insérer.
   function fragmentSur(html) {
     const doc = new DOMParser().parseFromString(
       "<body>" + String(html || "") + "</body>",
       "text/html"
     );
-    doc.querySelectorAll("script, style, iframe, object, embed").forEach(
-      function (n) {
-        n.remove();
-      }
-    );
-    doc.querySelectorAll("*").forEach(function (n) {
-      Array.prototype.slice.call(n.attributes).forEach(function (attr) {
-        const nom = attr.name.toLowerCase();
-        const val = attr.value.trim().toLowerCase();
-        // Handlers inline (onclick…) et URL exécutables.
-        if (
-          nom.indexOf("on") === 0 ||
-          ((nom === "href" || nom === "src") &&
-            (val.indexOf("javascript:") === 0 || val.indexOf("data:") === 0))
-        ) {
-          n.removeAttribute(attr.name);
+
+    function copier(source, cible) {
+      source.childNodes.forEach(function (n) {
+        if (n.nodeType === 3) {
+          cible.appendChild(document.createTextNode(n.nodeValue));
+          return;
         }
+        if (n.nodeType !== 1 || !BALISES_OK[n.tagName]) return;
+        const el = document.createElement(n.tagName.toLowerCase());
+        Array.prototype.slice.call(n.attributes).forEach(function (attr) {
+          if (ATTRS_OK[attr.name.toLowerCase()]) {
+            el.setAttribute(attr.name, attr.value);
+          }
+        });
+        copier(n, el);
+        cible.appendChild(el);
       });
-    });
+    }
+
     const frag = document.createDocumentFragment();
-    while (doc.body.firstChild) frag.appendChild(doc.body.firstChild);
+    copier(doc.body, frag);
     return frag;
   }
 
