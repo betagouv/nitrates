@@ -27,6 +27,7 @@
 
 .vg-vers-gauche {
   left: 0;
+
   /* miroir horizontal : la tête (dessinée à droite) pointe vers la gauche */
   animation:
     vg-traverse-gauche var(--dur, 6s) linear var(--delai, 0s) infinite,
@@ -46,6 +47,7 @@
   from {
     transform: translateX(-120px);
   }
+
   to {
     transform: translateX(var(--trajet, 100%));
   }
@@ -55,6 +57,7 @@
   from {
     transform: translateX(var(--trajet, 100%));
   }
+
   to {
     transform: translateX(-120px);
   }
@@ -66,6 +69,7 @@
   100% {
     margin-top: 0;
   }
+
   50% {
     margin-top: -8px;
   }
@@ -83,6 +87,7 @@
   100% {
     transform: scaleY(1);
   }
+
   50% {
     transform: scaleY(0.86);
   }

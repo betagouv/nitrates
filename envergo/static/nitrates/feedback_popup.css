@@ -26,7 +26,7 @@
 .nitrates-feedback__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   animation: nitrates-feedback-fade 0.2s ease;
 }
 
@@ -40,7 +40,7 @@
   padding: 1.75rem;
   background: var(--background-default-grey, #fff);
   border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 25%);
   animation: nitrates-feedback-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -159,6 +159,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -169,6 +170,7 @@
     opacity: 0;
     transform: translateY(16px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
