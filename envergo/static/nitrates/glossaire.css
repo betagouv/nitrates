@@ -102,15 +102,41 @@
   font-size: 0.925rem;
 }
 
-/* Tableau dans la carte (380px) : cellules qui wrappent plutôt qu'un scroll
- * horizontal (même retour que sur la page définitions). */
+/* Tableau dans la carte : cellules qui wrappent plutôt qu'un scroll
+ * horizontal (même retour que sur la page définitions). Layout fixe, sinon
+ * l'auto-layout exige la largeur du plus long mot par colonne et déborde. */
 .def-carte__corps .fr-table table {
   width: 100%;
+  table-layout: fixed;
 }
 
 .def-carte__corps .fr-table th,
 .def-carte__corps .fr-table td {
   white-space: normal;
+
+  /* Coupe des mots seulement en dernier recours (« méthanisation » sur une
+   * colonne étroite), jamais lettre à lettre comme le ferait `anywhere`. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Tableau en carte étroite : corps un cran plus petit. */
+.def-carte__corps .fr-table {
+  font-size: 0.9em;
+}
+
+/* Répartition des colonnes du tableau des types (Type étroit, Exemples
+ * large). Sur un tableau à moins de colonnes, le reliquat va à la dernière. */
+.def-carte__corps .fr-table th:nth-child(1) {
+  width: 13%;
+}
+
+.def-carte__corps .fr-table th:nth-child(2) {
+  width: 27%;
+}
+
+.def-carte__corps .fr-table th:nth-child(3) {
+  width: 36%;
 }
 
 /* En mobile, la carte prend la largeur de l'écran (moins les marges). */

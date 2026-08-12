@@ -254,6 +254,21 @@
       declencheur.closest(".drawer-conditions__panel")
     );
     el.classList.toggle("def-carte--gauche", dansDrawer);
+    // Une définition avec tableau (types de fertilisants) est illisible en
+    // 380px : on élargit la carte, bornée à l'espace disponible (viewport,
+    // ou zone restante à gauche du drawer).
+    let largeur = "";
+    if (el.querySelector(".def-carte__corps table")) {
+      let dispo = window.innerWidth - 32;
+      if (dansDrawer) {
+        const panneau = document.querySelector(".drawer-conditions__panel");
+        if (panneau) {
+          dispo = Math.max(340, panneau.getBoundingClientRect().left - 32);
+        }
+      }
+      largeur = Math.min(560, dispo) + "px";
+    }
+    el.style.width = largeur;
     // Position verticale : au niveau du terme cliqué (Loom Coralie), bornée
     // au viewport. Il faut la hauteur réelle -> dévoiler d'abord (opacité 0
     // tant que --ouverte n'est pas posée, pas de flash).
