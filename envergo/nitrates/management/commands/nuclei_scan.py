@@ -85,14 +85,18 @@ class Command(BaseCommand):
             )
         )
 
-        cmd = self._build_command(runner, target, severity, jsonl_path)
+        cmd = self._build_command(runner, target, severity)
+        # On capture la sortie -jsonl sur stdout (plus fiable que -jsonl-export,
+        # qui n'ecrit pas toujours le fichier selon le type de finding). Le flux
+        # texte de progression de nuclei part sur stderr, pas sur stdout.
         try:
-            subprocess.run(cmd, check=False)
+            proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
         except FileNotFoundError as exc:
             raise CommandError(
                 f"Impossible de lancer le scan ({exc}). Installe nuclei "
                 "(https://github.com/projectdiscovery/nuclei) ou Docker."
             )
+        jsonl_path.write_text(proc.stdout, encoding="utf-8")
 
         findings = self._parse_findings(jsonl_path)
         html_path = run_dir / "report.html"
@@ -123,37 +127,26 @@ class Command(BaseCommand):
             "deux : https://github.com/projectdiscovery/nuclei"
         )
 
-    def _build_command(self, runner, target, severity, jsonl_path):
+    def _build_command(self, runner, target, severity):
+        # -jsonl : chaque finding en JSON sur stdout (progression sur stderr).
+        base_args = [
+            "-target",
+            target,
+            "-severity",
+            severity,
+            "-jsonl",
+            "-no-color",
+        ]
         if runner["kind"] == "binary":
-            return [
-                "nuclei",
-                "-target",
-                target,
-                "-severity",
-                severity,
-                "-jsonl-export",
-                str(jsonl_path),
-                "-no-color",
-            ]
-        # Docker : on monte le dossier du run pour recuperer l'export.
-        run_dir = jsonl_path.parent
+            return ["nuclei"] + base_args
         return [
             "docker",
             "run",
             "--rm",
             "--add-host",
             "host.docker.internal:host-gateway",
-            "-v",
-            f"{run_dir}:/out",
             DOCKER_IMAGE,
-            "-target",
-            target,
-            "-severity",
-            severity,
-            "-jsonl-export",
-            "/out/findings.jsonl",
-            "-no-color",
-        ]
+        ] + base_args
 
     def _parse_findings(self, jsonl_path):
         findings = []
