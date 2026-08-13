@@ -390,7 +390,7 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
   en colonne unique. Une fois tout repondu, ce bloc reste affiche en recap et
   le resultat apparait a droite.
         {% endcomment %}
-        {% if qc_en_attente or qc_repondues %}
+        {% if qc_panel %}
           <div class="form-section questions-complementaires-box"
                style="margin-top: 32px">{% include "nitrates/fragments/_qc_sous_form.html" %}</div>
         {% endif %}

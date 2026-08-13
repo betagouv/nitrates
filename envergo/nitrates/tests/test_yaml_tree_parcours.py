@@ -2244,3 +2244,260 @@ def test_collecte_aval_branche_terminale_sans_noeud_s_arrete():
     questions = _collecter_questions(noeud, {"occupation_sol": "mais"}, {})
     champs = [q.champ for q in questions]
     assert champs == ["occupation_sol"]
+
+
+# ─── #213 : prefetch integral des QC (toutes branches, tous niveaux) ────────
+
+
+def _arbre_qc_deux_branches():
+    """QC plan-epandage-like a 2 branches, chacune menant a une QC differente
+    (modele du bug #213 : icpe_a -> fertilisant_iaa, icpe_ed -> digestats)."""
+    return {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_plan",
+                "champ": "plan_epandage",
+                "texte": "Plan d'epandage ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_iaa",
+                            "champ": "fertilisant_iaa",
+                            "texte": "IAA ?",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "regle": {"id": "r1", "type": "libre"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "regle": {"id": "r2", "type": "libre"},
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "valeur": "icpe_ed",
+                        "noeud": {
+                            "type_noeud": "formulaire",
+                            "niveau": "complement",
+                            "id": "q_dig",
+                            "champ": "pas_un_digestats",
+                            "texte": "Digestats ?",
+                            "branches": [
+                                {
+                                    "valeur": True,
+                                    "regle": {"id": "r3", "type": "libre"},
+                                },
+                                {
+                                    "valeur": False,
+                                    "regle": {"id": "r4", "type": "libre"},
+                                },
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+
+
+def test_collecter_qc_213_repondue_prefetch_branches_non_prises():
+    """QC repondue : les QC des branches NON prises sont prefetchees,
+    annotees parent_champ/parent_valeur (revelees au flip cote front)."""
+    qc = collecter_qc_du_chemin(_arbre_qc_deux_branches(), {"plan_epandage": "icpe_a"})
+    champs = {q.champ for q in qc}
+    assert champs == {"plan_epandage", "fertilisant_iaa", "pas_un_digestats"}
+    # La QC de la branche prise est annotee par rapport a son parent QC.
+    iaa = next(q for q in qc if q.champ == "fertilisant_iaa")
+    assert iaa.parent_champ == "plan_epandage"
+    assert iaa.parent_valeur == "icpe_a"
+    # La QC de la branche non prise aussi, avec SA valeur declenchante.
+    dig = next(q for q in qc if q.champ == "pas_un_digestats")
+    assert dig.parent_champ == "plan_epandage"
+    assert dig.parent_valeur == "icpe_ed"
+    # La QC racine du chemin reste inconditionnelle (toujours visible).
+    plan = next(q for q in qc if q.champ == "plan_epandage")
+    assert plan.parent_champ is None
+
+
+def test_collecter_qc_213_bloquante_prefetch_toutes_branches():
+    """QC bloquante (pas de reponse) : TOUTES ses branches sont prefetchees,
+    la cascade complete est disponible avant meme la 1re reponse."""
+    qc = collecter_qc_du_chemin(_arbre_qc_deux_branches(), {})
+    champs = {q.champ for q in qc}
+    assert champs == {"plan_epandage", "fertilisant_iaa", "pas_un_digestats"}
+    iaa = next(q for q in qc if q.champ == "fertilisant_iaa")
+    assert (iaa.parent_champ, iaa.parent_valeur) == ("plan_epandage", "icpe_a")
+    dig = next(q for q in qc if q.champ == "pas_un_digestats")
+    assert (dig.parent_champ, dig.parent_valeur) == ("plan_epandage", "icpe_ed")
+
+
+def test_collecter_qc_213_prefetch_recursif_multi_niveaux():
+    """Le prefetch descend TOUS les niveaux : une QC sous une QC d'une branche
+    non prise est collectee, annotee par rapport a son parent QC IMMEDIAT."""
+    arbre = _arbre_qc_deux_branches()
+    # Sous q_dig (branche icpe_ed, valeur True) : une QC de 2e niveau.
+    arbre["arbre"]["noeud"]["branches"][1]["noeud"]["branches"][0] = {
+        "valeur": True,
+        "noeud": {
+            "type_noeud": "formulaire",
+            "niveau": "complement",
+            "id": "q_n2",
+            "champ": "qc_niveau_2",
+            "texte": "Niveau 2 ?",
+            "branches": [
+                {"valeur": "x", "regle": {"id": "r5", "type": "libre"}},
+            ],
+        },
+    }
+    qc = collecter_qc_du_chemin(arbre, {"plan_epandage": "icpe_a"})
+    n2 = next((q for q in qc if q.champ == "qc_niveau_2"), None)
+    assert n2 is not None
+    assert n2.parent_champ == "pas_un_digestats"
+    assert n2.parent_valeur is True
+
+
+def test_collecter_qc_213_diamant_fusionne_les_valeurs_declenchantes():
+    """Diamant : la MEME QC (via renvoi_vers) sous plusieurs branches du meme
+    parent fusionne ses valeurs declenchantes (le front revele pour chacune)."""
+    q_commune = {
+        "type_noeud": "formulaire",
+        "niveau": "complement",
+        "id": "q_icpe",
+        "champ": "plan_epandage",
+        "texte": "ICPE ?",
+        "branches": [
+            {"valeur": "oui", "regle": {"id": "r1", "type": "libre"}},
+            {"valeur": "non", "regle": {"id": "r2", "type": "libre"}},
+        ],
+    }
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_fert",
+                "champ": "qc_fertilisant",
+                "texte": "Fertilisant ?",
+                "branches": [
+                    {"valeur": "volaille", "noeud": q_commune},
+                    {"valeur": "compact", "renvoi_vers": "q_icpe"},
+                    {"valeur": "autre", "regle": {"id": "r3", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {})
+    icpe = next(q for q in qc if q.champ == "plan_epandage")
+    assert icpe.parent_champ == "qc_fertilisant"
+    vals = (
+        icpe.parent_valeur
+        if isinstance(icpe.parent_valeur, list)
+        else [icpe.parent_valeur]
+    )
+    assert set(vals) == {"volaille", "compact"}
+
+
+def test_collecter_qc_213_prefetch_traverse_catalogue_parametre():
+    """Les noeuds intermediaires (catalogue_parametre) des branches non prises
+    sont traverses de facon transparente par le prefetch."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_a",
+                "champ": "qc_a",
+                "texte": "A ?",
+                "branches": [
+                    {"valeur": "v1", "regle": {"id": "r1", "type": "libre"}},
+                    {
+                        "valeur": "v2",
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "cp",
+                            "branches": [
+                                {
+                                    "expression": "True",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "complement",
+                                        "id": "q_b",
+                                        "champ": "qc_b",
+                                        "texte": "B ?",
+                                        "branches": [
+                                            {
+                                                "valeur": "x",
+                                                "regle": {"id": "r2", "type": "libre"},
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    }
+    qc = collecter_qc_du_chemin(arbre, {"qc_a": "v1"})
+    b = next((q for q in qc if q.champ == "qc_b"), None)
+    assert b is not None
+    assert (b.parent_champ, b.parent_valeur) == ("qc_a", "v2")
+
+
+def test_collecter_qc_213_noeud_depart_herite_de_la_qc_ancetre():
+    """Arbre atteint via bascule cross-arbre (noeud_depart) : si le noeud
+    d'atterrissage est SOUS une QC de cet arbre, les QC collectees heritent
+    de cette QC ancetre comme parent -> le front peut les masquer si
+    l'utilisateur change la reponse parente (QC stale, cas PAR -> PAN)."""
+    arbre = {
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_plan",
+                "champ": "plan_epandage",
+                "texte": "Plan ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "noeud": {
+                            "type_noeud": "catalogue_parametre",
+                            "id": "cp_effluent",
+                            "branches": [
+                                {
+                                    "expression": "True",
+                                    "noeud": {
+                                        "type_noeud": "formulaire",
+                                        "niveau": "complement",
+                                        "id": "q_iaa",
+                                        "champ": "fertilisant_iaa",
+                                        "texte": "IAA ?",
+                                        "branches": [
+                                            {
+                                                "valeur": True,
+                                                "regle": {"id": "r1", "type": "libre"},
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    {"valeur": "icpe_ed", "regle": {"id": "r2", "type": "libre"}},
+                ],
+            }
+        }
+    }
+    # Atterrissage au catalogue_parametre situe SOUS plan_epandage=icpe_a.
+    qc = collecter_qc_du_chemin(arbre, {}, noeud_depart="cp_effluent")
+    iaa = next(q for q in qc if q.champ == "fertilisant_iaa")
+    assert iaa.parent_champ == "plan_epandage"
+    assert iaa.parent_valeur == "icpe_a"

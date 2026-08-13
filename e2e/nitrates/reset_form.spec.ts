@@ -118,9 +118,16 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     await expect(page.locator('#qc-bloc[data-qc-en-attente]')).toHaveCount(0);
   });
 
-  test('editer une QC repondue retire le resultat (cas QC)', async ({ page }) => {
+  test('editer une QC repondue (via Modifier) garde le volet QC, sans resubmit (#213)', async ({
+    page,
+  }) => {
     // culture_printemps + type_II pose la QC fertirrigation ; on la repond via
     // l'URL pour obtenir un resultat AVEC QC recap editable.
+    // NB #213 : l'ancien comportement (raser resultat + bloc QC au clic) est
+    // remplace -- le volet QC RESTE a l'ecran, rien n'est soumis, et c'est le
+    // « Lancer » suivant qui tranche. Depuis #271, l'edition passe par le
+    // bouton « Modifier » de l'encart recap (le form est masque sur la page
+    // resultat).
     await page.goto(
       `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}` +
         '&occupation_sol=culture_principale&sous_culture=culture_printemps' +
@@ -129,24 +136,26 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
 
     // Un resultat + le bloc QC (recap) sont presents.
     await expect(page.locator('#qc-bloc')).toHaveCount(1);
+    await page.locator('[data-recap-modifier]').first().click();
+    await expect(page.locator('#qc-bloc')).toBeVisible();
 
-    // L'user change la reponse a la QC fertirrigation.
+    // Marqueur anti-reload : le flip d'une QC ne doit RIEN soumettre.
+    await page.evaluate(() => {
+      (window as any).__pas_de_reload = true;
+    });
     await page.locator('label[for*="fertirrigation"][for*="True"]').first().click();
+    await page.waitForTimeout(600);
 
-    // Le resultat et le bloc QC disparaissent.
+    // Pas de resubmit, le volet QC reste, la nouvelle reponse est cochee.
+    expect(
+      await page.evaluate(() => (window as any).__pas_de_reload === true)
+    ).toBe(true);
+    await expect(page.locator('#qc-bloc')).toBeVisible();
+    await expect(
+      page.locator('input[name="fertirrigation"][value="True"]:visible')
+    ).toBeChecked();
+    // Le resultat, lui, a ete retire par « Modifier » (retour en saisie).
     await expect(page.locator('.result-col')).toHaveCount(0);
-    await expect(page.locator('#qc-bloc')).toHaveCount(0);
-
-    // L'URL miroir ne reprend PAS la reponse QC obsolete (fertirrigation).
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          new URLSearchParams(location.search).get('fertirrigation')
-        )
-      )
-      .toBeNull();
-    const search = await page.evaluate(() => location.search);
-    expect(dupKeys(search)).toEqual([]);
   });
 });
 
@@ -223,22 +232,25 @@ test.describe('Simulateur #135 : pas de boucle infinie sur QC en attente', () =>
     await expect(page.locator('.result-col')).toHaveCount(1);
   });
 
-  test('changer un champ AMONT pendant une QC en attente elague bien', async ({
+  test('changer un champ AMONT pendant une QC en attente : URL elaguee, volet QC conserve (#213)', async ({
     page,
   }) => {
-    // Contre-cas : si l'utilisateur change la CATEGORIE (champ amont) alors
-    // qu'une QC est en attente, la QC obsolete DOIT disparaitre (le parcours
-    // change). C'est l'inverse du cas precedent : on elague bien ici.
+    // Si l'utilisateur change la CATEGORIE (champ amont) alors qu'une QC est
+    // en attente, l'URL est elaguee de l'aval (le parcours change) MAIS le
+    // volet QC n'est PAS rase cote client (#213, anti-clignotement) : le
+    // rendu serveur suivant tranche -- si la nouvelle branche pose la meme
+    // QC, l'utilisateur ne voit aucune coupure.
     await page.goto(URL_QC_EN_ATTENTE);
     await expect(page.locator('#qc-bloc[data-qc-en-attente]')).toHaveCount(1);
 
     // Change la categorie de fertilisant (amont de la QC).
     await page.locator('label[for="id_categorie_fertilisant__composts"]').click();
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(300);
 
-    // La QC en attente obsolete disparait.
-    await expect(page.locator('#qc-bloc')).toHaveCount(0);
-    // sous_fertilisant reset par la cascade -> retire de l'URL.
+    // Le volet QC reste a l'ecran (pas de clignotement).
+    await expect(page.locator('#qc-bloc')).toHaveCount(1);
+    // sous_fertilisant reset par la cascade -> retire de l'URL (l'elagage
+    // MIROIR de l'URL, lui, reste inchange).
     await expect
       .poll(() =>
         page.evaluate(() =>

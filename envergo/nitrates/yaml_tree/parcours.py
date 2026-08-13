@@ -885,8 +885,25 @@ def _collecter_aval_conditionnel(
 
     if type_noeud != "formulaire":
         return
-    # Skip si la sous-question est deja resolue par le contexte (pre-fill).
-    if contexte.get(sous["champ"]) is not None:
+    # Si la sous-question est deja resolue par le contexte (typiquement un
+    # pre-fill cascade), on ne la propose pas (redondance UX) mais on TRAVERSE
+    # la branche correspondante pour prefetcher les QC plus bas, en gardant
+    # l'annotation parent d'origine (#213).
+    valeur_prefill = contexte.get(sous["champ"])
+    if valeur_prefill is not None:
+        for sb in sous.get("branches", []):
+            if _valeurs_egales(sb.get("valeur"), valeur_prefill):
+                _collecter_aval_conditionnel(
+                    sb,
+                    contexte,
+                    questions,
+                    index_ids,
+                    resoudre_catalogue,
+                    parent_champ,
+                    parent_valeur,
+                    _visites_renvoi,
+                )
+                break
         return
     _ajouter_question(
         questions,
@@ -894,6 +911,25 @@ def _collecter_aval_conditionnel(
         parent_champ=parent_champ,
         parent_valeur=parent_valeur,
     )
+    # #213 : prefetch INTEGRAL. On descend recursivement dans TOUTES les
+    # branches de la sous-question : chaque QC plus profonde est annotee par
+    # rapport a son parent QC IMMEDIAT, et le front (subsidiaires_cascade.js)
+    # revele/masque la cascade complete sans aller-retour serveur. Copie de
+    # `_visites_renvoi` par branche : un meme sous-arbre `renvoi_vers` peut
+    # etre legitimement atteint depuis plusieurs branches soeurs (diamant) ;
+    # la copie garde la protection anti-cycle LE LONG d'un chemin sans
+    # interdire les diamants entre chemins.
+    for sb in sous.get("branches", []):
+        _collecter_aval_conditionnel(
+            sb,
+            contexte,
+            questions,
+            index_ids,
+            resoudre_catalogue,
+            parent_champ=sous["champ"],
+            parent_valeur=sb.get("valeur"),
+            _visites_renvoi=set(_visites_renvoi),
+        )
 
 
 def _ajouter_question(
@@ -902,9 +938,26 @@ def _ajouter_question(
     parent_champ: str | None = None,
     parent_valeur: Any = None,
 ) -> None:
-    """Ajoute une question si pas deja presente (par champ)."""
+    """Ajoute une question si pas deja presente (par champ).
+
+    Cas diamant (#213) : la MEME question (typiquement atteinte via
+    `renvoi_vers` depuis plusieurs branches) peut dependre de PLUSIEURS
+    valeurs du meme parent. On fusionne alors les valeurs declenchantes
+    dans `parent_valeur` (liste) au lieu d'ignorer la seconde occurrence :
+    le front revelera la question pour chacune de ces valeurs. Si la
+    question existe deja SANS condition (inconditionnelle, toujours
+    visible) ou sous un AUTRE parent, la premiere annotation gagne,
+    comme avant."""
     champ = noeud["champ"]
-    if any(q.champ == champ for q in questions):
+    existante = next((q for q in questions if q.champ == champ), None)
+    if existante is not None:
+        if parent_champ is not None and existante.parent_champ == parent_champ:
+            vals = existante.parent_valeur
+            if not isinstance(vals, list):
+                vals = [vals]
+            if not any(_valeurs_egales(v, parent_valeur) for v in vals):
+                vals.append(parent_valeur)
+            existante.parent_valeur = vals
         return
     questions.append(
         QuestionFormulaire(
@@ -989,10 +1042,32 @@ def collecter_qc_du_chemin(
         return qc
     index_ids = _build_id_index(arbre)
     depart = racine
+    parent_initial_champ: str | None = None
+    parent_initial_valeur: Any = None
     if noeud_depart:
         candidat = index_ids.get(noeud_depart)
         if isinstance(candidat, dict) and "champ" in candidat:
             depart = candidat
+            # #213 : le noeud d'atterrissage peut se trouver SOUS une QC de
+            # cet arbre (bascule cross-arbre declenchee par une reponse QC,
+            # ex. plan_epandage=icpe_a fait cul-de-sac dans le PAR et atterrit
+            # dans le PAN sous son propre noeud plan_epandage). Les QC
+            # collectees a partir de la doivent heriter de cette QC ancetre
+            # comme parent : sinon elles sont rendues inconditionnelles et le
+            # front ne peut pas les masquer quand l'utilisateur change la
+            # reponse parente (QC stale a l'ecran).
+            parent_initial_champ, parent_initial_valeur = _parent_qc_du_noeud(
+                racine, noeud_depart
+            )
+    # #213 : en plus des QC du chemin (repondues + bloquante), on prefetch
+    # les QC conditionnelles de TOUTES les branches non prises de chaque QC
+    # rencontree, annotees parent_champ/parent_valeur. Le front les rend
+    # cachees et les revele au changement de reponse, SANS aller-retour
+    # serveur. Elles sont collectees a part puis fusionnees : les QC du
+    # chemin priment (une QC a la fois sur le chemin ET atteignable par une
+    # branche alternative garde sa version chemin, enrichie des valeurs
+    # declenchantes supplementaires si meme parent).
+    conditionnelles: list[QuestionFormulaire] = []
     _suivre_chemin_pour_qc(
         depart,
         contexte,
@@ -1000,8 +1075,73 @@ def collecter_qc_du_chemin(
         qc,
         visites=set(),
         resoudre_catalogue=resoudre_catalogue,
+        parent_champ=parent_initial_champ,
+        parent_valeur=parent_initial_valeur,
+        conditionnelles=conditionnelles,
     )
+    _fusionner_conditionnelles(qc, conditionnelles)
     return qc
+
+
+def _parent_qc_du_noeud(racine: dict, noeud_id: str) -> tuple[str | None, Any]:
+    """QC ancetre la plus proche AU-DESSUS du noeud `noeud_id`, et la valeur
+    de la branche qui y mene : (champ, valeur), ou (None, None) si le noeud
+    n'est sous aucune QC. Descente DFS sur la structure (branches `noeud`
+    imbriquees ; les `renvoi_vers` ne sont pas suivis : un noeud atteint via
+    renvoi a son ancetre structurel comme parent, ce qui suffit pour
+    l'annotation)."""
+
+    def _dfs(noeud, parent_champ, parent_valeur):
+        if noeud.get("id") == noeud_id:
+            return (parent_champ, parent_valeur)
+        est_qc = (
+            noeud.get("type_noeud") == "formulaire"
+            and noeud.get("niveau") == "complement"
+        )
+        for branche in noeud.get("branches", []) or []:
+            if "noeud" not in branche:
+                continue
+            if est_qc:
+                p_champ, p_valeur = noeud.get("champ"), branche.get("valeur")
+            else:
+                p_champ, p_valeur = parent_champ, parent_valeur
+            trouve = _dfs(branche["noeud"], p_champ, p_valeur)
+            if trouve is not None:
+                return trouve
+        return None
+
+    return _dfs(racine, None, None) or (None, None)
+
+
+def _fusionner_conditionnelles(
+    qc: list[QuestionFormulaire],
+    conditionnelles: list[QuestionFormulaire],
+) -> None:
+    """Fusionne les QC prefetchees (branches non prises) dans la liste des QC
+    du chemin. Une QC deja presente cote chemin prime ; si elle est
+    conditionnelle sous le MEME parent, on lui adjoint les valeurs
+    declenchantes supplementaires (cas diamant, cf. _ajouter_question)."""
+    for cq in conditionnelles:
+        existante = next((x for x in qc if x.champ == cq.champ), None)
+        if existante is None:
+            qc.append(cq)
+            continue
+        if existante.parent_champ is None:
+            continue  # inconditionnelle : toujours visible, rien a fusionner
+        if cq.parent_champ != existante.parent_champ:
+            continue  # parents differents : la premiere annotation gagne
+        vals = existante.parent_valeur
+        if not isinstance(vals, list):
+            vals = [vals]
+        nouvelles = (
+            cq.parent_valeur
+            if isinstance(cq.parent_valeur, list)
+            else [cq.parent_valeur]
+        )
+        for v in nouvelles:
+            if not any(_valeurs_egales(v, x) for x in vals):
+                vals.append(v)
+        existante.parent_valeur = vals
 
 
 def _suivre_chemin_pour_qc(
@@ -1011,11 +1151,25 @@ def _suivre_chemin_pour_qc(
     qc: list[QuestionFormulaire],
     visites: set[str],
     resoudre_catalogue=None,
+    parent_champ: str | None = None,
+    parent_valeur: Any = None,
+    conditionnelles: list[QuestionFormulaire] | None = None,
 ) -> None:
     """Descend un noeud en suivant la branche dictee par `contexte`. Collecte
     les QC de niveau complement croisees. S'arrete si la valeur du champ
     courant n'est pas dans le contexte (= QC bloquante atteinte ; on l'ajoute
     AVEC ses choix arbre puis on stop).
+
+    #213 — deux extensions pour le prefetch integral :
+      - chaque QC du chemin situee SOUS une autre QC est annotee
+        parent_champ/parent_valeur (la QC parente + la valeur de la branche
+        prise) : le front peut ainsi la masquer/decocher si l'utilisateur
+        change la reponse parente, sans aller-retour serveur ;
+      - a chaque QC rencontree, les branches NON prises (toutes, si la QC est
+        bloquante) sont explorees via `_collecter_aval_conditionnel` et leurs
+        QC accumulees dans `conditionnelles` (fusionnees ensuite par
+        `collecter_qc_du_chemin`). Les noeuds intermediaires (catalogue SIG,
+        catalogue_parametre, renvois) restent traverses de facon transparente.
     """
     if "id" in noeud and noeud["id"] in visites:
         return
@@ -1039,6 +1193,9 @@ def _suivre_chemin_pour_qc(
                         qc,
                         visites,
                         resoudre_catalogue,
+                        parent_champ,
+                        parent_valeur,
+                        conditionnelles,
                     )
                 elif "renvoi_vers" in branche:
                     cible = index_ids.get(branche["renvoi_vers"])
@@ -1054,6 +1211,9 @@ def _suivre_chemin_pour_qc(
                             qc,
                             visites,
                             resoudre_catalogue,
+                            parent_champ,
+                            parent_valeur,
+                            conditionnelles,
                         )
                 return
         return
@@ -1063,8 +1223,11 @@ def _suivre_chemin_pour_qc(
     # n'est JAMAIS une question complementaire : il est fourni par la cascade
     # principale du formulaire (panneau de gauche). Le collecter ici le ferait
     # apparaitre a tort dans le bloc "Questions complementaires" (#222 retour Max).
-    if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
-        _ajouter_question(qc, noeud)
+    est_qc = type_noeud == "formulaire" and noeud.get("niveau") == "complement"
+    if est_qc:
+        _ajouter_question(
+            qc, noeud, parent_champ=parent_champ, parent_valeur=parent_valeur
+        )
 
     # Noeud catalogue SIG : resolu a la volee (contexte ou callback) pour ne pas
     # bloquer la descente vers les QC en aval.
@@ -1073,15 +1236,51 @@ def _suivre_chemin_pour_qc(
     else:
         valeur = contexte.get(champ) if champ else None
     if valeur is None:
-        # On ne peut pas continuer plus loin sans reponse. Cas typique :
-        # 1ere QC pas repondue -> on s'arrete ici. Pour les noeuds non-QC
-        # (catalogue ou form principal), c'est pareil mais on a deja
-        # collecte ce qu'il fallait.
+        # On ne peut pas suivre le chemin plus loin sans reponse. Cas typique :
+        # QC bloquante -> on prefetch alors TOUTES ses branches (#213), pour
+        # que la cascade complete soit deja dans le DOM quand l'utilisateur
+        # repondra. Pour les noeuds non-QC (catalogue irresolvable ou form
+        # principal), on s'arrete comme avant.
+        if est_qc and conditionnelles is not None:
+            for sb in noeud.get("branches", []):
+                _collecter_aval_conditionnel(
+                    sb,
+                    contexte,
+                    conditionnelles,
+                    index_ids,
+                    resoudre_catalogue,
+                    parent_champ=champ,
+                    parent_valeur=sb.get("valeur"),
+                    _visites_renvoi=set(),
+                )
         return
 
     branche = _choisir_branche_safe(noeud, valeur)
     if branche is None:
         return
+    if est_qc:
+        # QC repondue : prefetch des branches NON prises (#213), pour qu'un
+        # changement de reponse revele leurs QC cote front, sans resubmit.
+        if conditionnelles is not None:
+            for sb in noeud.get("branches", []):
+                if sb is branche:
+                    continue
+                _collecter_aval_conditionnel(
+                    sb,
+                    contexte,
+                    conditionnelles,
+                    index_ids,
+                    resoudre_catalogue,
+                    parent_champ=champ,
+                    parent_valeur=sb.get("valeur"),
+                    _visites_renvoi=set(),
+                )
+        # La suite du chemin est conditionnee par CETTE QC : les QC plus bas
+        # heritent d'elle comme parent (valeur declaree par la branche prise,
+        # pas la valeur brute du contexte, pour matcher les radios rendus).
+        parent_suivant_champ, parent_suivant_valeur = champ, branche.get("valeur")
+    else:
+        parent_suivant_champ, parent_suivant_valeur = parent_champ, parent_valeur
     if "noeud" in branche:
         _suivre_chemin_pour_qc(
             branche["noeud"],
@@ -1090,6 +1289,9 @@ def _suivre_chemin_pour_qc(
             qc,
             visites,
             resoudre_catalogue,
+            parent_suivant_champ,
+            parent_suivant_valeur,
+            conditionnelles,
         )
     elif "renvoi_vers" in branche:
         cible = index_ids.get(branche["renvoi_vers"])
@@ -1105,6 +1307,9 @@ def _suivre_chemin_pour_qc(
                 qc,
                 visites,
                 resoudre_catalogue,
+                parent_suivant_champ,
+                parent_suivant_valeur,
+                conditionnelles,
             )
 
 

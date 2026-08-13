@@ -24,22 +24,21 @@ form="form-simulateur" (form_attr=""). subsidiaires_cascade.js opere sur
     questions ci-dessous.
   </p>
 
-  {% comment %}1. QC deja repondues (editables).{% endcomment %}
-  {% for entry in qc_repondues %}
-    {% include "nitrates/fragments/_qc_question_item.html" with q=entry id_prefix="id_qc_sf_done_" form_attr="" selected_valeur=entry.valeur forloop_first=forloop.first %}
+  {% comment %}
+  Boucle unifiee (#213) : qc_panel contient, dans l'ordre du parcours, les QC
+  repondues (editables), la/les QC en attente, ET les QC prefetchees des
+  branches non prises (annotees parent_champ/parent_valeur -> rendues cachees,
+  revelees par subsidiaires_cascade.js au changement de reponse, sans
+  aller-retour serveur). Le prefixe d'id distingue en attente (new) / recap
+  (done) pour le focus initial et les selecteurs existants.
+  {% endcomment %}
+  {% for entry in qc_panel %}
+    {% if entry.en_attente %}
+      {% include "nitrates/fragments/_qc_question_item.html" with q=entry id_prefix="id_qc_sf_new_" form_attr="" selected_valeur=entry.valeur forloop_first=forloop.first %}
+    {% else %}
+      {% include "nitrates/fragments/_qc_question_item.html" with q=entry id_prefix="id_qc_sf_done_" form_attr="" selected_valeur=entry.valeur forloop_first=forloop.first %}
+    {% endif %}
   {% endfor %}
-
-  {% comment %}2. QC en attente (cascade conditionnelle). La 1re n'est "first"
-  (pas de margin-top) que s'il n'y a aucune QC repondue au-dessus.{% endcomment %}
-  {% if premier_evaluator_avec_questions %}
-    {% for q in premier_evaluator_avec_questions.questions_subsidiaires.questions %}
-      {% if forloop.first and not qc_repondues %}
-        {% include "nitrates/fragments/_qc_question_item.html" with q=q id_prefix="id_qc_sf_new_" form_attr="" selected_valeur=data|get_item:q.champ forloop_first=True %}
-      {% else %}
-        {% include "nitrates/fragments/_qc_question_item.html" with q=q id_prefix="id_qc_sf_new_" form_attr="" selected_valeur=data|get_item:q.champ forloop_first=False %}
-      {% endif %}
-    {% endfor %}
-  {% endif %}
   {% comment %}Pas de bouton ici : le bouton principal du formulaire (cf.
   _panneau_form) sert de « Suivant » quand une QC est en attente.{% endcomment %}
 </div>

@@ -197,13 +197,24 @@
     const resultCol = document.querySelector(".result-col");
     if (resultCol) resultCol.remove();
 
-    // 2. Retirer le bloc QC (questions complementaires sous le form).
+    // 2. Le bloc QC (#qc-bloc) est CONSERVE (#213). Le raser ici provoquait
+    //    un clignotement deletere : l'utilisateur change un champ amont (ex
+    //    fumier compact -> fumier de volaille), le volet QC disparait, et la
+    //    resoumission re-affiche exactement la meme question (la QC ICPE vaut
+    //    pour les deux branches). Regle : le client ne decide pas si les QC
+    //    restent pertinentes -- c'est le rendu serveur suivant qui tranche
+    //    (le volet disparait a ce moment-la SEULEMENT si la nouvelle branche
+    //    n'a pas de QC). Les reponses cochees restent portees par leurs
+    //    radios ; celles hors de la nouvelle branche seront ignorees par le
+    //    serveur, et subsidiaires_cascade.js masque/decoche deja les QC
+    //    conditionnelles devenues incoherentes.
+    //    On retire en revanche data-qc-en-attente : apres elagage on est en
+    //    mode SAISIE, la QC n'est plus l'etape qui commande le viewport --
+    //    form_autoscroll.js (estEnModeResultat) doit reprendre la main pour
+    //    accompagner la re-saisie du form principal. Sans ce retrait,
+    //    l'auto-scroll resterait neutralise (regression #272 constatee).
     const qcBloc = document.getElementById("qc-bloc");
-    if (qcBloc) qcBloc.remove();
-    // Au cas ou un autre panneau QC trainerait (defensif).
-    document
-      .querySelectorAll(".resultat-panel--questions")
-      .forEach((el) => el.remove());
+    if (qcBloc) qcBloc.removeAttribute("data-qc-en-attente");
 
     // 3. Repasser le layout en colonne unique.
     const row = document.querySelector(".results-row");
