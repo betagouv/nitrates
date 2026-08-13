@@ -85,7 +85,7 @@ jobs:
         run: pip install -r requirements/local.txt
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: "npm"
@@ -244,7 +244,7 @@ jobs:
         run: pip install -r requirements/local.txt
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: "npm"
