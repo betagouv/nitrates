@@ -145,8 +145,16 @@ jobs:
           echo "ECHEC : le serveur n'a pas demarre en 120s" >&2
           exit 1
 
+      # `npx playwright` NE DOIT PAS etre utilise ici : le repo declare
+      # `@playwright/test` mais pas `playwright`, donc npx ne trouve aucun
+      # binaire local et telecharge un paquet `playwright` autonome (derniere
+      # version) dans son cache. Les commandes s'executent alors depuis ce
+      # cache, dont le node_modules ne contient pas `@playwright/test` ->
+      # `Cannot find module '@playwright/test'` au chargement de la config, et
+      # zero test execute. On appelle donc le binaire local installe par
+      # `npm ci`, qui resout bien les dependances du repo.
       - name: Installer les navigateurs Playwright
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       # --- Run --------------------------------------------------------------
       # `capture_*` exclu (outils de capture, pas de la non-reg) ainsi que les
@@ -162,7 +170,7 @@ jobs:
           NITRATES_BASE_URL: "http://127.0.0.1:8042"
           CI: "true"
         run: |
-          npx playwright test \
+          ./node_modules/.bin/playwright test \
             --config playwright.config.nitrates.ts \
             $(ls e2e/nitrates/*.spec.ts \
                 | grep -v '/capture_' \
@@ -310,15 +318,23 @@ jobs:
             exit 1
           fi
 
+      # `npx playwright` NE DOIT PAS etre utilise ici : le repo declare
+      # `@playwright/test` mais pas `playwright`, donc npx ne trouve aucun
+      # binaire local et telecharge un paquet `playwright` autonome (derniere
+      # version) dans son cache. Les commandes s'executent alors depuis ce
+      # cache, dont le node_modules ne contient pas `@playwright/test` ->
+      # `Cannot find module '@playwright/test'` au chargement de la config, et
+      # zero test execute. On appelle donc le binaire local installe par
+      # `npm ci`, qui resout bien les dependances du repo.
       - name: Installer les navigateurs Playwright
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Run Playwright — parcours client sous lockdown
         env:
           NITRATES_BASE_URL: "http://127.0.0.1:8042"
           CI: "true"
         run: |
-          npx playwright test \
+          ./node_modules/.bin/playwright test \
             --config playwright.config.nitrates.ts \
             e2e/nitrates/root_public_lockdown.spec.ts
 
