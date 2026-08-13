@@ -1,14 +1,17 @@
-"""Retours utilisateurs du simulateur nitrates (cartes #284 et #287).
+"""Retours utilisateurs du simulateur nitrates (cartes #284, #287 et #285).
 
-Un seul modèle générique `RetourUtilisateur` couvre deux intentions distinctes,
+Un seul modèle générique `RetourUtilisateur` couvre trois intentions distinctes,
 discriminées par le champ `type` :
 
 - **feedback** (#284) : en fin de simulation, « De 0 à 5, cet outil vous a-t-il
   été utile ? » + commentaire libre + email optionnel (devenir alpha-testeur).
 - **interet_region** (#287) : au clic sur une zone hors périmètre, capture d'un
   email « prévenez-moi à l'ouverture de ma région » + le code région tenté.
+- **bug** (#285) : bouton flottant discret présent sur toutes les pages. L'utilisateur
+  signale un bug ou un ressenti ; on capture en plus, dans `contexte`, le maximum
+  d'infos techniques (URL, user-agent, logs console, requêtes réseau) pour reproduire.
 
-RGPD (exigence forte des deux cartes) :
+RGPD (exigence forte des trois cartes) :
 - L'email est stocké SEUL, jamais joint aux données de simulation. Le champ
   `contexte` ne contient que des métadonnées ANONYMES (ex : type de résultat),
   aucune donnée localisante ni parcellaire.
@@ -30,12 +33,14 @@ class RetourUtilisateur(models.Model):
     class Type(models.TextChoices):
         FEEDBACK = "feedback", "Feedback fin de simulation"
         INTERET_REGION = "interet_region", "Intérêt région non ouverte"
+        BUG = "bug", "Signalement bug / retour (bouton flottant)"
 
     type = models.CharField(
         max_length=20,
         choices=Type.choices,
         db_index=True,
-        help_text="Nature du retour : feedback simulation (#284) ou intérêt région (#287).",
+        help_text="Nature du retour : feedback simulation (#284), intérêt "
+        "région (#287) ou signalement bug (#285).",
     )
 
     # #284 : note d'utilité 0-5 (null pour un intérêt région).
@@ -89,9 +94,12 @@ class RetourUtilisateur(models.Model):
     def __str__(self):
         if self.type == self.Type.FEEDBACK:
             note = self.note if self.note is not None else "?"
-            return f"Feedback {note}/5 — {self.cree_le:%Y-%m-%d %H:%M}"
+            return f"Feedback {note}/5 - {self.cree_le:%Y-%m-%d %H:%M}"
+        if self.type == self.Type.BUG:
+            apercu = (self.commentaire or "").strip()[:40]
+            return f"Bug/retour « {apercu or '(sans texte)'} » - {self.cree_le:%Y-%m-%d %H:%M}"
         return (
-            f"Intérêt région {self.region_code or '?'} — {self.cree_le:%Y-%m-%d %H:%M}"
+            f"Intérêt région {self.region_code or '?'} - {self.cree_le:%Y-%m-%d %H:%M}"
         )
 
     @property

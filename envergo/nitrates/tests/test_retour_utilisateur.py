@@ -1,4 +1,4 @@
-"""Tests de l'endpoint de collecte des retours utilisateurs (#284/#287)."""
+"""Tests de l'endpoint de collecte des retours utilisateurs (#284/#287/#285)."""
 
 import json
 
@@ -151,6 +151,52 @@ def test_attacher_email_retour_inexistant(client):
         {"retour_id": 999999, "email": "x@y.fr", "consentement_email": True},
     )
     assert resp.status_code == 404
+
+
+def test_bug_signalement_sans_note_ni_email(client):
+    """#285 : un signalement bug n'exige ni note ni email. On enregistre le
+    commentaire + le contexte technique dumpé par le navigateur."""
+    resp = _post(
+        client,
+        {
+            "type": "bug",
+            "commentaire": "Le bouton Suivant ne réagit pas.",
+            "contexte": {
+                "url": "https://exemple.fr/simulateur",
+                "user_agent": "Mozilla/5.0",
+                "sous_type": "bug",
+                "console": [
+                    {"level": "error", "message": "boom", "t": "2026-08-13T10:00:00Z"}
+                ],
+                "network": [{"method": "GET", "url": "/x", "status": 500}],
+            },
+        },
+    )
+    assert resp.status_code == 201
+    r = RetourUtilisateur.objects.get(pk=resp.json()["id"])
+    assert r.type == RetourUtilisateur.Type.BUG
+    assert r.note is None
+    assert r.email == ""
+    assert r.commentaire == "Le bouton Suivant ne réagit pas."
+    assert r.contexte["sous_type"] == "bug"
+    assert r.contexte["console"][0]["level"] == "error"
+    assert r.contexte["network"][0]["status"] == 500
+
+
+def test_bug_ignore_email_sans_consentement(client):
+    """RGPD : même sur un bug, un email sans consentement est ignoré."""
+    resp = _post(
+        client,
+        {
+            "type": "bug",
+            "commentaire": "souci",
+            "email": "x@y.fr",
+            "consentement_email": False,
+        },
+    )
+    assert resp.status_code == 201
+    r = RetourUtilisateur.objects.get(pk=resp.json()["id"])
+    assert r.email == ""
 
 
 def test_get_refuse(client):

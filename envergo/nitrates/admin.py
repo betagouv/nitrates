@@ -674,10 +674,15 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
         )
 
 
-# ─── Retours utilisateurs (cartes #284/#287) ────────────────────────────────
+# ─── Retours utilisateurs (cartes #284/#287/#285) ───────────────────────────
 # Admin en lecture seule : les retours sont collectés côté public, on ne fait
 # que les consulter/exporter ici. On n'autorise pas la création/édition (ce
 # sont des données brutes d'utilisateurs, append-only).
+#
+# Pour un signalement « bug » (#285), le champ `contexte` embarque le maximum
+# d'infos techniques dumpées par le navigateur (URL, user-agent, taille écran,
+# logs console, requêtes réseau). On le rend lisible ci-dessous plutôt que de
+# laisser du JSON brut.
 
 
 @admin.register(RetourUtilisateur)
@@ -701,6 +706,7 @@ class RetourUtilisateurAdmin(admin.ModelAdmin):
         "email",
         "consentement_email",
         "region_code",
+        "contexte_lisible",
         "contexte",
         "cree_le",
     )
@@ -713,6 +719,62 @@ class RetourUtilisateurAdmin(admin.ModelAdmin):
     def apercu_commentaire(self, obj):
         txt = (obj.commentaire or "").strip()
         return (txt[:60] + "…") if len(txt) > 60 else txt
+
+    @admin.display(description="Contexte technique (bug)")
+    def contexte_lisible(self, obj):
+        """Rend le `contexte` d'un signalement bug (#285) sous forme lisible :
+        infos page + logs console + requêtes réseau. Pour les autres types, le
+        contexte est du JSON anonyme minimal, on le laisse tel quel."""
+        ctx = obj.contexte or {}
+        if not isinstance(ctx, dict) or not ctx:
+            return "—"
+
+        def _bloc(titre, corps):
+            return format_html(
+                '<div style="margin-bottom:1em"><strong>{}</strong>'
+                '<pre style="white-space:pre-wrap;background:#f6f6f6;'
+                'padding:.5em;border-radius:4px;max-height:22em;overflow:auto">'
+                "{}</pre></div>",
+                titre,
+                corps,
+            )
+
+        parties = []
+
+        infos = {
+            "URL": ctx.get("url"),
+            "Titre page": ctx.get("titre_page"),
+            "User-agent": ctx.get("user_agent"),
+            "Écran": ctx.get("viewport"),
+            "Référent": ctx.get("referrer"),
+            "Horodatage client": ctx.get("horodatage"),
+        }
+        infos_txt = "\n".join(f"{k} : {v}" for k, v in infos.items() if v)
+        if infos_txt:
+            parties.append(_bloc("Page", infos_txt))
+
+        logs = ctx.get("console") or []
+        if logs:
+            lignes = "\n".join(
+                f"[{e.get('level', '?')}] {e.get('message', '')}"
+                for e in logs
+                if isinstance(e, dict)
+            )
+            parties.append(_bloc(f"Console ({len(logs)} entrées)", lignes))
+
+        reseau = ctx.get("network") or []
+        if reseau:
+            lignes = "\n".join(
+                f"{e.get('method', '?')} {e.get('url', '')} "
+                f"→ {e.get('status', '?')}"
+                for e in reseau
+                if isinstance(e, dict)
+            )
+            parties.append(_bloc(f"Réseau ({len(reseau)} requêtes)", lignes))
+
+        if not parties:
+            return "—"
+        return mark_safe("".join(parties))
 
     def has_add_permission(self, request):
         return False
