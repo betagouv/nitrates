@@ -25,6 +25,27 @@ const RESULTAT_COLZA_URL =
   '&categorie_fertilisant=engrais_mineral' +
   '&sous_fertilisant=engrais_azote_mineral&type_fertilisant=type_III';
 
+/**
+ * #271 : sur la page de resultat, le formulaire est replie derriere un encart
+ * recap des choix (recap_choix.js pose `hidden` sur #form-after-localisation).
+ * Les radios restent dans le DOM mais invisibles -> tout clic direct timeout
+ * sur « element is not visible ».
+ *
+ * Tout test qui touche un champ APRES un resultat doit donc rouvrir le
+ * formulaire d'abord, exactement comme l'utilisateur. Idempotent : ne fait
+ * rien si le formulaire est deja ouvert (cas QC en attente, ou page de saisie).
+ */
+async function ouvrirFormulaireSiReplie(page) {
+  // On teste l'etat du FORMULAIRE, pas celui du bouton : selon la page le
+  // bouton « Modifier » peut lui-meme etre dans un encart masque, auquel cas
+  // un `isVisible()` sur lui repondrait false alors que le repli est bien la.
+  const formApres = page.locator('#form-after-localisation');
+  if ((await formApres.count()) === 0) return;
+  if (await formApres.isVisible()) return; // deja ouvert : rien a faire
+  await page.locator('[data-recap-modifier]').first().click({ force: true });
+  await expect(formApres).toBeVisible();
+}
+
 function dupKeys(search: string): string[] {
   const p = new URLSearchParams(search);
   const seen = new Set<string>();
@@ -49,14 +70,7 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // (rien a relancer).
     await expect(page.locator('#form-submit-row')).toBeHidden();
 
-    // #271 : sur la page de resultat, le formulaire est replie derriere un
-    // encart recap des choix ; recap_choix.js pose `hidden` sur
-    // #form-after-localisation. Les radios existent donc toujours dans le DOM
-    // mais ne sont plus visibles -> un clic direct timeout ("element is not
-    // visible"). Il faut d'abord rouvrir le formulaire via « Modifier »,
-    // exactement comme le fait l'utilisateur.
-    await page.locator('[data-recap-modifier]').click();
-    await expect(page.locator('#form-after-localisation')).toBeVisible();
+    await ouvrirFormulaireSiReplie(page);
 
     // L'user change la categorie de fertilisant (composts).
     await page.locator('label[for="id_categorie_fertilisant__composts"]').click();
@@ -107,6 +121,8 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     await page.goto(RESULTAT_COLZA_URL);
     await expect(page.locator('.result-col')).toBeVisible();
 
+    await ouvrirFormulaireSiReplie(page);
+
     // Change categorie -> sous_fertilisant -> nouveau type resolu par cascade.
     await page.locator('label[for="id_categorie_fertilisant__composts"]').click();
     await expect(page.locator('.result-col')).toHaveCount(0);
@@ -139,6 +155,8 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // Un resultat + le bloc QC (recap) sont presents.
     await expect(page.locator('#qc-bloc')).toHaveCount(1);
 
+    await ouvrirFormulaireSiReplie(page);
+
     // L'user change la reponse a la QC fertirrigation.
     await page.locator('label[for*="fertirrigation"][for*="True"]').first().click();
 
@@ -146,14 +164,22 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     await expect(page.locator('.result-col')).toHaveCount(0);
     await expect(page.locator('#qc-bloc')).toHaveCount(0);
 
-    // L'URL miroir ne reprend PAS la reponse QC obsolete (fertirrigation).
+    // L'URL miroir porte la reponse QC qu'on vient de RE-CHOISIR (True), pas
+    // l'ancienne (False).
+    //
+    // NB : cette assertion attendait `null` a l'origine (ecrite avant #175).
+    // #175 a change le contrat : on PRESERVE la reponse amont re-choisie,
+    // sinon l'utilisateur qui vient de repondre « Oui » perd sa reponse a la
+    // resoumission (c'etait precisement un des bugs de la serie). Ce qui doit
+    // disparaitre, c'est le bloc QC obsolete (verifie ci-dessus), pas la
+    // reponse elle-meme.
     await expect
       .poll(() =>
         page.evaluate(() =>
           new URLSearchParams(location.search).get('fertirrigation')
         )
       )
-      .toBeNull();
+      .toBe('True');
     const search = await page.evaluate(() => location.search);
     expect(dupKeys(search)).toEqual([]);
   });
@@ -340,6 +366,8 @@ test.describe('Simulateur #135 : reset sur saisie couvert (flow #272)', () => {
   }) => {
     await page.goto(URL_RESULTAT_COUVERT);
     await expect(page.locator('.result-col')).toBeVisible();
+
+    await ouvrirFormulaireSiReplie(page);
 
     // Le flow #272 est reconstruit depuis l'URL (Q1..Q3 cochees). On change
     // l'axe "recolte" (Q3) -> pilote le vrai sous_culture_form -> dispatch

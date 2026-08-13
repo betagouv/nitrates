@@ -17,7 +17,23 @@ import { test, expect, Page } from '@playwright/test';
 const REIMS_LNG = 4.0345;
 const REIMS_LAT = 49.2583;
 
+/**
+ * #271 : sur la page de resultat le formulaire est replie derriere l'encart
+ * recap (recap_choix.js pose `hidden` sur #form-after-localisation). Les radios
+ * du flow restent dans le DOM mais a taille nulle -> le clic timeout sur
+ * « element is not visible ». On rouvre d'abord, comme l'utilisateur.
+ * Idempotent : ne fait rien si le formulaire est deja ouvert.
+ */
+async function ouvrirFormulaireSiReplie(page: Page) {
+  const formApres = page.locator('#form-after-localisation');
+  if ((await formApres.count()) === 0) return;
+  if (await formApres.isVisible()) return;
+  await page.locator('[data-recap-modifier]').first().click({ force: true });
+  await expect(formApres).toBeVisible();
+}
+
 async function pickFlow(page: Page, name: string, index: number) {
+  await ouvrirFormulaireSiReplie(page);
   // Les radios du flow sont visibles : on clique le label par ordre d'apparition.
   const group = page.locator(`input[type=radio][name="${name}"]`);
   await expect(group.nth(index), `radio ${name}[${index}] absent`).toHaveCount(1);

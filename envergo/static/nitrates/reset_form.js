@@ -184,9 +184,16 @@
   // - un resultat final (.result-col), OU
   // - un bloc QC (recap repondu OU en attente : changer un champ amont
   //   invalide aussi le parcours qui a mene a cette QC).
+  // - OU un retour en saisie DEPUIS un resultat (#271 : « Modifier » replie
+  //   l'encart recap et retire .result-col). Sans ce troisieme cas, le miroir
+  //   d'URL s'arretait net apres « Modifier » : les parametres devenus
+  //   obsoletes (type_fertilisant d'une categorie qu'on vient de changer)
+  //   restaient dans l'URL et repartaient a la resoumission GET.
   function rendurServeurAffiche() {
     return !!(
-      document.querySelector(".result-col") || document.getElementById("qc-bloc")
+      document.querySelector(".result-col") ||
+      document.getElementById("qc-bloc") ||
+      (form && form.hasAttribute("data-miroir-url-actif"))
     );
   }
 
@@ -424,8 +431,15 @@
     // Idem si le radio est dans le bloc QC (recap repondu) ET qu'aucun resultat
     // final n'est affiche : on est encore en phase de saisie QC, pas sur un
     // resultat finalise -> ne pas elaguer. (Cas ou plusieurs QC s'enchainent.)
+    // `.result-col` seule ne suffit PAS a repondre « un resultat a-t-il ete
+    // rendu ? » depuis #271 : « Modifier » la retire tout en restant sur un
+    // parcours issu d'un resultat. On accepte donc aussi le marqueur de
+    // miroir, sinon editer une reponse QC apres « Modifier » laissait le bloc
+    // QC obsolete a l'ecran (il n'etait jamais elague).
     const qcBloc = document.getElementById("qc-bloc");
-    const resultatFinal = document.querySelector(".result-col");
+    const resultatFinal =
+      document.querySelector(".result-col") ||
+      (form && form.hasAttribute("data-miroir-url-actif"));
     if (qcBloc && qcBloc.contains(target) && !resultatFinal) return;
 
     // Sinon : un champ (cascade AMONT, ou reponse QC recap) a change alors
@@ -447,6 +461,18 @@
   }
 
   form.addEventListener("change", onChangeChamp);
+
+  // Arme le miroir d'URL des qu'un rendu serveur est present au chargement.
+  // Le marqueur SURVIT volontairement a « Modifier » (#271) et au retour en
+  // saisie : une fois qu'on vient d'un resultat, l'URL doit rester le reflet
+  // fidele du formulaire jusqu'a la prochaine navigation, sinon elle porte des
+  // reponses qui ne sont plus a l'ecran.
+  if (
+    document.querySelector(".result-col") ||
+    document.getElementById("qc-bloc")
+  ) {
+    form.setAttribute("data-miroir-url-actif", "");
+  }
 
   // Expose pour les tests unitaires (jsdom / node) sans polluer l'API
   // publique : uniquement la fonction pure de construction du dict.
