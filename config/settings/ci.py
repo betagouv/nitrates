@@ -16,9 +16,16 @@ SECRET_KEY = env(
 )
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = [
-    "localhost",
-]
+# Pilotable par DJANGO_ALLOWED_HOSTS : le workflow e2e sert le simulateur sur
+# 127.0.0.1 (playwright.config.nitrates.ts cible cette IP pour matcher la Site
+# nitrates via SetUrlConfBasedOnSite). Avec la liste figee a ["localhost"], la
+# variable posee par le workflow etait ignoree et Django repondait 400
+# DisallowedHost sur chaque requete -> toutes les specs echouaient sur une page
+# vide.
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1"],
+)
 
 # CACHES
 # ------------------------------------------------------------------------------
