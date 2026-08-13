@@ -493,3 +493,36 @@ test("CR 2026-08 : règle plafond MIXTE (tous_plafonds=false) conserve la pério
     "la période ASC doit rester (règle mixte, pas 100% plafond)"
   );
 });
+
+// ─── #186 : fermeture des zones adossees aux bords de la barre ────────────
+// La metier a signale des "contours gauche/droite absents" sur le calendrier.
+// Une zone collee a un bord dessinait un angle droit debordant l'arrondi de la
+// barre, sans rien pour refermer le segment (les bordures laterales ont ete
+// retirees en #132/#134 : chaque frontiere INTERNE est portee par le tic de sa
+// borne, mais aux extremites de l'annee agricole il n'y a pas de borne).
+// Ces classes doivent rester alignees sur le calendrier statique (Python
+// nitrates_tags._flags_bord) : meme nom, meme semantique.
+
+test("#186 zone demarrant au 1er juillet -> classe bord gauche", () => {
+  const classes = cal.classesBordZone({ du: 0, au: 100 });
+  assert.ok(classes.includes("calendrier-epandage__zone--bord-gauche"));
+  assert.ok(!classes.includes("calendrier-epandage__zone--bord-droit"));
+});
+
+test("#186 zone finissant au 30 juin -> classe bord droit", () => {
+  const classes = cal.classesBordZone({ du: 100, au: TOTAL_JOURS - 1 });
+  assert.ok(classes.includes("calendrier-epandage__zone--bord-droit"));
+  assert.ok(!classes.includes("calendrier-epandage__zone--bord-gauche"));
+});
+
+test("#186 zone pleine annee -> fermee des deux cotes", () => {
+  const classes = cal.classesBordZone({ du: 0, au: TOTAL_JOURS - 1 });
+  assert.ok(classes.includes("calendrier-epandage__zone--bord-gauche"));
+  assert.ok(classes.includes("calendrier-epandage__zone--bord-droit"));
+});
+
+test("#186 zone interne -> aucune classe de bord (non-regression #132/#134)", () => {
+  // Une bordure laterale sur une frontiere interne reintroduirait le
+  // double-trait (bordure de zone + tic de borne, jamais pile alignes).
+  assert.deepStrictEqual(cal.classesBordZone({ du: 1, au: TOTAL_JOURS - 2 }), []);
+});

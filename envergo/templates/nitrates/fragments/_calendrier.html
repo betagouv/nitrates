@@ -29,7 +29,7 @@ Inputs (cf. templatetag calendrier_epandage) :
 
     <div class="calendrier-epandage__bar">
       {% for seg in segments %}
-        <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}{% if seg.is_flottant %} calendrier-epandage__zone--flottant{% endif %}"
+        <div class="calendrier-epandage__zone calendrier-epandage__zone--{{ seg.couleur }}{% if seg.is_flottant %} calendrier-epandage__zone--flottant{% endif %}{% if seg.bord_gauche %} calendrier-epandage__zone--bord-gauche{% endif %}{% if seg.bord_droit %} calendrier-epandage__zone--bord-droit{% endif %}"
              style="left: {{ seg.start_pct|unlocalize }}%;
                     width: {{ seg.width_pct|unlocalize }}%"
              {% if seg.tooltip %}title="{{ seg.tooltip }}"{% endif %}
@@ -37,8 +37,14 @@ Inputs (cf. templatetag calendrier_epandage) :
         </div>
       {% endfor %}
 
+      {% comment %}
+      La position passe par la variable --today-pct (et non par `left` en dur) :
+      le CSS la borne via clamp() pour que le point ne soit jamais coupe en deux
+      par l'overflow:hidden de la barre aux extremites de l'annee agricole
+      (#186), exactement comme son label depuis #134.
+      {% endcomment %}
       <div class="calendrier-epandage__today"
-           style="left: {{ today_pct|unlocalize }}%"
+           style="--today-pct: {{ today_pct|unlocalize }}%"
            aria-label="Aujourd'hui"></div>
 
       {% comment %}
@@ -66,7 +72,7 @@ Inputs (cf. templatetag calendrier_epandage) :
           (gras) + « Ici exemple au <date> » (italique). Le tic prend la couleur
           de sa zone (orange ASC / rouge interdiction) via --orange/--rouge.
           {% endcomment %}
-          <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.couleur %} calendrier-epandage__period-date--{{ b.couleur }}{% endif %}{% if b.date_exemple %} calendrier-epandage__period-date--boite{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}"
+          <span class="calendrier-epandage__period-date{% if b.is_phenologique %} calendrier-epandage__period-date--phenologique{% endif %}{% if b.couleur %} calendrier-epandage__period-date--{{ b.couleur }}{% endif %}{% if b.date_exemple %} calendrier-epandage__period-date--boite{% endif %}{% if b.row %} calendrier-epandage__period-date--row2{% endif %}{% if not b.date_exemple %}{% if b.bord_gauche %} calendrier-epandage__period-date--bord-gauche{% endif %}{% if b.bord_droit %} calendrier-epandage__period-date--bord-droit{% endif %}{% endif %}"
                 style="left: {{ b.pct|unlocalize }}%">
             {% if b.date_exemple %}
               <span class="calendrier-epandage__period-date-connecteur"

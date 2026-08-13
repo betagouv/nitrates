@@ -632,6 +632,23 @@
     return result;
   }
 
+  // #186 : classes de fermeture d'une zone adossee a un bord de la barre.
+  // La barre est arrondie (8px) et clippe en overflow:hidden ; une zone collee
+  // a un bord dessine un rectangle a angles DROITS qui deborde cet arrondi, et
+  // depuis #132/#134 les zones n'ont plus de bordure laterale (chaque frontiere
+  // INTERNE est materialisee par le tic de sa borne). Aux extremites de l'annee
+  // agricole il n'y a pas de borne -> plus rien ne referme le segment.
+  // Segments en JOURS ici -> test exact, pas d'epsilon (contrairement au
+  // calendrier statique qui raisonne en %). Garde le meme contrat que
+  // nitrates_tags._flags_bord cote Python.
+  function classesBordZone(segment) {
+    const classes = [];
+    if (segment.du <= 0) classes.push("calendrier-epandage__zone--bord-gauche");
+    if (segment.au >= TOTAL_JOURS - 1)
+      classes.push("calendrier-epandage__zone--bord-droit");
+    return classes;
+  }
+
   // ─── Export Node (tests de logique pure) ───────────────────────────────
   // Toute la suite (État, rendu DOM) depend de document/window : on s'arrete
   // ici en Node et on n'expose que les fonctions pures du moteur de calcul.
@@ -652,6 +669,7 @@
       jourAgricoleToLisible,
       messageBornePicker,
       messageHorsBornes,
+      classesBordZone,
       TOTAL_JOURS,
       setData: (d) => {
         data = d || {};
@@ -813,6 +831,8 @@
           `calendrier-epandage__zone--${couleur}`,
         ];
         if (flottant) classes.push("calendrier-epandage__zone--flottant");
+        // #186 : fermeture/arrondi des zones adossees a un bord de la barre.
+        classes.push(...classesBordZone(s));
         // Tooltip : phrase humaine qui decrit la fenetre. On cherche la
         // periode YAML d'origine qui couvre ce segment (premier match)
         // pour reutiliser sa structure (du, au, regime) et generer une
@@ -834,7 +854,10 @@
     const aujLeft = aujourdhui != null ? (aujourdhui / TOTAL_JOURS) * 100 : null;
     const aujourdhuiHtml =
       aujLeft != null
-        ? `<div class="calendrier-epandage__today" style="left:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>` +
+        ? // #186 : position via --today-pct (et non `left` en dur) pour que le
+          // CSS puisse la borner par clamp() -> le point n'est plus coupe en
+          // deux par l'overflow:hidden de la barre aux extremites de l'annee.
+          `<div class="calendrier-epandage__today" style="--today-pct:${aujLeft.toFixed(3)}%" aria-label="Aujourd'hui"></div>` +
           `<span class="calendrier-epandage__today-label" style="--today-pct:${aujLeft.toFixed(3)}%">Aujourd'hui</span>`
         : "";
 

@@ -133,6 +133,35 @@
   border-right: none;
 }
 
+/* #186 : zones adossees aux bords de la barre.
+   Une zone collee a un bord dessine un rectangle a angles DROITS : ses coins
+   filent dans la zone ou la barre s'incurve -> encoche carree qui deborde
+   visuellement l'arrondi. Signale par la metier : "contour gauche/droite
+   absent", quand une periode commence au 1er juillet ou finit au 30 juin.
+
+   ATTENTION - ce qu'il ne faut PAS faire (essai precedent, rejete) : ajouter
+   une `border-left`/`border-right` a la zone. Ca introduit un lisere de 1px
+   AVANT le debut reel de la periode, ce qui revient a affirmer qu'il se passe
+   quelque chose entre le bord du calendrier et le 01/07 - information qu'on
+   n'a pas et qui n'est pas modelisee (l'annee ne "boucle" pas). Ca decalait
+   en prime le remplissage par rapport au tic du 01/07.
+
+   Correctif retenu : on ne touche NI a la geometrie NI aux bordures de la
+   zone. Elle garde left:0 / width:100% exacts, donc le remplissage coincide
+   au pixel pres avec la borne. On lui donne seulement le meme rayon que la
+   barre du cote concerne, pour qu'elle epouse l'arrondi au lieu de le
+   deborder. La fermeture visuelle du calendrier reste portee par la barre
+   elle-meme (box-shadow inset), la zone se superpose simplement par-dessus. */
+.calendrier-epandage__zone--bord-gauche {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.calendrier-epandage__zone--bord-droit {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
 /* Point "aujourd'hui" centre VERTICALEMENT dans la barre (maquette #130).
    Barre = 46px, point = 9px -> top via 50% + translateY(-50%), independant
    de la hauteur exacte de la barre. Le label se pose juste sous le point. */
@@ -146,6 +175,16 @@
   transform: translate(-50%, -50%);
   z-index: 2;
   pointer-events: none;
+
+  /* #186 : le point est centre via translateX(-50%) dans une barre en
+     overflow:hidden. Aux extremites de l'annee agricole (1er juillet = 0%,
+     30 juin = 100%) la moitie du disque sort de la barre et se fait couper
+     -> "point Aujourd'hui incomplet" signale par la metier. On borne sa
+     position comme on l'a fait pour son label en #134 : point de 9px ->
+     demi-largeur 4.5px, arrondie a 5px de garde a chaque bord pour rester
+     franchement a l'interieur du trait de contour. Valeurs en px, donc
+     independantes de la largeur responsive de la barre. */
+  left: clamp(5px, var(--today-pct, 0%), calc(100% - 5px));
 }
 
 /* Label "Aujourd'hui" : element distinct ancre sur la BARRE (.__bar), pas sur
@@ -246,6 +285,21 @@
   transform: translateX(-50%);
 }
 
+/* #186 : bornes aux extremites de l'annee agricole (01/07 a gauche, 30/06 a
+   droite). La boite-label est centree sur la date via translateX(-50%) : a
+   0% (resp. 100%) la moitie du texte sort du conteneur et se fait couper
+   -> la metier voyait "/07" au lieu de "01/07". On rabat la boite a
+   l'interieur (translateX(0) / translateX(-100%)) et on RECALE le tic en
+   consequence, pour qu'il continue de tomber pile sur la date : c'est le tic
+   qui porte l'information de position, pas la boite. */
+.calendrier-epandage__period-date--bord-gauche {
+  transform: translateX(0);
+}
+
+.calendrier-epandage__period-date--bord-droit {
+  transform: translateX(-100%);
+}
+
 /* Tick connecteur present sur TOUTES les dates (fixes, calculees, inputs) :
    un trait vertical fin qui relie le label a la barre du calendrier. Avant,
    seules les bornes --phenologique en avaient un, d'ou l'impression de
@@ -269,6 +323,23 @@
   transform: translateX(-50%);
   background: currentcolor;
   pointer-events: none;
+}
+
+/* #186 - recalage du tic des bornes extremes. DOIT rester APRES la regle
+   generique ci-dessus : meme specificite, c'est l'ordre source qui tranche.
+   (Declarees avant, elles etaient silencieusement ecrasees par `left:50%` et
+   le tic du 01/07 se retrouvait a ~15px du bord, soit visuellement mi-juillet
+   alors que la periode demarre au 1er.)
+   La boite du label est rabattue dans le conteneur (translateX(0) /
+   translateX(-100%) plus haut) ; on ramene donc le tic sur le bord de cette
+   boite, c'est-a-dire pile sur la date. Le tic porte la position, pas la
+   boite. */
+.calendrier-epandage__period-date--bord-gauche::before {
+  left: 0;
+}
+
+.calendrier-epandage__period-date--bord-droit::before {
+  left: 100%;
 }
 
 /* Borne phenologique : libelle conventionnel (semis / destruction), pose en

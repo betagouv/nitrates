@@ -286,6 +286,27 @@ def _segment_interdit(periode: dict) -> list[tuple[float, float]]:
     ]
 
 
+# Tolerance (en % de largeur de barre) pour considerer qu'un segment est
+# "colle" a un bord. 1 jour = 1/365 = 0.274% : on prend une demi-journee, ce
+# qui ne capture QUE les segments exactement adosses au bord (issus d'un
+# 01/07 ou d'un 30/06) sans jamais attraper un segment demarrant au 02/07.
+_EPS_BORD_PCT = 0.14
+
+
+def _flags_bord(start_pct: float, width_pct: float) -> dict:
+    """Indique si un segment touche le bord gauche et/ou droit de la barre.
+
+    Sert au rendu (#186) : un segment adosse a un bord doit reprendre
+    l'arrondi de la barre de ce cote et refermer son contour lateral, sinon
+    il dessine un angle droit qui deborde l'arrondi et la periode parait
+    "ouverte" (aucun tic de borne ne materialise le bord de l'annee agricole).
+    """
+    return {
+        "bord_gauche": start_pct <= _EPS_BORD_PCT,
+        "bord_droit": (start_pct + width_pct) >= (100 - _EPS_BORD_PCT),
+    }
+
+
 # Abreviations de mois alignees sur le calendrier dynamique (JS
 # calculatrice-calendrier.js : MOIS_AGRICOLES). Format "15 juil.", "15 aoû.".
 # Index = mois civil 1..12 -> abreviation. On unifie ce format partout (#85).
@@ -775,6 +796,12 @@ def calendrier_epandage(regle, referentiel=None):
                         "couleur": couleur,
                         "is_flottant": is_flottant,
                         "tooltip": tooltip,
+                        # #186 : un segment adosse a un bord de la barre doit
+                        # reprendre l'arrondi et refermer son cote (sinon angle
+                        # droit qui deborde l'arrondi + aucune frontiere
+                        # dessinee, cf. calendrier.css). Cas typiques : periode
+                        # demarrant au 1er juillet ou finissant au 30 juin.
+                        **_flags_bord(start, width),
                     }
                 )
         else:
@@ -870,6 +897,12 @@ def calendrier_epandage(regle, referentiel=None):
     # presence d'une date flottante a cote.
     for b in bornes:
         b["row"] = 1 if b.get("is_phenologique") else 0
+        # #186 : une borne posee sur une extremite de l'annee agricole voit son
+        # label (centre sur la date) deborder du conteneur et se faire couper
+        # ("/07" au lieu de "01/07"). On le signale au CSS, qui rabat la boite
+        # a l'interieur en recalant le tic pour qu'il reste sur la date.
+        b["bord_gauche"] = b["pct"] <= _EPS_BORD_PCT
+        b["bord_droit"] = b["pct"] >= (100 - _EPS_BORD_PCT)
 
     # Legende dynamique : on liste uniquement les categories presentes dans
     # le calendrier (interdit / autorise sous condition / plafonnement) et on
