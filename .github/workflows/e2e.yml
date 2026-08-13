@@ -141,6 +141,13 @@ jobs:
           DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost"
           DJANGO_LOCKDOWN_BEHIND_LOGIN: "False"
           DJANGO_NITRATES_ROOT_OUVERT: "True"
+          # Les specs de branches assertent l'IDENTIFIANT TECHNIQUE de la regle
+          # (ex r_autres_cultures_tous_types). Cet id n'apparait que dans le
+          # panneau debug developpeur, gate par ce flag (defaut False, True en
+          # settings local). Sans lui le simulateur calcule le bon resultat
+          # mais ne l'ecrit nulle part dans le HTML -> les 12 specs de branches
+          # echouent en CI alors qu'elles passent en local.
+          DJANGO_NITRATES_FORM_DEBUG_PANELS: "True"
         run: |
           python manage.py runserver 127.0.0.1:8042 --noreload &
           echo "Attente du serveur sur 127.0.0.1:8042..."
