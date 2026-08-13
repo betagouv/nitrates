@@ -106,7 +106,17 @@ jobs:
         run: |
           python manage.py migrate --noinput
           python manage.py seed_referentiels
-          python manage.py load_arbres_actifs
+          # --skip-zar-sans-carte : la base CI est ephemere et n'a aucune
+          # couche SIG importee, donc l'activation_map d'un ZAR n'est pas
+          # deductible. Sans ce flag la commande echoue (zar_44.yaml) et le
+          # job meurt avant meme de lancer Playwright.
+          python manage.py load_arbres_actifs --skip-zar-sans-carte
+          # Couche ZV minimale : sans elle, les points de test (Reims,
+          # Rennes) tombent « hors zone » et TOUTES les specs echouent pour
+          # une raison etrangere a ce qu'elles testent. On ne branche pas
+          # l'import Sandre reel (37 Mo) sur un nightly : une indispo du WFS
+          # ferait rougir la CI sans regression de code.
+          python manage.py seed_geodata_e2e
 
       # --- Serveur de test -------------------------------------------------
       # Le middleware SetUrlConfBasedOnSite force l'urlconf nitrates quel que
@@ -249,7 +259,17 @@ jobs:
         run: |
           python manage.py migrate --noinput
           python manage.py seed_referentiels
-          python manage.py load_arbres_actifs
+          # --skip-zar-sans-carte : la base CI est ephemere et n'a aucune
+          # couche SIG importee, donc l'activation_map d'un ZAR n'est pas
+          # deductible. Sans ce flag la commande echoue (zar_44.yaml) et le
+          # job meurt avant meme de lancer Playwright.
+          python manage.py load_arbres_actifs --skip-zar-sans-carte
+          # Couche ZV minimale : sans elle, les points de test (Reims,
+          # Rennes) tombent « hors zone » et TOUTES les specs echouent pour
+          # une raison etrangere a ce qu'elles testent. On ne branche pas
+          # l'import Sandre reel (37 Mo) sur un nightly : une indispo du WFS
+          # ferait rougir la CI sans regression de code.
+          python manage.py seed_geodata_e2e
 
       # --- Serveur en CONFIG STAGING ---------------------------------------
       # Les deux flags ci-dessous SONT le sujet du test. Ne pas les changer
