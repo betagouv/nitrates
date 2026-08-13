@@ -95,8 +95,17 @@ jobs:
 
       # Les specs testent le JS compile (cascade, flow couvert, carte Leaflet).
       # Sans build, le serveur sert des assets absents -> tout casse.
+      # bin/build_assets.sh est le hook post-compile de SCALINGO : il finit par
+      # `npm prune --production` pour ne pas gonfler /staticfiles. En CI cet
+      # elagage retire @playwright/test, installe juste avant par `npm ci` ->
+      # `npx playwright test` ne le trouve plus et telecharge un playwright
+      # temporaire qui echoue sur « Cannot find module '@playwright/test' ».
+      # On restaure donc les devDependencies APRES le build.
       - name: Build assets
         run: bash bin/build_assets.sh
+
+      - name: Restaurer les devDependencies elaguees par le build
+        run: npm ci
 
       # --- Base : migrations + referentiels + arbres canoniques ------------
       # Les specs interrogent /api/referentiels/ et /api/arbre/ (qui doit
@@ -252,8 +261,17 @@ jobs:
       - name: Install js dependencies
         run: npm ci
 
+      # bin/build_assets.sh est le hook post-compile de SCALINGO : il finit par
+      # `npm prune --production` pour ne pas gonfler /staticfiles. En CI cet
+      # elagage retire @playwright/test, installe juste avant par `npm ci` ->
+      # `npx playwright test` ne le trouve plus et telecharge un playwright
+      # temporaire qui echoue sur « Cannot find module '@playwright/test' ».
+      # On restaure donc les devDependencies APRES le build.
       - name: Build assets
         run: bash bin/build_assets.sh
+
+      - name: Restaurer les devDependencies elaguees par le build
+        run: npm ci
 
       - name: Preparer la base (migrate + referentiels + arbres)
         run: |
