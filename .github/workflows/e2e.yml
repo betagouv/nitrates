@@ -142,16 +142,25 @@ jobs:
           DJANGO_LOCKDOWN_BEHIND_LOGIN: "False"
           DJANGO_NITRATES_ROOT_OUVERT: "True"
         run: |
-          python manage.py runserver 127.0.0.1:8042 --noreload &
+          python manage.py runserver 127.0.0.1:8042 --noreload \
+            > /tmp/django-e2e.log 2>&1 &
           echo "Attente du serveur sur 127.0.0.1:8042..."
+          # Piege : `curl -w '%{http_code}'` ecrit DEJA "000" sur stdout quand la
+          # connexion echoue. Avec le `|| echo "000"` qui etait ici, la variable
+          # valait "000000" -> le test `!= "000"` etait vrai des la 1ere
+          # iteration : le step annoncait « Serveur up (HTTP 000000) » alors que
+          # rien n'ecoutait encore, et les specs echouaient ensuite sur des pages
+          # vides. On teste donc le SUCCES de curl (-f), pas le contenu du code.
+          # (Le job lockdown ci-dessous n'avait pas ce bug : il compare a "200".)
           for i in $(seq 1 60); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/ || echo "000")
-            if [ "$code" != "000" ]; then
+            if code=$(curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/); then
               echo "Serveur up (HTTP $code)"; exit 0
             fi
             sleep 2
           done
           echo "ECHEC : le serveur n'a pas demarre en 120s" >&2
+          echo "--- log Django ---" >&2
+          cat /tmp/django-e2e.log >&2
           exit 1
 
       - name: Installer les navigateurs Playwright
