@@ -100,10 +100,34 @@ const CONSOLE_TOLERE = [
 
 function collecteErreursConsole(page: Page): string[] {
   const erreurs: string[] = [];
+
+  // Un echec de chargement de ressource produit un message SANS URL
+  // (« Failed to load resource: the server responded with a status of 404 »),
+  // que le filtre par domaine ci-dessus ne peut donc pas attraper. On note
+  // separement les URLs externes qui ont echoue pour pouvoir les ignorer :
+  // une tuile IGN qui rate est un alea reseau du runner, pas une regression.
+  // Les echecs sur NOTRE origine restent, eux, des erreurs (c'est le sujet du
+  // test : verifier que le lockdown n'intercepte pas /geojson/zv/).
+  let echecsExternes = 0;
+  page.on('requestfailed', (req) => {
+    if (CONSOLE_TOLERE.some((t) => req.url().includes(t))) echecsExternes += 1;
+  });
+  page.on('response', (res) => {
+    if (res.status() >= 400 && CONSOLE_TOLERE.some((t) => res.url().includes(t))) {
+      echecsExternes += 1;
+    }
+  });
+
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
     const texte = msg.text();
     if (CONSOLE_TOLERE.some((t) => texte.includes(t))) return;
+    // Message generique de ressource : on ne le compte que s'il ne correspond
+    // pas a un echec externe deja observe.
+    if (texte.includes('Failed to load resource') && echecsExternes > 0) {
+      echecsExternes -= 1;
+      return;
+    }
     erreurs.push(texte);
   });
   page.on('pageerror', (err) => erreurs.push(`pageerror: ${err.message}`));
