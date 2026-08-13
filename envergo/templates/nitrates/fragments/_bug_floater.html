@@ -1,0 +1,119 @@
+{% load nitrates_tags %}
+
+{% comment %}
+#285 — Bouton flottant « Signaler un bug » présent sur toutes les pages.
+
+Bouton discret ancré en bas à droite. Au clic, un pop-over s'ouvre avec :
+  - un choix (radio) : Bug / Retour ;
+  - un commentaire libre.
+À l'envoi, bug_floater.js POST vers /api/retour/ (type "bug") en joignant
+dans `contexte` le maximum d'infos techniques dumpées par le navigateur
+(URL, user-agent, écran, logs console capturés, requêtes réseau capturées)
+pour aider à reproduire.
+
+Aucune donnée de simulation ni parcellaire n'est jointe : seuls le texte de
+l'utilisateur et un contexte technique anonyme partent.
+{% endcomment %}
+
+<div class="nitrates-bug"
+     id="nitrates-bug"
+     data-region-code="{{ moulinette.catalog.region_code|default:'' }}">
+
+  {# ── Bouton flottant déclencheur ──────────────────────────────────────── #}
+  <button type="button"
+          class="nitrates-bug__toggle"
+          data-bug-open
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls="nitrates-bug-dialog"
+          title="Signaler un bug ou faire un retour">
+    <svg viewBox="0 0 24 24"
+         width="20"
+         height="20"
+         aria-hidden="true"
+         focusable="false">
+      <path fill="currentColor" d="M20 8h-2.81a5.985 5.985 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a5.987 5.987 0 0 0-2.84 0L8.41 3 7 4.41l1.62 1.63A5.985 5.985 0 0 0 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81a6 6 0 0 0 10.38 0H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8Zm-6 8h-4v-2h4v2Zm0-4h-4v-2h4v2Z" />
+    </svg>
+    <span class="nitrates-bug__toggle-label">Signaler un bug</span>
+  </button>
+
+  {# ── Pop-over ─────────────────────────────────────────────────────────── #}
+  <div class="nitrates-bug__popover"
+       id="nitrates-bug-dialog"
+       role="dialog"
+       aria-modal="false"
+       aria-labelledby="nitrates-bug-titre"
+       hidden>
+    <div class="nitrates-bug__header">
+      <p class="nitrates-bug__titre fr-h6"
+         id="nitrates-bug-titre"
+         data-bug-header-titre>Un souci&nbsp;? Un retour&nbsp;?</p>
+      <button type="button"
+              class="nitrates-bug__close"
+              aria-label="Fermer"
+              data-bug-close>✕</button>
+    </div>
+
+    <div class="nitrates-bug__volet" data-bug-volet-form>
+      <fieldset class="fr-fieldset nitrates-bug__type"
+                aria-labelledby="nitrates-bug-type-legend">
+        <legend class="fr-fieldset__legend fr-text--sm" id="nitrates-bug-type-legend">De quoi s'agit-il&nbsp;?</legend>
+        <div class="fr-fieldset__content">
+          <div class="fr-radio-group fr-radio-group--sm">
+            <input type="radio"
+                   id="nitrates-bug-type-bug"
+                   name="nitrates-bug-type"
+                   value="bug"
+                   checked>
+            <label class="fr-label" for="nitrates-bug-type-bug">Un bug (ça ne marche pas)</label>
+          </div>
+          <div class="fr-radio-group fr-radio-group--sm">
+            <input type="radio"
+                   id="nitrates-bug-type-retour"
+                   name="nitrates-bug-type"
+                   value="retour">
+            <label class="fr-label" for="nitrates-bug-type-retour">Un retour / une suggestion</label>
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="fr-label" for="nitrates-bug-commentaire">
+        Décrivez ce que vous observez
+        <span class="fr-hint-text">Que faisiez-vous&nbsp;? Qu'attendiez-vous&nbsp;?</span>
+      </label>
+      <textarea class="fr-input"
+                id="nitrates-bug-commentaire"
+                rows="4"
+                maxlength="4000"
+                placeholder="Ex : au clic sur « Suivant » la page ne change pas…"></textarea>
+
+      <p class="nitrates-bug__rgpd fr-text--xs">
+        Pour nous aider à reproduire, quelques infos techniques de votre
+        navigateur (adresse de la page, journal d'erreurs) sont jointes. Aucune
+        donnée personnelle ni de simulation n'est transmise.
+      </p>
+
+      <div class="nitrates-bug__actions">
+        <button type="button"
+                class="fr-btn fr-btn--tertiary-no-outline fr-btn--sm"
+                data-bug-close>Annuler</button>
+        <button type="button" class="fr-btn fr-btn--sm" data-bug-submit disabled>Envoyer</button>
+      </div>
+      <p class="nitrates-bug__erreur fr-error-text" data-bug-erreur hidden>Une erreur est survenue. Réessayez plus tard.</p>
+    </div>
+
+    <div class="nitrates-bug__volet" data-bug-volet-merci hidden>
+      <p class="fr-text--sm">Merci beaucoup&nbsp;! Votre signalement nous aide à corriger l'outil.</p>
+      <div class="nitrates-bug__actions">
+        <button type="button" class="fr-btn fr-btn--sm" data-bug-close>Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% comment %}
+Script chargé ici (dans le fragment) plutôt que via un bloc extra_js : certaines
+pages (le simulateur) redéfinissent extra_js sans block.super, ce qui écraserait
+le script. Rattaché au fragment, il est présent partout où le bouton l'est.
+{% endcomment %}
+<script defer src="{% static_v 'nitrates/bug_floater.js' %}"></script>

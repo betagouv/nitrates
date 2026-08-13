@@ -34,6 +34,7 @@ simulateur). static_v : cache-busting en dev (cf. nitrates_tags).
 {% block site_css %}
   {{ block.super }}
   <link href="{% static_v 'nitrates/nav.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/bug_floater.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block footer %}
@@ -42,6 +43,7 @@ simulateur). static_v : cache-busting en dev (cf. nitrates_tags).
 
 {% block extra_body %}
   {{ block.super }}
+  {% include 'nitrates/fragments/_bug_floater.html' %}
   {% if is_building %}
     {% include 'nitrates/_bandeau_construction.html' %}
   {% endif %}
