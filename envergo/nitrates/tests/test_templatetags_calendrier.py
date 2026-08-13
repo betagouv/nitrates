@@ -482,3 +482,148 @@ def test_calculatrice_data_json_expose_plafond():
     data = calculatrice_data_json(regle, _REF_PLAFOND)
     assert data["tous_plafonds"] is True
     assert set(data["codes_prescription_plafond"]) == {"pc12", "pc13"}
+
+
+# ─── #186 : fermeture des bords de la barre + labels de bornes extremes ────
+#
+# La metier a signale des "contours gauche/droite absents" sur le calendrier.
+# Cause : une zone adossee a un bord de la barre dessine un rectangle a angles
+# droits qui deborde l'arrondi de la barre, et depuis #132/#134 les zones n'ont
+# plus de bordure laterale (chaque frontiere INTERNE est materialisee par le tic
+# de sa borne). Aux extremites de l'annee agricole (01/07 et 30/06) il n'y a pas
+# de borne -> plus rien ne referme le segment.
+# Meme famille de bug pour le LABEL d'une borne posee sur une extremite :
+# centre via translateX(-50%), il sortait du conteneur et etait coupe
+# ("/07" au lieu de "01/07").
+# Ces flags sont consommes par calendrier.css (--bord-gauche / --bord-droit).
+
+
+def test_segment_demarrant_au_1er_juillet_est_marque_bord_gauche():
+    """01/07 = jour 0 de l'annee agricole -> le segment touche le bord gauche."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "01/07", "au": "15/01"}])
+    )
+    seg = ctx["segments"][0]
+    assert seg["start_pct"] == pytest.approx(0, abs=0.01)
+    assert seg["bord_gauche"] is True
+    assert seg["bord_droit"] is False
+
+
+def test_segment_finissant_au_30_juin_est_marque_bord_droit():
+    """30/06 = dernier jour de l'annee agricole -> bord droit."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/01", "au": "30/06"}])
+    )
+    seg = ctx["segments"][0]
+    assert seg["start_pct"] + seg["width_pct"] == pytest.approx(100, abs=0.01)
+    assert seg["bord_gauche"] is False
+    assert seg["bord_droit"] is True
+
+
+def test_segment_pleine_annee_est_marque_des_deux_bords():
+    """Interdiction 01/07 -> 30/06 : la zone couvre toute la barre, elle doit
+    etre fermee et arrondie des DEUX cotes (capture 4 du ticket #186)."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "01/07", "au": "30/06"}])
+    )
+    seg = ctx["segments"][0]
+    assert seg["bord_gauche"] is True
+    assert seg["bord_droit"] is True
+
+
+def test_segment_au_milieu_nest_marque_aucun_bord():
+    """Non-regression : une zone interne ne doit PAS recuperer de bordure
+    laterale, sinon on reintroduit le double-trait corrige en #132/#134
+    (bordure de zone + tic de borne, jamais pile alignes)."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    )
+    for seg in ctx["segments"]:
+        assert seg["bord_gauche"] is False
+        assert seg["bord_droit"] is False
+
+
+def test_segment_demarrant_au_2_juillet_nest_pas_colle_au_bord():
+    """Garde-fou sur l'epsilon : 1 jour d'ecart (~0.27%) ne doit pas etre
+    confondu avec un segment reellement adosse au bord."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "02/07", "au": "15/01"}])
+    )
+    assert ctx["segments"][0]["bord_gauche"] is False
+
+
+def test_pivot_annee_agricole_marque_les_deux_bords_separement():
+    """Periode qui traverse le 30/06 (ex 15/05 -> 15/08) : 2 segments, celui
+    de fin d'annee touche le bord DROIT, celui de debut le bord GAUCHE."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/05", "au": "15/08"}])
+    )
+    segments = ctx["segments"]
+    assert len(segments) == 2
+    fin_annee, debut_annee = segments
+    assert fin_annee["bord_droit"] is True
+    assert fin_annee["bord_gauche"] is False
+    assert debut_annee["bord_gauche"] is True
+    assert debut_annee["bord_droit"] is False
+
+
+def test_borne_sur_extremite_est_marquee_pour_rabattre_son_label():
+    """Une borne au 01/07 est a 0% : son label centre deborderait a gauche.
+    Le flag permet au CSS de rabattre la boite en recalant le tic."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "01/07", "au": "30/06"}])
+    )
+    par_label = {b["label"]: b for b in ctx["bornes"]}
+    assert par_label["01/07"]["bord_gauche"] is True
+    assert par_label["01/07"]["bord_droit"] is False
+    assert par_label["30/06"]["bord_droit"] is True
+    assert par_label["30/06"]["bord_gauche"] is False
+
+
+def test_borne_interne_nest_pas_rabattue():
+    """Non-regression : une borne au milieu garde son centrage sur la date."""
+    ctx = calendrier_epandage(
+        _regle(type="interdiction", periodes=[{"du": "15/12", "au": "15/01"}])
+    )
+    for b in ctx["bornes"]:
+        assert b["bord_gauche"] is False
+        assert b["bord_droit"] is False
+
+
+# ─── #186 : marqueur "Aujourd'hui" aux extremites (bug A) ──────────────────
+#
+# Le point est un rond de 9px centre via translate(-50%, -50%) dans une barre
+# en overflow:hidden : aux extremites il est coupe de moitie. Le LABEL a ete
+# protege en #134 par un clamp() CSS (borne a 37px de chaque bord) ; on verrouille
+# ici le contrat cote Python : today_pct reste bien dans [0, 100] et vaut les
+# valeurs extremes attendues, c'est le CSS qui absorbe le debordement.
+
+
+@pytest.mark.parametrize(
+    "jour, mois, attendu_pct",
+    [
+        (1, 7, 0.0),  # tout premier jour de l'annee agricole -> bord gauche
+        (30, 6, 364 / 365 * 100),  # tout dernier jour -> bord droit
+        (1, 1, 184 / 365 * 100),  # milieu de barre, cas temoin
+    ],
+)
+def test_today_pct_aux_extremites_de_lannee_agricole(jour, mois, attendu_pct):
+    """Le point 'Aujourd'hui' doit rester dans la barre quelle que soit la
+    date du jour, y compris aux deux extremites (capture 1 du ticket #186)."""
+    with patch("envergo.nitrates.templatetags.nitrates_tags.date") as mock_date:
+        mock_date.today.return_value = date(2026, mois, jour)
+        ctx = calendrier_epandage(_regle())
+    assert ctx["today_pct"] == pytest.approx(attendu_pct, abs=0.01)
+    assert 0 <= ctx["today_pct"] <= 100
+
+
+def test_today_pct_est_expose_sans_borne_pour_le_css():
+    """Le clamp() qui empeche le point d'etre coupe en deux vit dans le CSS
+    (`.calendrier-epandage__today`), pas ici : Python expose la position BRUTE.
+    Ce test verrouille ce partage des roles, pour qu'on ne "corrige" pas le
+    debordement cote Python en decalant la valeur (ce qui deplacerait le point
+    par rapport a la date reelle)."""
+    with patch("envergo.nitrates.templatetags.nitrates_tags.date") as mock_date:
+        mock_date.today.return_value = date(2026, 7, 1)
+        ctx = calendrier_epandage(_regle())
+    assert ctx["today_pct"] == pytest.approx(0.0, abs=0.001)
