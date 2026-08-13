@@ -10,7 +10,13 @@ name: Deploy dev
 #      puis restart web (cache lru).
 #   4. smoke : root repond, cascade arbres OK.
 #
-# Secret requis : SCALINGO_API_TOKEN (repository secret). Aucun autre.
+# Secret requis : SCALINGO_API_TOKEN, dans l'environment `dev`.
+#
+# L'environment `dev` n'a volontairement PAS de required reviewer : ce
+# workflow tourne a chaque push sur main, une approbation manuelle a chaque
+# fois n'aurait aucun sens. Il sert a porter le SECRET, et a restreindre sa
+# lecture aux seuls jobs qui tournent depuis main : un workflow pousse sur une
+# branche arbitraire ne peut plus y acceder.
 
 permissions:
   contents: read
@@ -28,6 +34,10 @@ env:
 jobs:
   deploy-dev:
     runs-on: ubuntu-latest
+    # Porte le secret et restreint sa lecture aux jobs issus de main.
+    environment:
+      name: dev
+      url: https://nitrates-dev.osc-fr1.scalingo.io/
     steps:
       - name: Checkout
         uses: actions/checkout@v7
