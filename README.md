@@ -539,6 +539,43 @@ nous avons essuyé jusqu'à présent (aux alentour de 30 000 requêtes).
 | `RATELIMIT_IP_META_KEY` | *(non défini)* | Clé HTTP pour l'IP réelle derrière un reverse proxy (ex. `HTTP_X_REAL_IP` en production) |
 | `RATELIMIT_ENABLE` | `True` | Mettre à `False` pour désactiver (automatiquement désactivé dans les tests) |
 
+## Scan de sécurité (Nuclei)
+
+Un scanner de vulnérabilités [Nuclei](https://github.com/projectdiscovery/nuclei)
+est intégré pour auditer l'application, **en local uniquement**. Les rapports
+Nuclei exposent des détails de sécurité : ils ne sont **jamais commités** (dossier
+`nuclei_reports/` gitignoré) ni exécutés en CI (la commande refuse de tourner si
+une variable d'environnement CI est détectée).
+
+Nuclei est installé dans l'image de dev (`compose/django/Dockerfile`, gardé
+`BUILD_ENV=local`). La production build via les buildpacks Scalingo, elle n'est
+donc pas concernée. Après un `git pull` récupérant cette intégration, rebuilder
+l'image une fois : `docker compose build django`.
+
+### Lancer un scan
+
+`DATABASE_URL` étant construit par l'entrypoint (pas dans `.env`), il faut le
+reconstruire dans la commande `exec` :
+
+```bash
+# Scan de l'app locale
+docker compose exec django bash -c 'export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"; python manage.py nuclei_scan --target http://django:8000'
+
+# Scan de staging (DEBUG=False, vrai TLS -> findings représentatifs de la prod)
+docker compose exec django bash -c 'export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"; python manage.py nuclei_scan --target https://nitrates-staging.osc-fr1.scalingo.io'
+```
+
+Options : `--target <url>` (cible), `--severity low,medium,high,critical`
+(niveaux rapportés), `--force-docker` (utilise l'image Docker Nuclei au lieu du
+binaire local).
+
+### Consulter les rapports
+
+Chaque scan écrit un rapport HTML horodaté dans `nuclei_reports/<date>/report.html`
+(accessible directement sur le disque, le repo étant monté dans le conteneur).
+Le dernier rapport est aussi consultable depuis l'admin, page **Rapports Nuclei**
+(`/admin/nitrates/nuclei/`), visible uniquement en local.
+
 ## Recette et déploiement
 
 ### Environnement de recette
