@@ -71,6 +71,15 @@ const CATEGORIES_COUVERT = [
 
 async function clickCascadeRadio(page, name, value) {
   if (name === 'categorie_culture') {
+    // #335 : « sol_non_cultive » a ete remonte de Q2 vers Q1. C'est desormais
+    // une reponse directe de la question destination, qui court-circuite Q2
+    // (cf. question_couvert_flow.js : pilotherCascade au clic, Q2 reste
+    // cachee). Passer par cflow_type_couvert comme avant fait timeout : le
+    // radio n'existe plus a ce niveau.
+    if (value === 'sol_non_cultive') {
+      await clickFlowRadio(page, 'cflow_destination', 'sol_non_cultive');
+      return;
+    }
     if (CATEGORIES_COUVERT.includes(value)) {
       await clickFlowRadio(page, 'cflow_destination', 'couvert');
       await clickFlowRadio(page, 'cflow_type_couvert', value);

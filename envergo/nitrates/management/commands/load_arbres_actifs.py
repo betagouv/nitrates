@@ -57,6 +57,15 @@ class Command(BaseCommand):
             help="Ne charger qu'un fichier précis (ex 'region_44' ou 'region_44.yaml').",
         )
         parser.add_argument(
+            "--skip-zar-sans-carte",
+            action="store_true",
+            help=(
+                "Passe (au lieu d'échouer) les ZAR dont l'activation_map n'est "
+                "pas déductible. Réservé aux bases éphémères sans couche SIG "
+                "importée (CI e2e) : sur un env réel, l'échec est voulu."
+            ),
+        )
+        parser.add_argument(
             "--skip-si-identique",
             action="store_true",
             help=(
@@ -81,6 +90,7 @@ class Command(BaseCommand):
         arbres_dir = specs_dir / ARBRES_ACTIFS_SUBDIR
         only = options["only"]
         skip_identique = options["skip_si_identique"]
+        skip_zar_sans_carte = options["skip_zar_sans_carte"]
 
         if not arbres_dir.is_dir():
             raise CommandError(f"Répertoire introuvable : {arbres_dir}")
@@ -140,6 +150,12 @@ class Command(BaseCommand):
                 ).first()
                 if actif and actif.activation_map_id:
                     import_kwargs["activation_map"] = str(actif.activation_map_id)
+                elif skip_zar_sans_carte:
+                    skips.append(f.name)
+                    self.stdout.write(
+                        f"  {f.name:22s} [skip — ZAR sans activation_map déductible]"
+                    )
+                    continue
                 else:
                     raise CommandError(
                         f"{f.name} : ZAR sans activation_map déductible "
