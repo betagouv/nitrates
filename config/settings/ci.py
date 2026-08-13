@@ -16,9 +16,14 @@ SECRET_KEY = env(
 )
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = [
-    "localhost",
-]
+# 127.0.0.1 fait partie du defaut : les specs Playwright ciblent cette adresse
+# (cf. playwright.config.nitrates.ts) et un ALLOWED_HOSTS limite a « localhost »
+# renvoyait un DisallowedHost sur chaque page. Surchargeable par
+# DJANGO_ALLOWED_HOSTS, que le workflow e2e positionne deja.
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1"],
+)
 
 # CACHES
 # ------------------------------------------------------------------------------
