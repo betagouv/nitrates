@@ -145,14 +145,21 @@ jobs:
           echo "ECHEC : le serveur n'a pas demarre en 120s" >&2
           exit 1
 
-      # `npx playwright` NE DOIT PAS etre utilise ici : le repo declare
-      # `@playwright/test` mais pas `playwright`, donc npx ne trouve aucun
-      # binaire local et telecharge un paquet `playwright` autonome (derniere
-      # version) dans son cache. Les commandes s'executent alors depuis ce
-      # cache, dont le node_modules ne contient pas `@playwright/test` ->
-      # `Cannot find module '@playwright/test'` au chargement de la config, et
-      # zero test execute. On appelle donc le binaire local installe par
-      # `npm ci`, qui resout bien les dependances du repo.
+      # `bin/build_assets.sh` est le hook de deploiement Scalingo : il finit par
+      # `npm prune --production` pour ne pas embarquer les devDependencies dans
+      # le slug. Effet de bord ici : ca SUPPRIME `@playwright/test` juste avant
+      # qu'on en ait besoin. Il faut donc reinstaller les deps apres le build.
+      #
+      # C'est la cause du `Cannot find module '@playwright/test'` qui faisait
+      # echouer le workflow sans executer un seul test : `npx playwright` ne
+      # trouvait plus rien en local et telechargeait un paquet `playwright`
+      # autonome, dont le node_modules ne contient pas `@playwright/test`.
+      - name: Reinstaller les deps JS (npm prune les a retirees)
+        run: npm ci
+
+      # Binaire local (installe par le `npm ci` ci-dessus) et pas `npx` : npx
+      # retomberait sur un telechargement autonome si le paquet manquait, ce
+      # qui masquerait le probleme au lieu de le signaler.
       - name: Installer les navigateurs Playwright
         run: ./node_modules/.bin/playwright install --with-deps chromium
 
@@ -318,14 +325,21 @@ jobs:
             exit 1
           fi
 
-      # `npx playwright` NE DOIT PAS etre utilise ici : le repo declare
-      # `@playwright/test` mais pas `playwright`, donc npx ne trouve aucun
-      # binaire local et telecharge un paquet `playwright` autonome (derniere
-      # version) dans son cache. Les commandes s'executent alors depuis ce
-      # cache, dont le node_modules ne contient pas `@playwright/test` ->
-      # `Cannot find module '@playwright/test'` au chargement de la config, et
-      # zero test execute. On appelle donc le binaire local installe par
-      # `npm ci`, qui resout bien les dependances du repo.
+      # `bin/build_assets.sh` est le hook de deploiement Scalingo : il finit par
+      # `npm prune --production` pour ne pas embarquer les devDependencies dans
+      # le slug. Effet de bord ici : ca SUPPRIME `@playwright/test` juste avant
+      # qu'on en ait besoin. Il faut donc reinstaller les deps apres le build.
+      #
+      # C'est la cause du `Cannot find module '@playwright/test'` qui faisait
+      # echouer le workflow sans executer un seul test : `npx playwright` ne
+      # trouvait plus rien en local et telechargeait un paquet `playwright`
+      # autonome, dont le node_modules ne contient pas `@playwright/test`.
+      - name: Reinstaller les deps JS (npm prune les a retirees)
+        run: npm ci
+
+      # Binaire local (installe par le `npm ci` ci-dessus) et pas `npx` : npx
+      # retomberait sur un telechargement autonome si le paquet manquait, ce
+      # qui masquerait le probleme au lieu de le signaler.
       - name: Installer les navigateurs Playwright
         run: ./node_modules/.bin/playwright install --with-deps chromium
 
