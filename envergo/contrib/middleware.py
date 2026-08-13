@@ -1,23 +1,35 @@
-import logging
-
 from django.conf import settings
-from django.contrib.sites.models import Site
 from django.shortcuts import redirect
 
-logger = logging.getLogger(__name__)
+from envergo.contrib.sites_from_settings import build_site_from_settings
 
 
 class SetUrlConfBasedOnSite:
     """Route every request to the nitrates urlconf.
+
+    REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
 
     Le fork ne sert que le site nitrates. Les urlconfs amenagement et
     haie restent dans le repo en code dormant pour faciliter un futur
     remerge avec MTES-MCT/envergo upstream, mais le middleware ne route
     plus vers eux.
 
-    Si le Host: HTTP entrant ne matche aucun Site en DB, on ne redirige
-    pas (le routing est deja force vers nitrates) : on log juste un
-    warning pour tracer les hits avec un domaine inattendu.
+    Upstream fait dependre l'identite du site d'une ligne en base
+    (Site.objects.get_current(request), qui matche le Host: HTTP sur
+    django_site.domain). Concretement il faut declarer son deploiement
+    en base pour que l'app reponde : une app fraiche, ou une base
+    reinitialisee, renvoie 500 partout (y compris /admin/login/) tant
+    que la ligne n'existe pas. On ne veut pas de ce couplage : le
+    domaine servi est une donnee de configuration, pas une donnee
+    metier, donc il vient de l'environnement.
+
+    `request.site` est desormais construit en memoire depuis
+    settings.ENVERGO_NITRATES_DOMAIN. Aucune requete DB sur le chemin
+    requete, aucune ligne a declarer : l'app demarre et sert.
+
+    Le modele Site reste dans INSTALLED_APPS (les FK TopBar.site et
+    analytics.Event.site en dependent, cf. code dormant upstream), il
+    n'est simplement plus consulte pour resoudre le site courant.
     """
 
     def __init__(self, get_response):
@@ -26,18 +38,7 @@ class SetUrlConfBasedOnSite:
     def __call__(self, request):
         request.urlconf = "config.urls_nitrates"
         request.base_template = "nitrates/base.html"
-        try:
-            request.site = Site.objects.get_current(request)
-        except Site.DoesNotExist:
-            # Host: ne matche aucun Site en DB. On ne redirige pas (routing
-            # deja force vers nitrates). Fallback sur le Site nitrates fixe
-            # pour que le code aval qui lit request.site.domain ne crash pas.
-            logger.warning(
-                "Request on unknown domain: %s%s",
-                request.get_host(),
-                request.get_full_path(),
-            )
-            request.site = Site.objects.filter(id=3).first()
+        request.site = build_site_from_settings()
         return self.get_response(request)
 
 
