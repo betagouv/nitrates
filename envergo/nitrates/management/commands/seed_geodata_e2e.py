@@ -32,11 +32,27 @@ from envergo.geodata.models import MAP_TYPES, Department, Map, Zone
 # Le code bassin est porte par l'attribut `CdEuBassin` (ancien schema Sandre,
 # cf. bassins.bassin_code_from_attributes) : sans lui, la vue debug affiche un
 # bassin inconnu et debug_view.spec.ts echoue sur « OUI ... Seine-Normandie ».
+# Une zone par bassin DCE metropolitain : `map_overlays.spec.ts` verifie que
+# l'overlay ZV rend les 8 bassins avec des couleurs distinctes. Une fixture a
+# 2 zones ferait echouer ce test pour une raison etrangere a la carte.
+# Les boites ne se chevauchent pas, sinon un point de test appartiendrait a
+# deux bassins et la resolution deviendrait ambigue.
 BOITES = {
-    # Reims / Marne — bassin Seine-Normandie. Couvre 4.03/49.26 et 3.97/49.05.
+    # --- Boites portant les points de test des specs -------------------
+    # Reims / Marne — Seine-Normandie. Couvre 4.03/49.26 et 3.97/49.05.
     "e2e-reims": ((3.5, 48.8, 4.5, 49.5), "FRH"),
-    # Rennes / Ille-et-Vilaine — utilise par debug_view et map_overlays.
+    # Rennes / Ille-et-Vilaine — Loire-Bretagne. debug_view + map_overlays.
     "e2e-rennes": ((-2.0, 47.9, -1.2, 48.4), "FRG"),
+    # --- Boites de remplissage : uniquement la pour que les 8 bassins
+    # existent dans l'overlay. Aucune spec ne clique dedans, leur position
+    # est approximative (mais placee dans la bonne region pour rester
+    # lisible sur une capture).
+    "e2e-artois": ((2.0, 50.0, 3.0, 50.8), "FRA"),
+    "e2e-meuse": ((5.0, 48.6, 5.6, 49.4), "FRB1"),
+    "e2e-sambre": ((3.7, 50.0, 4.2, 50.3), "FRB2"),
+    "e2e-rhin": ((7.3, 48.3, 8.0, 49.0), "FRC"),
+    "e2e-rhone": ((4.8, 43.5, 5.8, 44.5), "FRD"),
+    "e2e-adour": ((0.5, 43.5, 1.5, 44.5), "FRF"),
 }
 
 # Departements de test. La vue debug affiche le departement et la region
