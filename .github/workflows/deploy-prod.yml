@@ -64,17 +64,32 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      - name: Gate — la CI du SHA est verte
+      # Filtre rapide : inutile de payer 20 min de CI+e2e sur un SHA deja
+      # rouge. La CI est REJOUEE juste apres, en bloc.
+      - name: Pre-check — la CI du SHA etait verte
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
+  # Gate CI COMPLET rejoue sur le SHA tague : linter + pytest + couverture
+  # >= 75% + check des migrations. Idem staging -- a plus forte raison en prod.
+  gate-ci-complet:
+    needs: gate-ci
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
+      # Les garde-fous GitOps (arbres canoniques, round-trip fixture
+      # referentiels) portent sur la coherence depot <-> base de DEV. Une
+      # release deploie un artefact de code fige : ils n'ont rien a y gater.
+      gardes_fous_gitops: false
+
+  # En parallele de gate-ci-complet (meme dependance : gate-ci).
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
 
   deploy-prod:
-    needs: [gate-ci, gate-e2e]
+    needs: [gate-ci, gate-ci-complet, gate-e2e]
     runs-on: ubuntu-latest
     # C'est ICI que se joue la protection : l'environment `production` est
     # configure avec un required reviewer -> le run attend l'approbation.

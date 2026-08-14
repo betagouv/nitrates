@@ -7,10 +7,11 @@ name: Deploy staging
 #
 # Sequence, volontairement SANS reload de donnees (les arbres, referentiels et
 # jeux SIG de staging sont pilotes a la main) :
-#   1. gate CI  : le SHA du tag a ses checks verts
-#   2. gate e2e : suite Playwright complete sur base ephemere
-#   3. deploy   : git archive -> scalingo deploy (post_deploy joue migrate)
-#   4. smoke    : HTTP + aucune migration en attente
+#   1. pre-check : le SHA du tag avait deja des checks verts (filtre rapide)
+#   2. gate CI   : CI REJOUEE sur le tag (linter + pytest + couverture >= 75%)
+#   3. gate e2e  : suite Playwright complete sur base ephemere (en parallele)
+#   4. deploy    : git archive -> scalingo deploy (post_deploy joue migrate)
+#   5. smoke     : HTTP + aucune migration en attente
 #
 # Secret requis : SCALINGO_API_TOKEN, dans l'environment `staging`.
 
@@ -66,20 +67,41 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      - name: Gate — la CI du SHA est verte
+      # Verification PREALABLE et bon marche : le SHA a-t-il deja des checks
+      # verts ? Sert de filtre rapide (on evite de payer 20 min de CI+e2e sur
+      # un commit deja rouge). La CI est REJOUEE juste apres, en bloc.
+      - name: Pre-check — la CI du SHA etait verte
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
-  # --- 2. Gate e2e -------------------------------------------------------
+  # --- 2. Gate CI COMPLET : on REJOUE tout sur le SHA tague ---------------
+  # linter + pytest (1800+ tests) + couverture >= 75%, plus le check de
+  # migrations manquantes (une migration oubliee ferait echouer le deploiement).
+  # Rejoue, pas relu : le code est identique mais l'environnement ne l'est pas
+  # (dependances non epinglees, Dependabot merge en continu, images de service).
+  # Tout l'historique d'une release tient ainsi dans SON run.
+  gate-ci-complet:
+    needs: gate-ci
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
+      # Les garde-fous GitOps (arbres canoniques, round-trip fixture
+      # referentiels) portent sur la coherence depot <-> base de DEV. Une
+      # release deploie un artefact de code fige : ils n'ont rien a y gater.
+      gardes_fous_gitops: false
+
+  # --- 3. Gate e2e -------------------------------------------------------
   # Reutilise le workflow e2e (meme definition que le run nocturne).
+  # Tourne EN PARALLELE de gate-ci-complet : les deux ne dependent que de
+  # gate-ci, donc le temps total est celui du plus lent, pas la somme.
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
 
-  # --- 3+4. Deploy + smoke -----------------------------------------------
+  # --- 4+5. Deploy + smoke -----------------------------------------------
   deploy-staging:
-    needs: [gate-ci, gate-e2e]
+    needs: [gate-ci, gate-ci-complet, gate-e2e]
     runs-on: ubuntu-latest
     # L'environment porte le secret et restreint qui peut le lire.
     environment:

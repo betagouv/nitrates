@@ -1,6 +1,10 @@
 name: CI
 permissions:
   actions: read
+  # Necessaire au checkout quand ce workflow est appele via `workflow_call`
+  # depuis deploy-staging / deploy-prod : le token herite des permissions
+  # declarees ici, et l'appelant ne declare que `contents: read` pour lui-meme.
+  contents: read
 
 # Enable Buildkit and let compose use it to speed up image building
 env:
@@ -20,12 +24,35 @@ on:
   push:
     branches: ["main", "develop"]
 
+  # Appelable en GATE par deploy-staging / deploy-prod : une release REJOUE la
+  # CI complete sur le SHA tague, au lieu de se contenter de relire les checks
+  # d'un run anterieur. Le code est identique, mais pas l'environnement
+  # (dependances non epinglees, images de service, runner) -- et un tag peut
+  # pointer un commit ancien dont les checks ont des semaines.
+  workflow_call:
+    inputs:
+      ref:
+        description: "SHA ou tag a tester (defaut : la ref de l'appelant)"
+        required: false
+        type: string
+      gardes_fous_gitops:
+        description: >-
+          Jouer les garde-fous GitOps (arbres canoniques + round-trip fixture
+          referentiels). Concernent la coherence depot <-> base de DEV : ils
+          n'ont pas de sens pour gater une release staging/prod, qui teste un
+          artefact de code fige. Vrai par defaut (CI de dev sur main/develop).
+        required: false
+        type: boolean
+        default: true
+
 jobs:
   linter:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v7.0.0
@@ -86,6 +113,8 @@ jobs:
 
       - name: Checkout Code Repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v7.0.0
@@ -107,8 +136,9 @@ jobs:
       # active" (dump_*_--check) est un garde-fou SEPARE, execute cote dev (hook
       # local + one-off), pas ici (la CI n'a pas le pivot dev).
 
-      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus tot.
-      #    Autonome (pas de DB requise).
+      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus
+      #    tot. Autonome (pas de DB requise). Joue AUSSI en release : une
+      #    migration oubliee ferait echouer le deploiement staging/prod.
       - name: Migrations coherentes (makemigrations --check)
         run: python manage.py makemigrations --check --dry-run
 
@@ -117,6 +147,7 @@ jobs:
       # fixture compare a l'etat seede. On prepare donc la base ephemere ici (le
       # job pytest, lui, recree sa propre base de test isolee ensuite).
       - name: Preparer la base (migrate + seed referentiels)
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: |
           python manage.py migrate --noinput
           python manage.py seed_referentiels
@@ -125,11 +156,14 @@ jobs:
       #    Valide parse + structure + refs, avec referentiels + scope (sinon faux
       #    negatifs sur les branches SIG PAR/ZAR).
       - name: Arbres canoniques valides
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: python manage.py validate_arbres_actifs
 
       # 3. La fixture referentiels doit etre round-trip stable : dump_referentiels
       #    --check compare la fixture committee a l'etat seede a l'etape precedente.
+      #    Depend de l'etape "Preparer la base" -> meme condition.
       - name: Fixture referentiels coherente (round-trip)
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: python manage.py dump_referentiels --check
 
       # On lance la suite sous coverage.py (deja installe via requirements) au
@@ -139,16 +173,33 @@ jobs:
       - name: Run Django Tests
         run: coverage run -m pytest
 
-      # Affiche le detail (lignes manquantes) dans les logs CI. `|| true` :
-      # un eventuel souci de reporting ne doit pas faire echouer le job.
-      - name: Coverage report
+      # SEUIL BLOQUANT : plus de `|| true`. `fail_under = 75` (setup.cfg) fait
+      # sortir cette commande en code 2 si la couverture regresse, ce qui fait
+      # echouer le job `pytest` -- donc le gate CI, donc le deploiement.
+      - name: Coverage report (seuil bloquant 75%)
         if: always()
-        run: coverage report --show-missing || true
+        run: coverage report --show-missing
 
       # Genere coverage.xml (Cobertura) pour un upload futur eventuel.
       - name: Coverage XML
         if: always()
         run: coverage xml || true
+
+      # Rapport HTML navigable, telechargeable depuis la page du run (onglet
+      # Artifacts). Permet d'inspecter ligne par ligne ce qui est couvert pour
+      # n'importe quelle version, y compris une release.
+      - name: Coverage HTML
+        if: always()
+        run: coverage html -d _coverage_html || true
+
+      - name: Upload rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-${{ github.sha }}
+          path: _coverage_html/
+          retention-days: 90
+          if-no-files-found: warn
 
       # Resume markdown lisible dans l'onglet Summary du run (sans dependance).
       - name: Coverage summary
