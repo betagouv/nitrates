@@ -66,10 +66,15 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      - name: Gate — la CI du SHA est verte
+      # Le gate exige `linter` ET `pytest` verts. La COUVERTURE est incluse
+      # dedans : depuis l'ajout de `fail_under = 75` (setup.cfg), l'etape
+      # `coverage report` du job pytest sort en erreur si la couverture
+      # regresse -> pytest rouge -> ce gate refuse le deploiement.
+      # Le 4e garde-fou (e2e) est le job `gate-e2e` ci-dessous.
+      - name: Gate — CI verte (linter + pytest + couverture >= 75%)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
   # --- 2. Gate e2e -------------------------------------------------------
   # Reutilise le workflow e2e (meme definition que le run nocturne).

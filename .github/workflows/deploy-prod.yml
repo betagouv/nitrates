@@ -64,10 +64,12 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      - name: Gate — la CI du SHA est verte
+      # Idem staging : la couverture (fail_under = 75) fait partie du job
+      # `pytest`, donc un SHA sous le seuil ne peut pas partir en production.
+      - name: Gate — CI verte (linter + pytest + couverture >= 75%)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}"
+        run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
   gate-e2e:
     needs: gate-ci

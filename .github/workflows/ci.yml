@@ -139,16 +139,33 @@ jobs:
       - name: Run Django Tests
         run: coverage run -m pytest
 
-      # Affiche le detail (lignes manquantes) dans les logs CI. `|| true` :
-      # un eventuel souci de reporting ne doit pas faire echouer le job.
-      - name: Coverage report
+      # SEUIL BLOQUANT : plus de `|| true`. `fail_under = 75` (setup.cfg) fait
+      # sortir cette commande en code 2 si la couverture regresse, ce qui fait
+      # echouer le job `pytest` -- donc le gate CI, donc le deploiement.
+      - name: Coverage report (seuil bloquant 75%)
         if: always()
-        run: coverage report --show-missing || true
+        run: coverage report --show-missing
 
       # Genere coverage.xml (Cobertura) pour un upload futur eventuel.
       - name: Coverage XML
         if: always()
         run: coverage xml || true
+
+      # Rapport HTML navigable, telechargeable depuis la page du run (onglet
+      # Artifacts). Permet d'inspecter ligne par ligne ce qui est couvert pour
+      # n'importe quelle version, y compris une release.
+      - name: Coverage HTML
+        if: always()
+        run: coverage html -d _coverage_html || true
+
+      - name: Upload rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-${{ github.sha }}
+          path: _coverage_html/
+          retention-days: 90
+          if-no-files-found: warn
 
       # Resume markdown lisible dans l'onglet Summary du run (sans dependance).
       - name: Coverage summary
