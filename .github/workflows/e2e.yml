@@ -319,8 +319,13 @@ jobs:
           DJANGO_LOCKDOWN_BEHIND_LOGIN: "True"
           DJANGO_NITRATES_ROOT_OUVERT: "True"
         run: |
-          python manage.py runserver 127.0.0.1:8042 --noreload &
+          python manage.py runserver 127.0.0.1:8042 --noreload \
+            > /tmp/django-e2e-lockdown.log 2>&1 &
           echo "Attente du serveur sur 127.0.0.1:8042..."
+          # Ce job compare a "200" : il n'a pas le faux positif du job
+          # ci-dessus (ou `|| echo "000"` donnait "000000"). On aligne quand
+          # meme le diagnostic : sans le log Django, un serveur qui meurt au
+          # boot ne laisse qu'un « ECHEC » muet.
           for i in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8042/ || echo "000")
             if [ "$code" = "200" ]; then
@@ -329,6 +334,8 @@ jobs:
             sleep 2
           done
           echo "ECHEC : serveur absent ou root non ouvert en 120s" >&2
+          echo "--- log Django ---" >&2
+          cat /tmp/django-e2e-lockdown.log >&2
           exit 1
 
       # Verification de la config AVANT de lancer Playwright. Si le lockdown
