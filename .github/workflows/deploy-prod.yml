@@ -64,19 +64,28 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      # Idem staging : la couverture (fail_under = 75) fait partie du job
-      # `pytest`, donc un SHA sous le seuil ne peut pas partir en production.
-      - name: Gate — CI verte (linter + pytest + couverture >= 75%)
+      # Filtre rapide : inutile de payer 20 min de CI+e2e sur un SHA deja
+      # rouge. La CI est REJOUEE juste apres, en bloc.
+      - name: Pre-check — la CI du SHA etait verte
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
+  # Gate CI COMPLET rejoue sur le SHA tague : linter + pytest + couverture
+  # >= 75% + garde-fous GitOps. Idem staging -- a plus forte raison en prod.
+  gate-ci-complet:
+    needs: gate-ci
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
+
+  # En parallele de gate-ci-complet (meme dependance : gate-ci).
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
 
   deploy-prod:
-    needs: [gate-ci, gate-e2e]
+    needs: [gate-ci, gate-ci-complet, gate-e2e]
     runs-on: ubuntu-latest
     # C'est ICI que se joue la protection : l'environment `production` est
     # configure avec un required reviewer -> le run attend l'approbation.

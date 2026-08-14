@@ -66,25 +66,37 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Deploiement cible : $REF ($SHA)"
 
-      # Le gate exige `linter` ET `pytest` verts. La COUVERTURE est incluse
-      # dedans : depuis l'ajout de `fail_under = 75` (setup.cfg), l'etape
-      # `coverage report` du job pytest sort en erreur si la couverture
-      # regresse -> pytest rouge -> ce gate refuse le deploiement.
-      # Le 4e garde-fou (e2e) est le job `gate-e2e` ci-dessous.
-      - name: Gate — CI verte (linter + pytest + couverture >= 75%)
+      # Verification PREALABLE et bon marche : le SHA a-t-il deja des checks
+      # verts ? Sert de filtre rapide (on evite de payer 20 min de CI+e2e sur
+      # un commit deja rouge). La CI est REJOUEE juste apres, en bloc.
+      - name: Pre-check — la CI du SHA etait verte
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
-  # --- 2. Gate e2e -------------------------------------------------------
+  # --- 2. Gate CI COMPLET : on REJOUE tout sur le SHA tague ---------------
+  # linter + pytest (1800+ tests) + couverture >= 75% + garde-fous GitOps
+  # (migrations, arbres canoniques, round-trip referentiels).
+  # Rejoue, pas relu : le code est identique mais l'environnement ne l'est pas
+  # (dependances non epinglees, Dependabot merge en continu, images de service).
+  # Tout l'historique d'une release tient ainsi dans SON run.
+  gate-ci-complet:
+    needs: gate-ci
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
+
+  # --- 3. Gate e2e -------------------------------------------------------
   # Reutilise le workflow e2e (meme definition que le run nocturne).
+  # Tourne EN PARALLELE de gate-ci-complet : les deux ne dependent que de
+  # gate-ci, donc le temps total est celui du plus lent, pas la somme.
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
 
-  # --- 3+4. Deploy + smoke -----------------------------------------------
+  # --- 4+5. Deploy + smoke -----------------------------------------------
   deploy-staging:
-    needs: [gate-ci, gate-e2e]
+    needs: [gate-ci, gate-ci-complet, gate-e2e]
     runs-on: ubuntu-latest
     # L'environment porte le secret et restreint qui peut le lire.
     environment:
