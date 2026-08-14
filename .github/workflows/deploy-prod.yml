@@ -72,12 +72,16 @@ jobs:
         run: bash .github/scripts/gate_ci_green.sh "${{ steps.resolve.outputs.sha }}" linter pytest
 
   # Gate CI COMPLET rejoue sur le SHA tague : linter + pytest + couverture
-  # >= 75% + garde-fous GitOps. Idem staging -- a plus forte raison en prod.
+  # >= 75% + check des migrations. Idem staging -- a plus forte raison en prod.
   gate-ci-complet:
     needs: gate-ci
     uses: ./.github/workflows/ci.yml
     with:
       ref: ${{ needs.gate-ci.outputs.sha }}
+      # Les garde-fous GitOps (arbres canoniques, round-trip fixture
+      # referentiels) portent sur la coherence depot <-> base de DEV. Une
+      # release deploie un artefact de code fige : ils n'ont rien a y gater.
+      gardes_fous_gitops: false
 
   # En parallele de gate-ci-complet (meme dependance : gate-ci).
   gate-e2e:

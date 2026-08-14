@@ -35,6 +35,15 @@ on:
         description: "SHA ou tag a tester (defaut : la ref de l'appelant)"
         required: false
         type: string
+      gardes_fous_gitops:
+        description: >-
+          Jouer les garde-fous GitOps (arbres canoniques + round-trip fixture
+          referentiels). Concernent la coherence depot <-> base de DEV : ils
+          n'ont pas de sens pour gater une release staging/prod, qui teste un
+          artefact de code fige. Vrai par defaut (CI de dev sur main/develop).
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   linter:
@@ -127,8 +136,9 @@ jobs:
       # active" (dump_*_--check) est un garde-fou SEPARE, execute cote dev (hook
       # local + one-off), pas ici (la CI n'a pas le pivot dev).
 
-      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus tot.
-      #    Autonome (pas de DB requise).
+      # 1. Une migration manquante casse le post_deploy -> on l'attrape au plus
+      #    tot. Autonome (pas de DB requise). Joue AUSSI en release : une
+      #    migration oubliee ferait echouer le deploiement staging/prod.
       - name: Migrations coherentes (makemigrations --check)
         run: python manage.py makemigrations --check --dry-run
 
@@ -137,6 +147,7 @@ jobs:
       # fixture compare a l'etat seede. On prepare donc la base ephemere ici (le
       # job pytest, lui, recree sa propre base de test isolee ensuite).
       - name: Preparer la base (migrate + seed referentiels)
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: |
           python manage.py migrate --noinput
           python manage.py seed_referentiels
@@ -145,11 +156,14 @@ jobs:
       #    Valide parse + structure + refs, avec referentiels + scope (sinon faux
       #    negatifs sur les branches SIG PAR/ZAR).
       - name: Arbres canoniques valides
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: python manage.py validate_arbres_actifs
 
       # 3. La fixture referentiels doit etre round-trip stable : dump_referentiels
       #    --check compare la fixture committee a l'etat seede a l'etape precedente.
+      #    Depend de l'etape "Preparer la base" -> meme condition.
       - name: Fixture referentiels coherente (round-trip)
+        if: ${{ inputs.gardes_fous_gitops != false }}
         run: python manage.py dump_referentiels --check
 
       # On lance la suite sous coverage.py (deja installe via requirements) au
