@@ -19,6 +19,11 @@ name: Deploy prod
 
 permissions:
   contents: read
+  # `actions: read` est requis parce que ce workflow APPELLE ci.yml, qui le
+  # declare : un workflow appele ne peut pas obtenir plus de permissions que
+  # son appelant, sinon GitHub rejette le fichier entier (startup_failure,
+  # aucun job cree). e2e.yml, lui, se contente de `contents: read`.
+  actions: read
 
 on:
   release:
