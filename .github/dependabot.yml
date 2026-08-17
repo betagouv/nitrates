@@ -1,33 +1,61 @@
+# GEL TOTAL DEPENDABOT - 2026-08-17
+#
+# Contexte : campagne de supply chain attack npm "Shai-Hulud" / variante
+# CHAINDROP, active depuis le 04/08/2026 (alerte CSA du 06/08, >1300 versions
+# touchees). Le malware s'execute au `preinstall` et n'a aucun effet visible sur
+# les tests : une version piegee passe la CI sans rien casser.
+#
+# Ce qui a ete coupe, et pourquoi :
+#   - `dependabot-automerge.yml` a ete SUPPRIME. Il armait `gh pr merge --auto`
+#     sur toutes les PR Dependabot (patch, minor ET major). Comme `main` n'exige
+#     pas de revue humaine, une version piegee pouvait etre mergee sans qu'aucun
+#     humain ne la voie.
+#   - toutes les regles `updates` ci-dessous sont commentees : plus aucune PR de
+#     bump n'est ouverte, ni npm, ni pip, ni github-actions.
+#
+# Les mises a jour de securite automatiques Dependabot etaient deja desactivees
+# cote GitHub (verifie le 17/08 : `automated-security-fixes` -> enabled=false).
+#
+# Etat des lieux complet : voir le rapport secops du 17/08/2026.
+#
+# POUR REACTIVER, quand la campagne sera retombee :
+#   - decommenter les blocs ci-dessous, en allongeant `default-days` a 14 jours
+#     minimum (c'est le cooldown qui nous a evite la version piegee de
+#     flat-cache le 11/08).
+#   - ne PAS restaurer l'auto-merge sur les bumps `major`. Si auto-merge il y a,
+#     `patch` uniquement, et seulement une fois la revue humaine rendue
+#     obligatoire sur `main`.
+
 version: 2
-updates:
-  # Update Github actions in workflows
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
+updates: []
+  # GELE 2026-08-17 - Update Github actions in workflows
+  # - package-ecosystem: "github-actions"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "daily"
 
-  # Update npm packages
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "04:00"
-      timezone: "Europe/Paris"
-    cooldown:
-      default-days: 7
-      semver-major-days: 60
-      semver-minor-days: 30
+  # GELE 2026-08-17 - Update npm packages
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "tuesday"
+  #     time: "04:00"
+  #     timezone: "Europe/Paris"
+  #   cooldown:
+  #     default-days: 7      # <- passer a 14 minimum a la reactivation
+  #     semver-major-days: 60
+  #     semver-minor-days: 30
 
-  # Update python eggs
-  - package-ecosystem: "pip"
-    directory: "/requirements"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "02:00"
-      timezone: "Europe/Paris"
-    cooldown:
-      default-days: 7
-      semver-major-days: 60
-      semver-minor-days: 30
+  # GELE 2026-08-17 - Update python eggs
+  # - package-ecosystem: "pip"
+  #   directory: "/requirements"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "tuesday"
+  #     time: "02:00"
+  #     timezone: "Europe/Paris"
+  #   cooldown:
+  #     default-days: 7      # <- passer a 14 minimum a la reactivation
+  #     semver-major-days: 60
+  #     semver-minor-days: 30
