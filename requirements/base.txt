@@ -113,7 +113,7 @@ django-redis==6.0.0
     # via -r base.in
 et-xmlfile==2.0.0
     # via openpyxl
-faker==40.28.1
+faker==40.31.0
     # via -r base.in
 fiona==1.10.1
     # via -r base.in
