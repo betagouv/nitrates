@@ -310,8 +310,14 @@ def _defaut_question(question) -> tuple[object, str] | None:
     for c in choix:
         if c["valeur"] is False:
             return c["valeur"], _libelle(c)
+    # Cas général « négatif » cherché sur la valeur PUIS le libellé (certaines
+    # QC portent des valeurs métier type 'Plan ICPE A' avec un choix négatif
+    # identifiable seulement par son libellé « Non... » / « Pas... »).
     for c in choix:
-        if str(c["valeur"]).lower().startswith("non"):
+        if str(c["valeur"]).lower().startswith(("non", "pas ")):
+            return c["valeur"], _libelle(c)
+    for c in choix:
+        if _libelle(c).lower().startswith(("non", "pas ")):
             return c["valeur"], _libelle(c)
     return choix[0]["valeur"], _libelle(choix[0])
 

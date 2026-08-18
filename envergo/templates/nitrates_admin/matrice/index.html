@@ -1,5 +1,7 @@
 {% extends "nitrates_admin/base.html" %}
 
+{% load nitrates_tags %}
+
 {% block title %}Matrice des calendriers{% endblock %}
 
 {% block extra_css %}
@@ -41,6 +43,14 @@
 
     .matrice-form input[type="text"] {
       width: 6.5rem;
+    }
+
+    /* Les deux dates du couvert empilées (semis au-dessus de la
+       destruction), sans retour à la ligne du reste du formulaire. */
+    .matrice-dates {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
     .matrice-toggle {
@@ -238,6 +248,43 @@
       font-weight: 600;
     }
 
+    .matrice-zone {
+      cursor: pointer;
+    }
+
+    .matrice-pc {
+      border-left: 3px solid #f5a623;
+      padding: 0.15rem 0 0.15rem 0.75rem;
+      margin: 0.4rem 0;
+    }
+
+    .matrice-pc-titre {
+      margin: 0 0 0.2rem;
+    }
+
+    .matrice-pc-integral {
+      font-size: 0.85rem;
+      max-width: 85ch;
+    }
+
+    .matrice-pc-integral p {
+      margin: 0.2rem 0;
+    }
+
+    @keyframes matrice-flash {
+      from {
+        background: rgba(245, 166, 35, 0.25);
+      }
+
+      to {
+        background: transparent;
+      }
+    }
+
+    .matrice-pcs--flash {
+      animation: matrice-flash 1.2s ease-out;
+    }
+
     @media (prefers-color-scheme: dark) {
 
       .matrice-form,
@@ -354,17 +401,19 @@
       </div>
 
       {% if montrer_dates %}
-        {% for c in champs_dates %}
-          <div>
-            <label for="{{ c.id }}">{{ c.label }}</label>
-            <input type="text"
-                   name="{{ c.id }}"
-                   id="{{ c.id }}"
-                   value="{{ c.valeur }}"
-                   placeholder="JJ/MM"
-                   inputmode="numeric">
-          </div>
-        {% endfor %}
+        <div class="matrice-dates">
+          {% for c in champs_dates %}
+            <div>
+              <label for="{{ c.id }}">{{ c.label }}</label>
+              <input type="text"
+                     name="{{ c.id }}"
+                     id="{{ c.id }}"
+                     value="{{ c.valeur }}"
+                     placeholder="JJ/MM"
+                     inputmode="numeric">
+            </div>
+          {% endfor %}
+        </div>
       {% endif %}
 
       <noscript>
@@ -434,16 +483,31 @@
                     {% endif %}
                   </p>
                   {% if c.pcs %}
-                    <h4>Prescriptions conditionnées</h4>
-                    <ul>
+                    <div class="matrice-pcs">
+                      <h4>Prescriptions conditionnées</h4>
                       {% for pc in c.pcs %}
-                        <li>
-                          <code>{{ pc.code }}</code>
-                          {% if pc.mots_cles %}— <strong>{{ pc.mots_cles }}</strong>{% endif %}
-                          {% if pc.texte_court %}<span class="matrice-pc-texte">: {{ pc.texte_court }}</span>{% endif %}
-                        </li>
+                        <div class="matrice-pc">
+                          <p class="matrice-pc-titre">
+                            <code>{{ pc.code }}</code>
+                            {% if pc.mots_cles %}— <strong>{{ pc.mots_cles }}</strong>{% endif %}
+                          </p>
+                          {% comment %}
+                          Texte intégral de la PC : contenu riche (blocs DSFR)
+                          quand renseigné, sinon rédaction initiale de
+                          l'arrêté, sinon le texte court.
+                          {% endcomment %}
+                          <div class="matrice-pc-integral">
+                            {% if pc.blocs %}
+                              {% compile_blocs pc.blocs id_prefix=pc.code %}
+                            {% elif pc.texte_redaction_initiale %}
+                              {{ pc.texte_redaction_initiale|linebreaks }}
+                            {% elif pc.texte_court %}
+                              {{ pc.texte_court|linebreaks }}
+                            {% endif %}
+                          </div>
+                        </div>
                       {% endfor %}
-                    </ul>
+                    </div>
                   {% endif %}
                   {% if c.plafonds %}
                     <h4>Plafonds</h4>
@@ -522,7 +586,7 @@
       });
     });
 
-    // Détail par ligne (PC, hypothèses, chemin) : toggle au clic.
+    // Détail par ligne (PC, hypothèses, chemin) : toggle au clic sur la ligne.
     document.querySelectorAll('tr.matrice-tr').forEach((tr) => {
       tr.addEventListener('click', () => {
         const detail = document.getElementById(tr.dataset.detail);
@@ -530,6 +594,30 @@
         const ouvert = !detail.hidden;
         detail.hidden = ouvert;
         tr.classList.toggle('ouverte', !ouvert);
+      });
+    });
+
+    // Clic sur un segment (période) : ouvre le détail de la ligne et, pour
+    // une période orange (autorisation sous condition / plafonnement), met en
+    // évidence le bloc des prescriptions conditionnées associées.
+    document.querySelectorAll('.matrice-zone').forEach((zone) => {
+      zone.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        const tr = zone.closest('tr.matrice-tr');
+        const detail = document.getElementById(tr.dataset.detail);
+        if (!detail) return;
+        detail.hidden = false;
+        tr.classList.add('ouverte');
+        if (zone.classList.contains('matrice-zone--orange')) {
+          const pcs = detail.querySelector('.matrice-pcs');
+          if (pcs) {
+            pcs.classList.remove('matrice-pcs--flash');
+            // reflow pour relancer l'animation si déjà flashé.
+            void pcs.offsetWidth;
+            pcs.classList.add('matrice-pcs--flash');
+            pcs.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
       });
     });
   })();
