@@ -95,7 +95,7 @@ django-compressor==4.6.0
     # via -r base.in
 django-crispy-forms==2.5
     # via -r base.in
-django-environ==0.12.0
+django-environ==0.14.0
     # via -r base.in
 django-leaflet==0.33.0
     # via -r base.in

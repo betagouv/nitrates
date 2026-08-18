@@ -137,7 +137,7 @@ django-compressor==4.6.0
     # via -r base.txt
 django-crispy-forms==2.5
     # via -r base.txt
-django-environ==0.12.0
+django-environ==0.14.0
     # via -r base.txt
 django-leaflet==0.33.0
     # via -r base.txt
