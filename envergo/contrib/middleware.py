@@ -113,6 +113,14 @@ class RequireLoginEverywhere:
             # de navigation du root ouvert. Chemin exact, rien d'autre.
             if path == "/definitions/":
                 return True
+            # Collecte du retour utilisateur (#284) : la popup de fin de
+            # simulation POST sur /api/retour/ depuis le root public, donc en
+            # anonyme. Sans cet exempt, le fetch est redirige vers le login
+            # admin (302 suivi en silence -> HTML au lieu de JSON), la popup
+            # affiche "Une erreur est survenue". La vue est deja protegee par
+            # rate-limit + CSRF ; aucune donnee sensible n'y transite.
+            if path == "/api/retour/":
+                return True
         return False
 
     def __call__(self, request):
