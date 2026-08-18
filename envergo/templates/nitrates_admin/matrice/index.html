@@ -1,0 +1,537 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% block title %}Matrice des calendriers{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .matrice-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .matrice-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      align-items: flex-end;
+      background: #f6f7fb;
+      border: 1px solid #dde1ea;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .matrice-form label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .matrice-form select,
+    .matrice-form input[type="text"] {
+      padding: 0.35rem 0.5rem;
+      font-size: 0.9rem;
+      border: 1px solid #b8bfcc;
+      border-radius: 4px;
+      background: #fff;
+      color: inherit;
+    }
+
+    .matrice-form input[type="text"] {
+      width: 6.5rem;
+    }
+
+    .matrice-toggle {
+      display: flex;
+      border: 1px solid #b8bfcc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .matrice-toggle button {
+      border: 0;
+      background: #fff;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .matrice-toggle button.actif {
+      background: #1f4789;
+      color: #fff;
+    }
+
+    .matrice-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .matrice-table th,
+    .matrice-table td {
+      padding: 0.3rem 0.5rem;
+    }
+
+    .matrice-table th.matrice-th-ligne {
+      text-align: left;
+      width: 220px;
+      font-size: 0.85rem;
+    }
+
+    .matrice-mois {
+      display: flex;
+    }
+
+    .matrice-mois span {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #666;
+      border-left: 1px solid #e0e0e0;
+    }
+
+    .matrice-ligne-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .matrice-ligne-label small {
+      display: block;
+      color: #888;
+      font-weight: 400;
+    }
+
+    .matrice-barre {
+      position: relative;
+      height: 26px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #d5e6c8;
+      outline: 1px solid #c2c8d4;
+    }
+
+    .matrice-barre--grise {
+      background: #e2e2e2;
+    }
+
+    .matrice-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+    }
+
+    .matrice-zone--vert {
+      background: #8ecb5f;
+    }
+
+    .matrice-zone--orange {
+      background: #f5a623;
+    }
+
+    .matrice-zone--rouge {
+      background: #e1234f;
+    }
+
+    .matrice-zone--gris {
+      background: #c9c9c9;
+    }
+
+    /* Traits verticaux mensuels : gradient répété (12 colonnes), pas de
+       markup — la barre fait 100% = 12 mois de largeur (100/12)%. */
+    .matrice-grille {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(to right,
+          transparent,
+          transparent calc(100% / 12 - 1px),
+          rgba(0, 0, 0, 0.12) calc(100% / 12 - 1px),
+          rgba(0, 0, 0, 0.12) calc(100% / 12));
+    }
+
+    tr.matrice-tr {
+      cursor: pointer;
+    }
+
+    tr.matrice-tr:hover .matrice-barre {
+      outline: 2px solid #1f4789;
+    }
+
+    tr.matrice-tr.ouverte .matrice-barre {
+      outline: 2px solid #1f4789;
+    }
+
+    .matrice-detail td {
+      background: #f6f7fb;
+      border: 1px solid #dde1ea;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .matrice-detail ul {
+      margin: 0.25rem 0 0.5rem;
+      padding-left: 1.2rem;
+    }
+
+    .matrice-detail h4 {
+      margin: 0.4rem 0 0.15rem;
+      font-size: 0.85rem;
+    }
+
+    .matrice-detail .matrice-pc-texte {
+      color: #333;
+    }
+
+    .matrice-detail code {
+      font-size: 0.75rem;
+    }
+
+    .matrice-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 8px;
+      background: #e8e8e8;
+      color: #444;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+
+    .matrice-legende {
+      display: flex;
+      gap: 1.25rem;
+      margin: 0.75rem 0 0;
+      font-size: 0.8rem;
+      color: #444;
+    }
+
+    .matrice-legende span::before {
+      content: "";
+      display: inline-block;
+      width: 0.8rem;
+      height: 0.8rem;
+      border-radius: 3px;
+      margin-right: 0.35rem;
+      vertical-align: -0.1rem;
+    }
+
+    .matrice-legende .lg-vert::before {
+      background: #8ecb5f;
+    }
+
+    .matrice-legende .lg-orange::before {
+      background: #f5a623;
+    }
+
+    .matrice-legende .lg-rouge::before {
+      background: #e1234f;
+    }
+
+    .matrice-legende .lg-gris::before {
+      background: #c9c9c9;
+    }
+
+    .matrice-erreur {
+      color: #b00020;
+      font-weight: 600;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+      .matrice-form,
+      .matrice-detail td {
+        background: #262a33;
+        border-color: #3a4050;
+      }
+
+      .matrice-form select,
+      .matrice-form input[type="text"],
+      .matrice-toggle button {
+        background: #1e1e1e;
+        color: #e8e8e8;
+      }
+
+      .matrice-toggle button.actif {
+        background: #1f4789;
+        color: #fff;
+      }
+
+      .matrice-barre {
+        background: #3d5233;
+        outline-color: #444;
+      }
+
+      .matrice-barre--grise {
+        background: #3a3a3a;
+      }
+
+      .matrice-mois span {
+        color: #aaa;
+        border-color: #3a4050;
+      }
+
+      .matrice-detail .matrice-pc-texte {
+        color: #ccc;
+      }
+
+      .matrice-badge {
+        background: #3a4050;
+        color: #ccc;
+      }
+
+      .matrice-legende {
+        color: #bbb;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block global_overlay %}{% endblock %}
+
+{% block content %}
+  <div class="matrice-page">
+    <h1>Matrice des calendriers d'épandage</h1>
+    <p style="color:#777;font-size:0.85rem;max-width:70ch;">
+      Reconstruction dynamique des matrices « catalogue » (cahier des mesures)
+      par parcours des arbres actifs (cascade PAN / PAR / ZAR). Les questions
+      complémentaires et zonages SIG non fixés reçoivent un défaut, listé dans
+      le détail de chaque ligne (cliquer une ligne).
+    </p>
+
+    <form method="get" class="matrice-form" id="matrice-form">
+      <div>
+        <label for="territoire">Territoire</label>
+        <select name="territoire" id="territoire">
+          {% for t in territoires %}
+            <option value="{{ t.id }}" {% if t.id == territoire.id %}selected{% endif %}>{{ t.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label>Zone vulnérable</label>
+        <div class="matrice-toggle">
+          <button type="button" data-zv="oui" class="{% if en_zv %}actif{% endif %}">ZV</button>
+          <button type="button"
+                  data-zv="non"
+                  class="{% if not en_zv %}actif{% endif %}">Hors ZV</button>
+        </div>
+        <input type="hidden"
+               name="zv"
+               value="{% if en_zv %}oui{% else %}non{% endif %}">
+      </div>
+
+      <div>
+        <label>Axe</label>
+        <div class="matrice-toggle">
+          <button type="button"
+                  data-axe="fertilisant"
+                  class="{% if axe == 'fertilisant' %}actif{% endif %}"
+                  title="Une culture figée, une ligne par type de fertilisant">Culture → fertilisants</button>
+          <button type="button"
+                  data-axe="culture"
+                  class="{% if axe == 'culture' %}actif{% endif %}"
+                  title="Un fertilisant figé, une ligne par branche culturale">Fertilisant → cultures</button>
+        </div>
+        <input type="hidden" name="axe" value="{{ axe }}">
+      </div>
+
+      <div>
+        <label for="valeur">
+          {% if axe == 'fertilisant' %}
+            Branche culturale
+          {% else %}
+            Type de fertilisant
+          {% endif %}
+        </label>
+        <select name="valeur" id="valeur">
+          {% for o in options_valeur %}
+            <option value="{{ o.id }}" {% if o.id == valeur %}selected{% endif %}>{{ o.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if montrer_dates %}
+        {% for c in champs_dates %}
+          <div>
+            <label for="{{ c.id }}">{{ c.label }}</label>
+            <input type="text"
+                   name="{{ c.id }}"
+                   id="{{ c.id }}"
+                   value="{{ c.valeur }}"
+                   placeholder="JJ/MM"
+                   inputmode="numeric">
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <noscript>
+        <button type="submit">Recalculer</button>
+      </noscript>
+    </form>
+
+    {% if erreur %}<p class="matrice-erreur">{{ erreur }}</p>{% endif %}
+
+    {% if cellules %}
+      <table class="matrice-table">
+        <thead>
+          <tr>
+            <th class="matrice-th-ligne">
+              {% if axe == 'fertilisant' %}
+                Type de fertilisant
+              {% else %}
+                Branche culturale
+              {% endif %}
+            </th>
+            <th>
+              <div class="matrice-mois">
+                {% for label, court in mois %}<span>{{ label }}</span>{% endfor %}
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cellules %}
+            <tr class="matrice-tr" data-detail="detail-{{ forloop.counter }}">
+              <td class="matrice-ligne-label">
+                {{ c.ligne_label }}
+                {% if c.hypotheses %}
+                  <span class="matrice-badge" title="{{ c.hypotheses|join:' — ' }}">{{ c.hypotheses|length }} hyp.</span>
+                {% endif %}
+                {% if c.is_calculatrice %}
+                  <span class="matrice-badge" title="Calendrier dépendant des dates saisies">dates</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if c.statut == 'ok' %}
+                  <div class="matrice-barre">
+                    {% for seg in c.segments %}
+                      <div class="matrice-zone matrice-zone--{{ seg.couleur }}"
+                           style="left: {{ seg.start_pct|stringformat:'.4f' }}%;
+                                  width: {{ seg.width_pct|stringformat:'.4f' }}%"
+                           title="{{ seg.regime }}"></div>
+                    {% endfor %}
+                    <div class="matrice-grille"></div>
+                  </div>
+                {% else %}
+                  <div class="matrice-barre matrice-barre--grise" title="{{ c.detail }}">
+                    <div class="matrice-grille"></div>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+            <tr class="matrice-detail" id="detail-{{ forloop.counter }}" hidden>
+              <td colspan="2">
+                {% if c.regle %}
+                  <p style="margin:0;">
+                    <strong>{{ c.regle.regle_id }}</strong>
+                    <span class="matrice-badge">{{ c.regle.type }}</span>
+                    <span class="matrice-badge">arbre : {{ c.arbre_name }}</span>
+                    {% if c.regle.plafond_azote_kg_n_ha %}
+                      <span class="matrice-badge">plafond {{ c.regle.plafond_azote_kg_n_ha }} kg N/ha</span>
+                    {% endif %}
+                  </p>
+                  {% if c.pcs %}
+                    <h4>Prescriptions conditionnées</h4>
+                    <ul>
+                      {% for pc in c.pcs %}
+                        <li>
+                          <code>{{ pc.code }}</code>
+                          {% if pc.mots_cles %}— <strong>{{ pc.mots_cles }}</strong>{% endif %}
+                          {% if pc.texte_court %}<span class="matrice-pc-texte">: {{ pc.texte_court }}</span>{% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                  {% if c.plafonds %}
+                    <h4>Plafonds</h4>
+                    <ul>
+                      {% for pc in c.plafonds %}
+                        <li>
+                          <code>{{ pc.code }}</code>
+                          {% if pc.texte_court %}<span class="matrice-pc-texte">: {{ pc.texte_court }}</span>{% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                  {% if c.hypotheses %}
+                    <h4>Hypothèses prises (défauts)</h4>
+                    <ul>
+                      {% for h in c.hypotheses %}<li>{{ h }}</li>{% endfor %}
+                    </ul>
+                  {% endif %}
+                  <p style="margin:0.4rem 0 0;color:#888;">
+                    chemin : <code>{{ c.chemin|join:" / " }}</code>
+                  </p>
+                {% else %}
+                  <p style="margin:0;">
+                    <strong>{{ c.statut }}</strong> — {{ c.detail|default:"pas de résultat" }}
+                    {% if c.arbre_name %}<span class="matrice-badge">arbre : {{ c.arbre_name }}</span>{% endif %}
+                  </p>
+                  {% if c.hypotheses %}
+                    <ul>
+                      {% for h in c.hypotheses %}<li>{{ h }}</li>{% endfor %}
+                    </ul>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="matrice-legende">
+        <span class="lg-vert">Autorisé</span>
+        <span class="lg-orange">Autorisé sous conditions</span>
+        <span class="lg-rouge">Interdit</span>
+        <span class="lg-gris">Non applicable / non disponible</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+  (function () {
+    const form = document.getElementById('matrice-form');
+
+    // Toggles ZV / axe : bouton -> hidden input -> submit.
+    form.querySelectorAll('[data-zv]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        form.querySelector('[name=zv]').value = btn.dataset.zv;
+        form.submit();
+      });
+    });
+    form.querySelectorAll('[data-axe]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        form.querySelector('[name=axe]').value = btn.dataset.axe;
+        // L'axe change la liste des valeurs figées : on repart sur le défaut.
+        const valeur = form.querySelector('[name=valeur]');
+        if (valeur) valeur.value = '';
+        form.submit();
+      });
+    });
+    form.querySelectorAll('select').forEach((sel) => {
+      sel.addEventListener('change', () => form.submit());
+    });
+    // Dates : submit au change (blur / entrée) si format complet ou vide.
+    form.querySelectorAll('input[type=text]').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        const v = inp.value.trim();
+        if (v === '' || /^\d{2}\/\d{2}$/.test(v)) form.submit();
+      });
+    });
+
+    // Détail par ligne (PC, hypothèses, chemin) : toggle au clic.
+    document.querySelectorAll('tr.matrice-tr').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const detail = document.getElementById(tr.dataset.detail);
+        if (!detail) return;
+        const ouvert = !detail.hidden;
+        detail.hidden = ouvert;
+        tr.classList.toggle('ouverte', !ouvert);
+      });
+    });
+  })();
+  </script>
+{% endblock %}
