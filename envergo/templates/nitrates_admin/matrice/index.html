@@ -28,29 +28,69 @@
       display: block;
       font-size: 0.8rem;
       font-weight: 600;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.35rem;
+      white-space: nowrap;
+    }
+
+    /* Harmonie des contrôles : même hauteur (2.25rem), même bordure, même
+       rayon pour selects, inputs et boutons toggle — et des largeurs FIXES
+       pour que le formulaire ne bouge pas quand les valeurs changent. */
+    .matrice-form select,
+    .matrice-form input[type="text"],
+    .matrice-toggle button {
+      box-sizing: border-box;
+      height: 2.25rem;
+      font-size: 0.9rem;
+      color: inherit;
+      background: #fff;
     }
 
     .matrice-form select,
     .matrice-form input[type="text"] {
-      padding: 0.35rem 0.5rem;
-      font-size: 0.9rem;
+      padding: 0 0.5rem;
       border: 1px solid #b8bfcc;
       border-radius: 4px;
-      background: #fff;
-      color: inherit;
+    }
+
+    #territoire {
+      width: 11rem;
+    }
+
+    #valeur {
+      width: 17rem;
     }
 
     .matrice-form input[type="text"] {
-      width: 6.5rem;
+      width: 5.5rem;
     }
 
     /* Les deux dates du couvert empilées (semis au-dessus de la
-       destruction), sans retour à la ligne du reste du formulaire. */
+       destruction) : le label prend la largeur restante, l'input est
+       aligné à droite du sous-bloc. */
     .matrice-dates {
       display: flex;
       flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .matrice-dates>div {
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
+      justify-content: space-between;
+    }
+
+    .matrice-dates label {
+      margin-bottom: 0;
+      font-weight: 500;
+    }
+
+    .matrice-dates>div input {
+      height: 1.8rem;
+    }
+
+    .matrice-dates--inactives {
+      opacity: 0.45;
     }
 
     .matrice-toggle {
@@ -62,8 +102,7 @@
 
     .matrice-toggle button {
       border: 0;
-      background: #fff;
-      padding: 0.4rem 0.8rem;
+      padding: 0 0.8rem;
       font-size: 0.85rem;
       cursor: pointer;
     }
@@ -400,21 +439,21 @@
         </select>
       </div>
 
-      {% if montrer_dates %}
-        <div class="matrice-dates">
-          {% for c in champs_dates %}
-            <div>
-              <label for="{{ c.id }}">{{ c.label }}</label>
-              <input type="text"
-                     name="{{ c.id }}"
-                     id="{{ c.id }}"
-                     value="{{ c.valeur }}"
-                     placeholder="JJ/MM"
-                     inputmode="numeric">
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
+      <div class="matrice-dates{% if not dates_actives %} matrice-dates--inactives{% endif %}"
+           {% if not dates_actives %}title="Aucune ligne couvert dans la matrice courante : les dates n'ont pas d'effet"{% endif %}>
+        {% for c in champs_dates %}
+          <div>
+            <label for="{{ c.id }}">{{ c.label }}</label>
+            <input type="text"
+                   name="{{ c.id }}"
+                   id="{{ c.id }}"
+                   value="{{ c.valeur }}"
+                   placeholder="JJ/MM"
+                   inputmode="numeric"
+                   {% if not dates_actives %}disabled{% endif %}>
+          </div>
+        {% endfor %}
+      </div>
 
       <noscript>
         <button type="submit">Recalculer</button>
@@ -449,7 +488,7 @@
                 {% if c.hypotheses %}
                   <span class="matrice-badge" title="{{ c.hypotheses|join:' — ' }}">{{ c.hypotheses|length }} hyp.</span>
                 {% endif %}
-                {% if c.is_calculatrice %}
+                {% if c.depend_dates %}
                   <span class="matrice-badge" title="Calendrier dépendant des dates saisies">dates</span>
                 {% endif %}
               </td>

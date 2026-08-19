@@ -78,11 +78,10 @@ def matrice_index(request):
         except DecisionTree.DoesNotExist:
             erreur = "Aucun arbre actif (PAN manquant ?) : charger les arbres."
 
-    # La matrice n'a de sens que sur des combinaisons couvert si l'axe figé
-    # est un couvert (axe fertilisant) ou s'il y a des lignes couvert (axe
-    # culture) : on affiche les champs dates dès qu'une cellule calculatrice
-    # existe, ou que la culture figée est un couvert.
-    montrer_dates = any(c.is_calculatrice for c in cellules) or any(
+    # Les champs dates sont TOUJOURS rendus (layout stable, le formulaire ne
+    # saute pas d'une requête à l'autre) mais désactivés quand aucune ligne
+    # de la matrice n'en dépend (aucune cellule calculatrice).
+    dates_actives = any(c.depend_dates for c in cellules) or any(
         d for d in dates.values()
     )
 
@@ -97,7 +96,7 @@ def matrice_index(request):
             "options_valeur": options_valeur,
             "valeur": valeur,
             "champs_dates": champs_dates,
-            "montrer_dates": montrer_dates,
+            "dates_actives": dates_actives,
             "cellules": cellules,
             "mois": _MOIS_PAIRES,
             "erreur": erreur,

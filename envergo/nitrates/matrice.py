@@ -294,6 +294,9 @@ class Cellule:
     detail: str = ""  # message d'explication (statut != ok)
     has_orange: bool = False
     is_calculatrice: bool = False
+    # True si au moins une borne de période référence une date saisie
+    # (date_semis_*, date_destruction_*) : la cellule réagit aux inputs dates.
+    depend_dates: bool = False
 
 
 def _defaut_question(question) -> tuple[object, str] | None:
@@ -578,6 +581,11 @@ def construire_matrice(
     fertilisant, lignes = branches culturales.
     """
     dates = {k: v for k, v in (dates or {}).items() if v}
+    # Certaines feuilles couvert (ZAR GE) bornent sur `date_destruction_prevue`
+    # (même sens métier que la destruction/récolte du couvert) : on aliasse
+    # depuis le champ unique du formulaire.
+    if "date_destruction_couvert" in dates:
+        dates.setdefault("date_destruction_prevue", dates["date_destruction_couvert"])
     candidats = select_active_trees(catalog_synthetique(region_code, en_zar))
     referentiel_pc = referentiels.get("codes_prescription", {})
     cultures = lignes_cultures()
@@ -650,6 +658,12 @@ def construire_matrice(
                     periodes = [{"du": "01/07", "au": "30/06", "regime": res.type}]
                 if not periodes and res.type == "interdiction":
                     periodes = [{"du": "01/07", "au": "30/06"}]
+                cellule.depend_dates = cellule.is_calculatrice or any(
+                    str(p.get(cle, "")).startswith("date_")
+                    or "date_" in str(p.get("condition", ""))
+                    for p in periodes
+                    for cle in ("du", "au")
+                )
                 regimes = compute_regime_par_jour(
                     res.type, periodes, dates, tous_plafonds=tous_plafonds
                 )
