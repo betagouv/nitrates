@@ -339,9 +339,11 @@ body {
 
 /* ─── #271 : encart récap des choix (colonne gauche, page résultat) ──────
    Rappel compact et mauve des réponses de l'utilisateur, façon .qc-box, avec
-   un bouton « Modifier » pour revenir au formulaire. */
+   un bouton « Modifier » pour revenir au formulaire.
+   #408 : fond passé au blue-france-950 (#ececfe), plus clair que le mauve
+   d'origine, pour un meilleur contraste de lecture du texte. */
 .recap-choix {
-  background: #cecefc;
+  background: #ececfe;
   padding: 20px;
   border-radius: 6px;
   display: flex;
@@ -385,7 +387,7 @@ body {
    principal par un filet. On ne détaille pas les QC (cliquer Modifier pour). */
 .recap-choix__qc-note {
   padding-top: 16px;
-  border-top: 1px solid rgb(106 106 244 / 35%);
+  border-top: 1px solid rgb(106 106 244 / 22%);
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-title-grey, #161616);
