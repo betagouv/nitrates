@@ -23,6 +23,35 @@
     return 0;
   }
 
+  // #410 : la maquette place les tags de dates SOUS le titre. Or ce titre vit à
+  // l'intérieur du bloc riche compilé (on ne découpe pas le bloc côté serveur).
+  // On déplace donc le conteneur des tags juste après le titre, MAIS seulement
+  // si le contenu COMMENCE par un titre (h1 > h2 > h3, premier trouvé) : sinon
+  // les tags restent en tête, comme aujourd'hui.
+  function placerBadgesSousTitre(drawer) {
+    var contenu = drawer.querySelector(".drawer-conditions__contenu");
+    var badges = drawer.querySelector("[data-drawer-application]");
+    if (!contenu || !badges) return;
+    // Premier élément de contenu réel après le bloc de tags.
+    var suivant = badges.nextElementSibling;
+    while (suivant && !suivant.textContent.trim()) {
+      suivant = suivant.nextElementSibling;
+    }
+    if (!suivant) return;
+    // Le titre est soit ce bloc lui-même, soit son tout premier descendant.
+    var titre = suivant.matches("h1, h2, h3")
+      ? suivant
+      : suivant.querySelector("h1, h2, h3");
+    if (!titre) return;
+    // Vérifie que le titre est bien EN TÊTE (rien de textuel avant lui dans le
+    // bloc), sinon on n'insère pas : les tags précéderaient du contenu.
+    var avant = document.createRange();
+    avant.setStart(suivant, 0);
+    avant.setEndBefore(titre);
+    if (avant.toString().trim()) return;
+    titre.after(badges);
+  }
+
   function ouvrir(drawer, declencheur) {
     if (ouvert) fermer();
     // Reparente le drawer sous <body> : il est en position: fixed et pourrait
@@ -35,6 +64,9 @@
       document.body.appendChild(drawer);
     }
     drawer.hidden = false;
+    // #410 : dates sous le titre. À l'ouverture, car pour une règle calculatrice
+    // les tags sont injectés en asynchrone par calculatrice-calendrier.js.
+    placerBadgesSousTitre(drawer);
     // #271 : sur la page publique `/`, un bandeau « site en construction » fixe
     // occupe le haut (position: fixed, top: 0). Le drawer (top: 0 aussi) passait
     // dessous -> son en-tête (Fermer) était caché. On décale donc le panneau ET

@@ -1335,55 +1335,40 @@ body.drawer-open {
 .drawer-conditions__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end; /* #410 : seul le bouton Fermer reste dans l'en-tête */
   gap: 1rem;
-  padding: 1rem 1.5rem 0.5rem;
+  padding: 1rem 30px 0.5rem; /* #410 : padding latéral 30px (maquette) */
   flex: 0 0 auto;
 }
 
 .drawer-conditions__contenu {
-  padding: 1.5rem;
+  padding: 0 30px 30px; /* #410 : padding 30px (maquette) */
   overflow-y: auto;
   flex: 1 1 auto;
 }
 
-/* En-tête « Période(s) d'application : » + badges de dates. */
+/* Bloc des tags de dates (déplacé sous le titre par drawer_conditions.js, #410). */
 .drawer-conditions__application {
-  margin-bottom: 1.25rem;
+  margin: 0.5rem 0 1.25rem;
 }
 
-/* Libellé « Période(s) d'application : » (désormais dans l'en-tête, à gauche du
-   bouton Fermer). */
-.drawer-conditions__application-label {
-  font-weight: 700;
-  color: var(--text-title-grey, #161616);
-}
-
-/* Badges des dates de périodes ASC réinjectées : ORANGE (cohérent avec la zone
-   « autorisé sous condition » du calendrier), icône 📅. NB : la var
-   --cal-orange-fill vaut en réalité le fond ROUGE partagé (choix maquette #130),
-   donc on pose ici un vrai orangé pâle + le contour orange --cal-orange-ink. */
+/* Tags DSFR des dates de périodes ASC (#410) : orange pâle de la maquette
+   designer, texte brun. Ce sont des `fr-tag` : on ne surcharge que les
+   couleurs, le reste (taille, icône calendrier) vient du DSFR. */
 .drawer-conditions__date-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
   margin: 0 0.5rem 0.5rem 0;
-  padding: 0.3rem 0.7rem;
-  border-radius: 4px;
+  background-color: #feecc2;
+  color: #817051;
 
-  /* EXACTEMENT l'orange des hachures « autorisé sous condition » du calendrier
-     (--cal-orange-ink #fa7a35), en fond PLEIN et SANS bordure (comme la
-     maquette designer). Texte foncé pour le contraste sur l'orange. */
-  background: var(--cal-orange-ink, #fa7a35);
-  border: none;
-  color: var(--text-default-grey, #161616);
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1.3;
+  /* #410 : pas la pilule par défaut du `fr-tag` (trop marquée, ça évoque un
+     filtre cliquable), coins juste cassés comme la maquette. */
+  border-radius: 2px;
 }
 
-.drawer-conditions__date-icon {
-  font-size: 0.95rem;
+[data-fr-theme="dark"] .drawer-conditions__date-badge,
+.drawer-conditions__date-badge:hover {
+  background-color: #feecc2;
+  color: #817051;
 }
 
 /* Mobile : plein écran, slide identique. */
@@ -1396,9 +1381,4 @@ body.drawer-open {
 
 [data-fr-theme="dark"] .drawer-conditions__panel {
   background: var(--background-default-grey, #1e1e1e);
-}
-
-[data-fr-theme="dark"] .drawer-conditions__date-badge {
-  background: var(--cal-orange-ink, #fa7a35);
-  color: #161616;
 }

@@ -35,10 +35,7 @@ dates (fond orange, cohérent calendrier), en tête du contenu.
       {% for section in sections_periodes %}
         {% if section.titre == "Période d’autorisation sous condition" %}
           {% for puce in section.periodes %}
-            <span class="drawer-conditions__date-badge">
-              <span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>
-              {{ puce.phrase }}
-            </span>
+            <span class="fr-tag fr-tag--sm fr-icon-calendar-line fr-tag--icon-left drawer-conditions__date-badge">{{ puce.phrase }}</span>
           {% endfor %}
         {% endif %}
       {% endfor %}
