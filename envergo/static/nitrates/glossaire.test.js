@@ -127,3 +127,76 @@ test("plusieurs matches dans un meme texte", function () {
     "definition.c-n",
   ]);
 });
+
+// ── Projection d'une ligne de tableau dans la carte (#409) ────────────────
+// Le tableau comparatif des types de fertilisants reste sur /definitions/ ;
+// la carte flottante ne montre que la ligne du type cliqué.
+
+const { cleType, ligneTableauPourTerme, titreLigne } =
+  require("./glossaire.js");
+
+const BLOCS_FERTILISANTS = [
+  {
+    type: "tableau",
+    data: {
+      avec_entetes: true,
+      lignes: [
+        ["Type", "Caracteristiques", "Exemples", "Valeurs guides"],
+        ["0", "Organisation nette", "Boues de papeterie", "C/N > 20"],
+        ["Ia", "Mineralisation tres lente", "Fumiers compacts", "C/N > 10"],
+        ["Ib", "Mineralisation lente", "Dejections avec litiere", "C/N > 8"],
+        ["II", "Mineralisation rapide", "Lisiers", "Autres effluents"],
+        ["III", "Engrais mineraux", "Ammonitrates", "-"],
+      ],
+    },
+  },
+];
+
+test("cleType normalise les graphies d'un meme type", () => {
+  assert.strictEqual(cleType("type I.a"), "ia");
+  assert.strictEqual(cleType("Ia"), "ia");
+  assert.strictEqual(cleType("I.a"), "ia");
+  assert.strictEqual(cleType("type II"), "ii");
+  assert.strictEqual(cleType("0"), "0");
+  assert.strictEqual(cleType(""), "");
+});
+
+test("ligneTableauPourTerme isole la ligne du type clique", () => {
+  const r = ligneTableauPourTerme(BLOCS_FERTILISANTS, "type II");
+  assert.ok(r);
+  assert.strictEqual(r.ligne[0], "II");
+  assert.strictEqual(r.ligne[2], "Lisiers");
+  assert.strictEqual(r.entetes[3], "Valeurs guides");
+});
+
+test("ligneTableauPourTerme accepte les graphies I.a / Ia", () => {
+  ["type I.a", "I.a", "Ia", "type Ia"].forEach(function (variante) {
+    const r = ligneTableauPourTerme(BLOCS_FERTILISANTS, variante);
+    assert.ok(r, variante);
+    assert.strictEqual(r.ligne[0], "Ia", variante);
+  });
+});
+
+test("ligneTableauPourTerme ne confond pas Ia, Ib et III", () => {
+  assert.strictEqual(ligneTableauPourTerme(BLOCS_FERTILISANTS, "Ib").ligne[0], "Ib");
+  assert.strictEqual(
+    ligneTableauPourTerme(BLOCS_FERTILISANTS, "type III").ligne[0],
+    "III"
+  );
+});
+
+test("ligneTableauPourTerme renvoie null hors tableau", () => {
+  assert.strictEqual(ligneTableauPourTerme(BLOCS_FERTILISANTS, "type IX"), null);
+  assert.strictEqual(ligneTableauPourTerme(BLOCS_FERTILISANTS, ""), null);
+  assert.strictEqual(
+    ligneTableauPourTerme([{ type: "paragraphe", data: { texte: "x" } }], "type II"),
+    null
+  );
+});
+
+test("titreLigne titre sur le seul type demande", () => {
+  const t = "Fertilisants de type 0, Ia, Ib, II et III";
+  assert.strictEqual(titreLigne(t, "type 0"), "Fertilisant type 0");
+  assert.strictEqual(titreLigne(t, "I.a"), "Fertilisant type I.a");
+  assert.strictEqual(titreLigne(t, "type II"), "Fertilisant type II");
+});

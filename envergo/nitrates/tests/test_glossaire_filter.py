@@ -50,8 +50,19 @@ def test_terme_wrappe_en_lien(glossaire_interculture):
     html = glossaire("Pendant l'interculture, le sol est nu.")
     assert (
         '<a class="def-terme" data-def-cle="definition.interculture" '
+        'data-def-terme="interculture" '
         'href="/definitions/#interculture">interculture</a>' in html
     )
+
+
+def test_terme_clique_porte_par_le_lien(glossaire_interculture):
+    """data-def-terme = la variante réellement matchée (carte #409).
+
+    La carte flottante s'en sert pour n'afficher que la ligne du type
+    cliqué d'une définition tabulaire.
+    """
+    html = glossaire("En interculture longue uniquement.")
+    assert 'data-def-terme="interculture longue"' in html
 
 
 def test_longest_match_prime(glossaire_interculture):
