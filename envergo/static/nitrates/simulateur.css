@@ -402,8 +402,11 @@ body {
   line-height: 1.35;
 }
 
+/* #408 — le bouton collait au dernier item : on lui donne de l'air pour le
+   détacher nettement de la liste des choix (au-delà du gap de l'encart). */
 .recap-choix__modifier {
   align-self: flex-start;
+  margin-top: 8px;
 }
 
 [data-fr-theme="dark"] .recap-choix {
