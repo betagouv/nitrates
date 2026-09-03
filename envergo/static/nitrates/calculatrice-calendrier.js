@@ -1672,13 +1672,6 @@
     );
     const nb = segments.length;
 
-    // Titre « Période(s) d'application » du drawer, accordé au nombre. #271.
-    const label = document.querySelector("[data-drawer-application-label]");
-    if (label) {
-      label.textContent =
-        (nb > 1 ? "Périodes d'application" : "Période d'application") + " :";
-    }
-
     if (!cible) return;
     if (!nb) {
       cible.innerHTML = "";
@@ -1689,8 +1682,7 @@
         const du = jourAgricoleToLisible(s.du);
         const au = jourAgricoleToLisible(s.au);
         return (
-          '<span class="drawer-conditions__date-badge">' +
-          '<span class="drawer-conditions__date-icon" aria-hidden="true">📅</span>' +
+          '<span class="fr-tag fr-tag--sm fr-icon-calendar-line fr-tag--icon-left drawer-conditions__date-badge">' +
           "du " +
           escapeHtml(du) +
           " au " +

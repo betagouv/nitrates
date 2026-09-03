@@ -282,19 +282,12 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                  hidden>
               <div class="drawer-conditions__overlay" data-drawer-close></div>
               <div class="drawer-conditions__panel">
-                {% nb_periodes_sous_condition ev.regle as nb_asc_h %}
+                {% comment %}
+                #410 : plus de libellé « Période(s) d'application : » dans
+                l'en-tête : les tags de dates portent l'info (icône calendrier),
+                et ils sont désormais placés sous le titre du contenu.
+                {% endcomment %}
                 <div class="drawer-conditions__header">
-                  {# « Période(s) d'application : » sur la MÊME ligne que Fermer #}
-                  {# (gain de hauteur). Accord ajusté aussi par le JS (couvert). #}
-                  <span class="drawer-conditions__application-label"
-                        data-drawer-application-label>
-                    {% if nb_asc_h > 1 %}
-                      Périodes
-                    {% else %}
-                      Période
-                    {% endif %}
-                    d'application :
-                  </span>
                   <button type="button"
                           class="fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left fr-icon-close-line drawer-conditions__fermer"
                           data-drawer-close>Fermer</button>
