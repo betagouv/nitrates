@@ -1033,7 +1033,13 @@ def glossaire(texte):
     puis les variantes connues (ContenuRichDSFR type definition, cache
     process-local) sont enveloppées dans un lien :
 
-      <a class="def-terme" data-def-cle="<cle>" href="/definitions/#<ancre>">
+      <a class="def-terme" data-def-cle="<cle>" data-def-terme="<variante>"
+         href="/definitions/#<ancre>">
+
+    `data-def-terme` porte la variante réellement cliquée (« type II »,
+    « I.a »…). La carte flottante s'en sert pour ne montrer QUE la ligne
+    concernée d'une définition tabulaire (carte #409) ; la page complète,
+    elle, garde le tableau entier pour la comparaison.
 
     Le lien (et pas un <button> : un button est invalide dans un <label>, et
     le href donne un fallback sans JS) est intercepté par glossaire.js qui
@@ -1068,7 +1074,8 @@ def glossaire(texte):
             return match.group(0)
         ancre = cle.split(".", 1)[-1].replace(".", "-")
         return format_html(
-            '<a class="def-terme" data-def-cle="{0}" href="{1}#{2}">{3}</a>',
+            '<a class="def-terme" data-def-cle="{0}" data-def-terme="{3}"'
+            ' href="{1}#{2}">{3}</a>',
             cle,
             url_base,
             ancre,

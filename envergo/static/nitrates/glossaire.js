@@ -77,11 +77,79 @@
     return segments;
   }
 
+  // ── Projection d'une ligne de tableau (carte #409) ──────────────────────
+  // Retour test utilisateur : dans la carte flottante (380px), le tableau
+  // comparatif des types de fertilisants est illisible. On garde le tableau
+  // complet pour la page /definitions/ (le bon endroit pour comparer) et,
+  // dans la carte, on n'affiche QUE la ligne du terme cliqué, mise à plat en
+  // paragraphes « <en-tête> : <valeur> ».
+
+  // Texte brut d'une valeur riche (chaîne ou segments {texte}).
+  function texteBrut(valeur) {
+    if (valeur === null || valeur === undefined) return "";
+    if (typeof valeur === "string") return valeur;
+    if (Array.isArray(valeur)) {
+      return valeur
+        .map(function (seg) {
+          if (typeof seg === "string") return seg;
+          return seg && typeof seg === "object" ? seg.texte || "" : "";
+        })
+        .join("");
+    }
+    return String(valeur);
+  }
+
+  // Clé de comparaison d'un libellé de type : « type I.a », « I.a », « Ia »
+  // désignent la même ligne -> on ne garde que les alphanumériques, en bas de
+  // casse, sans le préfixe « type ».
+  function cleType(valeur) {
+    return texteBrut(valeur)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .replace(/^type/, "");
+  }
+
+  // Cherche dans les blocs un tableau dont une ligne correspond au terme
+  // cliqué. Renvoie {entetes, ligne} ou null.
+  function ligneTableauPourTerme(blocs, terme) {
+    const cible = cleType(terme);
+    if (!cible) return null;
+    let trouve = null;
+    (blocs || []).forEach(function (bloc) {
+      if (trouve || !bloc || bloc.type !== "tableau") return;
+      const data = bloc.data || {};
+      if (data.avec_entetes === false) return;
+      const lignes = (data.lignes || []).filter(Array.isArray);
+      if (lignes.length < 2) return;
+      const entetes = lignes[0];
+      lignes.slice(1).forEach(function (ligne) {
+        if (trouve || !ligne.length) return;
+        if (cleType(ligne[0]) === cible) trouve = { entetes: entetes, ligne: ligne };
+      });
+    });
+    return trouve;
+  }
+
+  // Titre de la carte quand on isole une ligne : « Fertilisants de type 0,
+  // Ia, Ib, II et III » + « type II » -> « Fertilisant type II ». On reprend
+  // le 1er mot du titre (le sujet du tableau) au singulier, suivi du terme
+  // cliqué normalisé (« Ia » -> « type Ia »).
+  function titreLigne(titreDef, terme) {
+    const sujet = String(titreDef || "").split(/[\s,]+/)[0].replace(/s$/i, "");
+    let libelle = String(terme || "").trim();
+    if (!/^type\b/i.test(libelle)) libelle = "type " + libelle;
+    return sujet ? sujet + " " + libelle : libelle;
+  }
+
+
   if (_isNode) {
     module.exports = {
       echapperRegex: echapperRegex,
       construireRegex: construireRegex,
       decouperTexte: decouperTexte,
+      cleType: cleType,
+      ligneTableauPourTerme: ligneTableauPourTerme,
+      titreLigne: titreLigne,
     };
     return;
   }
@@ -300,10 +368,41 @@
     });
   }
 
+  // Met la ligne à plat : 1re cellule (caractéristiques) en paragraphe nu,
+  // les suivantes préfixées par leur en-tête de colonne.
+  function rendreLigneAplat(extrait) {
+    const frag = document.createDocumentFragment();
+    extrait.ligne.slice(1).forEach(function (cellule, i) {
+      const texte = texteBrut(cellule).trim();
+      if (!texte || texte === "-") return;
+      const p = document.createElement("p");
+      const entete = texteBrut(extrait.entetes[i + 1]).trim();
+      // La 1re colonne après le type porte la définition elle-même : pas de
+      // préfixe, c'est la phrase d'attaque de la carte.
+      if (i > 0 && entete) {
+        p.appendChild(document.createTextNode(entete + " : "));
+      }
+      poserTexte(p, cellule);
+      frag.appendChild(p);
+    });
+    return frag.childNodes.length ? frag : null;
+  }
+
   // Construit le contenu d'une définition. Renvoie un élément prêt à insérer.
-  function rendreDefinition(def) {
+  // `terme` (optionnel) = variante cliquée : si elle désigne une ligne d'un
+  // tableau, on ne rend que cette ligne (carte #409).
+  function rendreDefinition(def, terme) {
     const racine = document.createElement("div");
     racine.className = "contenu-rich";
+    const extrait = terme ? ligneTableauPourTerme(def.blocs, terme) : null;
+    if (extrait) {
+      const aplat = rendreLigneAplat(extrait);
+      if (aplat) {
+        racine.appendChild(aplat);
+        racine.dataset.defLigne = "1";
+        return racine;
+      }
+    }
     rendreBlocs(def.blocs || [], racine, {
       prefixe: "def-panel-" + ancreSure(def.ancre),
       seq: 0,
@@ -338,10 +437,14 @@
 
   let verrou = false; // anti-boucle : nos wrappings déclenchent des mutations
 
-  function creerLien(cle) {
+  // `terme` = la variante réellement matchée (« type II », « I.a »…). Elle
+  // permet à la carte flottante de ne montrer que la ligne concernée d'une
+  // définition tabulaire (carte #409), comme le fait le filtre serveur.
+  function creerLien(cle, terme) {
     const def = GLOSSAIRE.defs[cle] || {};
     const a = document.createElement("a");
     a.dataset.defCle = cle;
+    if (terme) a.dataset.defTerme = terme;
     a.setAttribute("href", urlDefinition(def.ancre));
     return a;
   }
@@ -371,12 +474,12 @@
         span.className = "def-terme-libelle";
         span.textContent = s.texte;
         frag.appendChild(span);
-        const icone = creerLien(s.cle);
+        const icone = creerLien(s.cle, s.texte);
         icone.className = "def-terme def-terme--icone";
         icone.setAttribute("aria-label", "Définition : " + s.texte);
         frag.appendChild(icone);
       } else {
-        const a = creerLien(s.cle);
+        const a = creerLien(s.cle, s.texte);
         a.className = "def-terme";
         a.textContent = s.texte;
         frag.appendChild(a);
@@ -453,11 +556,20 @@
     // Reparentage sous <body> : la carte est fixed et serait clippée par
     // .results-row { overflow: clip } (cf. drawer_conditions.js).
     if (el.parentNode !== document.body) document.body.appendChild(el);
-    el.querySelector("#def-carte-titre").textContent = def.titre;
     // Corps : construit depuis les blocs JSON typés (createElement /
     // textContent). Aucune chaîne HTML n'est interprétée côté client.
+    const terme = declencheur && declencheur.dataset
+      ? declencheur.dataset.defTerme
+      : "";
     const corps = el.querySelector(".def-carte__corps");
-    corps.replaceChildren(rendreDefinition(def));
+    const contenu = rendreDefinition(def, terme);
+    corps.replaceChildren(contenu);
+    // Ligne isolée d'un tableau (carte #409) : le titre général du tableau
+    // (« Fertilisants de type 0, Ia, Ib, II et III ») ne décrit plus ce qu'on
+    // montre -> on titre sur le seul type demandé.
+    el.querySelector("#def-carte-titre").textContent = contenu.dataset.defLigne
+      ? titreLigne(def.titre, terme)
+      : def.titre;
     const lien = el.querySelector("#def-carte-toutes");
     lien.setAttribute("href", urlDefinition(def.ancre));
     // Depuis le drawer conditions (ancré à droite) : la carte arrive par la
