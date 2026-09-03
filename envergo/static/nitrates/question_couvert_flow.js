@@ -40,6 +40,13 @@
 (function () {
   "use strict";
 
+  // En Node (tests unitaires), on n'expose que les helpers PURS de Q1 (pas de
+  // DOM) puis on sort. Même convention que reset_form.js.
+  var _isNode =
+    typeof module !== "undefined" &&
+    module.exports &&
+    typeof document === "undefined";
+
   // ─── Catégories référentiel : familles ─────────────────────────────────
   var CATS_COUVERT = {
     couvert_intercultures_longue: {
@@ -65,20 +72,96 @@
       "Sol non cultivé (surface non utilisée en vue d'une production agricole : ni semé, ni récolté, ni fauché, ni pâturé pendant une campagne culturale)",
   };
 
-  // Q1 — 4 réponses, mais 2 valeurs métier (couvert / culture_principale).
+  // Q1 — 5 réponses pour 3 valeurs métier (couvert / culture_principale /
+  // sol_non_cultive).
+  //
+  // #430 (bug 3) : « sur X » et « juste avant X » retombent sur la même valeur
+  // métier. Tant que les deux radios partageaient la même `value`, le replay
+  // (retour « modifier » depuis le résultat, ou landing sur une URL partagée)
+  // recochait systématiquement le PREMIER radio de la valeur, donc « Sur une
+  // culture principale » alors que l'utilisateur avait répondu « juste avant ».
+  // On donne donc à chaque réponse une valeur UNIQUE (`val`), et on garde la
+  // valeur métier à part (`metier`) pour tout le pilotage interne. La valeur
+  // unique est ce qui part dans l'URL (radio submitté puis re-injecté en hidden
+  // passthrough), donc le replay retrouve la réponse exacte.
   var Q1_OPTIONS = [
-    { val: "couvert", label: "Sur un couvert" },
-    { val: "couvert", label: "Juste avant l'implantation d'un couvert" },
-    { val: "culture_principale", label: "Sur une culture principale" },
+    { val: "couvert_sur", metier: "couvert", label: "Sur un couvert" },
     {
-      val: "culture_principale",
+      val: "couvert_avant",
+      metier: "couvert",
+      label: "Juste avant l'implantation d'un couvert",
+    },
+    {
+      val: "culture_principale_sur",
+      metier: "culture_principale",
+      label: "Sur une culture principale",
+    },
+    {
+      val: "culture_principale_avant",
+      metier: "culture_principale",
       label: "Juste avant l'implantation d'une culture principale",
     },
     // #335 : « sol_non_cultive » remonté de Q2 vers Q1. Court-circuite Q2 (pas
     // de sous-question), on pilote directement categorie_culture (cf.
     // onChangeDestination). Libellé surchargé (parenthèse explicative).
-    { val: "sol_non_cultive", label: LABELS_CULTURE_OVERRIDE.sol_non_cultive },
+    {
+      val: "sol_non_cultive",
+      metier: "sol_non_cultive",
+      label: LABELS_CULTURE_OVERRIDE.sol_non_cultive,
+    },
   ];
+
+  // Valeur métier d'une réponse Q1. Accepte aussi les anciennes valeurs
+  // (`couvert`, `culture_principale`) pour ne pas casser les URL déjà
+  // partagées : elles restent lisibles, seule la distinction sur/avant est
+  // perdue (comme avant #430).
+  function destinationMetier(val) {
+    for (var i = 0; i < Q1_OPTIONS.length; i++) {
+      if (Q1_OPTIONS[i].val === val) return Q1_OPTIONS[i].metier;
+    }
+    return val || "";
+  }
+
+  // Réponse Q1 par défaut d'une valeur métier : la 1ʳᵉ de la liste. Utilisée en
+  // repli quand l'URL ne porte pas la réponse exacte (URL ancienne, ou pilotée
+  // uniquement par les champs backend cf. form_backfill).
+  function premiereReponsePourMetier(metier) {
+    for (var i = 0; i < Q1_OPTIONS.length; i++) {
+      if (Q1_OPTIONS[i].metier === metier) return Q1_OPTIONS[i].val;
+    }
+    return "";
+  }
+
+  // Réponse Q1 à recocher au replay : la réponse exacte déjà soumise si elle
+  // est cohérente avec la valeur métier déduite des champs cascade, sinon le
+  // repli. `destUrl` = valeur brute de `cflow_destination` dans la query string.
+  function reponseQ1AuReplay(metier, destUrl) {
+    // `destUrl` doit etre une reponse Q1 REELLE (un `val` de Q1_OPTIONS) : une
+    // URL anterieure a #430 porte l'ancienne valeur metier (`culture_principale`),
+    // qui n'est plus la value d'aucun radio -> on ne peut pas la recocher, on
+    // tombe sur le repli.
+    if (destUrl && estReponseQ1(destUrl) && destinationMetier(destUrl) === metier) {
+      return destUrl;
+    }
+    return premiereReponsePourMetier(metier);
+  }
+
+  function estReponseQ1(val) {
+    for (var i = 0; i < Q1_OPTIONS.length; i++) {
+      if (Q1_OPTIONS[i].val === val) return true;
+    }
+    return false;
+  }
+
+  if (_isNode) {
+    module.exports = {
+      Q1_OPTIONS: Q1_OPTIONS,
+      destinationMetier: destinationMetier,
+      premiereReponsePourMetier: premiereReponsePourMetier,
+      reponseQ1AuReplay: reponseQ1AuReplay,
+    };
+    return;
+  }
 
   // Q3 — axe récolté (détermine CIE vs CINE).
   var Q3_OPTIONS = [
@@ -288,7 +371,8 @@
     );
   }
 
-  function onChangeDestination(val) {
+  function onChangeDestination(valBrute) {
+    var val = destinationMetier(valBrute);
     // Reset des questions en aval.
     resetCouvertAval();
     cacher("q_type_couvert");
@@ -921,7 +1005,8 @@
     // gauche (elles étaient masquées sur la page résultat) pour que
     // l'utilisateur complète un parcours cohérent avant de relancer.
     document.addEventListener("nitrates:retour-saisie", function () {
-      if (valeurFlow("cflow_destination") !== "couvert") return;
+      if (destinationMetier(valeurFlow("cflow_destination")) !== "couvert")
+        return;
       if (!valeurFlow("cflow_type_couvert")) return;
       if (!valeurFlow("cflow_couvert_recolte")) return;
       montrerDatesGauche(); // resultatAffiche() est maintenant false -> montre
@@ -945,9 +1030,15 @@
     var estCouvert =
       cat === "couvert_intercultures_longue" ||
       cat === "couvert_intercultures_courte";
-    // Q1
-    var destVal = estCouvert ? "couvert" : "culture_principale";
-    cocherFlow("cflow_destination", destVal);
+    // Q1 — #430 : on recoche la réponse EXACTE si l'URL la porte (le radio Q1
+    // est submitté puis ré-injecté en hidden passthrough), pour distinguer
+    // « sur X » de « juste avant X ». Sinon (URL ancienne / partielle) on
+    // retombe sur la 1ʳᵉ réponse de la bonne valeur métier, comme avant.
+    var metier = estCouvert ? "couvert" : "culture_principale";
+    cocherFlow(
+      "cflow_destination",
+      reponseQ1AuReplay(metier, destinationDepuisUrl())
+    );
     if (estCouvert) {
       rendreQ2Couvert();
       montrer("q_type_couvert");
@@ -969,6 +1060,20 @@
           cocherFlow("cflow_sous_culture", initial.sous_culture_form);
         }
       }
+    }
+  }
+
+  // Réponse Q1 telle que soumise précédemment. Le form part en GET, donc la
+  // réponse exacte est dans la query string : c'est vrai aussi bien au retour
+  // « modifier » depuis le résultat qu'au landing sur une URL partagée.
+  function destinationDepuisUrl() {
+    try {
+      return (
+        new URLSearchParams(window.location.search).get("cflow_destination") ||
+        ""
+      );
+    } catch (e) {
+      return "";
     }
   }
 

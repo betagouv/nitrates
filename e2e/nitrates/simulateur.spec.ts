@@ -80,11 +80,14 @@ async function clickCascadeRadio(page, name, value) {
       await clickFlowRadio(page, 'cflow_destination', 'sol_non_cultive');
       return;
     }
+    // #430 : les 4 reponses Q1 ont desormais une value UNIQUE (`*_sur` /
+    // `*_avant`) pour distinguer « sur X » de « juste avant X » au replay.
+    // Les tests ci-dessous ne testent pas cette nuance -> on prend « sur ».
     if (CATEGORIES_COUVERT.includes(value)) {
-      await clickFlowRadio(page, 'cflow_destination', 'couvert');
+      await clickFlowRadio(page, 'cflow_destination', 'couvert_sur');
       await clickFlowRadio(page, 'cflow_type_couvert', value);
     } else {
-      await clickFlowRadio(page, 'cflow_destination', 'culture_principale');
+      await clickFlowRadio(page, 'cflow_destination', 'culture_principale_sur');
       await clickFlowRadio(page, 'cflow_type_couvert', value);
     }
     return;

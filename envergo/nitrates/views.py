@@ -515,6 +515,15 @@ class MoulinetteView(View):
             "type_fertilisant",
             "culture_irriguee_type",
             "prairie_permanente",
+            # #430 : les radios FRONT du flow « Culture ou couvert » (#272) sont
+            # rendues sur toutes les pages par question_couvert_flow.js et
+            # portent deja ces `name`. Sans exclusion, le passthrough ajoutait un
+            # hidden homonyme -> le param partait en double dans l'URL, avec le
+            # risque de renvoyer l'ancienne reponse a cote de la nouvelle.
+            "cflow_destination",
+            "cflow_type_couvert",
+            "cflow_couvert_recolte",
+            "cflow_sous_culture",
         ]
 
         # #175 : un lien direct peut piloter le parcours via les seuls champs
