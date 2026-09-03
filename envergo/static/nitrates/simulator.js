@@ -133,7 +133,7 @@
     const row = document.querySelector(".results-row");
     if (row) row.classList.remove("layout--split");
     const formCol = document.querySelector(".form-col");
-    if (formCol) formCol.classList.remove("fr-col-lg-3");
+    if (formCol) formCol.classList.remove("fr-col-lg-4");
     // Masque l'encart récap, ré-affiche le formulaire complet.
     const recap = document.getElementById("recap-choix");
     if (recap) recap.hidden = true;
