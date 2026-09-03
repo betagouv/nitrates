@@ -311,7 +311,6 @@
     const sousFerts = (referentiels || {}).sous_fertilisants || {};
     const cles = (cats[categorie] || {}).sous_fertilisants || [];
     container.hidden = false;
-    montrerWrapper("sous_fertilisant");
     for (const sf of cles) {
       const meta = sousFerts[sf] || {};
       rendreRadio(
@@ -321,6 +320,29 @@
         meta.libelle_public || sf,
         initial.sous_fertilisant === sf
       );
+    }
+
+    // #430 (bug 1) : quand la categorie ne propose qu'UN seul sous-fertilisant,
+    // la question n'a pas de sens pour l'utilisateur (ex. « engrais mineral »
+    // -> « engrais azote mineral »). On la saute cote FRONT uniquement : le
+    // radio est rendu et coche d'office, donc il part bien dans le form et dans
+    // l'URL comme avant (aucun changement de contrat backend, pas de cascade de
+    // changeset). Seul son affichage est supprime.
+    //
+    // Cas 0 choix : on cache aussi, sinon on affichait une question vide.
+    const autoSkip = cles.length <= 1;
+    if (autoSkip) {
+      cacherWrapper("sous_fertilisant");
+      if (cles.length === 1) {
+        const radio = container.querySelector('input[type="radio"]');
+        if (radio && !radio.checked) radio.checked = true;
+      }
+      // Le radio est coche par programme : pas d'evenement `change`, donc on
+      // resout nous-memes le hidden type_fertilisant (+ flags effluents).
+      resoudreTypeFertilisant();
+      mettreAJourBoutonSubmit();
+    } else {
+      montrerWrapper("sous_fertilisant");
     }
   }
 

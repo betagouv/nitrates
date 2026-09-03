@@ -89,6 +89,17 @@ async function clickCascadeRadio(page, name, value) {
     }
     return;
   }
+  if (name === 'sous_fertilisant') {
+    // #430 : quand la categorie n'a qu'un seul sous-fertilisant (engrais
+    // mineral), cascade.js coche le radio d'office et masque la question. Il
+    // n'y a alors rien a cliquer : on verifie juste que la bonne valeur est
+    // deja retenue. Voir carte_430_fertilisant_choix_unique.spec.ts.
+    const radio = page.locator(`input[type=radio][name="sous_fertilisant"][value="${value}"]`);
+    if (!(await radio.isVisible())) {
+      await expect(radio).toBeChecked();
+      return;
+    }
+  }
   if (name === 'sous_culture_form') {
     // Sous-culture d'une culture principale -> question de précision du flow.
     await clickFlowRadio(page, 'cflow_sous_culture', value);
