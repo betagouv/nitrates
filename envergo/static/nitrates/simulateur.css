@@ -383,14 +383,23 @@ body {
   line-height: 1.3;
 }
 
-/* Mention « + N questions complémentaires » : discrète, séparée du bloc
-   principal par un filet. On ne détaille pas les QC (cliquer Modifier pour). */
-.recap-choix__qc-note {
+/* #408 — Questions complémentaires détaillées en toutes lettres, séparées du
+   bloc principal par un filet. Leur intitulé est une phrase complète : on
+   annule donc la casse et l'interlettrage du label court des autres items. */
+.recap-choix__qc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding-top: 16px;
   border-top: 1px solid rgb(106 106 244 / 22%);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-title-grey, #161616);
+}
+
+.recap-choix__qc .recap-choix__label {
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 .recap-choix__modifier {

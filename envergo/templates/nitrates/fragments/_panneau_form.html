@@ -212,13 +212,19 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
           <div class="recap-choix__liste" data-recap-liste></div>
 
           {% comment %}
-          Questions complémentaires : on NE détaille PAS (dynamique, peu
-          synthétisable). On mentionne juste leur nombre ; pour les voir/modifier,
-          l'utilisateur clique « Modifier ».
+          #408 — Questions complémentaires : on les détaille désormais en toutes
+          lettres (question + réponse retenue), au lieu du simple compteur
+          « + N questions complémentaires ». Même forme que les items du haut
+          (label discret + valeur en gras) pour que la colonne se lise d'un bloc.
           {% endcomment %}
           {% if qc_repondues %}
-            <div class="recap-choix__qc-note">
-              + {{ qc_repondues|length }} question{{ qc_repondues|length|pluralize }} complémentaire{{ qc_repondues|length|pluralize }}
+            <div class="recap-choix__qc">
+              {% for qc in qc_repondues %}
+                <div class="recap-choix__item">
+                  <span class="recap-choix__label">{{ qc.texte }}</span>
+                  <span class="recap-choix__valeur">{{ qc.libelle|default:"—" }}</span>
+                </div>
+              {% endfor %}
             </div>
           {% endif %}
 
