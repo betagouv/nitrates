@@ -140,9 +140,9 @@
     if (resultCol) resultCol.remove();
     var row = document.querySelector(".results-row");
     if (row) row.classList.remove("layout--split");
-    // La colonne form reprend toute la largeur (on retire la contrainte 1/4).
+    // La colonne form reprend toute la largeur (on retire la contrainte 1/3).
     var formCol = document.querySelector(".form-col");
-    if (formCol) formCol.classList.remove("fr-col-lg-3");
+    if (formCol) formCol.classList.remove("fr-col-lg-4");
     // Le bouton « Lancer la simulation » doit redevenir visible pour relancer.
     var submitRow = document.getElementById("form-submit-row");
     if (submitRow) submitRow.hidden = false;

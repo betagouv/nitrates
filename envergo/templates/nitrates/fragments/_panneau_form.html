@@ -124,12 +124,12 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
   #271 : sous la carte, le reste du parcours (questions à gauche, résultat à
   droite) vit dans une grille. En mode saisie : colonne unique pleine largeur.
   En mode résultat (afficher_resultat, pas de QC en attente) : split
-  encart-recap 1/4 (fr-col-lg-3) + résultat 3/4 (fr-col-lg-9).
+  encart-recap 1/3 (fr-col-lg-4) + résultat 2/3 (fr-col-lg-8).
   {% endcomment %}
   <div class="fr-grid-row fr-grid-row--gutters results-row{% if afficher_resultat and not qc_en_attente %} layout--split{% endif %}"
        style="align-items: flex-start">
 
-    <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-3{% endif %} form-col">
+    <div class="fr-col-12 {% if afficher_resultat and not qc_en_attente %}fr-col-lg-4{% endif %} form-col">
 
       {% comment %}
   Issues #89 + #96 : tant que l'utilisateur n'a pas clique sur la carte, on
@@ -425,12 +425,12 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
     {# /.form-col (colonne gauche : questions en saisie / encart recap en resultat) #}
 
     {% comment %}
-    Colonne droite (#271) : résultat final, 3/4 de large, seulement quand un
+    Colonne droite (#271) : résultat final, 2/3 de large, seulement quand un
     résultat est prêt et qu'aucune QC n'est en attente. Inclus DANS le <form>
     pour rester dans la même grille que la colonne gauche sous la carte.
     {% endcomment %}
     {% if afficher_resultat and not qc_en_attente %}
-      <div class="fr-col-12 fr-col-lg-9 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
+      <div class="fr-col-12 fr-col-lg-8 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>
     {% endif %}
 
   </div>
