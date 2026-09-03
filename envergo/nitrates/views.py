@@ -676,8 +676,13 @@ class MoulinetteView(View):
                 for c in (q.choix or [])
             ]
             valeur = raw
+            # #408 : les choix booleens du YAML stringifient en "True"/"False"
+            # alors que l'URL porte "true"/"false" -> la comparaison stricte
+            # echouait et on retombait sur la valeur brute (« true » affiche a
+            # l'ecran dans le recap). On compare donc sans tenir compte de la
+            # casse, ce qui est sans effet sur les valeurs non booleennes.
             libelle = next(
-                (c["libelle"] for c in choix if c["valeur"] == valeur),
+                (c["libelle"] for c in choix if c["valeur"].lower() == valeur.lower()),
                 valeur,
             )
             qc_repondues.append(
