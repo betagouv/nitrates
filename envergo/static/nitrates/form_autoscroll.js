@@ -162,17 +162,24 @@
   // cascade.js a rendu la sous-question (tick suivant).
   //   choix categorie_fertilisant -> scroll « Precisez la categorie de fertilisant »
   //   choix categorie_culture (couvert exclu, gere par le flow) -> sous_culture_form
-  function scrollVersWrapperSiVisible(id) {
-    var w = document.getElementById(id);
-    if (estVisible(w)) scrollVers(w);
-  }
   form.addEventListener("change", function (e) {
     var t = e.target;
     if (!t || t.type !== "radio" || !t.checked) return;
     if (t.name === "categorie_fertilisant") {
       // Laisse cascade.js rendre sous_fertilisant, puis scrolle dessus.
       setTimeout(function () {
-        scrollVersWrapperSiVisible("sous_fertilisant-wrapper");
+        var w = document.getElementById("sous_fertilisant-wrapper");
+        if (estVisible(w)) {
+          scrollVers(w);
+          return;
+        }
+        // #430 : la categorie n'a qu'un seul sous-fertilisant, cascade.js a
+        // saute la question (wrapper cache, radio coche d'office). Aucune
+        // nouvelle etape ne se revele et aucun `change` sur sous_fertilisant
+        // ne partira -> on amene directement au bouton de soumission, comme le
+        // fait le listener ci-dessous dans le cas normal.
+        var submit = form.querySelector('button[type="submit"]');
+        if (submit) scrollVers(submit);
       }, 60);
     }
   });

@@ -160,3 +160,28 @@ def test_resultat_rendu_chemin_complet_sol_non_cultive(
     # sur l'axe juil-juin (cf. #54).
     assert b"01/07" in response.content
     assert b"30/06" in response.content
+
+
+def test_cflow_non_duplique_en_hidden_passthrough(client, nitrates_site, setup_geodata):
+    """#430 : les radios FRONT du flow « Culture ou couvert » (#272) portent
+    deja les `name` cflow_*, et sont rendues sur toutes les pages par
+    question_couvert_flow.js. Le passthrough ne doit donc PAS en re-emettre un
+    hidden homonyme, sinon le param part en double dans l'URL a la soumission
+    suivante (une ancienne reponse a cote de la nouvelle)."""
+    response = client.get(
+        "/simulateur/?lng=4.0345&lat=49.2583"
+        "&cflow_destination=culture_principale_avant"
+        "&cflow_type_couvert=culture_printemps"
+    )
+    assert response.status_code == 200
+    assert b'name="cflow_destination"' not in response.content
+    assert b'name="cflow_type_couvert"' not in response.content
+
+
+def test_passthrough_conserve_les_autres_params(client, nitrates_site, setup_geodata):
+    """Garde-fou de la modification ci-dessus : on n'a exclu QUE les cflow_*,
+    le passthrough continue de re-injecter les params inconnus (ex. reponses a
+    une question complementaire deja donnee)."""
+    response = client.get("/simulateur/?lng=4.0345&lat=49.2583&culture_irriguee=True")
+    assert response.status_code == 200
+    assert b'name="culture_irriguee"' in response.content
