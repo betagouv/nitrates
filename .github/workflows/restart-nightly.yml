@@ -1,0 +1,49 @@
+name: Restart nightly
+
+# Mitigation du swap Scalingo (probleme connu de la plateforme, partage par
+# d'autres equipes betagouv) : au fil des jours sans deploiement, le kernel
+# pagine la memoire des workers gunicorn vers le swap et chaque chemin de code
+# froid coute des secondes de swap-in (mesure sur staging le 07/09 : 40% de
+# swap apres 3 semaines, 302 a 2,5 s, login admin a 5 s, un 504).
+# Un restart quotidien repart de zero. Voir carte #111.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # 03:30 UTC : creux de trafic, avant l'arrivee des testeurs.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  restart-staging:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://nitrates-staging.osc-fr1.scalingo.io/
+    env:
+      SCALINGO_REGION: osc-fr1
+      SCALINGO_APP: nitrates-staging
+    steps:
+      - name: Installer la CLI Scalingo
+        run: |
+          curl -s -O https://cli-dl.scalingo.com/install && bash install
+          scalingo --version
+
+      - name: Restart
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" restart
+
+      - name: Smoke apres restart
+        run: |
+          # Le restart est progressif (rolling) mais on verifie quand meme que
+          # l'app repond avant de conclure.
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://nitrates-staging.osc-fr1.scalingo.io/")
+            [ "$code" = "200" ] && { echo "OK ($code)"; exit 0; }
+            sleep 15
+          done
+          echo "L'app ne repond pas apres restart (dernier code: $code)"
+          exit 1

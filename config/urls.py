@@ -34,6 +34,17 @@ if settings.PROCONNECT_ENABLED:
         path("oidc/", include("mozilla_django_oidc.urls")),
     ]
 
+# Sonde infra (carte #111) : montee seulement si un jeton est configure, donc
+# absente par defaut. Volontairement hors du lockdown ProConnect : on doit
+# pouvoir la lire pendant un incident, y compris quand l'auth rame.
+if getattr(settings, "NITRATES_PROBE_TOKEN", ""):
+    from envergo.nitrates.views_probe import probe_dash, probe_now
+
+    urlpatterns += [
+        path("_probe/", probe_dash, name="nitrates_probe_dash"),
+        path("_probe/now/", probe_now, name="nitrates_probe_now"),
+    ]
+
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit

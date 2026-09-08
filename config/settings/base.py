@@ -517,6 +517,11 @@ NITRATES_ROOT_OUVERT = env.bool("DJANGO_NITRATES_ROOT_OUVERT", default=False)
 # Configurable car le board peut être dupliqué/refactoré (cf. carte #140).
 NITRATES_MIRO_BOARD_ID = env("DJANGO_NITRATES_MIRO_BOARD_ID", default="uXjVG_mixZA=")
 
+# Sonde d'observabilite infrastructure (carte #111). Vide = routes non montees.
+# Les metriques Scalingo ne suffisent pas a diagnostiquer les ralentissements
+# intermittents ; cette sonde lit cgroup v2 + PSI dans le container.
+NITRATES_PROBE_TOKEN = env("DJANGO_NITRATES_PROBE_TOKEN", default="")
+
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
 
