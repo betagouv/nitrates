@@ -73,6 +73,12 @@ class RequireLoginEverywhere:
             return True
         if path.startswith("/healthcheck/"):
             return True
+        # Sonde infra (carte #111) : doit rester lisible pendant un incident,
+        # y compris quand l'auth elle-meme rame. La route n'existe que si
+        # NITRATES_PROBE_TOKEN est defini, et la vue exige ce jeton (404 sinon),
+        # donc l'exempter ici n'ouvre rien : le jeton reste le seul garde.
+        if path.startswith("/_probe/"):
+            return True
         # ProConnect OIDC : les routes /oidc/* gerent leur propre flow auth.
         # Sans cet exempt, le middleware piege /oidc/authenticate/ et redirige
         # vers /admin/login/ -> boucle infinie de next= imbrique.
