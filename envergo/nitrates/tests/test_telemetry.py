@@ -81,41 +81,80 @@ def test_emit_ne_leve_pas_sur_snapshot_incomplet():
     )
 
 
-def test_emit_envoie_les_metriques_attendues(monkeypatch):
-    envoye = []
+SNAPSHOT = {
+    "container": "web-1",
+    "memory": {
+        "current": 104857600,  # 100 MiB
+        "swap_current": 52428800,  # 50 MiB
+        "pgmajfault": 7,
+    },
+    "pressure": {"memory": {"some": {"avg10": 1.5}}},
+    "cpu": {"nr_throttled": 2},
+    "latency_ms": {"disk_read": 0.5, "db_roundtrip": 12.0},
+    "process": {"vm_swap_kb": 4096},
+}
 
-    class FakeMetrics:
-        @staticmethod
-        def gauge(name, value, **kwargs):
-            envoye.append(("gauge", name, value))
 
-        @staticmethod
-        def distribution(name, value, **kwargs):
-            envoye.append(("distribution", name, value))
+def test_flatten_convertit_et_nomme_les_valeurs():
+    v = telemetry._flatten(SNAPSHOT)
+    # Les tailles passent en MiB pour rester lisibles sur un graphe.
+    assert v["mem_current_mib"] == 100.0
+    assert v["mem_swap_current_mib"] == 50.0
+    assert v["mem_pgmajfault"] == 7
+    assert v["psi_memory_avg10"] == 1.5
+    assert v["cpu_nr_throttled"] == 2
+    assert v["latency_db_roundtrip_ms"] == 12.0
+    assert v["proc_swap_kb"] == 4096
 
-        @staticmethod
-        def count(name, value, **kwargs):
-            envoye.append(("count", name, value))
+
+def test_flatten_ignore_les_valeurs_absentes():
+    v = telemetry._flatten({"memory": {"current": None}, "pressure": {}, "cpu": {}})
+    assert v == {}
+
+
+def test_emit_publie_une_transaction_avec_les_valeurs(monkeypatch):
+    """L'instance Sentry auto-hebergee n'ingere pas les metriques custom du
+    SDK (verifie le 09/09) : les valeurs doivent voyager sur une transaction."""
+    posees = {}
+    tags = {}
+
+    class FakeTx:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def set_data(self, k, v):
+            posees[k] = v
+
+        def set_tag(self, k, v):
+            tags[k] = v
 
     import sentry_sdk
 
-    monkeypatch.setattr(sentry_sdk, "metrics", FakeMetrics, raising=False)
-
-    telemetry._emit(
-        {
-            "container": "web-1",
-            "memory": {"current": 100, "swap_current": 50, "pgmajfault": 7},
-            "pressure": {"memory": {"some": {"avg10": 1.5}}},
-            "cpu": {"nr_throttled": 2},
-            "latency_ms": {"disk_read": 0.5, "db_roundtrip": 12.0},
-        }
+    monkeypatch.setattr(
+        sentry_sdk, "start_transaction", lambda **kw: FakeTx(), raising=False
     )
 
-    noms = {n for _, n, _ in envoye}
-    assert "infra.memory.current" in noms
-    assert "infra.memory.pgmajfault" in noms
-    assert "infra.pressure.memory.avg10" in noms
-    assert "infra.cpu.nr_throttled" in noms
-    # Les latences partent en distribution : on veut des percentiles, un p99
-    # a 6 s ne doit pas etre noye dans une moyenne.
-    assert ("distribution", "infra.latency.db_roundtrip", 12.0) in envoye
+    telemetry._emit(SNAPSHOT)
+
+    assert tags["container"] == "web-1"
+    assert posees["mem_swap_current_mib"] == 50.0
+    assert posees["mem_pgmajfault"] == 7
+    assert posees["latency_db_roundtrip_ms"] == 12.0
+
+
+def test_emit_ne_publie_rien_si_aucune_valeur(monkeypatch):
+    """Un snapshot vide ne doit pas generer de transaction inutile."""
+    appels = []
+    import sentry_sdk
+
+    monkeypatch.setattr(
+        sentry_sdk,
+        "start_transaction",
+        lambda **kw: appels.append(kw),
+        raising=False,
+    )
+    telemetry._emit({"memory": {}, "pressure": {}, "cpu": {}, "latency_ms": {}})
+    assert appels == []

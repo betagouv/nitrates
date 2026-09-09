@@ -24,29 +24,28 @@ _started = False
 _lock = threading.Lock()
 
 
-def _emit(snapshot):
-    """Pousse un instantane de la sonde vers Sentry sous forme de metriques."""
-    try:
-        from sentry_sdk import metrics
-    except ImportError:
-        return
-
-    container = snapshot.get("container") or "?"
-    tags = {"container": container}
+def _flatten(snapshot):
+    """Aplatit un instantane en couples (nom, valeur numerique)."""
+    out = {}
 
     mem = snapshot.get("memory") or {}
-    for key in ("current", "swap_current", "anon", "file"):
+    for key in (
+        "current",
+        "swap_current",
+        "anon",
+        "file",
+        "pgmajfault",
+        "workingset_refault_anon",
+        "workingset_refault_file",
+    ):
         val = mem.get(key)
-        if isinstance(val, int):
-            metrics.gauge(f"infra.memory.{key}", val, attributes=tags)
-
-    # Compteurs cumulatifs : c'est leur progression qui compte. On les envoie
-    # en gauge et on derive cote Sentry, plutot que de garder un etat ici (les
-    # workers sont recycles, un etat local serait remis a zero sans prevenir).
-    for key in ("pgmajfault", "workingset_refault_anon", "workingset_refault_file"):
-        val = mem.get(key)
-        if isinstance(val, int):
-            metrics.gauge(f"infra.memory.{key}", val, attributes=tags)
+        if isinstance(val, (int, float)):
+            # Les tailles passent en MiB : plus lisible sur un graphe qu'un
+            # octet brut, sans perte utile a cette echelle.
+            if key in ("current", "swap_current", "anon", "file"):
+                out[f"mem_{key}_mib"] = round(val / 1048576, 2)
+            else:
+                out[f"mem_{key}"] = val
 
     pressure = snapshot.get("pressure") or {}
     for kind in ("memory", "cpu", "io"):
@@ -54,27 +53,57 @@ def _emit(snapshot):
         # avg10 : pourcentage de temps bloque sur les 10 dernieres secondes.
         # C'est la fenetre la plus courte exposee par le noyau, donc la plus
         # proche d'un pic de quelques secondes.
-        if "avg10" in some:
-            metrics.gauge(
-                f"infra.pressure.{kind}.avg10", some["avg10"], attributes=tags
-            )
+        if isinstance(some.get("avg10"), (int, float)):
+            out[f"psi_{kind}_avg10"] = some["avg10"]
 
     cpu = snapshot.get("cpu") or {}
     for key in ("nr_throttled", "throttled_usec"):
         val = cpu.get(key)
-        if isinstance(val, int):
-            metrics.gauge(f"infra.cpu.{key}", val, attributes=tags)
+        if isinstance(val, (int, float)):
+            out[f"cpu_{key}"] = val
 
     lat = snapshot.get("latency_ms") or {}
     for key in ("disk_read", "db_roundtrip"):
         val = lat.get(key)
         if isinstance(val, (int, float)):
-            # distribution : on veut les percentiles, pas la moyenne. Un p99
-            # a 6 s noye dans une moyenne a 80 ms est exactement ce qu'on
-            # cherche a rendre visible.
-            metrics.distribution(
-                f"infra.latency.{key}", val, unit="millisecond", attributes=tags
-            )
+            out[f"latency_{key}_ms"] = val
+
+    proc = snapshot.get("process") or {}
+    if isinstance(proc.get("vm_swap_kb"), (int, float)):
+        out["proc_swap_kb"] = proc["vm_swap_kb"]
+
+    return out
+
+
+def _emit(snapshot):
+    """Publie un instantane de la sonde vers Sentry.
+
+    Transporte par une TRANSACTION et non par l'API `sentry_sdk.metrics` :
+    verifie le 09/09 sur sentry.incubateur.net, les metriques custom du SDK
+    2.66 ne sont pas ingerees par cette instance auto-hebergee (elles partent
+    en HTTP 200 mais ressortent a count()=0), alors que les transactions le
+    sont. Les valeurs voyagent donc en `data` sur la transaction, et sont
+    requetables en `tags[<nom>,number]` dans Discover et les dashboards.
+    """
+    try:
+        import sentry_sdk
+    except ImportError:
+        return
+
+    values = _flatten(snapshot)
+    if not values:
+        return
+
+    with sentry_sdk.start_transaction(
+        op="infra.telemetry",
+        name="infra.probe",
+        # Cet echantillon est deja cadence par l'intervalle de la boucle :
+        # le sampling global des traces n'a pas a le filtrer en plus.
+        sampled=True,
+    ) as tx:
+        tx.set_tag("container", snapshot.get("container") or "?")
+        for key, val in values.items():
+            tx.set_data(key, val)
 
 
 def _loop(interval):
