@@ -290,6 +290,16 @@ sentry_sdk.init(
     integrations=integrations,
     environment=env("ENV_NAME", default="production"),
     traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+    # Profiling continu (carte #111) : quand une requete met plusieurs
+    # secondes, la trace dit QUELLE requete, le profil dit OU le temps est
+    # passe. C'est ce qui permet de distinguer "notre code est lent" de
+    # "le process attendait une page memoire". Necessite traces_sample_rate
+    # > 0 en mode "trace". Defaut 0 = desactive, on l'active par env var
+    # le temps de l'investigation.
+    profile_session_sample_rate=env.float(
+        "SENTRY_PROFILE_SESSION_SAMPLE_RATE", default=0.0
+    ),
+    profile_lifecycle=env("SENTRY_PROFILE_LIFECYCLE", default="trace"),
     before_send=filter_sentry_events,
 )
 

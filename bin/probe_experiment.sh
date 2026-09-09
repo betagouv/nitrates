@@ -22,7 +22,7 @@ TOKEN="${2:-}"
 N="${3:-60}"
 
 # Ressource temoin : petite, statique, servie sans SQL ni logique metier.
-STATIC_PATH="/static/images/favicon.ico"
+STATIC_PATH="/static/@gouvfr/dsfr/dist/favicon/favicon.ico"
 # Ressource applicative legere : traverse Django mais ne fait presque rien.
 APP_PATH="/"
 

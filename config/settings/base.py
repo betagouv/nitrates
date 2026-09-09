@@ -522,6 +522,11 @@ NITRATES_MIRO_BOARD_ID = env("DJANGO_NITRATES_MIRO_BOARD_ID", default="uXjVG_mix
 # intermittents ; cette sonde lit cgroup v2 + PSI dans le container.
 NITRATES_PROBE_TOKEN = env("DJANGO_NITRATES_PROBE_TOKEN", default="")
 
+# Echantillonnage continu des metriques infra vers Sentry, en secondes.
+# 0 = desactive (defaut). 30 s donne un historique exploitable sans noyer
+# le quota Sentry : ~2 points/minute/worker.
+NITRATES_TELEMETRY_INTERVAL = env.int("DJANGO_NITRATES_TELEMETRY_INTERVAL", default=0)
+
 CONTACT_TEAM_ANCHOR = "#contact-accordion-2-equipe"
 CONTACT_DOSSIER_ANCHOR = "#contact-accordion-3-dossier"
 
