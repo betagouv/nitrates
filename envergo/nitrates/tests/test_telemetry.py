@@ -112,37 +112,41 @@ def test_flatten_ignore_les_valeurs_absentes():
     assert v == {}
 
 
-def test_emit_publie_une_transaction_avec_les_valeurs(monkeypatch):
-    """L'instance Sentry auto-hebergee n'ingere pas les metriques custom du
-    SDK (verifie le 09/09) : les valeurs doivent voyager sur une transaction."""
-    posees = {}
-    tags = {}
+class FakeTx:
+    """Transaction Sentry minimale : on veut verifier ou atterrissent les
+    valeurs, pas reimplementer le SDK."""
 
-    class FakeTx:
-        def __enter__(self):
-            return self
+    def __init__(self):
+        self._measurements = {}
+        self.tags = {}
 
-        def __exit__(self, *a):
-            return False
+    def __enter__(self):
+        return self
 
-        def set_data(self, k, v):
-            posees[k] = v
+    def __exit__(self, *a):
+        return False
 
-        def set_tag(self, k, v):
-            tags[k] = v
+    def set_tag(self, k, v):
+        self.tags[k] = v
 
+
+def test_emit_publie_les_valeurs_en_measurements(monkeypatch):
+    """Les valeurs doivent partir en measurements (numeriques cote Sentry),
+    pas en data (typé string, refusé par avg() et par les dashboards)."""
+    tx = FakeTx()
     import sentry_sdk
 
-    monkeypatch.setattr(
-        sentry_sdk, "start_transaction", lambda **kw: FakeTx(), raising=False
-    )
+    monkeypatch.setattr(sentry_sdk, "start_transaction", lambda **kw: tx, raising=False)
 
     telemetry._emit(SNAPSHOT)
 
-    assert tags["container"] == "web-1"
-    assert posees["mem_swap_current_mib"] == 50.0
-    assert posees["mem_pgmajfault"] == 7
-    assert posees["latency_db_roundtrip_ms"] == 12.0
+    assert tx.tags["container"] == "web-1"
+    assert tx._measurements["mem_swap_current_mib"]["value"] == 50.0
+    assert tx._measurements["mem_pgmajfault"]["value"] == 7
+    assert tx._measurements["latency_db_roundtrip_ms"]["value"] == 12.0
+    # Les durees portent leur unite, le reste est sans dimension.
+    assert tx._measurements["latency_db_roundtrip_ms"]["unit"] == "millisecond"
+    assert tx._measurements["mem_swap_current_mib"]["unit"] == "none"
 
 
 def test_emit_ne_publie_rien_si_aucune_valeur(monkeypatch):

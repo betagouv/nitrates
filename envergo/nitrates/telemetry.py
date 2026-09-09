@@ -82,8 +82,13 @@ def _emit(snapshot):
     verifie le 09/09 sur sentry.incubateur.net, les metriques custom du SDK
     2.66 ne sont pas ingerees par cette instance auto-hebergee (elles partent
     en HTTP 200 mais ressortent a count()=0), alors que les transactions le
-    sont. Les valeurs voyagent donc en `data` sur la transaction, et sont
-    requetables en `tags[<nom>,number]` dans Discover et les dashboards.
+    sont.
+
+    Les valeurs sont posees en MEASUREMENTS et non en `data` : un `data`
+    ressort typé string cote Sentry (`avg()` le refuse, et le validateur des
+    dashboards rejette la syntaxe `tags[<nom>,number]` a l'ecriture), la ou un
+    measurement est nativement numerique, donc agregeable en avg/p95 et
+    utilisable tel quel dans un widget.
     """
     try:
         import sentry_sdk
@@ -103,7 +108,14 @@ def _emit(snapshot):
     ) as tx:
         tx.set_tag("container", snapshot.get("container") or "?")
         for key, val in values.items():
-            tx.set_data(key, val)
+            unit = "millisecond" if key.endswith("_ms") else "none"
+            # On alimente `_measurements` directement plutot que via
+            # set_measurement() : cette methode est depreciee depuis le SDK
+            # 2.28 au profit de set_data(), mais set_data produit un champ
+            # typé string cote Sentry, que ni avg()/p95() ni le validateur
+            # des dashboards n'acceptent. Le format du dict est stable et
+            # public dans le protocole d'evenement (measurements).
+            tx._measurements[key] = {"value": val, "unit": unit}
 
 
 def _loop(interval):
