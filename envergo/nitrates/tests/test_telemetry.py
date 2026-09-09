@@ -130,13 +130,27 @@ class FakeTx:
         self.tags[k] = v
 
 
+def _fake_sentry(monkeypatch, start_transaction):
+    """Injecte un faux module sentry_sdk dans sys.modules.
+
+    sentry_sdk est une dependance PRODUCTION, absente de l'environnement de
+    test (la CI l'a rappele : ModuleNotFoundError). _emit l'importe
+    paresseusement, donc un module factice suffit -- et cela teste au passage
+    que le code ne depend que de start_transaction.
+    """
+    import sys
+    import types
+
+    fake = types.ModuleType("sentry_sdk")
+    fake.start_transaction = start_transaction
+    monkeypatch.setitem(sys.modules, "sentry_sdk", fake)
+
+
 def test_emit_publie_les_valeurs_en_measurements(monkeypatch):
     """Les valeurs doivent partir en measurements (numeriques cote Sentry),
     pas en data (typé string, refusé par avg() et par les dashboards)."""
     tx = FakeTx()
-    import sentry_sdk
-
-    monkeypatch.setattr(sentry_sdk, "start_transaction", lambda **kw: tx, raising=False)
+    _fake_sentry(monkeypatch, lambda **kw: tx)
 
     telemetry._emit(SNAPSHOT)
 
@@ -152,13 +166,6 @@ def test_emit_publie_les_valeurs_en_measurements(monkeypatch):
 def test_emit_ne_publie_rien_si_aucune_valeur(monkeypatch):
     """Un snapshot vide ne doit pas generer de transaction inutile."""
     appels = []
-    import sentry_sdk
-
-    monkeypatch.setattr(
-        sentry_sdk,
-        "start_transaction",
-        lambda **kw: appels.append(kw),
-        raising=False,
-    )
+    _fake_sentry(monkeypatch, lambda **kw: appels.append(kw))
     telemetry._emit({"memory": {}, "pressure": {}, "cpu": {}, "latency_ms": {}})
     assert appels == []
