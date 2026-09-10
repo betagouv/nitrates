@@ -587,10 +587,11 @@
         var cur = (el(inp.hidden) || {}).value || "";
         // #272 : PAS de placeholder gris (15/08) tant que rien n'est saisi -> il
         // faisait croire que le champ était rempli et masquait que « Suivant »
-        // était désactivé. Le champ reste VIDE (état requis visible, encadré
-        // rouge via aria-invalid), mais le date-picker s'ouvre quand même sur le
-        // mois indicatif (data-mois-defaut).
-        var champVide = !cur;
+        // était désactivé. Le champ reste VIDE, mais le date-picker s'ouvre
+        // quand même sur le mois indicatif (data-mois-defaut).
+        // #252 : pas d'encadre rouge (aria-invalid) tant que l'utilisateur n'a
+        // pas touche le champ -- afficher une erreur d'emblee est un contresens
+        // DSFR. L'etat invalide n'apparait qu'apres interaction (onDateChange).
         return (
           '<label class="calc-cal__field">' +
           '<span class="calc-cal__field-label">' +
@@ -605,7 +606,6 @@
           escapeHtml(cur) +
           '" placeholder="jj/mm"' +
           ' pattern="^\\d{2}/\\d{2}$" maxlength="5"' +
-          (champVide ? ' aria-invalid="true"' : "") +
           ">" +
           SVG_CAL +
           "</label>"

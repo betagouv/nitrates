@@ -779,7 +779,7 @@
                    class="fr-input"
                    data-input-id="${escapeHtml(inp.id)}"
                    value="${escapeHtml(valeurs[inp.id])}"
-                   placeholder="JJ/MM"
+                   placeholder="jj/mm"
                    pattern="^\\d{2}/\\d{2}$"
                    maxlength="5"
                    ${isDefault ? 'data-default="true"' : ""}>
