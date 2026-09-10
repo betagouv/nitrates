@@ -103,7 +103,7 @@ cligj==0.7.2
     # via
     #   -r base.txt
     #   fiona
-coverage==7.15.0
+coverage==7.15.4
     # via
     #   -r local.in
     #   django-coverage-plugin
@@ -334,7 +334,7 @@ platformdirs==4.3.8
     #   virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.6.0
+pre-commit==4.6.2
     # via -r local.in
 prompt-toolkit==3.0.51
     # via
@@ -427,7 +427,7 @@ python-stdnum==2.1
     # via
     #   -r base.txt
     #   django-localflavor
-pytz==2025.2
+pytz==2026.2
     # via -r base.txt
 pyyaml==6.0.3
     # via
@@ -551,7 +551,7 @@ wheel==0.46.2
     # via
     #   -r base.txt
     #   pip-tools
-whitenoise==6.9.0
+whitenoise==6.12.0
     # via -r base.txt
 yarl==1.20.1
     # via
