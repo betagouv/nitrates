@@ -76,6 +76,15 @@
 {
   "model": "nitrates.brancheculturale",
   "fields": {
+    "identifiant": "cie_apres_0101",
+    "libelle_court": "cie apres 0101",
+    "description": "Aussi specque simplement \"CIE\"\r\n\r\nCorrespond a branche culturale : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier",
+    "ordre_affichage": 1
+  }
+},
+{
+  "model": "nitrates.brancheculturale",
+  "fields": {
     "identifiant": "cie_avant_3112",
     "libelle_court": "cie avant 3112",
     "description": "Branche culturale de : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) plus en place après le 31 décembre",
@@ -161,15 +170,6 @@
     "libelle_court": "prairie plus 6 mois",
     "description": "",
     "ordre_affichage": 11
-  }
-},
-{
-  "model": "nitrates.brancheculturale",
-  "fields": {
-    "identifiant": "cie_apres_0101",
-    "libelle_court": "cie apres 0101",
-    "description": "Aussi specque simplement \"CIE\"\r\n\r\nCorrespond a branche culturale : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier",
-    "ordre_affichage": 1
   }
 },
 {
@@ -371,33 +371,17 @@
 {
   "model": "nitrates.culture",
   "fields": {
-    "identifiant": "couvert_courte_recolte",
-    "libelle_public": "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)",
+    "identifiant": "cultures_perennes_vergers",
+    "libelle_public": "Vergers",
     "categorie": [
-      "couvert_intercultures_courte"
+      "autres_cultures_principales"
     ],
     "branche_culturale": [
-      "cie_courte"
+      "autres_cultures"
     ],
-    "occupation_sol": "couvert_intercultures",
+    "occupation_sol": "culture_principale",
     "champs_prefill": {},
-    "ordre_affichage": 0
-  }
-},
-{
-  "model": "nitrates.culture",
-  "fields": {
-    "identifiant": "couvert_courte_non_recolte",
-    "libelle_public": "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...)",
-    "categorie": [
-      "couvert_intercultures_courte"
-    ],
-    "branche_culturale": [
-      "cine_courte"
-    ],
-    "occupation_sol": "couvert_intercultures",
-    "champs_prefill": {},
-    "ordre_affichage": 1
+    "ordre_affichage": 3
   }
 },
 {
@@ -467,17 +451,33 @@
 {
   "model": "nitrates.culture",
   "fields": {
-    "identifiant": "cultures_perennes_vergers",
-    "libelle_public": "Vergers",
+    "identifiant": "couvert_courte_recolte",
+    "libelle_public": "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)",
     "categorie": [
-      "autres_cultures_principales"
+      "couvert_intercultures_courte"
     ],
     "branche_culturale": [
-      "autres_cultures"
+      "cie_courte"
     ],
-    "occupation_sol": "culture_principale",
+    "occupation_sol": "couvert_intercultures",
     "champs_prefill": {},
-    "ordre_affichage": 3
+    "ordre_affichage": 0
+  }
+},
+{
+  "model": "nitrates.culture",
+  "fields": {
+    "identifiant": "couvert_courte_non_recolte",
+    "libelle_public": "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...)",
+    "categorie": [
+      "couvert_intercultures_courte"
+    ],
+    "branche_culturale": [
+      "cine_courte"
+    ],
+    "occupation_sol": "couvert_intercultures",
+    "champs_prefill": {},
+    "ordre_affichage": 1
   }
 },
 {
@@ -715,6 +715,42 @@
 {
   "model": "nitrates.fertilisant",
   "fields": {
+    "identifiant": "digestat_autre_type_Ia",
+    "libelle_public": "Autre digestat de type Ia",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ia\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_Ia",
+    "ordre_affichage": 3
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "digestat_autre_type_Ib",
+    "libelle_public": "Autre digestat de type Ib",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ib\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_Ib",
+    "ordre_affichage": 4
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "digestat_autre_type_II",
+    "libelle_public": "Autre digestat de type II",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type II\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 5
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
     "identifiant": "engrais_azote_mineral",
     "libelle_public": "Engrais azoté minéral (ammonitrates...)",
     "description": "",
@@ -758,6 +794,36 @@
     "champs_prefill": {},
     "type_reglementaire": "type_0",
     "ordre_affichage": 0
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "effluents_peu_charges_elevage",
+    "libelle_public": "Effluents peu chargés issus d'élevage",
+    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11 ; l'origine élevage est pertinente\npour les notes 10/11 (effluents peu chargés issus d'élevages, non ICPE A).",
+    "categorie": "autre",
+    "champs_prefill": {
+      "effluent_peu_charge": "true",
+      "effluent_peu_charge_elevage": "true"
+    },
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 1
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "effluents_peu_charges_non_elevage",
+    "libelle_public": "Effluents peu chargés non issus d'élevage",
+    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11.",
+    "categorie": "autre",
+    "champs_prefill": {
+      "effluent_peu_charge": "true",
+      "effluent_peu_charge_elevage": "false"
+    },
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 2
   }
 },
 {
@@ -830,72 +896,6 @@
     "champs_prefill": {},
     "type_reglementaire": "type_II",
     "ordre_affichage": 8
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "effluents_peu_charges_elevage",
-    "libelle_public": "Effluents peu chargés issus d'élevage",
-    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11 ; l'origine élevage est pertinente\npour les notes 10/11 (effluents peu chargés issus d'élevages, non ICPE A).",
-    "categorie": "autre",
-    "champs_prefill": {
-      "effluent_peu_charge": "true",
-      "effluent_peu_charge_elevage": "true"
-    },
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 1
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "effluents_peu_charges_non_elevage",
-    "libelle_public": "Effluents peu chargés non issus d'élevage",
-    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11.",
-    "categorie": "autre",
-    "champs_prefill": {
-      "effluent_peu_charge": "true",
-      "effluent_peu_charge_elevage": "false"
-    },
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 2
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "digestat_autre_type_Ia",
-    "libelle_public": "Autre digestat de type Ia",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ia\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_Ia",
-    "ordre_affichage": 3
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "digestat_autre_type_Ib",
-    "libelle_public": "Autre digestat de type Ib",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ib\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_Ib",
-    "ordre_affichage": 4
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "digestat_autre_type_II",
-    "libelle_public": "Autre digestat de type II",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type II\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 5
   }
 },
 {
@@ -1455,7 +1455,6 @@
           "data": {
             "texte": [
               {
-                "gras": false,
                 "texte": "La dose maximale peut être portée à "
               },
               {
@@ -1463,16 +1462,9 @@
                 "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
-                "gras": false,
                 "texte": ", depuis la récolte du précédent."
               }
             ]
-          },
-          "type": "paragraphe"
-        },
-        {
-          "data": {
-            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         },
@@ -1659,7 +1651,15 @@
           "data": {
             "items": [
               {
-                "texte": "les conditions définies par le programme d'actions régional sont respectées, notamment sur :"
+                "texte": "les conditions définies par le programme d'actions régional sont respectées, notamment sur :",
+                "enfants": [
+                  {
+                    "texte": "la durée et la période de présence du couvert"
+                  },
+                  {
+                    "texte": "le plafonnement des apports à cette période"
+                  }
+                ]
               },
               {
                 "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage"
@@ -1675,7 +1675,7 @@
                 "data": {
                   "texte": "Un suivi d'indicateurs de risque de lixiviation"
                 },
-                "type": "titre_principal"
+                "type": "titre_paragraphe"
               },
               {
                 "data": {
@@ -1687,7 +1687,7 @@
                 "data": {
                   "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
                 },
-                "type": "titre_principal"
+                "type": "titre_paragraphe"
               },
               {
                 "data": {
@@ -1706,7 +1706,7 @@
                 "data": {
                   "texte": "Le protocole et le nombre d'analyses"
                 },
-                "type": "titre_principal"
+                "type": "titre_paragraphe"
               },
               {
                 "data": {
@@ -1730,11 +1730,11 @@
                 "data": {
                   "texte": "Surface de l'exploitation concernée par ces épandages ÷ 20"
                 },
-                "type": "paragraphe"
+                "type": "citation"
               },
               {
                 "data": {
-                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée.\nLes familles de précédent cultural sont :"
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
                 },
                 "type": "paragraphe"
               },
@@ -1927,7 +1927,6 @@
           "data": {
             "texte": [
               {
-                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -1935,16 +1934,9 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
-                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
-          },
-          "type": "paragraphe"
-        },
-        {
-          "data": {
-            "texte": "⚠️ Ces apports comptent dans le plafond sur prairie, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
           },
           "type": "paragraphe"
         },
@@ -2025,7 +2017,6 @@
           "data": {
             "texte": [
               {
-                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -2033,7 +2024,6 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
-                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
@@ -2042,7 +2032,19 @@
         },
         {
           "data": {
-            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
+            "texte": "Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les apports réalisés entre le 15 octobre et le 15 novembre comptent dans ce plafonnement cumulé."
           },
           "type": "paragraphe"
         }
@@ -2086,7 +2088,6 @@
           "data": {
             "texte": [
               {
-                "gras": false,
                 "texte": "La dose maximale est de "
               },
               {
@@ -2094,7 +2095,6 @@
                 "texte": "20 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
-                "gras": false,
                 "texte": ", à compter du 15 novembre."
               }
             ]
@@ -2103,7 +2103,19 @@
         },
         {
           "data": {
-            "texte": "⚠️ Ces apports comptent dans le plafond sur couvert, fixé à 70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare."
+            "texte": "Plafonnement cumulé depuis la récolte du précédent du couvert d'interculture"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare au total."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les apports réalisés pendant la période autorisée comptent dans ce plafonnement cumulé."
           },
           "type": "paragraphe"
         }
@@ -2356,23 +2368,19 @@
                 "texte": "et votre semis de colza est réalisé avant le 25 août,"
               },
               {
-                "texte": "et au moins une des conditions suivantes est respectée : "
+                "texte": "et au moins une des conditions suivantes est respectée :",
+                "enfants": [
+                  {
+                    "texte": "implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
+                  },
+                  {
+                    "texte": "ou sols à faible disponibilité en azote (précisés par le programme d'actions régional)."
+                  }
+                ]
               }
             ]
           },
           "type": "liste"
-        },
-        {
-          "data": {
-            "texte": "             - implantation du colza après un précédent de céréale à pailles avec résidus de culture enfouis et fréquence historique d'apport de fertilisants de types 0, I.a, I.b et II inférieure à une année sur trois,"
-          },
-          "type": "paragraphe"
-        },
-        {
-          "data": {
-            "texte": "              - ou sols à faible disponibilité en azote (précisés par le programme d'actions régional)."
-          },
-          "type": "paragraphe"
         }
       ],
       "schema": 1
@@ -2400,7 +2408,7 @@
       "blocs": [
         {
           "data": {
-            "texte": "Plafonnement des apports azotés&nbsp; pour les&nbsp;couverts d'interculture"
+            "texte": "Plafonnement annuel des apports azotés sur l'année d'implantation du couvert d'interculture"
           },
           "type": "titre_principal"
         },
@@ -2418,7 +2426,6 @@
                 "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
               },
               {
-                "gras": false,
                 "texte": " au total."
               }
             ]
