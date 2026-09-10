@@ -73,6 +73,11 @@ class RequireLoginEverywhere:
             return True
         if path.startswith("/healthcheck/"):
             return True
+        # security.txt (RFC 9116, carte #443) : point de contact securite,
+        # doit rester lisible par un anonyme meme en lockdown, c'est tout
+        # son interet.
+        if path in ("/.well-known/security.txt", "/security.txt"):
+            return True
         # Sonde infra (carte #111) : doit rester lisible pendant un incident,
         # y compris quand l'auth elle-meme rame. La route n'existe que si
         # NITRATES_PROBE_TOKEN est defini, et la vue exige ce jeton (404 sinon),
