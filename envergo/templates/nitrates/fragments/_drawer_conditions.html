@@ -28,18 +28,19 @@ dates (fond orange, cohérent calendrier), en tête du contenu.
 {% endcomment %}
 <div class="drawer-conditions__application" data-drawer-application>
   {% if ev.regle.type == "calculatrice" %}
-    <span class="drawer-conditions__badges" data-drawer-badges-asc></span>
+    <div class="drawer-conditions__badges" data-drawer-badges-asc></div>
   {% else %}
     {% periodes_par_section ev.regle codes_prescription as sections_periodes %}
-    <span class="drawer-conditions__badges">
+    <div class="drawer-conditions__badges">
       {% for section in sections_periodes %}
         {% if section.titre == "Période d’autorisation sous condition" %}
           {% for puce in section.periodes %}
-            <span class="fr-tag fr-tag--sm fr-icon-calendar-line fr-tag--icon-left drawer-conditions__date-badge">{{ puce.phrase }}</span>
+            {# #487 : Badge DSFR (accent yellow-tournesol = orange pale maquette). #}
+            <p class="fr-badge fr-badge--sm fr-badge--yellow-tournesol drawer-conditions__date-badge">{{ puce.phrase }}</p>
           {% endfor %}
         {% endif %}
       {% endfor %}
-    </span>
+    </div>
   {% endif %}
 </div>
 

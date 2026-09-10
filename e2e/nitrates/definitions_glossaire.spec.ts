@@ -77,29 +77,30 @@ test.describe('Nitrates — onglets + page Aide & définitions (#110/#288)', () 
     await expect(carte).toBeHidden();
   });
 
-  test("dans un label radio : l'icône ouvre la carte, le texte du terme coche le radio", async ({ page }) => {
-    // Dans un label radio, le terme n'est PAS un lien (sinon un label composé
-    // presque uniquement du terme, comme « Sol non cultivé (…) » en Q1 #335,
-    // ne cocherait plus le radio) : le texte garde le pointillé (span) et
-    // seule l'icône ⓘ accolée ouvre la définition.
+  test("dans un label radio : le terme ouvre la carte sans cocher, le reste du label coche", async ({ page }) => {
+    // #436 (revient sur #335) : toute la surface du terme surligné est un
+    // lien qui ouvre la définition SANS cocher le radio ; cliquer partout
+    // ailleurs dans le label coche le radio comme avant.
     await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
     await page.waitForSelector('#glossaire-data', { state: 'attached' });
     const labelAvecTerme = page
-      .locator('label.fr-label:visible', { has: page.locator('a.def-terme--icone') })
+      .locator('label.fr-label:visible', { has: page.locator('a.def-terme') })
       .first();
     await labelAvecTerme.waitFor({ timeout: 15000 });
 
     const forId = await labelAvecTerme.getAttribute('for');
     const radio = page.locator(`#${forId}`);
 
-    // Clic sur l'ICÔNE : la carte s'ouvre, le radio ne se coche PAS.
-    await labelAvecTerme.locator('a.def-terme--icone').first().click();
+    // Clic sur le TEXTE du terme : la carte s'ouvre, le radio ne se coche PAS.
+    await labelAvecTerme.locator('a.def-terme').first().click();
     await expect(page.locator('#def-carte')).toBeVisible();
     await expect(radio).not.toBeChecked();
     await page.keyboard.press('Escape');
 
-    // Clic sur le TEXTE du terme (span, pas lien) : le radio se coche.
-    await labelAvecTerme.locator('.def-terme-libelle').first().click();
+    // Clic ailleurs dans le label (hors terme) : le radio se coche. On
+    // clique le label lui-même (el.click()) pour ne pas dépendre de la
+    // position du terme dans le texte.
+    await labelAvecTerme.evaluate((el: HTMLElement) => el.click());
     await expect(radio).toBeChecked();
   });
 

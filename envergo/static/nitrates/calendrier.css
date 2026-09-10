@@ -697,18 +697,6 @@
   align-items: flex-end;
 }
 
-.calc-cal__form--highlight .calc-cal__field {
-  gap: 0.15rem; /* resserre label <-> input (defaut 0.35rem) */
-}
-
-.calc-cal__form--highlight .calc-cal__field-label {
-  /* Libelles courts (« Date de semis/destruction du couvert ») : tiennent sur
-     une ligne -> on n'a plus besoin de reserver 2 lignes, input colle au label. */
-  min-height: 0;
-  margin-bottom: 0;
-  white-space: nowrap;
-}
-
 [data-fr-theme="dark"] .calc-cal__form--highlight {
   background: rgb(106 106 244 / 16%);
   border-left-color: #8585f6;
@@ -722,19 +710,21 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+
+  /* #252 : label colle au champ, comme le champ de saisie DSFR. */
+  gap: 0.5rem;
   flex: 1 1 0;
   min-width: 0;
 }
 
+/* #252 : label aligne sur le champ de saisie DSFR (fr-label) : graisse
+   normale, 1rem, couleur label. Plus de hauteur reservee 2 lignes -- les
+   inputs restent alignes en bas via align-items: flex-end du conteneur. */
 .calc-cal__field-label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-title-grey);
-
-  /* Hauteur fixe = 2 lignes -> labels longs ne decalent pas l'input. */
-  min-height: calc(2 * 1.35rem);
-  line-height: 1.35;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-label-grey, #161616);
+  line-height: 1.5;
 }
 
 .calc-cal__field input.fr-input {

@@ -45,6 +45,24 @@
     document.dispatchEvent(new CustomEvent("nitrates:form-revealed"));
   }
 
+  // #437 : la mention « *Champs obligatoires » ne s'affiche que quand le
+  // formulaire est visible. #form-after-localisation.hidden est la source de
+  // vérité (togglé ici, par recap_choix.js et par le retour saisie) -> on
+  // observe cet attribut plutôt que de dupliquer la condition partout.
+  (function () {
+    const formZone = document.getElementById("form-after-localisation");
+    const mention = document.getElementById("mention-champs-obligatoires");
+    if (!formZone || !mention) return;
+    const sync = function () {
+      mention.hidden = formZone.hidden;
+    };
+    new MutationObserver(sync).observe(formZone, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
+    sync();
+  })();
+
   // #271 : re-clic carte sur une page résultat. On ne réévalue le backend que si
   // le SCOPE d'interprétation change ; sinon on garde le résultat affiché.
   //

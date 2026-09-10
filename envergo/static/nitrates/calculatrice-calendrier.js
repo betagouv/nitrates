@@ -779,7 +779,7 @@
                    class="fr-input"
                    data-input-id="${escapeHtml(inp.id)}"
                    value="${escapeHtml(valeurs[inp.id])}"
-                   placeholder="JJ/MM"
+                   placeholder="jj/mm"
                    pattern="^\\d{2}/\\d{2}$"
                    maxlength="5"
                    ${isDefault ? 'data-default="true"' : ""}>
@@ -1681,13 +1681,15 @@
       .map((s) => {
         const du = jourAgricoleToLisible(s.du);
         const au = jourAgricoleToLisible(s.au);
+        // #487 : Badge DSFR (accent yellow-tournesol), meme rendu que la
+        // branche non-calculatrice de _drawer_conditions.html.
         return (
-          '<span class="fr-tag fr-tag--sm fr-icon-calendar-line fr-tag--icon-left drawer-conditions__date-badge">' +
+          '<p class="fr-badge fr-badge--sm fr-badge--yellow-tournesol drawer-conditions__date-badge">' +
           "du " +
           escapeHtml(du) +
           " au " +
           escapeHtml(au) +
-          "</span>"
+          "</p>"
         );
       })
       .join("");
@@ -1904,12 +1906,27 @@
     inputEl.setAttribute("aria-invalid", "true");
   }
 
+  // #252 : mesurer si les utilisateurs SELECTIONNENT les champs dates du
+  // calendrier dynamique (juste le focus, pas forcement un changement de
+  // valeur). Un event par champ et par page (dedup), relaye vers Matomo par
+  // nitrates_analytics.js (couplage faible via CustomEvent, comme le reste).
+  const focusDatesTrackes = new Set();
+
   function bindInputs() {
     mount.querySelectorAll("input[data-input-id]").forEach((el) => {
       // Des qu'on focus, la valeur n'est plus celle "par defaut" -- on
       // enleve le grisé pour signaler que l'utilisateur a la main.
       el.addEventListener("focus", () => {
         el.removeAttribute("data-default");
+        const id = el.dataset.inputId;
+        if (!focusDatesTrackes.has(id)) {
+          focusDatesTrackes.add(id);
+          document.dispatchEvent(
+            new CustomEvent("nitrates:focus-date-calculatrice", {
+              detail: { input: id },
+            })
+          );
+        }
       });
       el.addEventListener("change", () => {
         const id = el.dataset.inputId;

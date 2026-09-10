@@ -452,12 +452,11 @@
   function linkifierNoeudTexte(node) {
     const segments = decouperTexte(node.nodeValue, REGEX, PAR_VARIANTE);
     if (!segments.some(function (s) { return s.cle !== undefined; })) return;
-    // Dans un <label> radio/checkbox, on ne wrappe PAS le texte du terme :
-    // un label comme « Sol non cultivé (…) » deviendrait presque entièrement
-    // un lien et cliquer dessus ne cocherait plus le radio (constaté sur la
-    // Q1 #335). Le texte garde le souligné pointillé (span) et SEULE l'icône
-    // ⓘ accolée ouvre la définition.
-    const dansLabel = !!(node.parentNode && node.parentNode.closest("label"));
+    // #436 (revient sur le choix #335) : dans un <label> radio/checkbox, le
+    // terme surligné est un vrai lien sur TOUTE sa surface -> cliquer dessus
+    // ouvre la définition SANS cocher le radio (un élément interactif dans un
+    // label n'active pas le contrôle, et le handler délégué preventDefault).
+    // Cliquer partout ailleurs dans le bloc coche le radio comme avant.
     // Un SEUL conteneur pour tous les segments : le nœud texte d'origine était
     // un unique enfant ; certains labels sont des conteneurs flex (couvert
     // flow) où chaque enfant devient un item -> sans wrapper, l'icône et les
@@ -469,21 +468,10 @@
         frag.appendChild(document.createTextNode(s.texte));
         return;
       }
-      if (dansLabel) {
-        const span = document.createElement("span");
-        span.className = "def-terme-libelle";
-        span.textContent = s.texte;
-        frag.appendChild(span);
-        const icone = creerLien(s.cle, s.texte);
-        icone.className = "def-terme def-terme--icone";
-        icone.setAttribute("aria-label", "Définition : " + s.texte);
-        frag.appendChild(icone);
-      } else {
-        const a = creerLien(s.cle, s.texte);
-        a.className = "def-terme";
-        a.textContent = s.texte;
-        frag.appendChild(a);
-      }
+      const a = creerLien(s.cle, s.texte);
+      a.className = "def-terme";
+      a.textContent = s.texte;
+      frag.appendChild(a);
     });
     node.parentNode.replaceChild(frag, node);
   }
@@ -505,7 +493,6 @@
                 BALISES_EXCLUES[p.tagName] ||
                 (p.classList &&
                   (p.classList.contains("def-terme") ||
-                    p.classList.contains("def-terme-libelle") ||
                     p.classList.contains("def-terme-groupe")))
               ) {
                 return NodeFilter.FILTER_REJECT;

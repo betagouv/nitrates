@@ -180,11 +180,17 @@
 
     {% comment %}
     #281 : mention « *Champs obligatoires » deplacee en bas de page (juste
-    au-dessus du footer). Elle s'applique a la fois a la selection de la commune
-    et aux champs du formulaire de simulation, d'ou sa position globale ici
-    plutot que dans le hero.
+    au-dessus du footer).
+    #437 : elle n'apparait que quand le formulaire (et ses champs obligatoires)
+    est effectivement affiche : masquee au tout debut (carte seule) et sur la
+    page de resultats. Cote client, simulator.js la synchronise sur l'etat
+    hidden de #form-after-localisation (reveal carte, recap, retour saisie).
     {% endcomment %}
-    <p class="fr-text--sm fr-text-mention--grey fr-mt-4w">*Champs obligatoires</p>
+    <p class="fr-text--sm fr-text-mention--grey fr-mt-4w"
+       id="mention-champs-obligatoires"
+       {% if not data.lat or not data.lng or afficher_resultat and not qc_en_attente %}hidden{% endif %}>
+      *Champs obligatoires
+    </p>
   </div>
 
   {% if afficher_resultat and not qc_en_attente %}

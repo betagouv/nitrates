@@ -44,6 +44,14 @@
     track("SelectionPointCarte");
   });
 
+  // #252 : selection (simple focus) d'un des 2 champs dates du calendrier
+  // dynamique de la page resultat. name = date_semis_couvert |
+  // date_destruction_couvert. Dedup par champ et par page cote emetteur.
+  document.addEventListener("nitrates:focus-date-calculatrice", function (e) {
+    var input = (e && e.detail && e.detail.input) || undefined;
+    track("FocusDateCalendrier", input);
+  });
+
   // "Lancer la simulation" : compteur persistant pour derouler le "2+".
   // localStorage survit aux full-reload GET du parcours et aux sessions ; c'est
   // ce qui permet de compter un utilisateur qui revient lancer une 2e simu.
