@@ -19,8 +19,14 @@ on:
 jobs:
   restart-staging:
     runs-on: ubuntu-latest
+    # Environment DEDIE sans required reviewer : l'environment `staging`
+    # (deploiements) exige une approbation manuelle, ce qui laissait ce cron
+    # bloque en "waiting" indefiniment (constate le 10/09 : le run du 09/09
+    # n'a jamais tourne). staging-ops porte le meme SCALINGO_API_TOKEN mais
+    # ne gate pas : un restart est une operation reversible et sans risque de
+    # donnees, contrairement a un deploiement.
     environment:
-      name: staging
+      name: staging-ops
       url: https://nitrates-staging.osc-fr1.scalingo.io/
     env:
       SCALINGO_REGION: osc-fr1
