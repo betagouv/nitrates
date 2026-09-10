@@ -1,6 +1,9 @@
-/* #284 — Popup de feedback fin de simulation. Modale légère, centrée, sobre
-   DSFR. Masquée par défaut (l'élément #nitrates-feedback porte [hidden]) ;
-   révélée par feedback_popup.js. */
+/* #284 / #435 — Encart de feedback fin de simulation.
+   Plus un modal depuis #435 : encart latéral fixe à droite, calqué sur les
+   cartes de définition (.def-carte de glossaire.css) : slide-in par la
+   droite, liseré bleu France, pas de backdrop, la page reste utilisable.
+   Masqué par défaut (l'élément #nitrates-feedback porte [hidden]) ;
+   révélé par feedback_popup.js. */
 
 .nitrates-feedback[hidden] {
   display: none;
@@ -13,35 +16,35 @@
   display: none !important;
 }
 
+/* Le conteneur racine ne couvre plus l'écran : c'est l'encart lui-même. */
 .nitrates-feedback {
   position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
+  right: 16px;
+  bottom: 16px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 
-.nitrates-feedback__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 40%);
-  animation: nitrates-feedback-fade 0.2s ease;
+  /* Sous la carte de définition (2100) et au-dessus du drawer (2000). En
+     pratique le JS efface l'encart dès qu'un des deux est affiché
+     (anti-collision #435) : le z-index n'est qu'une ceinture de sécurité. */
+  z-index: 2050;
+  background: var(--background-default-grey, #fff);
+  border-left: 4px solid var(--border-active-blue-france, #000091);
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 18px rgb(0 0 18 / 16%);
+  animation: nitrates-feedback-slide 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Transition de l'effacement temporaire (anti-collision, cf. plus bas). */
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
 }
 
 .nitrates-feedback__dialog {
   position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 460px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 1.75rem;
-  background: var(--background-default-grey, #fff);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgb(0 0 0 / 25%);
-  animation: nitrates-feedback-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 1.5rem 1.25rem 1.25rem;
 }
 
 .nitrates-feedback__close {
@@ -65,7 +68,7 @@
 
 .nitrates-feedback__close:hover {
   background: var(--background-contrast-grey, #eee);
-  color: #161616;
+  color: var(--text-title-grey, #161616);
 }
 
 .nitrates-feedback__titre {
@@ -155,31 +158,43 @@
   margin-top: 1rem;
 }
 
-@keyframes nitrates-feedback-fade {
-  from {
-    opacity: 0;
-  }
+/* Effacement temporaire quand une carte de définition ou le drawer conditions
+   est affiché (posé/retiré par feedback_popup.js). Slide-out vers la droite,
+   inerte aux clics, puis retour en douceur à la fermeture. */
+.nitrates-feedback--efface {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
 
-  to {
-    opacity: 1;
+/* Mobile / tablette : l'encart se pose en bas, pleine largeur, et ne doit
+   jamais manger tout l'écran (le résultat reste visible au-dessus). */
+@media (width <= 767px) {
+  .nitrates-feedback {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: 65vh;
   }
 }
 
-@keyframes nitrates-feedback-pop {
+@keyframes nitrates-feedback-slide {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.96);
+    transform: translateX(48px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nitrates-feedback__backdrop,
-  .nitrates-feedback__dialog {
+  .nitrates-feedback {
     animation: none;
+    transition: none;
   }
 }

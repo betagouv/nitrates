@@ -1,10 +1,12 @@
 {% comment %}
-#284 — Popup de feedback de fin de simulation.
+#284 / #435 — Encart de feedback de fin de simulation.
 
 Affiché UNIQUEMENT sur la page résultat (afficher_resultat, hors QC en attente).
+Depuis #435 ce n'est plus un modal : encart latéral non modal (modèle des
+cartes de définition), qui ne vole pas le focus et ne bloque pas la lecture.
 Masqué par défaut (hidden) ; révélé par feedback_popup.js au moment le moins
-gênant (inactivité prolongée OU intention de quitter la page), une seule fois
-par visiteur (flag localStorage : traité -> plus jamais).
+gênant (intention de sortie détectée au curseur OU inactivité prolongée),
+une seule fois par visiteur (flag localStorage : traité -> plus jamais).
 
 Deux volets SÉQUENTIELS et INDÉPENDANTS :
   1. la note (étoiles) + un commentaire facultatif -> « Envoyer mon commentaire » ;
@@ -17,10 +19,9 @@ d'email. RGPD : email collecté seulement avec consentement, stocké seul.
      id="nitrates-feedback"
      data-region-code="{{ moulinette.catalog.region_code|default:'' }}"
      hidden>
-  <div class="nitrates-feedback__backdrop" data-feedback-dismiss></div>
   <div class="nitrates-feedback__dialog"
-       role="dialog"
-       aria-modal="true"
+       role="complementary"
+       aria-live="polite"
        aria-labelledby="nitrates-feedback-titre">
     <button type="button"
             class="nitrates-feedback__close"

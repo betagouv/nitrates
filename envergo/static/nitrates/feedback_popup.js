@@ -1,16 +1,25 @@
-/* #284 — Popup de feedback fin de simulation.
+/* #284 / #435 — Encart de feedback fin de simulation.
  *
- * Déclenchement (décision Max 2026-08-12) :
+ * Déclenchement (retour utilisateur #435 : le modal à 15 s arrivait trop tôt,
+ * en pleine lecture du résultat) :
  *   - une seule fois par visiteur (flag localStorage : traité -> plus jamais) ;
  *   - seulement sur la page résultat (le fragment #nitrates-feedback n'y est
  *     rendu que là) ;
- *   - « inaction » = pas de CLIC (le scroll et les mouvements de souris ne
- *     comptent PAS : on peut lire/scroller, ça reste de l'inaction). Le compteur
- *     démarre à l'affichage du résultat et se remet à zéro UNIQUEMENT sur un
- *     clic. Après DELAI_INACTION_MS sans clic -> on ouvre la popup ;
- *   - le compteur tourne en temps réel : un changement d'onglet ne le remet pas
- *     à zéro. Si l'échéance tombe onglet masqué, on ouvre au retour (jamais dans
- *     le dos de l'utilisateur).
+ *   - PRIORITÉ 1 : intention de sortie au curseur (desktop). Le curseur sort
+ *     du viewport par le HAUT (direction barre d'onglets / croix) -> on ouvre
+ *     juste avant le départ. Armé seulement après DELAI_ARMEMENT_MS pour
+ *     éviter le faux positif du curseur encore en haut à l'arrivée sur la
+ *     page. Nos utilisateurs ferment à la souris, les raccourcis clavier sont
+ *     marginaux : cette détection couvre l'essentiel des cas ;
+ *   - FALLBACK : inactivité prolongée (couvre le mobile, sans curseur).
+ *     « Inaction » = pas de CLIC (le scroll et les mouvements de souris ne
+ *     comptent PAS : on peut lire/scroller, ça reste de l'inaction). Seul un
+ *     clic recale l'échéance. Le compteur tourne en temps réel : un changement
+ *     d'onglet ne le remet pas à zéro ; si l'échéance tombe onglet masqué, on
+ *     ouvre au retour (jamais dans le dos de l'utilisateur).
+ *
+ * L'encart est NON MODAL (aria-live sur le fragment) : pas de vol de focus à
+ * l'ouverture, l'utilisateur peut continuer à lire/naviguer.
  *
  * Envoi : POST JSON /api/retour/ avec token CSRF. Succès -> écran de
  * remerciement + animation « vers contents » (feedback_vers.js).
@@ -19,7 +28,8 @@
   "use strict";
 
   var STORAGE_KEY = "nitrates_feedback_v1"; // présence = déjà traité
-  var DELAI_INACTION_MS = 15000; // 15 s sans clic après l'affichage du résultat
+  var DELAI_INACTION_MS = 45000; // fallback : 45 s sans clic sur le résultat
+  var DELAI_ARMEMENT_MS = 5000; // temps de lecture mini avant d'armer l'exit intent
 
   function dejaTraite() {
     try {
@@ -102,11 +112,44 @@
       .addEventListener("mouseleave", refletSelection);
 
     // ── Ouverture / fermeture ───────────────────────────────────────────────
+    // ── Anti-collision (#435) : cartes de définition + drawer conditions ────
+    // L'encart partage le bord droit avec la carte de définition (.def-carte)
+    // et le drawer conditions (qui occupe la droite, tout l'écran en mobile).
+    // Règles : on n'OUVRE pas l'encart tant que l'un des deux est affiché, et
+    // s'ils s'ouvrent APRÈS lui, on l'efface temporairement (classe CSS) puis
+    // on le réaffiche à leur fermeture. Surveillance par poll 1 s (même
+    // mécanique que le déclenchement : pas d'API d'événement côté glossaire).
+    function encombrementActif() {
+      return (
+        document.body.classList.contains("drawer-open") ||
+        !!document.querySelector(".def-carte--ouverte")
+      );
+    }
+
+    var ouvertureEnAttente = false;
+
+    window.setInterval(function () {
+      if (traite) return;
+      if (ouvert) {
+        root.classList.toggle("nitrates-feedback--efface", encombrementActif());
+      } else if (ouvertureEnAttente && !encombrementActif()) {
+        ouvertureEnAttente = false;
+        ouvrir();
+      }
+    }, 1000);
+
+    // Encart non modal : on ne déplace PAS le focus à l'ouverture (l'utilisateur
+    // est peut-être en train de lire ; aria-live annonce l'encart aux lecteurs
+    // d'écran).
     function ouvrir() {
       if (ouvert || traite || dejaTraite()) return;
+      if (encombrementActif()) {
+        // Définition ou drawer à l'écran : on attend leur fermeture.
+        ouvertureEnAttente = true;
+        return;
+      }
       ouvert = true;
       root.hidden = false;
-      if (stars[0]) stars[0].focus();
     }
 
     function terminer() {
@@ -140,7 +183,15 @@
       el.addEventListener("click", esquiver);
     });
     document.addEventListener("keydown", function (e) {
-      if (ouvert && e.key === "Escape") esquiver();
+      // Pas d'esquive si l'encart est effacé (invisible derrière une carte de
+      // définition ou le drawer) : l'Échap vise alors CES éléments, pas nous.
+      if (
+        ouvert &&
+        e.key === "Escape" &&
+        !root.classList.contains("nitrates-feedback--efface")
+      ) {
+        esquiver();
+      }
     });
 
     // ── Volet 1 : envoi de la note + commentaire (SANS email) ───────────────
@@ -227,7 +278,22 @@
         });
     });
 
-    // ── Déclenchement : échéance = dernier clic + DELAI_INACTION_MS ─────────
+    // ── Déclenchement 1 : intention de sortie au curseur (desktop) ──────────
+    // `mouseout` sur document avec relatedTarget null = le curseur a quitté le
+    // viewport ; clientY <= 0 = par le HAUT (barre d'onglets, croix, barre
+    // d'URL). Armé après DELAI_ARMEMENT_MS pour laisser le temps d'entrer dans
+    // la lecture (sinon faux positif : curseur encore en haut après le clic
+    // de soumission du formulaire).
+    var armementExit = Date.now() + DELAI_ARMEMENT_MS;
+    document.addEventListener("mouseout", function (e) {
+      if (traite || ouvert || dejaTraite()) return;
+      if (Date.now() < armementExit) return;
+      if (e.relatedTarget !== null) return; // simple passage entre éléments
+      if (e.clientY > 0) return; // sortie par un bord latéral/bas : pas un départ
+      ouvrir();
+    });
+
+    // ── Déclenchement 2 (fallback) : dernier clic + DELAI_INACTION_MS ───────
     // « Inaction » = pas de clic. Le scroll et les mouvements de souris ne
     // comptent PAS (on peut lire/scroller sans réarmer). Seul un CLIC recale
     // l'échéance. Le compteur tourne en temps réel (horloge) : un changement
