@@ -1904,12 +1904,27 @@
     inputEl.setAttribute("aria-invalid", "true");
   }
 
+  // #252 : mesurer si les utilisateurs SELECTIONNENT les champs dates du
+  // calendrier dynamique (juste le focus, pas forcement un changement de
+  // valeur). Un event par champ et par page (dedup), relaye vers Matomo par
+  // nitrates_analytics.js (couplage faible via CustomEvent, comme le reste).
+  const focusDatesTrackes = new Set();
+
   function bindInputs() {
     mount.querySelectorAll("input[data-input-id]").forEach((el) => {
       // Des qu'on focus, la valeur n'est plus celle "par defaut" -- on
       // enleve le grisé pour signaler que l'utilisateur a la main.
       el.addEventListener("focus", () => {
         el.removeAttribute("data-default");
+        const id = el.dataset.inputId;
+        if (!focusDatesTrackes.has(id)) {
+          focusDatesTrackes.add(id);
+          document.dispatchEvent(
+            new CustomEvent("nitrates:focus-date-calculatrice", {
+              detail: { input: id },
+            })
+          );
+        }
       });
       el.addEventListener("change", () => {
         const id = el.dataset.inputId;
