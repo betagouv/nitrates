@@ -27,26 +27,6 @@
   mask-size: 100% 100%;
 }
 
-/* Variante « dans un label radio » : le TEXTE du terme reste un simple span
- * souligné pointillé (cliquer dessus coche le radio, comportement label
- * normal) ; SEULE l'icône ⓘ accolée est le lien qui ouvre la définition.
- * Même bleu lien que .def-terme (batch 2). */
-.def-terme-libelle {
-  border-bottom: 1px dashed currentcolor;
-  color: var(--text-action-high-blue-france);
-}
-
-.def-terme--icone {
-  border-bottom: none;
-
-  /* Zone de clic confortable autour de l'icône (cible tactile). */
-  padding: 0 0.2em;
-}
-
-.def-terme--icone::after {
-  margin-left: 0;
-}
-
 /* ── Carte flottante ──────────────────────────────────────────────────── */
 
 /* Positionnée en JS au niveau vertical du terme cliqué (batch 2, Loom
