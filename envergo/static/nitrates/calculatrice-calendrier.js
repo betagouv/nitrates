@@ -1681,13 +1681,15 @@
       .map((s) => {
         const du = jourAgricoleToLisible(s.du);
         const au = jourAgricoleToLisible(s.au);
+        // #487 : Badge DSFR (accent yellow-tournesol), meme rendu que la
+        // branche non-calculatrice de _drawer_conditions.html.
         return (
-          '<span class="fr-tag fr-tag--sm fr-icon-calendar-line fr-tag--icon-left drawer-conditions__date-badge">' +
+          '<p class="fr-badge fr-badge--sm fr-badge--yellow-tournesol drawer-conditions__date-badge">' +
           "du " +
           escapeHtml(du) +
           " au " +
           escapeHtml(au) +
-          "</span>"
+          "</p>"
         );
       })
       .join("");

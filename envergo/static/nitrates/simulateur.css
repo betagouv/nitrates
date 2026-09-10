@@ -1343,23 +1343,11 @@ body.drawer-open {
   margin: 0.5rem 0 1.25rem;
 }
 
-/* Tags DSFR des dates de périodes ASC (#410) : orange pâle de la maquette
-   designer, texte brun. Ce sont des `fr-tag` : on ne surcharge que les
-   couleurs, le reste (taille, icône calendrier) vient du DSFR. */
+/* Badges DSFR des dates de périodes ASC (#487, remplace les fr-tag du #410) :
+   accent `fr-badge--yellow-tournesol` = l'orange pâle de la maquette (#feecc2),
+   couleurs et thème sombre gérés par le DSFR. Ici juste l'espacement. */
 .drawer-conditions__date-badge {
   margin: 0 0.5rem 0.5rem 0;
-  background-color: #feecc2;
-  color: #817051;
-
-  /* #410 : pas la pilule par défaut du `fr-tag` (trop marquée, ça évoque un
-     filtre cliquable), coins juste cassés comme la maquette. */
-  border-radius: 2px;
-}
-
-[data-fr-theme="dark"] .drawer-conditions__date-badge,
-.drawer-conditions__date-badge:hover {
-  background-color: #feecc2;
-  color: #817051;
 }
 
 /* Mobile : plein écran, slide identique. */
