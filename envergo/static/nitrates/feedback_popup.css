@@ -25,12 +25,21 @@
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 96px);
   overflow-y: auto;
-  z-index: 2100;
+
+  /* Sous la carte de définition (2100) et au-dessus du drawer (2000). En
+     pratique le JS efface l'encart dès qu'un des deux est affiché
+     (anti-collision #435) : le z-index n'est qu'une ceinture de sécurité. */
+  z-index: 2050;
   background: var(--background-default-grey, #fff);
   border-left: 4px solid var(--border-active-blue-france, #000091);
   border-radius: 0.25rem;
   box-shadow: 0 6px 18px rgb(0 0 18 / 16%);
   animation: nitrates-feedback-slide 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Transition de l'effacement temporaire (anti-collision, cf. plus bas). */
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
 }
 
 .nitrates-feedback__dialog {
@@ -149,6 +158,28 @@
   margin-top: 1rem;
 }
 
+/* Effacement temporaire quand une carte de définition ou le drawer conditions
+   est affiché (posé/retiré par feedback_popup.js). Slide-out vers la droite,
+   inerte aux clics, puis retour en douceur à la fermeture. */
+.nitrates-feedback--efface {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Mobile / tablette : l'encart se pose en bas, pleine largeur, et ne doit
+   jamais manger tout l'écran (le résultat reste visible au-dessus). */
+@media (width <= 767px) {
+  .nitrates-feedback {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: 65vh;
+  }
+}
+
 @keyframes nitrates-feedback-slide {
   from {
     opacity: 0;
@@ -164,5 +195,6 @@
 @media (prefers-reduced-motion: reduce) {
   .nitrates-feedback {
     animation: none;
+    transition: none;
   }
 }

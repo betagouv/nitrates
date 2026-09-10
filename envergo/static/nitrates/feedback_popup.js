@@ -112,11 +112,42 @@
       .addEventListener("mouseleave", refletSelection);
 
     // ── Ouverture / fermeture ───────────────────────────────────────────────
+    // ── Anti-collision (#435) : cartes de définition + drawer conditions ────
+    // L'encart partage le bord droit avec la carte de définition (.def-carte)
+    // et le drawer conditions (qui occupe la droite, tout l'écran en mobile).
+    // Règles : on n'OUVRE pas l'encart tant que l'un des deux est affiché, et
+    // s'ils s'ouvrent APRÈS lui, on l'efface temporairement (classe CSS) puis
+    // on le réaffiche à leur fermeture. Surveillance par poll 1 s (même
+    // mécanique que le déclenchement : pas d'API d'événement côté glossaire).
+    function encombrementActif() {
+      return (
+        document.body.classList.contains("drawer-open") ||
+        !!document.querySelector(".def-carte--ouverte")
+      );
+    }
+
+    var ouvertureEnAttente = false;
+
+    window.setInterval(function () {
+      if (traite) return;
+      if (ouvert) {
+        root.classList.toggle("nitrates-feedback--efface", encombrementActif());
+      } else if (ouvertureEnAttente && !encombrementActif()) {
+        ouvertureEnAttente = false;
+        ouvrir();
+      }
+    }, 1000);
+
     // Encart non modal : on ne déplace PAS le focus à l'ouverture (l'utilisateur
     // est peut-être en train de lire ; aria-live annonce l'encart aux lecteurs
     // d'écran).
     function ouvrir() {
       if (ouvert || traite || dejaTraite()) return;
+      if (encombrementActif()) {
+        // Définition ou drawer à l'écran : on attend leur fermeture.
+        ouvertureEnAttente = true;
+        return;
+      }
       ouvert = true;
       root.hidden = false;
     }
@@ -152,7 +183,15 @@
       el.addEventListener("click", esquiver);
     });
     document.addEventListener("keydown", function (e) {
-      if (ouvert && e.key === "Escape") esquiver();
+      // Pas d'esquive si l'encart est effacé (invisible derrière une carte de
+      // définition ou le drawer) : l'Échap vise alors CES éléments, pas nous.
+      if (
+        ouvert &&
+        e.key === "Escape" &&
+        !root.classList.contains("nitrates-feedback--efface")
+      ) {
+        esquiver();
+      }
     });
 
     // ── Volet 1 : envoi de la note + commentaire (SANS email) ───────────────
