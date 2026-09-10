@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views import defaults as default_views
 
 from envergo.analytics.views import CSPReportView
-from envergo.pages.views import rate_limited, server_error
+from envergo.pages.views import rate_limited, security_txt, server_error
 from envergo.urlmappings.views import UrlMappingRedirect
 
 # customize error pages to handle multi-site
@@ -24,6 +24,9 @@ urlpatterns = [
         name="urlmapping_redirect",
     ),
     path("csp/reports/", CSPReportView.as_view(), name="csp_report"),
+    # RFC 9116 (carte #443) : emplacement normatif + alias racine tolere
+    path(".well-known/security.txt", security_txt, name="security_txt"),
+    path("security.txt", security_txt),
     path(settings.ADMIN_URL, admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

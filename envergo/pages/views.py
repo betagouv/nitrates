@@ -395,3 +395,23 @@ def rate_limited(request):
     context = {**multi_sites_context(request), **settings_context(request)}
     template = loader.get_template("429.html")
     return HttpResponse(template.render(context), status=429)
+
+
+def security_txt(request):
+    """Fichier security.txt conforme RFC 9116 (carte #443).
+
+    `Expires` est calcule a la requete (aujourd'hui + 6 mois, le max RFC
+    etant 1 an) : le fichier ne peut donc pas devenir perime en silence.
+    """
+    expires = (timezone.now() + timedelta(days=180)).replace(microsecond=0)
+    canonical = f"https://{settings.ENVERGO_NITRATES_DOMAIN}/.well-known/security.txt"
+    body = "\n".join(
+        [
+            "Contact: mailto:nitrates@beta.gouv.fr",
+            f"Expires: {expires.isoformat()}",
+            "Preferred-Languages: fr, en",
+            f"Canonical: {canonical}",
+            "",
+        ]
+    )
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
