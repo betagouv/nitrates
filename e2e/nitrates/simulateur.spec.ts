@@ -58,9 +58,14 @@ async function waitForCascadeReady(page) {
 // declenche la meme resolution backend qu'avant. Les autres champs (fertilisant)
 // restent des radios cascade classiques.
 async function clickFlowRadio(page, name, value) {
+  // #436 : le texte d'un label peut etre entierement un lien de definition
+  // (glossaire) qui preventDefault -> cliquer le label au centre n'active plus
+  // le radio. On coche l'input lui-meme (equivalent : l'utilisateur clique la
+  // pastille ou une zone du bloc hors du terme surligne).
+  // L'input DSFR est masque (opacity 0) -> clic DOM natif, qui coche le radio
+  // et declenche click+change comme un clic utilisateur hors du lien.
   const input = page.locator(`input[type=radio][name="${name}"][value="${value}"]`).first();
-  const id = await input.getAttribute('id');
-  await page.locator(`label[for="${id}"]`).first().click();
+  await input.evaluate((el) => el.click());
   await page.waitForTimeout(250);
 }
 
