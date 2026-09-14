@@ -34,11 +34,13 @@ async function ouvrirFormulaireSiReplie(page: Page) {
 
 async function pickFlow(page: Page, name: string, index: number) {
   await ouvrirFormulaireSiReplie(page);
-  // Les radios du flow sont visibles : on clique le label par ordre d'apparition.
+  // #436 : le texte du label peut etre un lien de definition (glossaire) qui
+  // preventDefault -> cliquer le label n'active plus le radio. On coche
+  // l'input lui-meme, par ordre d'apparition.
   const group = page.locator(`input[type=radio][name="${name}"]`);
   await expect(group.nth(index), `radio ${name}[${index}] absent`).toHaveCount(1);
-  const id = await group.nth(index).getAttribute('id');
-  await page.locator(`label[for="${id}"]`).first().click();
+  // L'input DSFR est masque (opacity 0) -> clic DOM natif (click+change).
+  await group.nth(index).evaluate((el: HTMLInputElement) => el.click());
   await page.waitForTimeout(300);
 }
 
@@ -240,7 +242,7 @@ test('#335 sol non cultivé : réponse Q1 directe, pas de Q2 ni Q3, occupation_s
   expect(await hidden(page, 'id_occupation_sol')).toBe('sol_non_cultive');
 });
 
-test('#272 dates Q4 vides : encadré rouge (aria-invalid), pas de placeholder gris, « Suivant » désactivé', async ({ page }) => {
+test('#272/#252 dates Q4 vides : pas d’erreur avant interaction, pas de placeholder gris, « Suivant » désactivé', async ({ page }) => {
   await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
   await page.waitForLoadState('networkidle');
   await pickFlow(page, 'cflow_destination', 0); // couvert
@@ -249,21 +251,29 @@ test('#272 dates Q4 vides : encadré rouge (aria-invalid), pas de placeholder gr
 
   const semis = page.locator('#q_dates_couvert input[data-input-id="date_semis_couvert"]');
   const destr = page.locator('#q_dates_couvert input[data-input-id="date_destruction_couvert"]');
-  // Champs VIDES (pas de valeur pré-remplie « 15/08 » grise) + aria-invalid.
+  // Champs VIDES (pas de valeur pré-remplie « 15/08 » grise).
   expect(await semis.inputValue()).toBe('');
-  await expect(semis).toHaveAttribute('aria-invalid', 'true');
-  await expect(destr).toHaveAttribute('aria-invalid', 'true');
-  // Le gating bloque tant que les 2 dates ne sont pas saisies.
+  // #252 : pas d'encadré rouge AVANT interaction (contresens DSFR d'afficher
+  // une erreur d'emblée) -- l'état invalide n'apparaît qu'après onDateChange.
+  await expect(semis).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(destr).not.toHaveAttribute('aria-invalid', 'true');
+  // Mais le gating bloque quand même tant que les 2 dates ne sont pas saisies.
   await expect(page.locator('#form-simulateur')).toHaveAttribute(
     'data-couvert-dates-incompletes',
     '1',
   );
 
-  // Une fois le semis saisi, son encadré rouge disparaît (mais destruction reste).
+  // Champ touché puis laissé vide -> l'encadré rouge apparaît.
+  await semis.fill('15/08');
+  await semis.blur();
+  await semis.fill('');
+  await semis.blur();
+  await expect(semis).toHaveAttribute('aria-invalid', 'true');
+  // Ressaisi -> l'erreur disparaît ; destruction jamais touchée reste neutre.
   await semis.fill('15/08');
   await semis.blur();
   await expect(semis).not.toHaveAttribute('aria-invalid', 'true');
-  await expect(destr).toHaveAttribute('aria-invalid', 'true');
+  await expect(destr).not.toHaveAttribute('aria-invalid', 'true');
 });
 
 test('#272 auto-scroll : après saisie des dates, on scrolle vers la section Fertilisant', async ({ page }) => {
