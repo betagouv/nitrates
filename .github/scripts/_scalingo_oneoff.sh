@@ -21,8 +21,29 @@
 # ici (il modifierait l'environnement de l'appelant). Chaque script appelant
 # gere ses propres options shell.
 
+# Wrapper avec UN retry automatique : constate 3 fois (09, 10 et 14/09), la
+# sortie d'un one-off peut ne JAMAIS etre ingeree par `scalingo logs` (les
+# lignes [one-off-XXXX] du conteneur sont absentes meme minutes apres, seules
+# les lignes [manager] apparaissent). Comme toutes les commandes passees ici
+# sont idempotentes par design (reload --skip-si-identique, migrate --check,
+# seeds), rejouer une fois transforme un faux rouge en vrai verdict. Si les
+# DEUX tentatives perdent leur sortie, on echoue pour de bon.
 run_oneoff() {
+  local rc=0
+  _run_oneoff_once "$1" || rc=$?
+  [ "$rc" -eq 0 ] && return 0
+  # rc=1 avec marqueur perdu -> retente ; autre rc = vrai echec de la commande
+  if [ "${ONEOFF_MARKER_LOST:-0}" = "1" ]; then
+    echo "run_oneoff: sortie du one-off perdue cote plateforme, RETRY unique" >&2
+    _run_oneoff_once "$1"
+    return $?
+  fi
+  return "$rc"
+}
+
+_run_oneoff_once() {
   local user_cmd="$1"
+  ONEOFF_MARKER_LOST=0
   local tag="ONEOFF_$(date +%s)_$RANDOM"
   local begin="BEGIN_${tag}"
   local end="END_${tag}"
@@ -74,9 +95,21 @@ run_oneoff() {
     fi
     if [ "$stopped" = "1" ]; then
       grace=$((grace + 1))
-      [ "$grace" -ge 8 ] && break
+      # 20 tours x 4 s = 80 s de grace apres l'arret : l'indexation des logs
+      # Scalingo peut etre tres en retard (constate > 30 s).
+      [ "$grace" -ge 20 ] && break
     fi
   done
+
+  # Derniere chance avant d'abandonner : relire SANS --filter. Le filtre par
+  # instance a deja montre des trous ; la lecture brute recupere parfois des
+  # lignes que la vue filtree ne rend pas.
+  if ! echo "$logs" | grep -qE "$end_re"; then
+    local raw
+    raw=$(scalingo --region "$SCALINGO_REGION" --app "$SCALINGO_APP" \
+          logs -n 1000 2>/dev/null | grep -F "[$off]" || true)
+    [ -n "$raw" ] && logs="$logs"$'\n'"$raw"
+  fi
 
   # Extrait la portion entre BEGIN et END (notre sortie), sans les prefixes log.
   # On ne garde que les vraies lignes du conteneur ([one-off-XXXX]) pour ne pas
@@ -92,10 +125,12 @@ run_oneoff() {
   local rc
   rc=$(echo "$logs" | grep -oE "$end_re" | tail -1 | grep -oE '[0-9]+$' || echo "")
   if [ -z "$rc" ]; then
-    # Marqueur jamais vu apres la fenetre de grace. C'est un vrai probleme
-    # (timeout ou latence logs extreme) : on echoue explicitement. Ne PAS
-    # supposer le succes -- un smoke doit rester conservateur.
+    # Marqueur jamais vu apres la fenetre de grace ET la relecture brute :
+    # la sortie du one-off a ete perdue cote plateforme. On echoue
+    # explicitement (ne PAS supposer le succes), mais on le signale a
+    # run_oneoff() qui rejouera la commande une fois.
     echo "run_oneoff: marqueur END non capte (stopped=$stopped) apres $((i*4))s" >&2
+    ONEOFF_MARKER_LOST=1
     return 1
   fi
   return "$rc"
