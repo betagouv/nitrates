@@ -13,14 +13,22 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 source .github/scripts/_scalingo_oneoff.sh
 
-echo "== Reload arbres (draft->active, skip si identique) =="
-run_oneoff "python manage.py load_arbres_actifs --skip-si-identique" || {
-  echo "ECHEC reload arbres" >&2; exit 1;
-}
-
+# ORDRE : referentiels AVANT arbres. load_arbres_actifs VALIDE chaque arbre
+# contre le referentiel EN DB : si un arbre canonique reference une entree
+# nouvellement ajoutee au repo (fixture + arbre dans le meme commit), la
+# charger apres les arbres est un oeuf-et-poule qui casse le deploy.
+# Constate le 14/09 : pc5 present dans la fixture ET dans national.yaml,
+# absent de la DB dev -> "code_prescription 'pc5' inconnu dans le
+# référentiel (DB)" et 3 deploys rouges. seed_referentiels est un upsert
+# qui preserve les blocs edites : le passer en premier est sans risque.
 echo "== Seed referentiels =="
 run_oneoff "python manage.py seed_referentiels" || {
   echo "ECHEC seed referentiels" >&2; exit 1;
+}
+
+echo "== Reload arbres (draft->active, skip si identique) =="
+run_oneoff "python manage.py load_arbres_actifs --skip-si-identique" || {
+  echo "ECHEC reload arbres" >&2; exit 1;
 }
 
 echo "== Restart web (invalide le cache lru) =="
