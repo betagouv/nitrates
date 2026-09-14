@@ -12,8 +12,14 @@ permissions:
 
 on:
   schedule:
-    # 03:30 UTC : creux de trafic, avant l'arrivee des testeurs.
-    - cron: "30 3 * * *"
+    # ATTENTION au retard des crons GitHub : planifie a 03:30 UTC, ce job
+    # partait en realite entre 08:05 et 09:12 UTC (observe du 11 au 14/09),
+    # soit 10h30-11h30 heure de Paris -- EN PLEINE JOURNEE, et APRES la
+    # fenetre 8h-10h qui concentre justement les pires latences (p95 horaire
+    # 1,2 a 2,9 s : les premiers usages du matin paient la nuit de swap).
+    # On vise donc 23:47 UTC : meme avec 5 h de derive, le restart tombe
+    # avant 06:50 Paris, donc avant les premiers utilisateurs.
+    - cron: "47 23 * * *"
   workflow_dispatch:
 
 jobs:
