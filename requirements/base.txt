@@ -233,7 +233,7 @@ rpds-py==0.30.0
     #   referencing
 ruamel-yaml==0.19.1
     # via -r base.in
-scipy==1.16.1
+scipy==1.18.0
     # via -r base.in
 shapely==2.1.2
     # via -r base.in
