@@ -72,11 +72,13 @@ def test_seed_produit_volumes_attendus():
     # fertilisants" (options "Autre de type X" de la colonne Digestats).
     assert Fertilisant.objects.count() == 33
     assert NoteReglementaire.objects.count() == 13
-    # 2 liens syndiqués (#467) : annexes 2 et 3 du PAR Grand Est.
-    assert LienReference.objects.count() == 2
-    # 49 depuis #147 : 17 PC de base + déclinaisons géographiques (_ge,
-    # _zar_ge, _hdf) + fusions (pc1_pc12...) rédigées par les juristes.
-    assert CodePrescription.objects.count() == 49
+    # 3 liens syndiqués (#467/#254) : annexes 2 et 3 du PAR Grand Est +
+    # annexe 1 du PAR Hauts-de-France.
+    assert LienReference.objects.count() == 3
+    # 57 depuis #467/#254 : 17 PC de base + déclinaisons géographiques (_ge,
+    # _zar_ge, _hdf dont les 8 déclinaisons HdF « suivi reliquats ») +
+    # fusions (pc1_pc12...) rédigées par les juristes.
+    assert CodePrescription.objects.count() == 57
     assert EvenementPhenologique.objects.count() == 6
 
 

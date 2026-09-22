@@ -1069,6 +1069,15 @@
   }
 },
 {
+  "model": "nitrates.lienreference",
+  "fields": {
+    "identifiant": "par-hdf-annexe1-reliquats",
+    "url": "/static/nitrates/documents/par-hdf-annexe1-reliquats-et-definitions.pdf",
+    "libelle": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+    "description": "Annexe 1 du PAR Hauts-de-France : modalités de réalisation et de transmission des reliquats azotés + définitions des notes 1, 2, 3 et 12 du calendrier PAN. Référencée par les PC 1-4 et 10 déclinées HdF (#467/#254)."
+  }
+},
+{
   "model": "nitrates.codeprescription",
   "fields": {
     "identifiant": "pc1",
@@ -7442,6 +7451,1548 @@
     "region_code": "",
     "variante_de": null,
     "ordre_affichage": 4,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_hdf",
+    "mots_cles": "ICPE A",
+    "texte_court": "Épandage autorisé dans la limite de 100 kg d'azote par hectare dans le\ncadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou\nd'incidence démontrant l'innocuité de cette pratique et d'un dispositif\nde surveillance des teneurs en azote nitrique et ammoniacal des eaux\nlixiviées.",
+    "texte_redaction_initiale": "L'épandage de fertilisants azotés de type 0, de type I.a et d'effluents\npeu chargés peut être autorisé en période d'interdiction d'épandage, le\ncas échéant, dans la limite d'une dose maximale pouvant être portée à\n100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare\ndepuis la récolte de la culture précédente, dans le cadre d'un plan\nd'épandage soumis à autorisation et à étude d'impact ou d'incidence,\nsous réserve que cette dernière démontre l'innocuité d'une telle pratique\net qu'un dispositif de surveillance des teneurs en azote nitrique et\nammoniacal des eaux lixiviées. Par ailleurs, le couvert végétal\nd'interculture doit être implanté précocement et maintenu au minimum\n14 semaines. Les épandages ne sont pas possibles avant 4 semaines après\nimplantation du CI et à partir de 20 jours avant la récolte ou la\ndestruction du CI.",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "texte": "La dose maximale "
+              },
+              {
+                "gras": true,
+                "texte": "par hectare"
+              },
+              {
+                "texte": ", depuis la récolte de la culture précédente, peut être portée à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver"
+              },
+              {
+                "texte": "."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture (CI)"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": [
+      "note_1"
+    ],
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc1"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc3_hdf",
+    "mots_cles": "IAA + ICPE D ou E",
+    "texte_court": "Épandage de fertilisants issus de processus alimentaires autorisé dans\nla limite de 70 kg d'azote par hectare, dans le cadre d'un plan\nd'épandage soumis à déclaration ou enregistrement et sous réserve d'une\nsurveillance des reliquats azotés sous le couvert installé.",
+    "texte_redaction_initiale": "L'épandage de fertilisants azotés issus de traitement et transformation\nde matières premières en vue de la fabrication de produits alimentaires\nou d'aliments pour animaux, de la préparation et du conditionnement de\nvins, ou de la production par distillation d'alcools de bouche d'origine\nagricole, peut être autorisé en période d'interdiction, le cas échéant,\ndans la limite d'une dose maximale pouvant être portée à 70 kg N d'azote\npotentiellement libéré jusqu'en sortie d'hiver par hectare depuis la\nrécolte du précédent, dans le cadre d'un plan d'épandage soumis\ndéclaration ou enregistrement, sous réserve qu'un dispositif de\nsurveillance des reliquats azotés sous le couvert installé, et avant\népandage, soit mis en place dans le périmètre d'épandage, dans les\nconditions prévues au 5° du VII de la présente annexe. Par ailleurs, le\ncouvert végétal d'interculture doit être implanté précocement et\nmaintenu au minimum 14 semaines. Les épandages ne sont pas possibles\navant 4 semaines après implantation du CI et à partir de 20 jours avant\nla récolte ou la destruction du CI.",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés issus d'activités agroalimentaires peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à déclaration ou enregistrement"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, sous le couvert installé et avant épandage (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "texte": "La dose maximale peut être portée à "
+              },
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "texte": ", depuis la récolte du précédent."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux en interculture longue concernés font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface de l'exploitation concernée par ces épandages ÷ 20"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": [
+      "note_2"
+    ],
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc3"
+    ],
+    "ordre_affichage": 2,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc4_hdf",
+    "mots_cles": "non ICPE A",
+    "texte_court": "Épandage autorisé selon les conditions du programme d'actions régional,\navec un suivi des reliquats azotés avant épandage.",
+    "texte_redaction_initiale": "L'épandage d'effluents d'élevage de type I.a, I.b et II autre que les\neffluents peu chargés en période d'interdiction est possible jusqu'à\n20 jours avant la récolte ou la destruction du CI, et dans des conditions\ndéfinies par le programme d'actions régional, notamment sur la durée et\nla période de présence du couvert et sur le plafonnement des apports à\ncette période, en vue de limiter les fuites de composés azotés dans\nl'eau. Dans ce cas, un dispositif de suivi des reliquats azotés avant\népandage est mis en place, dans les conditions prévues au 5° du VII de\nla présente annexe.",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains effluents d'élevage peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "les conditions définies par le programme d'actions régional sont respectées, notamment sur :",
+                "enfants": [
+                  {
+                    "texte": "la durée et la période de présence du couvert"
+                  },
+                  {
+                    "texte": "le plafonnement des apports à cette période"
+                  }
+                ]
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux en interculture longue concernés font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface de l'exploitation concernée par ces épandages ÷ 20"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": [
+      "note_3"
+    ],
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc4"
+    ],
+    "ordre_affichage": 3,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc10_hdf",
+    "mots_cles": "IAA luzerne + ICPE A",
+    "texte_court": "Épandage de fertilisants issus de processus alimentaires autorisé dans\nle cadre d'un plan d'épandage soumis à autorisation et à étude d'impact\nou d'incidence démontrant l'innocuité de cette pratique et d'un\ndispositif de surveillance des reliquats azotés.",
+    "texte_redaction_initiale": "L'épandage de fertilisants azotés issus de traitement et transformation\ndes matières premières en vue de la fabrication de produits alimentaires\nou d'aliments pour animaux peut être autorisé sur luzerne après la\ndernière coupe de l'année, dans le cadre d'un plan d'épandage soumis à\nautorisation et à étude d'impact ou d'incidence, sous réserve que cette\ndernière démontre l'innocuité d'une telle pratique et qu'un dispositif\nde surveillance des reliquats azotés avant épandage, soit mis en place\ndans le périmètre d'épandage.\n\nLe dispositif de surveillance des reliquats azotés est précisé par le\nprogramme d'actions régional. Les îlots culturaux concernés par ces\népandages font l'objet d'un suivi d'indicateurs de risque de lixiviation\ndes composés azotés. Les résultats des indicateurs sont transmis à\nl'administration. Le programme d'actions régional précise les\ninformations à indiquer par l'agriculteur lors de la transmission à\nl'administration. Le cas échéant, l'agriculteur tient à disposition les\njustificatifs prévus par le programme d'actions régional. Dans le cas\nde sols impropres à la réalisation de reliquats au début de la période\nde drainage ou post-récolte, l'indicateur de risque de lixiviation est\nle bilan azoté post-récolte. Les sols impropres à la réalisation de\nreliquats sont définis par le programme d'actions régional. Dans le cas\ncontraire, l'indicateur de risque de lixiviation est le reliquat azoté\navant épandage. Le programme d'actions régional définit le protocole à\nrespecter pour la réalisation de ces analyses. Une analyse est réalisée\npour chaque îlot cultural représentatif. Les îlots culturaux sont\ndéfinis par le programme d'actions régional. Les îlots culturaux\nreprésentatifs sont définis de sorte que le nombre d'analyses à réaliser\npar exploitation soit au moins supérieur ou égal à la surface de\nl'exploitation concernée par les épandages divisée par 20.",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de fertilisants azotés issus du traitement et de la transformation des matières premières destinées à la fabrication de produits alimentaires ou d'aliments pour animaux peut être autorisé sur luzerne, après la dernière coupe de l'année."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, avant l'épandage (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Les modalités du dispositif sont précisées par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration selon les informations demandées par le programme d'actions régional, et vous tenez à disposition les justificatifs prévus, le cas échéant."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur de risque de lixiviation à utiliser"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Il dépend de la nature de votre sol."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Indicateur = bilan azoté post-récolte."
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "• Autres sols :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Indicateur = reliquat azoté avant épandage."
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif. Les îlots culturaux et les îlots représentatifs sont définis par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface de l’exploitation concernée par les épandages ÷ 20"
+                },
+                "type": "citation"
+              }
+            ],
+            "titre": "Le dispositif de surveillance"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": [
+      "note_12"
+    ],
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc10"
+    ],
+    "ordre_affichage": 9,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc12_hdf",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC12 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc1_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc1_pc13_hdf",
+    "mots_cles": "",
+    "texte_court": "fusion des PC1 et PC13 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions cumulatives à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Cet épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants de type 0, type Ia et les effluents peu chargés uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              }
+            ]
+          },
+          "type": "liste"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc1_pc13"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc12_hdf",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC12 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare "
+              },
+              {
+                "gras": false,
+                "texte": "au total, depuis la récolte du précédent jusqu'à la récolte ou destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg"
+              },
+              {
+                "gras": false,
+                "texte": " si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface concernée (ha) ÷ 20 = nombre d'analyses"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc2_pc12"
+    ],
+    "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc2_pc13_hdf",
+    "mots_cles": "",
+    "texte_court": "fusion des PC2 et PC13 (plafond)",
+    "texte_redaction_initiale": "",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage de certains fertilisants azotés peut être autorisé, le cas échéant, en période d'interdiction d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les conditions à remplir"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "L'épandage est possible si :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "il s'inscrit dans un plan d'épandage soumis à autorisation et à étude d'impact ou d'incidence"
+              },
+              {
+                "texte": "l'étude démontre l'innocuité de la pratique"
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              },
+              {
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Hauts-de-France, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 1 du PAR Hauts-de-France (PDF)",
+                    "lien_ref": "par-hdf-annexe1-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Le plafond applicable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": true,
+                "texte": "70 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare"
+              },
+              {
+                "gras": false,
+                "texte": " au total, depuis la récolte du précédent jusqu'à la destruction du couvert, pour les fertilisants de types 0, Ia, Ib et II cumulés."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "gras": false,
+                "texte": "Pour les fertilisants issus d'activités agroalimentaires uniquement : ce plafond peut être porté à "
+              },
+              {
+                "gras": true,
+                "texte": "100 kg "
+              },
+              {
+                "gras": false,
+                "texte": "si les conditions ci-dessus sont remplies."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tous les apports réalisés sur la période, y compris en période d'autorisation sous condition, comptent dans ce plafond cumulé."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les règles sur le couvert d'interculture"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le couvert végétal d'interculture doit être :"
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "implanté précocement"
+              },
+              {
+                "texte": "maintenu au minimum 14 semaines"
+              },
+              {
+                "texte": "non épandu pendant les 4 premières semaines après implantation du couvert, ni pendant les 20 jours avant sa récolte ou sa destruction"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "blocs": [
+              {
+                "data": {
+                  "texte": "Un suivi d'indicateurs de risque de lixiviation"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Les îlots culturaux concernés en interculture longue font l'objet d'un suivi d'indicateurs de risque de lixiviation des composés azotés. Vous transmettez les résultats à l'administration en suivant les informations demandées par le programme d'actions régional, notamment le précédent cultural. Vous tenez à disposition les justificatifs prévus par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "L'indicateur à utiliser dépend de la nature de votre sol"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "Sols impropres à la réalisation de reliquats au début de la période de drainage ou en post-récolte (définis par le programme d'actions régional) : indicateur = bilan azoté post-récolte"
+                    },
+                    {
+                      "texte": "Autres sols : indicateur = reliquat azoté avant épandage"
+                    }
+                  ]
+                },
+                "type": "liste"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole et le nombre d'analyses"
+                },
+                "type": "titre_principal"
+              },
+              {
+                "data": {
+                  "texte": "Le protocole à respecter est défini par le programme d'actions régional."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Une analyse est réalisée pour chaque îlot cultural représentatif concerné par ces épandages. Les îlots représentatifs sont définis par le programme d'actions régional, au moins en fonction du type de précédent cultural."
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Le nombre minimum d'analyses par exploitation suit la formule suivante :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "texte": "Surface concernée (ha) ÷ 20 = nombre d'analyses"
+                },
+                "type": "citation"
+              },
+              {
+                "data": {
+                  "texte": "Avec une contrainte supplémentaire : au moins une analyse par famille de précédent cultural présente sur la surface concernée. Les familles de précédent cultural sont :"
+                },
+                "type": "paragraphe"
+              },
+              {
+                "data": {
+                  "items": [
+                    {
+                      "texte": "céréales et pseudo-céréales"
+                    },
+                    {
+                      "texte": "oléagineux"
+                    },
+                    {
+                      "texte": "protéagineux et légumineuses"
+                    },
+                    {
+                      "texte": "légumes et fruits"
+                    },
+                    {
+                      "texte": "autres"
+                    }
+                  ]
+                },
+                "type": "liste"
+              }
+            ],
+            "titre": "Précisions sur le suivi"
+          },
+          "type": "foldable"
+        }
+      ],
+      "schema": 1
+    },
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": null,
+    "scope": "region",
+    "region_code": "32",
+    "variante_de": [
+      "pc2_pc13"
+    ],
+    "ordre_affichage": 0,
     "composants_fusion": []
   }
 },
