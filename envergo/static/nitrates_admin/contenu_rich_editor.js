@@ -43,10 +43,16 @@
     };
   }
 
-  // ── Gras inline : segments {texte,gras} <-> HTML inline Editor.js ───────
-  // Editor.js stocke le gras dans le `text` sous forme de <b>…</b>. Côté DSFR
-  // on stocke des segments structurés (jamais de HTML). Ces deux helpers font
-  // la conversion (carte #136).
+  // ── Inline : segments {texte,gras,lien,lien_ref} <-> HTML Editor.js ─────
+  // Editor.js stocke le gras dans le `text` sous forme de <b>…</b> et le lien
+  // sous forme de <a href="…"> (outil inline natif). Côté DSFR on stocke des
+  // segments structurés (jamais de HTML). Ces deux helpers font la conversion
+  // (carte #136 pour le gras, #467 pour le lien).
+  // Lien syndiqué (#467) : un segment {lien_ref: "cle"} s'affiche dans
+  // l'éditeur comme href "ref:cle" et repart tel quel à la sauvegarde — la
+  // référence survit aux éditions juriste, l'URL réelle est résolue au rendu
+  // public via la table LienReference. Poser href "ref:ma-cle" dans l'outil
+  // lien crée donc un lien syndiqué depuis l'admin.
 
   // segments OU string -> HTML inline (pour charger dans Editor.js).
   function texteToHtml(valeur) {
@@ -56,50 +62,70 @@
         .map(function (seg) {
           if (typeof seg === "string") return escapeHtml(seg);
           const t = escapeHtml(seg.texte || "");
-          return seg.gras ? "<b>" + t + "</b>" : t;
+          let out = seg.gras ? "<b>" + t + "</b>" : t;
+          const href = seg.lien_ref ? "ref:" + seg.lien_ref : seg.lien;
+          if (href) {
+            out = '<a href="' + escapeAttr(href) + '">' + out + "</a>";
+          }
+          return out;
         })
         .join("");
     }
     return "";
   }
 
-  // HTML inline d'Editor.js -> segments {texte,gras} (à la sauvegarde).
+  // HTML inline d'Editor.js -> segments {texte,gras,lien} (à la sauvegarde).
   // On parse le HTML, on aplatit en segments en suivant la présence d'un
-  // ancêtre b/strong. Si aucun gras -> on renvoie une simple string (compact).
+  // ancêtre b/strong (gras) et a[href] (lien). Si aucun style -> on renvoie
+  // une simple string (compact).
   function htmlToTexte(html) {
     const tpl = document.createElement("template");
     tpl.innerHTML = html || "";
     const segments = [];
-    function walk(node, gras) {
+    function walk(node, gras, lien) {
       node.childNodes.forEach(function (n) {
         if (n.nodeType === 3) {
           // texte
-          if (n.nodeValue) segments.push({ texte: n.nodeValue, gras: gras });
+          if (n.nodeValue)
+            segments.push({ texte: n.nodeValue, gras: gras, lien: lien });
         } else if (n.nodeType === 1) {
           const estGras =
             gras || n.tagName === "B" || n.tagName === "STRONG";
-          walk(n, estGras);
+          const estLien =
+            n.tagName === "A" ? n.getAttribute("href") || lien : lien;
+          walk(n, estGras, estLien);
         }
       });
     }
-    walk(tpl.content, false);
+    walk(tpl.content, false, "");
     // Fusionner segments adjacents de même style.
     const fusion = [];
     segments.forEach(function (s) {
       const prev = fusion[fusion.length - 1];
-      if (prev && !!prev.gras === !!s.gras) prev.texte += s.texte;
-      else fusion.push({ texte: s.texte, gras: !!s.gras });
+      if (prev && !!prev.gras === !!s.gras && (prev.lien || "") === (s.lien || ""))
+        prev.texte += s.texte;
+      else fusion.push({ texte: s.texte, gras: !!s.gras, lien: s.lien || "" });
     });
     if (fusion.length === 0) return "";
-    // Aucun gras -> string plate (rétrocompat / JSON compact).
+    // Aucun gras ni lien -> string plate (rétrocompat / JSON compact).
     if (fusion.every(function (s) {
-      return !s.gras;
+      return !s.gras && !s.lien;
     })) {
       return fusion.map(function (s) {
         return s.texte;
       }).join("");
     }
-    return fusion;
+    // Clés compactes : on n'émet gras/lien que quand ils portent une valeur.
+    // href "ref:cle" -> segment {lien_ref: "cle"} (lien syndiqué).
+    return fusion.map(function (s) {
+      const seg = { texte: s.texte };
+      if (s.gras) seg.gras = true;
+      if (s.lien) {
+        if (s.lien.indexOf("ref:") === 0) seg.lien_ref = s.lien.slice(4);
+        else seg.lien = s.lien;
+      }
+      return seg;
+    });
   }
 
   function escapeHtml(s) {
@@ -107,6 +133,10 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
+
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/"/g, "&quot;");
   }
 
   // ── Indentation (tune) : data.indent DSFR <-> block.tunes.indent.level ──

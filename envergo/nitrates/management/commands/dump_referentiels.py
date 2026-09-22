@@ -29,7 +29,7 @@ from pathlib import Path
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
-# 8 modeles suivis par le GitOps (7 referentiels + ContenuRichDSFR standalone).
+# 9 modeles suivis par le GitOps (8 referentiels + ContenuRichDSFR standalone).
 # Ordre = dependances FK pour un loaddata rejouable (parents avant enfants).
 _MODELS = [
     "nitrates.GroupeCultureUI",
@@ -37,6 +37,7 @@ _MODELS = [
     "nitrates.Culture",
     "nitrates.Fertilisant",
     "nitrates.NoteReglementaire",
+    "nitrates.LienReference",
     "nitrates.CodePrescription",
     "nitrates.EvenementPhenologique",
     "nitrates.ContenuRichDSFR",

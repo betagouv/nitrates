@@ -76,15 +76,6 @@
 {
   "model": "nitrates.brancheculturale",
   "fields": {
-    "identifiant": "cie_apres_0101",
-    "libelle_court": "cie apres 0101",
-    "description": "Aussi specque simplement \"CIE\"\r\n\r\nCorrespond a branche culturale : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier",
-    "ordre_affichage": 1
-  }
-},
-{
-  "model": "nitrates.brancheculturale",
-  "fields": {
     "identifiant": "cie_avant_3112",
     "libelle_court": "cie avant 3112",
     "description": "Branche culturale de : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) plus en place après le 31 décembre",
@@ -170,6 +161,15 @@
     "libelle_court": "prairie plus 6 mois",
     "description": "",
     "ordre_affichage": 11
+  }
+},
+{
+  "model": "nitrates.brancheculturale",
+  "fields": {
+    "identifiant": "cie_apres_0101",
+    "libelle_court": "cie apres 0101",
+    "description": "Aussi specque simplement \"CIE\"\r\n\r\nCorrespond a branche culturale : \r\nCouvert récolté, fauché ou pâturé (dérobée, CIVE...) toujours en place après le 1er janvier",
+    "ordre_affichage": 1
   }
 },
 {
@@ -371,17 +371,33 @@
 {
   "model": "nitrates.culture",
   "fields": {
-    "identifiant": "cultures_perennes_vergers",
-    "libelle_public": "Vergers",
+    "identifiant": "couvert_courte_recolte",
+    "libelle_public": "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)",
     "categorie": [
-      "autres_cultures_principales"
+      "couvert_intercultures_courte"
     ],
     "branche_culturale": [
-      "autres_cultures"
+      "cie_courte"
     ],
-    "occupation_sol": "culture_principale",
+    "occupation_sol": "couvert_intercultures",
     "champs_prefill": {},
-    "ordre_affichage": 3
+    "ordre_affichage": 0
+  }
+},
+{
+  "model": "nitrates.culture",
+  "fields": {
+    "identifiant": "couvert_courte_non_recolte",
+    "libelle_public": "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...)",
+    "categorie": [
+      "couvert_intercultures_courte"
+    ],
+    "branche_culturale": [
+      "cine_courte"
+    ],
+    "occupation_sol": "couvert_intercultures",
+    "champs_prefill": {},
+    "ordre_affichage": 1
   }
 },
 {
@@ -451,33 +467,17 @@
 {
   "model": "nitrates.culture",
   "fields": {
-    "identifiant": "couvert_courte_recolte",
-    "libelle_public": "Couvert récolté, fauché ou pâturé (dérobée, CIVE...)",
+    "identifiant": "cultures_perennes_vergers",
+    "libelle_public": "Vergers",
     "categorie": [
-      "couvert_intercultures_courte"
+      "autres_cultures_principales"
     ],
     "branche_culturale": [
-      "cie_courte"
+      "autres_cultures"
     ],
-    "occupation_sol": "couvert_intercultures",
+    "occupation_sol": "culture_principale",
     "champs_prefill": {},
-    "ordre_affichage": 0
-  }
-},
-{
-  "model": "nitrates.culture",
-  "fields": {
-    "identifiant": "couvert_courte_non_recolte",
-    "libelle_public": "Couvert ni récolté, ni fauché, ni pâturé (CIPAN, engrais vert...)",
-    "categorie": [
-      "couvert_intercultures_courte"
-    ],
-    "branche_culturale": [
-      "cine_courte"
-    ],
-    "occupation_sol": "couvert_intercultures",
-    "champs_prefill": {},
-    "ordre_affichage": 1
+    "ordre_affichage": 3
   }
 },
 {
@@ -715,42 +715,6 @@
 {
   "model": "nitrates.fertilisant",
   "fields": {
-    "identifiant": "digestat_autre_type_Ia",
-    "libelle_public": "Autre digestat de type Ia",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ia\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_Ia",
-    "ordre_affichage": 3
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "digestat_autre_type_Ib",
-    "libelle_public": "Autre digestat de type Ib",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ib\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_Ib",
-    "ordre_affichage": 4
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "digestat_autre_type_II",
-    "libelle_public": "Autre digestat de type II",
-    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type II\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
-    "categorie": "digestats",
-    "champs_prefill": {},
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 5
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
     "identifiant": "engrais_azote_mineral",
     "libelle_public": "Engrais azoté minéral (ammonitrates...)",
     "description": "",
@@ -794,36 +758,6 @@
     "champs_prefill": {},
     "type_reglementaire": "type_0",
     "ordre_affichage": 0
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "effluents_peu_charges_elevage",
-    "libelle_public": "Effluents peu chargés issus d'élevage",
-    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11 ; l'origine élevage est pertinente\npour les notes 10/11 (effluents peu chargés issus d'élevages, non ICPE A).",
-    "categorie": "autre",
-    "champs_prefill": {
-      "effluent_peu_charge": "true",
-      "effluent_peu_charge_elevage": "true"
-    },
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 1
-  }
-},
-{
-  "model": "nitrates.fertilisant",
-  "fields": {
-    "identifiant": "effluents_peu_charges_non_elevage",
-    "libelle_public": "Effluents peu chargés non issus d'élevage",
-    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11.",
-    "categorie": "autre",
-    "champs_prefill": {
-      "effluent_peu_charge": "true",
-      "effluent_peu_charge_elevage": "false"
-    },
-    "type_reglementaire": "type_II",
-    "ordre_affichage": 2
   }
 },
 {
@@ -896,6 +830,72 @@
     "champs_prefill": {},
     "type_reglementaire": "type_II",
     "ordre_affichage": 8
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "effluents_peu_charges_elevage",
+    "libelle_public": "Effluents peu chargés issus d'élevage",
+    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11 ; l'origine élevage est pertinente\npour les notes 10/11 (effluents peu chargés issus d'élevages, non ICPE A).",
+    "categorie": "autre",
+    "champs_prefill": {
+      "effluent_peu_charge": "true",
+      "effluent_peu_charge_elevage": "true"
+    },
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 1
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "effluents_peu_charges_non_elevage",
+    "libelle_public": "Effluents peu chargés non issus d'élevage",
+    "description": "Carte #98 : scission de l'ancien \"Effluents peu chargés\" en deux\nsous-catégories (issu / non issu d'élevage). Type II. Le flag transverse\n`effluent_peu_charge` (cf. types_fertilisants) reste utilisé par l'arbre\npour les assouplissements notes 8-11.",
+    "categorie": "autre",
+    "champs_prefill": {
+      "effluent_peu_charge": "true",
+      "effluent_peu_charge_elevage": "false"
+    },
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 2
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "digestat_autre_type_Ia",
+    "libelle_public": "Autre digestat de type Ia",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ia\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_Ia",
+    "ordre_affichage": 3
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "digestat_autre_type_Ib",
+    "libelle_public": "Autre digestat de type Ib",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type Ib\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_Ib",
+    "ordre_affichage": 4
+  }
+},
+{
+  "model": "nitrates.fertilisant",
+  "fields": {
+    "identifiant": "digestat_autre_type_II",
+    "libelle_public": "Autre digestat de type II",
+    "description": "Carte Miro \"Types de fertilisants\" : option \"Autre de type II\" sous la\ncatégorie Digestats. Permet de saisir un digestat non listé en déclarant\ndirectement son type réglementaire.",
+    "categorie": "digestats",
+    "champs_prefill": {},
+    "type_reglementaire": "type_II",
+    "ordre_affichage": 5
   }
 },
 {
@@ -1048,6 +1048,24 @@
     "regions_concernees": [],
     "departements_concernes": [],
     "ordre_affichage": 12
+  }
+},
+{
+  "model": "nitrates.lienreference",
+  "fields": {
+    "identifiant": "par-ge-annexe2-reliquats",
+    "url": "/static/nitrates/documents/par-ge-annexe2-modalites-reliquats.pdf",
+    "libelle": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+    "description": "Annexe 2 du PAR Grand Est : dispositif de surveillance des reliquats azotés (protocole, îlots représentatifs, sols impropres, bilan azoté post-récolte). Référencée par les PC 1-4 et 10 Grand Est (#467)."
+  }
+},
+{
+  "model": "nitrates.lienreference",
+  "fields": {
+    "identifiant": "par-ge-annexe3-sols",
+    "url": "/static/nitrates/documents/par-ge-annexe3-sols-faible-dispo-azote.pdf",
+    "libelle": "consultez l'annexe 3 du PAR Grand Est (PDF)",
+    "description": "Annexe 3 du PAR Grand Est : définition des sols à faible disponibilité en azote. Référencée par la PC 11 Grand Est (#467)."
   }
 },
 {
@@ -1777,26 +1795,6 @@
     "region_code": "",
     "variante_de": null,
     "ordre_affichage": 3,
-    "composants_fusion": []
-  }
-},
-{
-  "model": "nitrates.codeprescription",
-  "fields": {
-    "identifiant": "pc5",
-    "mots_cles": "culture irriguée",
-    "texte_court": "Apport d'engrais minéraux autorisé.",
-    "texte_redaction_initiale": "En présence d'une culture irriguée, l'apport de fertilisants azotés de\ntype III est autorisé jusqu'au 15 juillet et, sur maïs irrigué, jusqu'au\nstade du brunissement des soies du maïs.",
-    "blocs": {},
-    "toujours_affiche": false,
-    "plafond": false,
-    "note_reglementaire": [
-      "note_4"
-    ],
-    "scope": "national",
-    "region_code": "",
-    "variante_de": null,
-    "ordre_affichage": 4,
     "composants_fusion": []
   }
 },
@@ -3133,7 +3131,18 @@
           "data": {
             "items": [
               {
-                "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de suivi des reliquats azotés avant épandage est mis en place, dans le périmètre d'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -3203,7 +3212,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -3471,10 +3491,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -4885,7 +4927,18 @@
                 "texte": "il s'inscrit dans un plan d'épandage soumis à déclaration ou enregistrement"
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, sous le couvert installé et avant épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, sous le couvert installé et avant épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -5008,7 +5061,18 @@
           "data": {
             "items": [
               {
-                "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, avant l'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés est mis en place dans le périmètre d'épandage, avant l'épandage (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -5111,7 +5175,18 @@
         },
         {
           "data": {
-            "texte": "              - ou sols à faible disponibilité en azote (pour connaître les sols concernés, cliquez ici : )."
+            "texte": [
+              {
+                "texte": "              - ou sols à faible disponibilité en azote (pour connaître les sols concernés, "
+              },
+              {
+                "texte": "consultez l'annexe 3 du PAR Grand Est (PDF)",
+                "lien_ref": "par-ge-annexe3-sols"
+              },
+              {
+                "texte": ")."
+              }
+            ]
           },
           "type": "paragraphe"
         }
@@ -5561,7 +5636,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -5696,7 +5782,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -5806,7 +5903,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -5935,7 +6043,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -6045,7 +6164,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -6180,7 +6310,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -6290,7 +6431,18 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici :  )"
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")"
+                  }
+                ]
               }
             ]
           },
@@ -6425,10 +6577,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -6566,10 +6740,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place  (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -6682,10 +6878,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -6817,10 +7035,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -6927,10 +7167,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -7068,10 +7330,32 @@
                 "texte": "l'étude démontre l'innocuité de la pratique"
               },
               {
-                "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               },
               {
-                "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, cliquez ici : )."
+                "texte": [
+                  {
+                    "texte": "un dispositif de surveillance des reliquats azotés dans le périmètre d'épandage, sous le couvert installé et avant épandage, est mis en place (pour connaître le dispositif de suivi à mettre en place en Grand Est, "
+                  },
+                  {
+                    "texte": "consultez l'annexe 2 du PAR Grand Est (PDF)",
+                    "lien_ref": "par-ge-annexe2-reliquats"
+                  },
+                  {
+                    "texte": ")."
+                  }
+                ]
               }
             ]
           },
@@ -7138,6 +7422,26 @@
       "pc2_pc14"
     ],
     "ordre_affichage": 0,
+    "composants_fusion": []
+  }
+},
+{
+  "model": "nitrates.codeprescription",
+  "fields": {
+    "identifiant": "pc5",
+    "mots_cles": "culture irriguée",
+    "texte_court": "Apport d'engrais minéraux autorisé.",
+    "texte_redaction_initiale": "En présence d'une culture irriguée, l'apport de fertilisants azotés de\ntype III est autorisé jusqu'au 15 juillet et, sur maïs irrigué, jusqu'au\nstade du brunissement des soies du maïs.",
+    "blocs": {},
+    "toujours_affiche": false,
+    "plafond": false,
+    "note_reglementaire": [
+      "note_4"
+    ],
+    "scope": "national",
+    "region_code": "",
+    "variante_de": null,
+    "ordre_affichage": 4,
     "composants_fusion": []
   }
 },

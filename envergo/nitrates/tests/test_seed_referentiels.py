@@ -21,6 +21,7 @@ from envergo.nitrates.models import (
     EvenementPhenologique,
     Fertilisant,
     GroupeCultureUI,
+    LienReference,
     NoteReglementaire,
 )
 
@@ -41,6 +42,7 @@ def _reset():
     CodePrescription.objects.exclude(variante_de__isnull=True).delete()
     CodePrescription.objects.all().delete()
     NoteReglementaire.objects.all().delete()
+    LienReference.objects.all().delete()
     EvenementPhenologique.objects.all().delete()
     Fertilisant.objects.all().delete()
     Culture.objects.all().delete()
@@ -70,6 +72,8 @@ def test_seed_produit_volumes_attendus():
     # fertilisants" (options "Autre de type X" de la colonne Digestats).
     assert Fertilisant.objects.count() == 33
     assert NoteReglementaire.objects.count() == 13
+    # 2 liens syndiqués (#467) : annexes 2 et 3 du PAR Grand Est.
+    assert LienReference.objects.count() == 2
     # 49 depuis #147 : 17 PC de base + déclinaisons géographiques (_ge,
     # _zar_ge, _hdf) + fusions (pc1_pc12...) rédigées par les juristes.
     assert CodePrescription.objects.count() == 49

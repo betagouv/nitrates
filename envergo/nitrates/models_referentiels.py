@@ -481,6 +481,46 @@ class CodePrescription(_NaturalKeyByIdentifiant):
         return f"{self.identifiant.upper()} — {self.mots_cles}"
 
 
+# ─── Liens de référence ──────────────────────────────────────────────────────
+
+
+class LienReference(_NaturalKeyByIdentifiant):
+    """Lien syndiqué réutilisable dans les contenus riches (#467).
+
+    Les segments {texte, lien_ref: "identifiant"} des blocs DSFR résolvent
+    leur URL ici au rendu. Un seul endroit à mettre à jour quand une cible
+    bouge (PDF statique re-nommé, site DREAL refondu...), et la mise en
+    vigueur d'un document statique déjà déployé se pilote en changeant
+    l'URL en DB, indépendamment des déploiements de code.
+    """
+
+    identifiant = models.SlugField(max_length=64, unique=True)
+    url = models.CharField(
+        max_length=500,
+        help_text=(
+            "URL http(s) ou chemin relatif au site (ex "
+            "/static/nitrates/documents/annexe2.pdf)."
+        ),
+    )
+    libelle = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Libellé par défaut du lien (informatif).",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Note de maintenance : ce que pointe ce lien, pourquoi.",
+    )
+
+    class Meta:
+        ordering = ("identifiant",)
+        verbose_name = "Lien de référence"
+        verbose_name_plural = "Liens de référence"
+
+    def __str__(self):
+        return f"{self.identifiant} → {self.url}"
+
+
 # ─── Événements phénologiques ────────────────────────────────────────────────
 
 
