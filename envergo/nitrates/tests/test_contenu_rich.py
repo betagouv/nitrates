@@ -61,6 +61,105 @@ def test_gras_inline_echappement_preserve():
     assert "<script>" not in html
 
 
+def test_lien_inline_segments():
+    # Segment {texte, lien} (#467) -> <a class="fr-link"> vers l'URL donnée.
+    html = compile_dsfr(
+        [
+            {
+                "type": "paragraphe",
+                "data": {
+                    "texte": [
+                        {"texte": "voir "},
+                        {
+                            "texte": "l'annexe 2 du PAR",
+                            "lien": "/static/nitrates/documents/annexe2.pdf",
+                        },
+                    ]
+                },
+            }
+        ]
+    )
+    assert (
+        '<a href="/static/nitrates/documents/annexe2.pdf" class="fr-link" '
+        'target="_blank" rel="noopener">l&#x27;annexe 2 du PAR</a>' in html
+    )
+
+
+def test_lien_inline_gras_combine():
+    # lien + gras sur le même segment : <a> enveloppe le <strong>.
+    html = compile_dsfr(
+        [
+            {
+                "type": "liste",
+                "data": {
+                    "items": [
+                        {
+                            "texte": [
+                                {
+                                    "texte": "doc",
+                                    "gras": True,
+                                    "lien": "https://ex.fr/d.pdf",
+                                }
+                            ]
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    assert '<a href="https://ex.fr/d.pdf"' in html
+    assert "<strong>doc</strong></a>" in html
+
+
+def test_lien_inline_url_dangereuse_ignoree():
+    # javascript:/data: -> pas de balise <a>, le texte reste rendu.
+    html = compile_dsfr(
+        [
+            {
+                "type": "paragraphe",
+                "data": {"texte": [{"texte": "piege", "lien": "javascript:alert(1)"}]},
+            }
+        ]
+    )
+    assert "<a " not in html
+    assert "piege" in html
+
+
+@pytest.mark.django_db
+def test_lien_ref_resolu_via_lien_reference():
+    # Segment {texte, lien_ref} (#467) : l'URL vient de la table LienReference.
+    from envergo.nitrates.models import LienReference
+
+    LienReference.objects.create(
+        identifiant="annexe-test", url="/static/nitrates/documents/annexe.pdf"
+    )
+    html = compile_dsfr(
+        [
+            {
+                "type": "paragraphe",
+                "data": {"texte": [{"texte": "l'annexe", "lien_ref": "annexe-test"}]},
+            }
+        ]
+    )
+    assert 'href="/static/nitrates/documents/annexe.pdf"' in html
+    assert 'class="fr-link"' in html
+
+
+@pytest.mark.django_db
+def test_lien_ref_inconnu_rendu_texte_simple():
+    # Référence absente de la table -> pas de <a>, le texte reste.
+    html = compile_dsfr(
+        [
+            {
+                "type": "paragraphe",
+                "data": {"texte": [{"texte": "l'annexe", "lien_ref": "inexistante"}]},
+            }
+        ]
+    )
+    assert "<a " not in html
+    assert "annexe" in html
+
+
 def test_gras_inline_dans_liste():
     html = compile_dsfr(
         [

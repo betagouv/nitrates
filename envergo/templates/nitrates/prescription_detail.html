@@ -2,6 +2,15 @@
 
 {% load nitrates_tags %}
 
+{% comment %}
+Le rendu des blocs riches (.contenu-rich : retrait des listes, indentations,
+espacement des titres) vit dans calendrier.css, chargé par la page résultat.
+Sans lui, la page standalone rend des puces/indent cassés (#467).
+{% endcomment %}
+{% block extra_css %}
+  <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+{% endblock %}
+
 {% block title %}
   {{ pc.identifiant|upper }}
   {% if pc.mots_cles %}· {{ pc.mots_cles }}{% endif %}

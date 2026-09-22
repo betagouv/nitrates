@@ -365,6 +365,7 @@ from envergo.nitrates.models import (  # noqa: E402
     EvenementPhenologique,
     Fertilisant,
     GroupeCultureUI,
+    LienReference,
     NoteReglementaire,
 )
 
@@ -560,6 +561,16 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
 class EvenementPhenologiqueAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     list_display = ("identifiant", "libelle_public", "date_calendrier")
     search_fields = ("identifiant", "libelle_public")
+    ordering = ("identifiant",)
+
+
+@admin.register(LienReference)
+class LienReferenceAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+    """Liens syndiqués des contenus riches (#467). Changer l'`url` ici met à
+    jour instantanément tous les segments {lien_ref} qui la référencent."""
+
+    list_display = ("identifiant", "url", "libelle")
+    search_fields = ("identifiant", "url", "libelle", "description")
     ordering = ("identifiant",)
 
 

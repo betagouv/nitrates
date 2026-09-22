@@ -33,16 +33,53 @@ NIVEAU_TITRE_MAX = 6  # <h6> est le plus profond en HTML
 # page). On le passe en paramètre mutable pour rester sans état global.
 
 
-def _rich(valeur) -> str:
+def _liens_references(ctx):
+    """Table {identifiant: url} des LienReference, chargée au 1er segment
+    `lien_ref` rencontré puis mémorisée dans le contexte de rendu (une seule
+    requête par appel à compile_dsfr, et zéro si aucun lien_ref)."""
+    if ctx.get("liens_references") is None:
+        from envergo.nitrates.models import LienReference
+
+        ctx["liens_references"] = dict(
+            LienReference.objects.values_list("identifiant", "url")
+        )
+    return ctx["liens_references"]
+
+
+def _url_segment(seg, ctx):
+    """URL portée par un segment : `lien_ref` (résolu via LienReference,
+    prioritaire) ou `lien` (URL brute). None si rien d'exploitable — le
+    segment est alors rendu comme du texte simple."""
+    ref = seg.get("lien_ref")
+    if ref:
+        return _url_sure(_liens_references(ctx).get(ref))
+    return _url_sure(seg.get("lien"))
+
+
+def _url_sure(url):
+    """Filtre l'URL d'un segment lien : uniquement relative au site ou http(s).
+
+    Tout autre schéma (javascript:, data:...) est écarté -> le segment est
+    rendu comme du texte simple, sans lien."""
+    if not isinstance(url, str):
+        return None
+    url = url.strip()
+    if url.startswith("/") or url.startswith(("https://", "http://")):
+        return url
+    return None
+
+
+def _rich(valeur, ctx=None) -> str:
     """Rend un texte riche -> HTML inline SAFE (carte #136, gras inline).
 
     `valeur` peut être :
       - une string : texte plat, simplement échappé (cas historique) ;
-      - une liste de segments {texte, gras} : chaque segment est échappé puis,
-        si `gras` est vrai, enveloppé dans <strong>. Le gras est donc porté par
-        une marque STRUCTURÉE, jamais par du HTML saisi -> impossible d'injecter
-        autre chose que <strong> (sécurité conservée : on échappe tout, on
-        ré-introduit nous-mêmes la seule balise autorisée).
+      - une liste de segments {texte, gras, lien} : chaque segment est échappé
+        puis, si `gras` est vrai, enveloppé dans <strong> ; si `lien` porte une
+        URL http(s) ou relative au site (cf. `_url_sure`), le tout est enveloppé
+        dans <a class="fr-link"> (#467). Gras et lien sont des marques
+        STRUCTURÉES, jamais du HTML saisi -> impossible d'injecter autre chose
+        que les balises que ce compilateur ré-introduit lui-même.
     Renvoie une chaîne safe (mark_safe).
     """
     if valeur is None:
@@ -59,19 +96,29 @@ def _rich(valeur) -> str:
                 continue
             txt = seg.get("texte", "") or ""
             if seg.get("gras"):
-                morceaux.append(format_html("<strong>{0}</strong>", txt))
+                txt = format_html("<strong>{0}</strong>", txt)
             else:
-                morceaux.append(format_html("{0}", txt))
+                txt = format_html("{0}", txt)
+            url = _url_segment(seg, ctx if ctx is not None else {})
+            if url:
+                txt = format_html(
+                    '<a href="{0}" class="fr-link" target="_blank" '
+                    'rel="noopener">{1}</a>',
+                    url,
+                    txt,
+                )
+            morceaux.append(txt)
         return mark_safe("".join(morceaux))
     # Type inattendu -> on le rend en texte échappé par sécurité.
     return format_html("{0}", str(valeur))
 
 
-def _texte(data: dict) -> str:
+def _texte(data: dict, ctx=None) -> str:
     """Texte riche d'un bloc (clé `texte`), tolérant aux clés vides.
 
-    Passe par `_rich` : accepte string OU liste de segments {texte, gras}."""
-    return _rich((data or {}).get("texte", ""))
+    Passe par `_rich` : accepte string OU liste de segments
+    {texte, gras, lien, lien_ref}."""
+    return _rich((data or {}).get("texte", ""), ctx)
 
 
 def _niveau(n: int) -> int:
@@ -80,7 +127,7 @@ def _niveau(n: int) -> int:
 
 def _compile_titre_principal(data, niveau, ctx):
     n = _niveau(niveau)
-    return format_html('<h{0} class="fr-h{0}">{1}</h{0}>', n, _texte(data))
+    return format_html('<h{0} class="fr-h{0}">{1}</h{0}>', n, _texte(data, ctx))
 
 
 def _compile_titre_paragraphe(data, niveau, ctx):
@@ -89,25 +136,25 @@ def _compile_titre_paragraphe(data, niveau, ctx):
     # « Le principe », « Les conditions… », « La dose maximale »… On rend donc
     # un vrai <h6 class="fr-h6"> (titre sémantique, meilleure a11y que le <p>
     # gras précédent) plutôt qu'un paragraphe en gras.
-    return format_html('<h6 class="fr-h6">{0}</h6>', _texte(data))
+    return format_html('<h6 class="fr-h6">{0}</h6>', _texte(data, ctx))
 
 
 def _compile_paragraphe(data, niveau, ctx):
-    return format_html("<p>{0}</p>", _texte(data))
+    return format_html("<p>{0}</p>", _texte(data, ctx))
 
 
-def _compile_items_liste(items) -> str:
+def _compile_items_liste(items, ctx=None) -> str:
     """Rend récursivement une liste d'items (puces + sous-puces)."""
     morceaux = []
     for item in items or []:
-        texte = _rich((item or {}).get("texte", ""))
+        texte = _rich((item or {}).get("texte", ""), ctx)
         enfants = (item or {}).get("enfants") or []
         if enfants:
             morceaux.append(
                 format_html(
                     "<li>{0}{1}</li>",
                     texte,
-                    mark_safe(_compile_liste_ul(enfants)),
+                    mark_safe(_compile_liste_ul(enfants, ctx)),
                 )
             )
         else:
@@ -115,15 +162,15 @@ def _compile_items_liste(items) -> str:
     return mark_safe("".join(morceaux))
 
 
-def _compile_liste_ul(items) -> str:
-    return format_html("<ul>{0}</ul>", _compile_items_liste(items))
+def _compile_liste_ul(items, ctx=None) -> str:
+    return format_html("<ul>{0}</ul>", _compile_items_liste(items, ctx))
 
 
 def _compile_liste(data, niveau, ctx):
     items = (data or {}).get("items") or []
     # La 1re liste porte fr-mb-0 (cohérent avec le hardcode d'origine) ; les
     # sous-listes héritent du style DSFR par défaut.
-    return format_html('<ul class="fr-mb-0">{0}</ul>', _compile_items_liste(items))
+    return format_html('<ul class="fr-mb-0">{0}</ul>', _compile_items_liste(items, ctx))
 
 
 def _compile_citation(data, niveau, ctx):
@@ -132,7 +179,7 @@ def _compile_citation(data, niveau, ctx):
     # ou d'un point clé (ex. "Surface ÷ 20").
     return format_html(
         '<div class="fr-callout"><p class="fr-callout__text">{0}</p></div>',
-        _texte(data),
+        _texte(data, ctx),
     )
 
 
@@ -181,7 +228,7 @@ def _compile_tableau(data, niveau, ctx):
                     "<{b}{s}>{c}</{b}>",
                     b=mark_safe(balise),
                     s=mark_safe(' scope="col"' if scope else ""),
-                    c=_rich(cellule),
+                    c=_rich(cellule, ctx),
                 )
                 for cellule in ligne
             )
