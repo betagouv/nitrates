@@ -448,7 +448,7 @@ arbre:
                         type_noeud: formulaire
                       valeur: Vigne
                       libelle: Vigne
-                      expression: sous_culture_form=='cultures_perennes_vergers_vignes'
+                      expression: sous_culture_form=='cultures_perennes_vignes'
                     type_noeud: catalogue_parametre
                   valeur: en_zge2
                   libelle: en_zge2
