@@ -17,6 +17,7 @@ from envergo.nitrates.matrice import (
     parse_borne,
     segments_depuis_regimes,
 )
+from envergo.nitrates.views_admin_matrice import DATES_DEFAUT_COUVERT
 from envergo.nitrates.yaml_tree import load_referentiels, select_active_trees
 
 pytestmark = [pytest.mark.django_db, pytest.mark.urls("config.urls_nitrates")]
@@ -258,3 +259,111 @@ def test_vue_matrice_ok_pour_staff(client, django_user_model):
     response = client.get(url, {"territoire": "R32", "axe": "fertilisant"})
     assert response.status_code == 200
     assert b"Matrice des calendriers" in response.content
+
+
+# ─── Dates par défaut selon la branche de couvert ──────────────────────────
+
+
+def _staff(django_user_model, client):
+    user = django_user_model.objects.create_user(
+        email="staff-dates@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    return user
+
+
+def test_dates_defaut_appliquees_sur_branche_couvert(client, django_user_model):
+    """Sans dates dans l'URL, la branche de couvert impose son scénario."""
+    _staff(django_user_model, client)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {"territoire": "R44", "axe": "fertilisant", "valeur": "cine_avant_3112"},
+    )
+    assert response.status_code == 200
+    champs = {c["id"]: c["valeur"] for c in response.context["champs_dates"]}
+    assert champs["date_destruction_couvert"] == "15/12"
+    assert champs["date_semis_couvert"] == "15/08"
+    assert response.context["dates_par_defaut"] is True
+
+
+def test_dates_defaut_distinctes_avant_3112_et_apres_0101(client, django_user_model):
+    """Le couvert encore en place après le 01/01 est détruit plus tard."""
+    _staff(django_user_model, client)
+    url = reverse("nitrates_admin_matrice_index")
+
+    def _destruction(valeur):
+        response = client.get(
+            url, {"territoire": "R44", "axe": "fertilisant", "valeur": valeur}
+        )
+        champs = {c["id"]: c["valeur"] for c in response.context["champs_dates"]}
+        return champs["date_destruction_couvert"]
+
+    assert _destruction("cine_avant_3112") == "15/12"
+    assert _destruction("cine_apres_0101") == "15/02"
+
+
+def test_saisie_utilisateur_prime_sur_le_defaut(client, django_user_model):
+    _staff(django_user_model, client)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {
+            "territoire": "R44",
+            "axe": "fertilisant",
+            "valeur": "cine_avant_3112",
+            "date_destruction_couvert": "20/12",
+        },
+    )
+    champs = {c["id"]: c["valeur"] for c in response.context["champs_dates"]}
+    assert champs["date_destruction_couvert"] == "20/12"
+    assert response.context["dates_par_defaut"] is False
+
+
+def test_champ_vide_explicitement_reste_vide(client, django_user_model):
+    """Vider le champ est un choix : on ne le repeuple pas avec le défaut."""
+    _staff(django_user_model, client)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {
+            "territoire": "R44",
+            "axe": "fertilisant",
+            "valeur": "cine_avant_3112",
+            "date_destruction_couvert": "",
+        },
+    )
+    champs = {c["id"]: c["valeur"] for c in response.context["champs_dates"]}
+    assert champs["date_destruction_couvert"] == ""
+    assert response.context["dates_par_defaut"] is False
+
+
+def test_pas_de_defaut_hors_branche_couvert(client, django_user_model):
+    """Axe 'culture' : plusieurs branches coexistent, aucun défaut unique."""
+    _staff(django_user_model, client)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {"territoire": "R44", "axe": "culture", "valeur": "type_Ia"},
+    )
+    champs = {c["id"]: c["valeur"] for c in response.context["champs_dates"]}
+    assert champs["date_destruction_couvert"] == ""
+    assert response.context["dates_par_defaut"] is False
+
+
+@pytest.mark.parametrize("branche", sorted(DATES_DEFAUT_COUVERT))
+def test_defauts_rendent_les_calculatrices_non_plates(branche):
+    """Garde-fou anti-régression : une cellule calculatrice ne doit jamais
+    s'afficher 100% verte avec les dates par défaut — ça se lirait « autorisé
+    toute l'année » alors que ça veut dire « bornes irrésolues »."""
+    cellules = construire_matrice(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee=branche,
+        referentiels=load_referentiels(),
+        dates=dict(DATES_DEFAUT_COUVERT[branche]),
+    )
+    # Toutes les branches n'ont pas de feuille calculatrice selon l'arbre
+    # actif : on n'en exige pas, on vérifie celles qui existent.
+    calculatrices = [c for c in cellules if c.is_calculatrice and c.statut == "ok"]
+    for cellule in calculatrices:
+        couleurs = {s["couleur"] for s in cellule.segments}
+        assert couleurs != {"vert"}, f"{branche}/{cellule.ligne_id} est plate"

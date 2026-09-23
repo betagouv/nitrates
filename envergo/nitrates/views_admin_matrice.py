@@ -36,6 +36,47 @@ CHAMPS_DATES = [
     },
 ]
 
+# Dates par défaut, par branche culturale de couvert. Sans elles, les feuilles
+# calculatrice n'ont aucune borne resolvable et la cellule s'affiche 100% verte
+# — ce qui se lit « autorisé toute l'année » alors que ça veut dire
+# « indéterminé ». On pose donc un scénario plausible cohérent avec la
+# sémantique de la branche, que l'utilisateur reste libre d'écraser.
+#
+# La destruction est la date qui pilote réellement les bornes (« X jours avant
+# destruction ») ; le semis ne borne que quelques régimes d'implantation, d'où
+# un choix volontairement générique (mi-août, sortie de moisson).
+#
+# Lecture des identifiants de branche :
+#   *_avant_3112 = couvert détruit AVANT le 31/12 (« plus en place après 3112 »)
+#   *_apres_0101 = couvert encore en place APRÈS le 01/01
+#   *_courte     = interculture courte (implantation et destruction rapprochées)
+DATES_DEFAUT_COUVERT = {
+    "cie_avant_3112": {
+        "date_semis_couvert": "15/08",
+        "date_destruction_couvert": "15/12",
+    },
+    "cine_avant_3112": {
+        "date_semis_couvert": "15/08",
+        "date_destruction_couvert": "15/12",
+    },
+    "cie_apres_0101": {
+        "date_semis_couvert": "15/08",
+        "date_destruction_couvert": "15/02",
+    },
+    "cine_apres_0101": {
+        "date_semis_couvert": "15/08",
+        "date_destruction_couvert": "15/02",
+    },
+    "cie_courte": {
+        "date_semis_couvert": "15/07",
+        "date_destruction_couvert": "15/09",
+    },
+    "cine_courte": {
+        "date_semis_couvert": "15/07",
+        "date_destruction_couvert": "15/09",
+    },
+}
+
 
 @staff_member_required
 def matrice_index(request):
@@ -60,6 +101,21 @@ def matrice_index(request):
         valeur = options_valeur[0]["id"] if options_valeur else ""
 
     dates = {c["id"]: (request.GET.get(c["id"]) or "").strip() for c in CHAMPS_DATES}
+    # Défauts par branche de couvert : appliqués uniquement quand l'utilisateur
+    # n'a pas encore touché au formulaire (champ absent de la query string). Un
+    # champ présent mais vidé est un choix explicite, on le respecte.
+    branche_couvert = valeur if axe == "fertilisant" else ""
+    defauts = DATES_DEFAUT_COUVERT.get(branche_couvert, {})
+    # La note ne se déclenche que sur la date de destruction : c'est elle qui
+    # pilote les bornes des calculatrices. Un semis laissé au défaut pendant
+    # que l'utilisateur saisit sa destruction ne doit pas afficher « scénario
+    # par défaut », ce serait mensonger.
+    dates_par_defaut = False
+    for champ, valeur_defaut in defauts.items():
+        if champ not in request.GET and not dates[champ]:
+            dates[champ] = valeur_defaut
+            if champ == "date_destruction_couvert":
+                dates_par_defaut = True
     champs_dates = [{**c, "valeur": dates[c["id"]]} for c in CHAMPS_DATES]
 
     cellules = []
@@ -97,6 +153,7 @@ def matrice_index(request):
             "valeur": valeur,
             "champs_dates": champs_dates,
             "dates_actives": dates_actives,
+            "dates_par_defaut": dates_par_defaut,
             "cellules": cellules,
             "mois": _MOIS_PAIRES,
             "erreur": erreur,

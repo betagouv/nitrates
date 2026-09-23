@@ -93,6 +93,14 @@
       opacity: 0.45;
     }
 
+    .matrice-dates-note {
+      flex-basis: 100%;
+      margin: 0.25rem 0 0;
+      font-size: 0.8rem;
+      font-style: italic;
+      color: #666;
+    }
+
     .matrice-toggle {
       display: flex;
       border: 1px solid #b8bfcc;
@@ -453,6 +461,12 @@
                    {% if not dates_actives %}disabled{% endif %}>
           </div>
         {% endfor %}
+        {% if dates_par_defaut and dates_actives %}
+          <p class="matrice-dates-note">
+            Scénario par défaut déduit de la branche de couvert. Modifiez les
+            dates pour recalculer.
+          </p>
+        {% endif %}
       </div>
 
       <noscript>
