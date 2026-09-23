@@ -428,19 +428,18 @@
     const blocAttente = qcEnAttenteBloc();
     if (blocAttente && blocAttente.contains(target)) return;
 
-    // Idem si le radio est dans le bloc QC (recap repondu) ET qu'aucun resultat
-    // final n'est affiche : on est encore en phase de saisie QC, pas sur un
-    // resultat finalise -> ne pas elaguer. (Cas ou plusieurs QC s'enchainent.)
-    // `.result-col` seule ne suffit PAS a repondre « un resultat a-t-il ete
-    // rendu ? » depuis #271 : « Modifier » la retire tout en restant sur un
-    // parcours issu d'un resultat. On accepte donc aussi le marqueur de
-    // miroir, sinon editer une reponse QC apres « Modifier » laissait le bloc
-    // QC obsolete a l'ecran (il n'etait jamais elague).
+    // Idem pour TOUT radio situe dans le bloc QC (#524) : un radio de #qc-bloc
+    // est TOUJOURS une reponse a une question complementaire, jamais un champ
+    // amont. C'est subsidiaires_cascade.js qui gere ces reponses en client
+    // (revele/masque les QC enfants selon la valeur choisie) SANS rechargement,
+    // en gardant le volet ouvert. On ne doit donc jamais elaguer ni reconstruire
+    // l'URL ici : le comportement voulu est que le volet reste ouvert et que les
+    // reponses successives soient conservees. Elaguer refermait le volet des
+    // qu'on cliquait une autre reponse (il fallait relancer la simulation).
+    // (Auparavant on ne s'abstenait que si aucun resultat final n'etait affiche ;
+    // cette condition refermait le volet apres « Modifier » / sur recap.)
     const qcBloc = document.getElementById("qc-bloc");
-    const resultatFinal =
-      document.querySelector(".result-col") ||
-      (form && form.hasAttribute("data-miroir-url-actif"));
-    if (qcBloc && qcBloc.contains(target) && !resultatFinal) return;
+    if (qcBloc && qcBloc.contains(target)) return;
 
     // Sinon : un champ (cascade AMONT, ou reponse QC recap) a change alors
     // qu'un resultat / une QC est affiche -> on invalide le rendu serveur et on
