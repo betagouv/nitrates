@@ -18,6 +18,7 @@ from envergo.nitrates.matrice import (
     parse_borne,
     questions_rencontrees,
     segments_depuis_regimes,
+    zonages_rencontres,
 )
 from envergo.nitrates.views_admin_matrice import DATES_DEFAUT_COUVERT
 from envergo.nitrates.yaml_tree import load_referentiels, select_active_trees
@@ -567,3 +568,109 @@ def test_cle_affichage_ignore_ponctuation_et_ordre():
     # Un nombre de choix différent reste une question distincte.
     c = {**a, "choix": a["choix"] + [{"valeur": "z", "libelle": "Sans objet"}]}
     assert cle_affichage(a) != cle_affichage(c)
+
+
+# ─── Déclinaisons de culture + zonages SIG forçables ───────────────────────
+
+
+def test_branche_expose_ses_declinaisons():
+    """« Autres cultures » regroupe vignes, vergers, maraîchères… : la
+    représentante seule masquerait les vignes, que les PAR distinguent."""
+    autres = next(c for c in lignes_cultures() if c["id"] == "autres_cultures")
+    ids = {v["id"] for v in autres["variantes"]}
+    assert len(ids) > 1
+    assert "cultures_perennes_vignes" in ids
+    for variante in autres["variantes"]:
+        assert variante["contexte"]["sous_culture_form"] == variante["id"]
+        assert variante["label"], "chaque déclinaison doit être nommée"
+
+
+def test_zonages_rencontres_listes_pour_forcage():
+    cellules = construire_matrice(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="autres_cultures",
+        referentiels=load_referentiels(),
+        dates={},
+        variante="cultures_perennes_vignes",
+    )
+    # L'arbre régional n'est pas toujours actif dans la base de test : on
+    # vérifie le contrat (liste de champs dédoublonnée), pas sa longueur.
+    zonages = zonages_rencontres(cellules)
+    assert zonages == sorted(set(zonages))
+
+
+def test_vignes_en_zone_atteignent_leurs_propres_regles():
+    """Cœur du besoin : sans forçage du zonage, la règle vigne du PAR Grand
+    Est est inatteignable et la matrice retombe sur le national."""
+    commun = dict(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="autres_cultures",
+        referentiels=load_referentiels(),
+        dates={},
+        variante="cultures_perennes_vignes",
+    )
+    zonages = zonages_rencontres(construire_matrice(**commun))
+    if not zonages:
+        pytest.skip("aucun arbre régional actif : pas de zonage à forcer")
+    zonage = zonages[0]
+    hors = construire_matrice(**commun)
+    dans = construire_matrice(**commun, reponses={zonage: True})
+
+    def _feuille(cellules, ligne):
+        c = next(x for x in cellules if x.ligne_id == ligne)
+        return c.chemin[-1] if c.chemin else None
+
+    for ligne in ("type_II", "type_III"):
+        assert _feuille(hors, ligne) != _feuille(dans, ligne)
+        assert "vigne" in _feuille(dans, ligne)
+
+
+def test_variante_change_le_resultat(client, django_user_model):
+    """Vignes et vergers partagent la branche mais pas les règles."""
+    user = django_user_model.objects.create_user(
+        email="staff-var@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    url = reverse("nitrates_admin_matrice_index")
+    params = {"territoire": "R44", "axe": "fertilisant", "valeur": "autres_cultures"}
+
+    reponse = client.get(url, params)
+    assert reponse.status_code == 200
+    zonages = reponse.context["zonages"]
+    if not zonages:
+        pytest.skip("aucun arbre régional actif : pas de zonage à forcer")
+    param_sig = zonages[0]["nom_param"]
+
+    def _segments(variante):
+        r = client.get(url, {**params, "variante": variante, param_sig: "1"})
+        cellule = next(c for c in r.context["cellules"] if c.ligne_id == "type_II")
+        return [(s["couleur"], round(s["width_pct"])) for s in cellule.segments]
+
+    assert _segments("cultures_perennes_vignes") != _segments(
+        "cultures_perennes_vergers"
+    )
+
+
+def test_zonage_non_coche_reste_hors_zone(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        email="staff-sig@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {
+            "territoire": "R44",
+            "axe": "fertilisant",
+            "valeur": "autres_cultures",
+            "variante": "cultures_perennes_vignes",
+        },
+    )
+    assert all(not z["actif"] for z in response.context["zonages"])
+    cellule = next(c for c in response.context["cellules"] if c.ligne_id == "type_II")
+    assert "vigne" not in (cellule.chemin[-1] if cellule.chemin else "")

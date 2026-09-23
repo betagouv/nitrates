@@ -15,6 +15,7 @@ from envergo.nitrates.matrice import (
     construire_matrice,
     lignes_cultures,
     questions_rencontrees,
+    zonages_rencontres,
 )
 from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.templatetags.nitrates_tags import _MOIS_PAIRES
@@ -84,6 +85,10 @@ DATES_DEFAUT_COUVERT = {
 # paramètres du formulaire (territoire, axe, valeur, dates…).
 PREFIXE_QC = "qc_"
 
+# Idem pour les zonages SIG forcés (« suis-je dans la zone X ? »). Préfixe
+# distinct de "zone_" car les champs d'arbre s'appellent déjà zone_grand_est_2.
+PREFIXE_SIG = "sig_"
+
 
 @staff_member_required
 def matrice_index(request):
@@ -107,6 +112,18 @@ def matrice_index(request):
     if valeur not in {o["id"] for o in options_valeur}:
         valeur = options_valeur[0]["id"] if options_valeur else ""
 
+    # Déclinaison dans la branche culturale (vignes, vergers, maïs…) : les PAR
+    # branchent dessus, la représentante par défaut masquerait les vignes.
+    branche_courante = (
+        next((c for c in cultures if c["id"] == valeur), None)
+        if axe == "fertilisant"
+        else None
+    )
+    variantes = (branche_courante or {}).get("variantes") or []
+    variante = request.GET.get("variante") or ""
+    if variante not in {v["id"] for v in variantes}:
+        variante = variantes[0]["id"] if variantes else ""
+
     dates = {c["id"]: (request.GET.get(c["id"]) or "").strip() for c in CHAMPS_DATES}
     # Défauts par branche de couvert : appliqués uniquement quand l'utilisateur
     # n'a pas encore touché au formulaire (champ absent de la query string). Un
@@ -127,6 +144,7 @@ def matrice_index(request):
 
     cellules = []
     questions = []
+    zonages = []
     erreur = ""
     if valeur:
         try:
@@ -138,11 +156,26 @@ def matrice_index(request):
                 "valeur_figee": valeur,
                 "referentiels": load_referentiels(),
                 "dates": dates,
+                "variante": variante,
             }
             # Passe 1 : sans réponse, pour découvrir les questions complémen-
             # taires du chemin et leurs choix possibles.
             cellules = construire_matrice(**base)
             questions = questions_rencontrees(cellules)
+
+            # Zonages SIG croisés par la cascade. Sans point géographique ils
+            # valent « hors zone » : on laisse l'utilisateur les activer, sinon
+            # les règles propres à une zone (vignes en zone Grand Est 2) sont
+            # inatteignables depuis la matrice.
+            zonages = [
+                {
+                    "champ": champ,
+                    "nom_param": PREFIXE_SIG + champ,
+                    "label": champ.replace("_", " ").capitalize(),
+                    "actif": request.GET.get(PREFIXE_SIG + champ) == "1",
+                }
+                for champ in zonages_rencontres(cellules)
+            ]
 
             # Passe 2 : si l'utilisateur a répondu à au moins une question, on
             # rejoue la cascade avec ses réponses. Les valeurs transitent en
@@ -153,6 +186,9 @@ def matrice_index(request):
             # réponse (« Non concerné » = non_concerne | Non | autre |
             # icpe_autre). On traduit via la table du groupe.
             reponses = {}
+            for zonage in zonages:
+                if zonage["actif"]:
+                    reponses[zonage["champ"]] = True
             for question in questions:
                 libelle = request.GET.get(PREFIXE_QC + question["champ"])
                 if libelle is None:
@@ -191,6 +227,19 @@ def matrice_index(request):
                 questions.extend(
                     q for q in apres.values() if cle_affichage(q) not in connus
                 )
+                # Activer un zonage ouvre des branches qui peuvent en croiser
+                # d'autres : on complète la liste sans perdre les cases cochées.
+                deja = {z["champ"] for z in zonages}
+                zonages.extend(
+                    {
+                        "champ": champ,
+                        "nom_param": PREFIXE_SIG + champ,
+                        "label": champ.replace("_", " ").capitalize(),
+                        "actif": request.GET.get(PREFIXE_SIG + champ) == "1",
+                    }
+                    for champ in zonages_rencontres(cellules)
+                    if champ not in deja
+                )
 
             # Le template ne sait pas concaténer : on prépare le nom du
             # paramètre GET et les options, identifiées par leur libellé (la
@@ -225,6 +274,9 @@ def matrice_index(request):
             "dates_par_defaut": dates_par_defaut,
             "questions": questions,
             "prefixe_qc": PREFIXE_QC,
+            "zonages": zonages,
+            "variantes": variantes,
+            "variante": variante,
             "cellules": cellules,
             "mois": _MOIS_PAIRES,
             "erreur": erreur,

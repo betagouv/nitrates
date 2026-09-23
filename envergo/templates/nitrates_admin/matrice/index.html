@@ -173,6 +173,20 @@
       white-space: nowrap;
     }
 
+    .matrice-zonage {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.15rem 0;
+      font-size: 0.82rem;
+    }
+
+    .matrice-zonage label {
+      margin-bottom: 0;
+      font-weight: 400;
+      white-space: normal;
+    }
+
     .matrice-dates-note {
       flex-basis: 100%;
       margin: 0.25rem 0 0;
@@ -527,6 +541,17 @@
         </select>
       </div>
 
+      {% if variantes|length > 1 %}
+        <div>
+          <label for="variante">Culture</label>
+          <select name="variante" id="variante">
+            {% for v in variantes %}
+              <option value="{{ v.id }}" {% if v.id == variante %}selected{% endif %}>{{ v.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
       <div class="matrice-dates{% if not dates_actives %} matrice-dates--inactives{% endif %}"
            {% if not dates_actives %}title="Aucune ligne couvert dans la matrice courante : les dates n'ont pas d'effet"{% endif %}>
         {% for c in champs_dates %}
@@ -548,6 +573,27 @@
           </p>
         {% endif %}
       </div>
+
+      {% if zonages %}
+        <div class="matrice-qc">
+          <p class="matrice-qc-titre">
+            Zonages
+            <span class="matrice-qc-aide">
+              sans point géographique, la matrice se place hors zone ; cochez pour voir les règles propres à la zone
+            </span>
+          </p>
+          {% for z in zonages %}
+            <div class="matrice-zonage">
+              <input type="checkbox"
+                     name="{{ z.nom_param }}"
+                     id="{{ z.nom_param }}"
+                     value="1"
+                     {% if z.actif %}checked{% endif %}>
+              <label for="{{ z.nom_param }}">{{ z.label }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       {% if questions %}
         <div class="matrice-qc">
@@ -738,6 +784,10 @@
     });
     form.querySelectorAll('select').forEach((sel) => {
       sel.addEventListener('change', () => form.submit());
+    });
+    // Zonages SIG : recalcul immediat au cochage.
+    form.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+      cb.addEventListener('change', () => form.submit());
     });
     // Dates : submit au change (blur / entrée) si format complet ou vide.
     form.querySelectorAll('input[type=text]').forEach((inp) => {

@@ -300,6 +300,8 @@ class Cellule:
     # Questions complémentaires rencontrées sur le chemin, forme structurée
     # (champ, texte, choix, valeur, par_defaut) — cf. questions_rencontrees.
     questions: list[dict] = field(default_factory=list)
+    # Zonages SIG rencontrés sur le chemin (forcés « hors zone » par défaut).
+    zonages: list[str] = field(default_factory=list)
 
 
 def _defaut_question(question) -> tuple[object, str] | None:
@@ -340,6 +342,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
     # Forme structurée des mêmes hypothèses, pour que la vue puisse les rendre
     # comme des contrôles rejouables (cf. questions_rencontrees).
     questions_vues: list[dict] = []
+    zonages_vus: list[str] = []
     restants = list(candidats)
     par_scope = {a.scope: a for a in candidats}
     noeud_depart = None
@@ -354,6 +357,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "resultat": None,
                     "hypotheses": hypotheses,
                     "questions": questions_vues,
+                    "zonages": zonages_vus,
                     "arbre_name": "",
                     "detail": dernier_no_match or "cascade épuisée",
                 }
@@ -375,6 +379,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "resultat": None,
                     "hypotheses": hypotheses,
                     "questions": questions_vues,
+                    "zonages": zonages_vus,
                     "arbre_name": candidat.name,
                     "detail": f"renvoi vers scope '{res.scope_cible}' sans arbre actif",
                 }
@@ -390,8 +395,14 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
             # Pas de géo dans la matrice : défaut « hors zone » (False),
             # tracé comme hypothèse. Si la branche False n'existe pas,
             # le tour suivant lèvera un ParcoursError -> no-match cascade.
-            contexte[res.champ] = False
-            hypotheses.append(f"{res.champ} : hors zone (défaut SIG)")
+            # L'utilisateur peut forcer le zonage (cf. zonages_rencontres) :
+            # certaines règles n'existent QUE dans une zone (vignes en zone
+            # Grand Est 2) et resteraient invisibles sinon.
+            if res.champ not in zonages_vus:
+                zonages_vus.append(res.champ)
+            if contexte.get(res.champ) is None:
+                contexte[res.champ] = False
+                hypotheses.append(f"{res.champ} : hors zone (défaut SIG)")
             depart = None
             continue
 
@@ -435,6 +446,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "resultat": None,
                     "hypotheses": hypotheses,
                     "questions": questions_vues,
+                    "zonages": zonages_vus,
                     "arbre_name": candidat.name,
                     "detail": "question complémentaire sans défaut possible",
                 }
@@ -447,6 +459,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                 "resultat": res,
                 "hypotheses": hypotheses,
                 "questions": questions_vues,
+                "zonages": zonages_vus,
                 "arbre_name": candidat.name,
                 "detail": "",
             }
@@ -534,6 +547,11 @@ LIGNES_FERTILISANTS = [
 ]
 
 
+def _libelle_culture(culture) -> str:
+    """Libellé lisible d'une culture (fallback sur l'identifiant)."""
+    return culture.libelle_public or culture.identifiant.replace("_", " ").capitalize()
+
+
 def lignes_cultures() -> list[dict]:
     """Une ligne par branche culturale active, avec une Culture représentative
     (de préférence sans champs_prefill, pour rester sur le cas générique) qui
@@ -564,6 +582,26 @@ def lignes_cultures() -> list[dict]:
                 "label": branche.libelle_court.capitalize(),
                 "contexte": contexte,
                 "occupation_sol": representative.occupation_sol,
+                # Déclinaisons de la branche : « Autres cultures » regroupe
+                # vignes, vergers, maraîchères… que les PAR distinguent (le
+                # PAR Grand Est a des feuilles vigne dédiées en types II/III).
+                # La vue en fait un sélecteur ; sans lui on ne verrait que la
+                # représentante et les vignes seraient invisibles.
+                "variantes": [
+                    {
+                        "id": c.identifiant,
+                        "label": _libelle_culture(c),
+                        "contexte": {
+                            "occupation_sol": c.occupation_sol,
+                            "sous_culture": branche.identifiant,
+                            "sous_culture_form": c.identifiant,
+                            **(c.champs_prefill or {}),
+                        },
+                    }
+                    for c in sorted(
+                        cultures, key=lambda c: (c.ordre_affichage, c.identifiant)
+                    )
+                ],
             }
         )
     return lignes
@@ -601,6 +639,21 @@ def _normaliser_texte(texte: str) -> str:
     """Texte réduit à ses mots, minuscules : deux rédactions qui ne diffèrent
     que par la ponctuation ou les espaces désignent la même question."""
     return " ".join(re.sub(r"[^\w\s]", " ", texte or "").lower().split())
+
+
+def zonages_rencontres(cellules: list[Cellule]) -> list[str]:
+    """Zonages SIG croisés par la cascade, dédoublonnés et ordonnés.
+
+    La matrice n'a pas de point géographique : ces zonages valent « hors
+    zone » par défaut. Or certaines règles n'existent QUE dans une zone (les
+    vignes en zone Grand Est 2, types II et III), invisibles sans forçage.
+    """
+    vus: list[str] = []
+    for cellule in cellules:
+        for champ in cellule.zonages:
+            if champ not in vus:
+                vus.append(champ)
+    return sorted(vus)
 
 
 def cle_affichage(question: dict) -> tuple:
@@ -716,6 +769,7 @@ def construire_matrice(
     referentiels: dict,
     dates: dict[str, str] | None = None,
     reponses: dict | None = None,
+    variante: str = "",
 ) -> list[Cellule]:
     """Construit les cellules de la matrice : une par ligne de l'axe variable.
 
@@ -735,6 +789,12 @@ def construire_matrice(
 
     if axe == "fertilisant":
         fixe = next((c for c in cultures if c["id"] == valeur_figee), None)
+        # Déclinaison choisie dans la branche (vignes, vergers, maïs…) : elle
+        # remplace la représentante par défaut, car les PAR branchent dessus.
+        if fixe is not None and variante:
+            choisie = next((v for v in fixe["variantes"] if v["id"] == variante), None)
+            if choisie is not None:
+                fixe = {**fixe, "contexte": choisie["contexte"]}
         lignes = [
             {"id": f["id"], "label": f["label"], "contexte": f["contexte"]}
             for f in LIGNES_FERTILISANTS
@@ -773,6 +833,7 @@ def construire_matrice(
             statut=issue["statut"],
             hypotheses=issue["hypotheses"],
             questions=issue.get("questions") or [],
+            zonages=issue.get("zonages") or [],
             arbre_name=issue["arbre_name"],
             detail=issue["detail"],
         )
