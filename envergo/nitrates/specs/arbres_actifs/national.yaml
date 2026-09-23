@@ -271,7 +271,7 @@ arbre:
                             - au: brunissement_des_soies
                               du: 15/07
                               regime: autorisation_sous_condition
-                            code_prescription: pc5
+                            inputs_requis: []
                           valeur: mais
                           libelle: Maïs
                         - regle:
@@ -280,7 +280,7 @@ arbre:
                             periodes:
                             - au: 15/02
                               du: 15/07
-                            code_prescription: pc5
+                            inputs_requis: []
                           valeur: autre
                           libelle: Autre culture irriguée
                         type_noeud: formulaire
@@ -335,10 +335,10 @@ arbre:
                     id: r_prairie_plus_6_type_I
                     type: interdiction
                     periodes:
-                    - du: 15/12
-                      au: 15/01
-                    code_prescription: pc16
+                    - au: 15/01
+                      du: 15/12
                     inputs_requis: []
+                    code_prescription: pc16
                   valeur: type_I
                   libelle: Type I (Ia ou Ib)
                 - noeud:
@@ -785,20 +785,7 @@ arbre:
                         - au: 15/01
                           du: 15/12
                           regime: interdiction
-                        composant: calendrier_dynamique_couvert
-                        inputs_requis:
-                        - id: date_semis_couvert
-                          type: date
-                          label: Date de semis du couvert
-                          label_court: semis
-                          placeholder: 15/08
-                        - id: date_destruction_couvert
-                          max: 31/12
-                          type: date
-                          label: Date de destruction prévue du couvert
-                          label_court: destruction
-                          placeholder: 01/11
-                        texte_condition: Autorisation dans les conditions de la note 1. Sinon interdiction du 15/12 au 15/01.
+                        inputs_requis: []
                         code_prescription: pc13
                       valeur: icpe_a
                       libelle: Oui, plan d'épandage ICPE soumis à autorisation
@@ -2559,13 +2546,22 @@ arbre:
                 texte: Quel type de fertilisant est utilisé ?
                 niveau: type_fertilisant
                 branches:
-                - valeur: type_0
-                  renvoi_vers: r_cie_courte_types_0_I_II
+                - regle:
+                    id: r_couvert_sous_culture_cie_courte_fertilisant_type_0
+                    type: autorisation_sous_condition
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                      regime: autorisation_sous_condition
+                    inputs_requis: []
+                    code_prescription: pc15
+                  valeur: type_0
+                  libelle: Type_0
                 - valeur: type_I
                   libelle: Type I (Ia ou Ib)
-                  renvoi_vers: r_cie_courte_types_0_I_II
+                  renvoi_vers: r_couvert_sous_culture_cie_courte_fertilisant_type_0
                 - valeur: type_II
-                  renvoi_vers: r_cie_courte_types_0_I_II
+                  renvoi_vers: r_couvert_sous_culture_cie_courte_fertilisant_type_0
                 - regle:
                     id: r_cie_courte_type_III
                     type: calculatrice
@@ -2596,13 +2592,23 @@ arbre:
                 texte: Quel type de fertilisant est utilisé ?
                 niveau: type_fertilisant
                 branches:
-                - valeur: type_0
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                - regle:
+                    id: r_couvert_sous_culture_cine_courte_fertilisant_type_0
+                    type: autorisation_sous_condition
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                      regime: autorisation_sous_condition
+                    inputs_requis: []
+                    code_prescription: pc13
+                  valeur: type_0
+                  libelle: Type_0
                 - valeur: type_I
-                  libelle: Type I (Ia ou Ib)
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                  libelle: Type_I
+                  renvoi_vers: r_couvert_sous_culture_cine_courte_fertilisant_type_0
                 - valeur: type_II
-                  renvoi_vers: r_cine_courte_types_0_I_II
+                  libelle: Type_II
+                  renvoi_vers: r_couvert_sous_culture_cine_courte_fertilisant_type_0
                 - regle:
                     id: r_cine_courte_type_III
                     type: interdiction
@@ -2627,15 +2633,3 @@ metadata:
   statut: brouillon - migré depuis SVG Miro 28/04 (grammaire v2 inchangée)
   version: 0.4.0-draft
   derniere_maj: '2026-04-28'
-regles_partagees:
-- regle:
-    id: r_cine_courte_types_0_I_II
-    type: autorisation_sous_condition
-    message: Couvert d'interculture courte non exporté, types 0, I (Ia ou Ib) ou II.
-    texte_condition: Apport autorisé.
-- regle:
-    id: r_cie_courte_types_0_I_II
-    type: autorisation_sous_condition
-    message: Couvert d'interculture courte exporté (dérobée, CIVE), types 0, I (Ia ou Ib) ou II.
-    code_prescription: pc15
-    texte_condition: Apport autorisé selon les conditions du PAR.

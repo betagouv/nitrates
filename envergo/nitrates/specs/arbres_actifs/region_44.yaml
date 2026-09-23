@@ -143,6 +143,9 @@ arbre:
                             - au: 31/01
                               du: 01/10
                               regime: interdiction
+                            - au: 01/10
+                              du: date_semis_couvert-15jours
+                              regime: autorisation_sous_condition
                             composant: calendrier_dynamique_couvert
                             inputs_requis:
                             - id: date_semis_couvert
@@ -150,6 +153,7 @@ arbre:
                               label: Date de semis
                               label_court: semis
                               placeholder: 25/08
+                            code_prescription: pc_ge
                           valeur: hors_prairie_automne
                           libelle: Autre culture d'hiver (hors prairie de moins de 6 mois implantée à l'automne)
                           expression: sous_culture_form != 'prairie_moins_6_mois_automne'
@@ -180,14 +184,14 @@ arbre:
                     - regle:
                         id: r_colza_type_II_digestats
                         type: calculatrice
-                        texte: Interdit avant 15 jours avant le semis puis du 01/10 au 01/02
+                        texte: Interdit avant 15 jours avant le semis puis du 15/10 au 01/02
                         periodes:
                         - au: date_semis_colza-15jours
                           du: 01/07
                           regime: interdiction
                           condition: 01/07 < date_semis_colza-15jours
                         - au: 01/02
-                          du: 01/10
+                          du: 15/10
                           regime: interdiction
                         composant: calendrier_dynamique_couvert
                         inputs_requis:
@@ -444,7 +448,7 @@ arbre:
                         type_noeud: formulaire
                       valeur: Vigne
                       libelle: Vigne
-                      expression: sous_culture_form=='cultures_perennes_vergers_vignes'
+                      expression: sous_culture_form=='cultures_perennes_vignes'
                     type_noeud: catalogue_parametre
                   valeur: true
                   libelle: en_zge2
@@ -1091,58 +1095,96 @@ arbre:
               libelle: Cie_avant_3112
               renvoi_vers: q_cine_avant_3112
             - noeud:
-                id: n_cie_courte
-                champ: exporte_ou_non
+                id: q_cine_courte
+                aide: ''
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
                 branches:
                 - noeud:
-                    id: q_cie_courte_exporte_ou_pas
-                    champ: type_fertilisant
-                    texte: Quel type de fertilisant est utilisé ?
-                    niveau: type_fertilisant
+                    id: n_sous_culture_2_cine_courte_type_ii
+                    champ: Resolution digestats
                     branches:
-                    - noeud:
-                        id: n_cie_courte_exporte_ou_pas_type_II
-                        champ: q_type_fertilisant_cie_courte_par_digestats
-                        branches:
-                        - regle:
-                            id: r_cie_courte_exporte_ou_pas_type_II_digestats
-                            type: calculatrice
-                            periodes:
-                            - au: date_semis_couvert-15jours
-                              du: 01/07
-                              regime: interdiction
-                            - au: 30/06
-                              du: date_destruction_couvert-20jours
-                              regime: interdiction
-                            - au: 30/06
-                              du: 15/10
-                              regime: interdiction
-                            composant: calendrier_dynamique_couvert
-                            inputs_requis:
-                            - id: date_semis_couvert
-                              type: date
-                              label: Date de semis du couvert
-                              label_court: semis
-                              placeholder: 15/08
-                            - id: date_destruction_couvert
-                              type: date
-                              label: Date de destruction du couvert
-                              label_court: destruction
-                              placeholder: 01/11
-                            code_prescription: pc15
-                          valeur: Digestats
-                          libelle: Digestats
-                          expression: categorie_fertilisant == 'digestats'
-                        type_noeud: catalogue_parametre
-                      valeur: type_II
-                      libelle: Type_II
-                    type_noeud: formulaire
-                  valeur: exporte ou pas
-                  libelle: exporte ou pas
-                  expression: sous_culture_form in('couvert_courte_recolte','couvert_courte_non_recolte')
-                type_noeud: catalogue_parametre
+                    - regle:
+                        id: r_cine_courte_sous_culture_2_cine_courte_type_ii_digestats
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                        - au: 30/06
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                        - au: 30/06
+                          du: 15/10
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription: pc13
+                      valeur: Digestats
+                      libelle: 'True'
+                      expression: categorie_fertilisant == 'digestats'
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type_II
+                type_noeud: formulaire
+              valeur: cine_courte
+              libelle: Cine_courte
+            - noeud:
+                id: q_cie_courte
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: n_sous_culture_2_cie_courte_type_ii
+                    champ: Resolution digestats
+                    branches:
+                    - regle:
+                        id: r_cie_courte_sous_culture_2_cie_courte_type_ii_digestats
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                        - au: 30/06
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                        - au: 30/06
+                          du: 15/10
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          type: date
+                          label: Date de destruction du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        code_prescription: pc15
+                      valeur: Digestats
+                      libelle: Digestats
+                      expression: categorie_fertilisant == 'digestats'
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type_II
+                type_noeud: formulaire
               valeur: cie_courte
-              libelle: Couvert d'interculture courte
+              libelle: Cie_courte
             type_noeud: formulaire
           valeur: couvert_intercultures
           libelle: Couvert végétal d'interculture
