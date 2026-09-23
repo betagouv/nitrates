@@ -11,6 +11,7 @@ from django.shortcuts import render
 
 from envergo.nitrates.matrice import (
     LIGNES_FERTILISANTS,
+    cle_affichage,
     construire_matrice,
     lignes_cultures,
     questions_rencontrees,
@@ -51,11 +52,6 @@ CHAMPS_DATES = [
 #   *_avant_3112 = couvert détruit AVANT le 31/12 (« plus en place après 3112 »)
 #   *_apres_0101 = couvert encore en place APRÈS le 01/01
 #   *_courte     = interculture courte (implantation et destruction rapprochées)
-# Préfixe des paramètres GET portant les réponses aux questions complémen-
-# taires, pour qu'un champ d'arbre ne puisse pas entrer en collision avec les
-# paramètres du formulaire (territoire, axe, valeur, dates…).
-PREFIXE_QC = "qc_"
-
 DATES_DEFAUT_COUVERT = {
     "cie_avant_3112": {
         "date_semis_couvert": "15/08",
@@ -82,6 +78,11 @@ DATES_DEFAUT_COUVERT = {
         "date_destruction_couvert": "15/09",
     },
 }
+
+# Préfixe des paramètres GET portant les réponses aux questions complémen-
+# taires, pour qu'un champ d'arbre ne puisse pas entrer en collision avec les
+# paramètres du formulaire (territoire, axe, valeur, dates…).
+PREFIXE_QC = "qc_"
 
 
 @staff_member_required
@@ -147,49 +148,57 @@ def matrice_index(request):
             # rejoue la cascade avec ses réponses. Les valeurs transitent en
             # texte dans l'URL : on les recolle sur le choix d'origine pour
             # retrouver leur type réel (True/False/str).
+            # Les réponses transitent par LIBELLÉ, pas par valeur : un même
+            # contrôle pilote plusieurs champs qui codent différemment la même
+            # réponse (« Non concerné » = non_concerne | Non | autre |
+            # icpe_autre). On traduit via la table du groupe.
             reponses = {}
             for question in questions:
-                brut = request.GET.get(PREFIXE_QC + question["champ"])
-                if brut is None:
+                libelle = request.GET.get(PREFIXE_QC + question["champ"])
+                if libelle is None:
                     continue
-                for choix in question["choix"]:
-                    if str(choix["valeur"]) == brut:
-                        reponses[question["champ"]] = choix["valeur"]
-                        break
+                par_champ = question["valeurs_par_libelle"].get(libelle)
+                if not par_champ:
+                    continue  # libellé inconnu (URL forgée) : on ignore
+                reponses.update(par_champ)
             if reponses:
                 cellules = construire_matrice(**base, reponses=reponses)
-                # Une question répondue peut ne plus être rencontrée (la
-                # réponse change le chemin, donc les QC suivantes). On garde
-                # néanmoins le contrôle affiché, sinon l'utilisateur ne peut
-                # plus revenir sur son choix : on fusionne les deux passes.
-                apres = {q["champ"]: q for q in questions_rencontrees(cellules)}
-                fusion = []
+                # La LISTE des contrôles reste celle de la passe 1 : une fois
+                # répondue, une question n'est plus « rencontrée » (elle est
+                # pré-résolue) et disparaîtrait de l'écran, empêchant de
+                # revenir sur son choix. On se contente de reporter les
+                # réponses de l'utilisateur sur les contrôles déjà connus.
+                apres = {cle_affichage(q): q for q in questions_rencontrees(cellules)}
                 for question in questions:
-                    champ = question["champ"]
-                    if champ in apres:
-                        fusion.append(apres.pop(champ))
-                    elif champ in reponses:
-                        question["valeur"] = reponses[champ]
+                    choisi = request.GET.get(PREFIXE_QC + question["champ"])
+                    if choisi and choisi in question["valeurs_par_libelle"]:
+                        question["libelle_retenu"] = choisi
                         question["par_defaut"] = False
-                        # Plus sur aucun chemin : la réponse a fermé la branche
-                        # qui posait la question. On l'affiche sans portée.
+                    # Portée réactualisée : une question que la nouvelle
+                    # cascade ne croise plus n'a plus d'effet sur la matrice.
+                    apres_q = apres.get(cle_affichage(question))
+                    if apres_q is not None:
+                        question["lignes"] = apres_q["lignes"]
+                    elif not question["par_defaut"]:
                         question["lignes"] = []
-                        fusion.append(question)
-                fusion.extend(apres.values())
-                questions = fusion
+                # Une question qui n'apparaît QUE dans la nouvelle cascade
+                # (branche ouverte par la réponse) est ajoutée à la suite. On
+                # dédoublonne sur le seul libellé de la question : la branche
+                # nouvellement ouverte peut reposer la même question avec des
+                # intitulés de choix légèrement différents, ce qui afficherait
+                # deux fois le même contrôle.
+                connus = {cle_affichage(q) for q in questions}
+                questions.extend(
+                    q for q in apres.values() if cle_affichage(q) not in connus
+                )
 
             # Le template ne sait pas concaténer : on prépare le nom du
-            # paramètre GET et la forme texte de chaque choix (pour comparer
-            # avec la valeur retenue et cocher la bonne option).
+            # paramètre GET et les options, identifiées par leur libellé (la
+            # valeur technique diffère d'un champ à l'autre du groupe).
             for question in questions:
                 question["nom_param"] = PREFIXE_QC + question["champ"]
-                question["valeur_str"] = str(question["valeur"])
                 question["choix_rendus"] = [
-                    {
-                        "valeur_str": str(choix["valeur"]),
-                        "libelle": choix.get("libelle") or str(choix["valeur"]),
-                    }
-                    for choix in question["choix"]
+                    {"libelle": libelle} for libelle in question["valeurs_par_libelle"]
                 ]
         except DecisionTree.DoesNotExist:
             erreur = "Aucun arbre actif (PAN manquant ?) : charger les arbres."

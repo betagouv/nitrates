@@ -113,17 +113,48 @@
       color: #666;
     }
 
+    /* Grille 2 colonnes : le libelle (elastique, tronque a 2 lignes) et le
+       select (largeur fixe, aligne a droite). Certains libelles d'arbre font
+       300+ caracteres : sans bornage, le select se retrouvait noye au milieu
+       du texte. Le libelle complet reste lisible au survol (title). */
     .matrice-qc-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.35rem;
+      display: grid;
+      grid-template-columns: 1fr 14rem;
+      align-items: start;
+      gap: 0.5rem 1rem;
+      padding: 0.4rem 0;
+      border-top: 1px solid #edeff3;
       font-size: 0.82rem;
     }
 
+    .matrice-qc-item:first-of-type {
+      border-top: 0;
+    }
+
     .matrice-qc-item label {
-      flex: 1;
-      max-width: 60ch;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0;
+      font-weight: 400;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    /* Colonne droite : badge de portee au-dessus du select, tous deux cales
+       a droite pour que les selects s'alignent verticalement. */
+    .matrice-qc-reponse {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.2rem;
+    }
+
+    .matrice-qc-item select {
+      width: 100%;
+      height: 1.9rem;
+      font-size: 0.82rem;
     }
 
     /* Une question laissee au defaut est grisee : elle signale une hypothese,
@@ -133,7 +164,7 @@
     }
 
     .matrice-qc-portee {
-      margin-left: 0.4rem;
+      display: inline-block;
       padding: 0 0.3rem;
       border-radius: 3px;
       background: #eef1f6;
@@ -526,21 +557,21 @@
           </p>
           {% for q in questions %}
             <div class="matrice-qc-item{% if q.par_defaut %} matrice-qc-item--defaut{% endif %}">
-              <label for="{{ q.nom_param }}">
-                {{ q.texte }}
+              <label for="{{ q.nom_param }}" title="{{ q.texte }}">{{ q.texte }}</label>
+              <div class="matrice-qc-reponse">
                 {% if q.lignes %}
                   <span class="matrice-qc-portee">{{ q.lignes|length }} ligne{{ q.lignes|length|pluralize }}</span>
                 {% else %}
                   <span class="matrice-qc-portee"
                         title="Votre réponse a fermé la branche qui posait cette question">sans effet</span>
                 {% endif %}
-              </label>
-              <select name="{{ q.nom_param }}" id="{{ q.nom_param }}">
-                {% for c in q.choix_rendus %}
-                  <option value="{{ c.valeur_str }}"
-                          {% if c.valeur_str == q.valeur_str %}selected{% endif %}>{{ c.libelle }}</option>
-                {% endfor %}
-              </select>
+                <select name="{{ q.nom_param }}" id="{{ q.nom_param }}">
+                  {% for c in q.choix_rendus %}
+                    <option value="{{ c.libelle }}"
+                            {% if c.libelle == q.libelle_retenu %}selected{% endif %}>{{ c.libelle }}</option>
+                  {% endfor %}
+                </select>
+              </div>
             </div>
           {% endfor %}
         </div>

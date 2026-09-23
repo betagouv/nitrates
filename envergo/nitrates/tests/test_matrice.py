@@ -10,6 +10,7 @@ from django.urls import reverse
 
 from envergo.nitrates.matrice import (
     LIGNES_FERTILISANTS,
+    cle_affichage,
     compute_regime_par_jour,
     construire_matrice,
     evaluer_combinaison,
@@ -384,13 +385,14 @@ def test_questions_rencontrees_dedoublonne_par_champ():
         dates=dict(DATES_DEFAUT_COUVERT["cine_avant_3112"]),
     )
     questions = questions_rencontrees(cellules)
-    champs = [q["champ"] for q in questions]
-    assert len(champs) == len(set(champs)), "un champ ne doit apparaître qu'une fois"
-    assert "plan_epandage" in champs
-    plan = next(q for q in questions if q["champ"] == "plan_epandage")
+    textes = [q["texte"] for q in questions]
+    assert len(textes) == len(
+        set(textes)
+    ), "une question ne doit s'afficher qu'une fois"
+    plan = next(q for q in questions if "plan d'épandage ICPE" in q["texte"])
     assert plan["par_defaut"] is True
     assert plan["lignes"], "la question doit porter sur au moins une ligne"
-    assert {str(c["valeur"]) for c in plan["choix"]} >= {"icpe_a", "non_concerne"}
+    assert plan["libelle_retenu"] == "Non concerné"
 
 
 def test_reponse_explicite_change_la_feuille_atteinte():
@@ -428,10 +430,22 @@ def test_vue_expose_les_questions_et_rejoue_la_reponse(client, django_user_model
     champs = {q["champ"] for q in defaut.context["questions"]}
     assert "plan_epandage" in champs
 
-    force = client.get(url, {**params, "qc_plan_epandage": "icpe_a"})
+    # Libellé lu dans l'arbre actif (il varie d'une version à l'autre) : on
+    # prend la première réponse qui n'est pas celle retenue par défaut.
+    plan_defaut = next(
+        q for q in defaut.context["questions"] if "plan d'épandage ICPE" in q["texte"]
+    )
+    libelle = next(
+        lib
+        for lib in plan_defaut["valeurs_par_libelle"]
+        if lib != plan_defaut["libelle_retenu"]
+    )
+    force = client.get(url, {**params, "qc_plan_epandage": libelle})
     assert force.status_code == 200
-    plan = next(q for q in force.context["questions"] if q["champ"] == "plan_epandage")
-    assert plan["valeur"] == "icpe_a"
+    plan = next(
+        q for q in force.context["questions"] if "plan d'épandage ICPE" in q["texte"]
+    )
+    assert plan["libelle_retenu"] == libelle
     assert plan["par_defaut"] is False
 
 
@@ -449,11 +463,11 @@ def test_question_reste_affichee_meme_si_la_reponse_ferme_sa_branche(
             "territoire": "R44",
             "axe": "fertilisant",
             "valeur": "cine_avant_3112",
-            "qc_plan_epandage": "icpe_a",
+            "qc_plan_epandage": "Oui, plan d'épandage ICPE soumis à autorisation",
         },
     )
-    champs = {q["champ"] for q in response.context["questions"]}
-    assert "plan_epandage" in champs
+    textes = [q["texte"] for q in response.context["questions"]]
+    assert any("plan d'épandage ICPE" in t for t in textes)
 
 
 def test_reponse_inconnue_est_ignoree(client, django_user_model):
@@ -468,11 +482,88 @@ def test_reponse_inconnue_est_ignoree(client, django_user_model):
             "territoire": "R44",
             "axe": "fertilisant",
             "valeur": "cine_avant_3112",
-            "qc_plan_epandage": "valeur_qui_nexiste_pas",
+            "qc_plan_epandage": "libelle_qui_nexiste_pas",
         },
     )
     assert response.status_code == 200
     plan = next(
-        q for q in response.context["questions"] if q["champ"] == "plan_epandage"
+        q for q in response.context["questions"] if "plan d'épandage ICPE" in q["texte"]
     )
     assert plan["par_defaut"] is True
+
+
+def test_questions_identiques_sous_des_champs_differents_ne_sont_affichees_quune_fois():
+    """Non-régression : 3 champs (`fertilisant_iaa`, `icpe_ed`,
+    `pas_un_digestats`) posent le MÊME libellé, et « Non concerné » se code
+    différemment selon la branche (`non_concerne`/`Non`/`autre`/`icpe_autre`).
+    Grouper sur les identifiants techniques affichait le même contrôle 4 fois.
+    Les arbres sont écrits pour des humains : on regroupe sur ce qui est lu.
+    """
+    cellules = construire_matrice(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="cine_avant_3112",
+        referentiels=load_referentiels(),
+        dates=dict(DATES_DEFAUT_COUVERT["cine_avant_3112"]),
+    )
+    questions = questions_rencontrees(cellules)
+    textes = [q["texte"] for q in questions]
+    assert len(textes) == len(set(textes))
+
+    # Le nombre exact de champs dépend de l'arbre actif : on vérifie
+    # l'invariant (plusieurs champs regroupés sous UN contrôle), pas la donnée.
+    iaa = next(q for q in questions if "issu de traitement" in q["texte"])
+    assert len(iaa["champs"]) > 1, "les champs jumeaux doivent être regroupés"
+
+    plan = next(q for q in questions if "plan d'épandage ICPE" in q["texte"])
+    # Un seul contrôle, et « Non concerné » sait se traduire pour chaque champ.
+    assert len(plan["valeurs_par_libelle"]["Non concerné"]) >= 1
+
+
+def test_reponse_traduite_vers_le_codage_de_chaque_champ():
+    """Répondre « Non concerné » doit envoyer à chaque champ SA valeur."""
+    cellules = construire_matrice(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="cine_avant_3112",
+        referentiels=load_referentiels(),
+        dates=dict(DATES_DEFAUT_COUVERT["cine_avant_3112"]),
+    )
+    plan = next(
+        q
+        for q in questions_rencontrees(cellules)
+        if "plan d'épandage ICPE" in q["texte"]
+    )
+    # Le même libellé peut correspondre à des valeurs techniques distinctes.
+    valeurs = set(plan["valeurs_par_libelle"]["Non concerné"].values())
+    assert valeurs, "le libellé doit être traduisible"
+    assert all(isinstance(v, (str, bool)) for v in valeurs)
+
+
+def test_cle_affichage_ignore_ponctuation_et_ordre():
+    """Deux rédactions de la même question ne diffèrent parfois que d'une
+    virgule (« …animale ou, de la… » vs « …animale, ou de la… ») : elles ne
+    doivent pas produire deux contrôles."""
+    a = {
+        "texte": "Le fertilisant est-il issu d'IAA ou, de la distillation ?",
+        "choix": [
+            {"valeur": True, "libelle": "Oui"},
+            {"valeur": False, "libelle": "Non"},
+        ],
+    }
+    b = {
+        "texte": "Le fertilisant est-il issu d'IAA, ou de la distillation ?",
+        "choix": [
+            {"valeur": "autre", "libelle": "Non"},
+            {"valeur": "x", "libelle": "Oui"},
+        ],
+    }
+    assert cle_affichage(a) == cle_affichage(b)
+
+    # Un nombre de choix différent reste une question distincte.
+    c = {**a, "choix": a["choix"] + [{"valeur": "z", "libelle": "Sans objet"}]}
+    assert cle_affichage(a) != cle_affichage(c)

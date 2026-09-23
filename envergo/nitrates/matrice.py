@@ -593,6 +593,40 @@ def catalog_synthetique(region_code: str, en_zar: bool) -> dict:
     return catalog
 
 
+def _libelle_choix(choix: dict) -> str:
+    return choix.get("libelle") or str(choix["valeur"])
+
+
+def _normaliser_texte(texte: str) -> str:
+    """Texte réduit à ses mots, minuscules : deux rédactions qui ne diffèrent
+    que par la ponctuation ou les espaces désignent la même question."""
+    return " ".join(re.sub(r"[^\w\s]", " ", texte or "").lower().split())
+
+
+def cle_affichage(question: dict) -> tuple:
+    """Identité d'affichage d'une question : son libellé + l'ensemble trié des
+    libellés de ses choix.
+
+    On s'appuie sur ce qui est écrit POUR DES HUMAINS, pas sur les identifiants
+    techniques. Les arbres n'ont aucune obligation de partager un vocabulaire :
+    la même question « plan d'épandage ICPE ? » code « Non concerné » tantôt
+    `non_concerne`, tantôt `Non`, `autre` ou `icpe_autre` selon la branche, et
+    la question IAA existe sous trois noms de champ. Regrouper sur les valeurs
+    afficherait un contrôle identique 4 fois de suite.
+
+    Seul le NOMBRE de choix entre dans la clé, pas leurs libellés : une même
+    question reformule parfois ses réponses d'une branche à l'autre (« Oui,
+    plan d'épandage ICPE… » vs « Oui, plan d'épandage… »), ce qui afficherait
+    le contrôle en double. Le cardinal suffit à ne pas fusionner une question
+    binaire avec une question à trois branches.
+
+    Le texte est normalisé (ponctuation et espaces) car les rédactions varient
+    à la virgule près d'une branche à l'autre (« …animale ou, de la… » vs
+    « …animale, ou de la… ») sans changer la question posée.
+    """
+    return (_normaliser_texte(question["texte"]), len(question["choix"]))
+
+
 def questions_rencontrees(cellules: list[Cellule]) -> list[dict]:
     """Dédoublonne par champ les questions complémentaires vues sur l'ensemble
     des lignes, pour les offrir comme contrôles rejouables.
@@ -601,29 +635,70 @@ def questions_rencontrees(cellules: list[Cellule]) -> list[dict]:
     certaines d'entre elles (ex. la question ICPE ne concerne pas tous les
     types de fertilisant). On expose donc l'union, en indiquant sur combien de
     lignes chaque question pèse réellement.
+
+    Le regroupement se fait sur (texte, choix) et non sur le champ : plusieurs
+    branches posent littéralement la même question sous des noms de champ
+    différents (`fertilisant_iaa`, `icpe_ed`, `pas_un_digestats` partagent le
+    libellé IAA), ce qui afficherait 3 contrôles identiques. Un seul contrôle
+    pilote alors tous les champs du groupe. Les choix entrent dans la clé pour
+    ne JAMAIS fusionner deux questions de polarité opposée : `pas_un_digestats`
+    inverse l'ordre oui/non, répondre pour lui via un autre champ serait faux.
     """
-    par_champ: dict[str, dict] = {}
+    groupes: dict[tuple, dict] = {}
     for cellule in cellules:
         for q in cellule.questions:
-            entree = par_champ.get(q["champ"])
+            cle = cle_affichage(q)
+            entree = groupes.get(cle)
             if entree is None:
                 entree = {
                     "champ": q["champ"],
+                    "champs": [q["champ"]],
                     "texte": q["texte"],
                     "choix": q["choix"],
-                    "valeur": q["valeur"],
+                    # libellé -> {champ: valeur attendue par CE champ}. Les
+                    # branches ne codent pas « Non concerné » de la même
+                    # façon : c'est la table de traduction du groupe.
+                    "valeurs_par_libelle": {},
+                    "libelle_retenu": None,
                     "par_defaut": q["par_defaut"],
                     "lignes": [],
                 }
-                par_champ[q["champ"]] = entree
+                groupes[cle] = entree
+            elif q["champ"] not in entree["champs"]:
+                entree["champs"].append(q["champ"])
+                # Champ représentant stable (il nomme le paramètre GET) : le
+                # plus petit alphabétiquement, indépendamment de l'ordre de
+                # parcours des lignes.
+                entree["champ"] = min(entree["champs"])
+            for choix in q["choix"]:
+                # Indexé par (champ, ligne) : un même champ code parfois la
+                # même réponse différemment d'une ligne à l'autre (« Non
+                # concerné » = non_concerne | icpe_autre | autre | Non pour
+                # `plan_epandage`). Une valeur globale par champ serait
+                # invalide sur les autres lignes et casserait la cascade.
+                entree["valeurs_par_libelle"].setdefault(_libelle_choix(choix), {})[
+                    (q["champ"], cellule.ligne_id)
+                ] = choix["valeur"]
+            # Le libellé retenu identifie la réponse indépendamment du champ.
+            libelle_courant = next(
+                (
+                    _libelle_choix(c)
+                    for c in q["choix"]
+                    if c["valeur"] == q["valeur"]
+                    and type(c["valeur"]) is type(q["valeur"])
+                ),
+                None,
+            )
+            if entree["libelle_retenu"] is None:
+                entree["libelle_retenu"] = libelle_courant
             # Une réponse explicite de l'utilisateur prime sur un défaut vu
             # ailleurs : elle doit rester sélectionnée dans le formulaire.
             if not q["par_defaut"]:
-                entree["valeur"] = q["valeur"]
+                entree["libelle_retenu"] = libelle_courant
                 entree["par_defaut"] = False
             if cellule.ligne_label not in entree["lignes"]:
                 entree["lignes"].append(cellule.ligne_label)
-    return list(par_champ.values())
+    return list(groupes.values())
 
 
 def _est_plafond(code: str, referentiel_pc: dict) -> bool:
@@ -681,7 +756,16 @@ def construire_matrice(
         contexte.update(dates)
         # Réponses explicites aux questions complémentaires : elles court-
         # circuitent les défauts de _defaut_question pour la ligne concernée.
-        contexte.update(reponses or {})
+        # Clés acceptées : "champ" (valeur globale) ou ("champ", ligne_id)
+        # quand le codage de la réponse dépend de la ligne.
+        for cle_reponse, valeur_reponse in (reponses or {}).items():
+            if isinstance(cle_reponse, tuple):
+                champ_reponse, ligne_ciblee = cle_reponse
+                if ligne_ciblee != ligne["id"]:
+                    continue
+            else:
+                champ_reponse = cle_reponse
+            contexte[champ_reponse] = valeur_reponse
         issue = evaluer_combinaison(candidats, contexte)
         cellule = Cellule(
             ligne_id=ligne["id"],
