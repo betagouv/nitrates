@@ -93,6 +93,55 @@
       opacity: 0.45;
     }
 
+    .matrice-qc {
+      flex-basis: 100%;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #e1e4ea;
+    }
+
+    .matrice-qc-titre {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .matrice-qc-aide {
+      margin-left: 0.4rem;
+      font-weight: 400;
+      font-style: italic;
+      color: #666;
+    }
+
+    .matrice-qc-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+      font-size: 0.82rem;
+    }
+
+    .matrice-qc-item label {
+      flex: 1;
+      max-width: 60ch;
+    }
+
+    /* Une question laissee au defaut est grisee : elle signale une hypothese,
+       pas un choix assume par l'utilisateur. */
+    .matrice-qc-item--defaut label {
+      color: #666;
+    }
+
+    .matrice-qc-portee {
+      margin-left: 0.4rem;
+      padding: 0 0.3rem;
+      border-radius: 3px;
+      background: #eef1f6;
+      font-size: 0.72rem;
+      color: #555;
+      white-space: nowrap;
+    }
+
     .matrice-dates-note {
       flex-basis: 100%;
       margin: 0.25rem 0 0;
@@ -468,6 +517,34 @@
           </p>
         {% endif %}
       </div>
+
+      {% if questions %}
+        <div class="matrice-qc">
+          <p class="matrice-qc-titre">
+            Questions complémentaires
+            <span class="matrice-qc-aide">réponses prises par défaut ; changez-les pour recalculer la matrice</span>
+          </p>
+          {% for q in questions %}
+            <div class="matrice-qc-item{% if q.par_defaut %} matrice-qc-item--defaut{% endif %}">
+              <label for="{{ q.nom_param }}">
+                {{ q.texte }}
+                {% if q.lignes %}
+                  <span class="matrice-qc-portee">{{ q.lignes|length }} ligne{{ q.lignes|length|pluralize }}</span>
+                {% else %}
+                  <span class="matrice-qc-portee"
+                        title="Votre réponse a fermé la branche qui posait cette question">sans effet</span>
+                {% endif %}
+              </label>
+              <select name="{{ q.nom_param }}" id="{{ q.nom_param }}">
+                {% for c in q.choix_rendus %}
+                  <option value="{{ c.valeur_str }}"
+                          {% if c.valeur_str == q.valeur_str %}selected{% endif %}>{{ c.libelle }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
       <noscript>
         <button type="submit">Recalculer</button>

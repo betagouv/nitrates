@@ -15,6 +15,7 @@ from envergo.nitrates.matrice import (
     evaluer_combinaison,
     lignes_cultures,
     parse_borne,
+    questions_rencontrees,
     segments_depuis_regimes,
 )
 from envergo.nitrates.views_admin_matrice import DATES_DEFAUT_COUVERT
@@ -367,3 +368,111 @@ def test_defauts_rendent_les_calculatrices_non_plates(branche):
     for cellule in calculatrices:
         couleurs = {s["couleur"] for s in cellule.segments}
         assert couleurs != {"vert"}, f"{branche}/{cellule.ligne_id} est plate"
+
+
+# ─── Questions complémentaires rejouables ──────────────────────────────────
+
+
+def test_questions_rencontrees_dedoublonne_par_champ():
+    cellules = construire_matrice(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="cine_avant_3112",
+        referentiels=load_referentiels(),
+        dates=dict(DATES_DEFAUT_COUVERT["cine_avant_3112"]),
+    )
+    questions = questions_rencontrees(cellules)
+    champs = [q["champ"] for q in questions]
+    assert len(champs) == len(set(champs)), "un champ ne doit apparaître qu'une fois"
+    assert "plan_epandage" in champs
+    plan = next(q for q in questions if q["champ"] == "plan_epandage")
+    assert plan["par_defaut"] is True
+    assert plan["lignes"], "la question doit porter sur au moins une ligne"
+    assert {str(c["valeur"]) for c in plan["choix"]} >= {"icpe_a", "non_concerne"}
+
+
+def test_reponse_explicite_change_la_feuille_atteinte():
+    """Le cœur du besoin : répondre à une QC doit rejouer la cascade."""
+    commun = dict(
+        region_code="44",
+        en_zar=False,
+        en_zone_vulnerable=True,
+        axe="fertilisant",
+        valeur_figee="cine_avant_3112",
+        referentiels=load_referentiels(),
+        dates=dict(DATES_DEFAUT_COUVERT["cine_avant_3112"]),
+    )
+    defaut = construire_matrice(**commun)
+    force = construire_matrice(**commun, reponses={"plan_epandage": "icpe_a"})
+
+    def _ia(cellules):
+        return next(c for c in cellules if c.ligne_id == "type_Ia")
+
+    assert _ia(defaut).chemin[-1] != _ia(force).chemin[-1]
+    # La réponse explicite n'est plus une hypothèse.
+    assert len(_ia(force).hypotheses) < len(_ia(defaut).hypotheses)
+
+
+def test_vue_expose_les_questions_et_rejoue_la_reponse(client, django_user_model):
+    user = django_user_model.objects.create_user(
+        email="staff-qc@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    url = reverse("nitrates_admin_matrice_index")
+    params = {"territoire": "R44", "axe": "fertilisant", "valeur": "cine_avant_3112"}
+
+    defaut = client.get(url, params)
+    assert defaut.status_code == 200
+    champs = {q["champ"] for q in defaut.context["questions"]}
+    assert "plan_epandage" in champs
+
+    force = client.get(url, {**params, "qc_plan_epandage": "icpe_a"})
+    assert force.status_code == 200
+    plan = next(q for q in force.context["questions"] if q["champ"] == "plan_epandage")
+    assert plan["valeur"] == "icpe_a"
+    assert plan["par_defaut"] is False
+
+
+def test_question_reste_affichee_meme_si_la_reponse_ferme_sa_branche(
+    client, django_user_model
+):
+    """Sans ça, l'utilisateur ne pourrait pas revenir sur son choix."""
+    user = django_user_model.objects.create_user(
+        email="staff-qc2@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {
+            "territoire": "R44",
+            "axe": "fertilisant",
+            "valeur": "cine_avant_3112",
+            "qc_plan_epandage": "icpe_a",
+        },
+    )
+    champs = {q["champ"] for q in response.context["questions"]}
+    assert "plan_epandage" in champs
+
+
+def test_reponse_inconnue_est_ignoree(client, django_user_model):
+    """Une valeur forgée dans l'URL ne doit pas entrer dans le contexte."""
+    user = django_user_model.objects.create_user(
+        email="staff-qc3@example.org", password="x", is_staff=True, name="Staff"
+    )
+    client.force_login(user)
+    response = client.get(
+        reverse("nitrates_admin_matrice_index"),
+        {
+            "territoire": "R44",
+            "axe": "fertilisant",
+            "valeur": "cine_avant_3112",
+            "qc_plan_epandage": "valeur_qui_nexiste_pas",
+        },
+    )
+    assert response.status_code == 200
+    plan = next(
+        q for q in response.context["questions"] if q["champ"] == "plan_epandage"
+    )
+    assert plan["par_defaut"] is True

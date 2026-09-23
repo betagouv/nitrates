@@ -297,6 +297,9 @@ class Cellule:
     # True si au moins une borne de période référence une date saisie
     # (date_semis_*, date_destruction_*) : la cellule réagit aux inputs dates.
     depend_dates: bool = False
+    # Questions complémentaires rencontrées sur le chemin, forme structurée
+    # (champ, texte, choix, valeur, par_defaut) — cf. questions_rencontrees.
+    questions: list[dict] = field(default_factory=list)
 
 
 def _defaut_question(question) -> tuple[object, str] | None:
@@ -334,6 +337,9 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
     arbre_name, detail}."""
     contexte = dict(contexte_initial)
     hypotheses: list[str] = []
+    # Forme structurée des mêmes hypothèses, pour que la vue puisse les rendre
+    # comme des contrôles rejouables (cf. questions_rencontrees).
+    questions_vues: list[dict] = []
     restants = list(candidats)
     par_scope = {a.scope: a for a in candidats}
     noeud_depart = None
@@ -347,6 +353,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "statut": "non_disponible",
                     "resultat": None,
                     "hypotheses": hypotheses,
+                    "questions": questions_vues,
                     "arbre_name": "",
                     "detail": dernier_no_match or "cascade épuisée",
                 }
@@ -367,6 +374,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "statut": "non_disponible",
                     "resultat": None,
                     "hypotheses": hypotheses,
+                    "questions": questions_vues,
                     "arbre_name": candidat.name,
                     "detail": f"renvoi vers scope '{res.scope_cible}' sans arbre actif",
                 }
@@ -390,9 +398,31 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
         if isinstance(res, QuestionsSubsidiaires):
             progression = False
             for q in res.questions:
-                if contexte.get(q.champ) is not None:
-                    continue
+                # On trace la question meme si elle est deja repondue : la vue
+                # a besoin de connaitre TOUTES les QC du chemin pour offrir le
+                # choix, pas seulement celles laissees au defaut.
+                deja_repondue = contexte.get(q.champ) is not None
                 defaut = _defaut_question(q)
+                questions_vues.append(
+                    {
+                        "champ": q.champ,
+                        "texte": q.texte,
+                        "choix": list(q.choix or []),
+                        "valeur": (
+                            contexte.get(q.champ)
+                            if deja_repondue
+                            else (defaut[0] if defaut else None)
+                        ),
+                        "par_defaut": not deja_repondue,
+                    }
+                )
+                if deja_repondue:
+                    # Le contexte porte deja la reponse : le parcours avancera
+                    # au prochain tour. C'est une progression, sinon une QC
+                    # entierement renseignee par l'utilisateur ferait basculer
+                    # la cellule en "non_disponible" a tort.
+                    progression = True
+                    continue
                 if defaut is None:
                     continue
                 valeur, libelle = defaut
@@ -404,6 +434,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                     "statut": "non_disponible",
                     "resultat": None,
                     "hypotheses": hypotheses,
+                    "questions": questions_vues,
                     "arbre_name": candidat.name,
                     "detail": "question complémentaire sans défaut possible",
                 }
@@ -415,6 +446,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
                 "statut": "ok",
                 "resultat": res,
                 "hypotheses": hypotheses,
+                "questions": questions_vues,
                 "arbre_name": candidat.name,
                 "detail": "",
             }
@@ -423,6 +455,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
             "statut": "non_disponible",
             "resultat": None,
             "hypotheses": hypotheses,
+            "questions": questions_vues,
             "arbre_name": candidat.name,
             "detail": f"retour de parcours inattendu : {type(res).__name__}",
         }
@@ -431,6 +464,7 @@ def evaluer_combinaison(candidats, contexte_initial: dict) -> dict:
         "statut": "non_disponible",
         "resultat": None,
         "hypotheses": hypotheses,
+        "questions": questions_vues,
         "arbre_name": "",
         "detail": "boucle de cascade (garde-fou)",
     }
@@ -559,6 +593,39 @@ def catalog_synthetique(region_code: str, en_zar: bool) -> dict:
     return catalog
 
 
+def questions_rencontrees(cellules: list[Cellule]) -> list[dict]:
+    """Dédoublonne par champ les questions complémentaires vues sur l'ensemble
+    des lignes, pour les offrir comme contrôles rejouables.
+
+    Chaque ligne emprunte son propre chemin : une QC peut n'apparaître que sur
+    certaines d'entre elles (ex. la question ICPE ne concerne pas tous les
+    types de fertilisant). On expose donc l'union, en indiquant sur combien de
+    lignes chaque question pèse réellement.
+    """
+    par_champ: dict[str, dict] = {}
+    for cellule in cellules:
+        for q in cellule.questions:
+            entree = par_champ.get(q["champ"])
+            if entree is None:
+                entree = {
+                    "champ": q["champ"],
+                    "texte": q["texte"],
+                    "choix": q["choix"],
+                    "valeur": q["valeur"],
+                    "par_defaut": q["par_defaut"],
+                    "lignes": [],
+                }
+                par_champ[q["champ"]] = entree
+            # Une réponse explicite de l'utilisateur prime sur un défaut vu
+            # ailleurs : elle doit rester sélectionnée dans le formulaire.
+            if not q["par_defaut"]:
+                entree["valeur"] = q["valeur"]
+                entree["par_defaut"] = False
+            if cellule.ligne_label not in entree["lignes"]:
+                entree["lignes"].append(cellule.ligne_label)
+    return list(par_champ.values())
+
+
 def _est_plafond(code: str, referentiel_pc: dict) -> bool:
     data = referentiel_pc.get(str(code))
     return bool(data.get("plafond")) if isinstance(data, dict) else False
@@ -573,6 +640,7 @@ def construire_matrice(
     valeur_figee: str,
     referentiels: dict,
     dates: dict[str, str] | None = None,
+    reponses: dict | None = None,
 ) -> list[Cellule]:
     """Construit les cellules de la matrice : une par ligne de l'axe variable.
 
@@ -611,12 +679,16 @@ def construire_matrice(
         contexte.update(fixe["contexte"])
         contexte.update(ligne["contexte"])
         contexte.update(dates)
+        # Réponses explicites aux questions complémentaires : elles court-
+        # circuitent les défauts de _defaut_question pour la ligne concernée.
+        contexte.update(reponses or {})
         issue = evaluer_combinaison(candidats, contexte)
         cellule = Cellule(
             ligne_id=ligne["id"],
             ligne_label=ligne["label"],
             statut=issue["statut"],
             hypotheses=issue["hypotheses"],
+            questions=issue.get("questions") or [],
             arbre_name=issue["arbre_name"],
             detail=issue["detail"],
         )
