@@ -13,6 +13,7 @@ from envergo.nitrates.views import (
     ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_matrice import matrice_index
 from envergo.nitrates.views_admin_nuclei import nuclei_index, nuclei_report
 from envergo.nitrates.views_admin_ouverture import (
     ouverture_index,
@@ -347,6 +348,12 @@ urlpatterns = [
         "admin/nitrates/validation/<int:pk>/edit-meta/",
         validation_edit_meta,
         name="nitrates_admin_validation_edit_meta",
+    ),
+    # Matrice des calendriers d'épandage (playground admin).
+    path(
+        "admin/nitrates/matrice/",
+        matrice_index,
+        name="nitrates_admin_matrice_index",
     ),
     # Bornage géographique du simulateur (carte #57).
     path(
