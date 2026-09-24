@@ -66,6 +66,26 @@ test.describe('Carte #531', () => {
     await expect(page.locator('#nitrates-map')).toBeFocused();
   });
 
+  test('clavier : les polygones ZV / ZAR ne sont pas des arrêts de Tab', async ({ page }) => {
+    const legende = page.locator('.leaflet-control-layers');
+    await legende.getByLabel('Zones vulnérables nitrates').check();
+    await legende.getByLabel("Zones d'action renforcée (ZAR)").check();
+    await expect
+      .poll(() => page.locator('.leaflet-overlay-pane path').count(), { timeout: 15000 })
+      .toBeGreaterThan(0);
+    await page.locator('#nitrates-map').focus();
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab');
+      const tag = await page.evaluate(() => document.activeElement!.tagName.toLowerCase());
+      expect(tag).not.toBe('path');
+    }
+  });
+
+  test('un clic sur la carte lui donne le focus clavier', async ({ page }) => {
+    await page.locator('#nitrates-map').click({ position: { x: 200, y: 200 } });
+    await expect(page.locator('#nitrates-map')).toBeFocused();
+  });
+
   test('clavier : zoom et déplacement quand la carte a le focus', async ({ page }) => {
     const etat = () =>
       page.evaluate(() => {

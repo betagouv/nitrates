@@ -299,6 +299,18 @@
   //   "png"
   // );
 
+  // #531 a11y : Leaflet pose un listener « focus » sur chaque polygone a
+  // info-bulle (ZV, ZAR), ce qui suffit a Chrome pour rendre le <path> SVG
+  // tabulable : des centaines d'arrets de Tab sans interet, qui noient la
+  // legende et la carte. tabindex=-1 explicite a chaque rendu (le <path> est
+  // recree quand la couche est re-cochee).
+  function horsTabulation(layer) {
+    layer.on("add", () => {
+      const el = layer.getElement && layer.getElement();
+      if (el) el.setAttribute("tabindex", "-1");
+    });
+  }
+
   const zvLayer = L.geoJSON(null, {
     style: (feature) => {
       const bassin = (feature.properties || {}).bassin;
@@ -311,6 +323,7 @@
       };
     },
     onEachFeature: (feature, layer) => {
+      horsTabulation(layer);
       const p = feature.properties || {};
       layer.bindTooltip(`${p.nom || "ZV"} (bassin ${p.bassin || "?"})`, {
         sticky: true,
@@ -345,6 +358,7 @@
       fillOpacity: 0.6,
     }),
     onEachFeature: (feature, layer) => {
+      horsTabulation(layer);
       const p = feature.properties || {};
       const titre = p.nom_complet || p.nom || "ZAR";
       layer.bindTooltip(`${titre}${p.departement ? " (" + p.departement + ")" : ""}`, {
@@ -519,6 +533,12 @@
       "Entrée pour choisir le point au centre de la carte. " +
       "Tab pour choisir les couches affichées."
   );
+  // Un clic / glisser sur la carte (y compris sur une zone ZV/ZAR) lui donne
+  // le focus : on enchaine ensuite fleches / + / - sans chercher la carte au Tab.
+  mapEl.addEventListener("pointerup", (e) => {
+    if (e.target.closest(".leaflet-control")) return;
+    mapEl.focus({ preventScroll: true });
+  });
   mapEl.addEventListener("keydown", (e) => {
     if (e.target !== mapEl || !prefs) return;
     const action = prefs.actionClavier(e);
