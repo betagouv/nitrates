@@ -51,12 +51,14 @@ test.describe('Carte #531', () => {
     expect(await couchesCochees(page)).toEqual(['Plan IGN', 'Zones vulnérables nitrates']);
   });
 
-  test('clavier : Tab depuis la carte mène à la légende, Entrée coche, Échap revient', async ({
+  test('clavier : Tab depuis la carte mène au plein écran puis à la légende, Entrée coche, Échap revient', async ({
     page,
   }) => {
     await page.locator('#map-search').focus();
     await page.keyboard.press('Tab');
     await expect(page.locator('#nitrates-map')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Afficher la carte en plein écran' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(page.locator('.leaflet-control-layers-base input:checked')).toBeFocused();
     await page.keyboard.press('Tab');
@@ -98,5 +100,73 @@ test.describe('Carte #531', () => {
     await expect.poll(async () => (await etat()).z).toBe(avant.z + 1);
     await page.keyboard.press('ArrowRight');
     await expect.poll(async () => (await etat()).lng).toBeGreaterThan(avant.lng);
+  });
+
+  test('vue par défaut : France entière', async ({ page }) => {
+    const v = await page.evaluate(() => {
+      const m = (window as any).nitratesMap;
+      return { z: m.getZoom(), lat: m.getCenter().lat, lng: m.getCenter().lng };
+    });
+    expect(v.z).toBe(6);
+    expect(v.lat).toBeCloseTo(46.6, 0);
+    expect(v.lng).toBeCloseTo(2.45, 0);
+  });
+
+  test('plein écran : le bouton bascule dans les deux sens', async ({ page }) => {
+    const carte = page.locator('#nitrates-map');
+    await page.getByRole('button', { name: 'Afficher la carte en plein écran' }).click();
+    await expect(page.getByRole('button', { name: 'Quitter le plein écran (Échap)' })).toBeVisible();
+    await page.getByRole('button', { name: 'Quitter le plein écran (Échap)' }).click();
+    await expect(page.getByRole('button', { name: 'Afficher la carte en plein écran' })).toBeVisible();
+    expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+    await expect(carte).not.toHaveClass(/nitrates-map--plein-ecran/);
+  });
+
+  test('plein écran (repli sans API) : Entrée ouvre, Échap ferme, Tab hors carte ferme', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Element.prototype, 'requestFullscreen', { value: undefined });
+    });
+    await page.reload();
+    const carte = page.locator('#nitrates-map');
+    const bouton = page.locator('.nitrates-map-plein-ecran button');
+    await bouton.focus();
+    await page.keyboard.press('Enter');
+    await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
+    await expect(bouton).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(carte).not.toHaveClass(/nitrates-map--plein-ecran/);
+    // Réouvre puis sort du cadre au Tab (après la légende) : le plein écran se ferme.
+    await page.keyboard.press('Enter');
+    await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Tab');
+      if (!(await page.evaluate(() => document.getElementById('nitrates-map')!.contains(document.activeElement)))) break;
+    }
+    await expect(carte).not.toHaveClass(/nitrates-map--plein-ecran/);
+  });
+
+  test('Entrée sur la carte : on reste sur la carte, sans défilement', async ({ page }) => {
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.96, 4.36], 13, { animate: false }));
+    await page.locator('#nitrates-map').focus();
+    // Le focus fait défiler en douceur (scroll-behavior DSFR) : on attend la fin.
+    await page.waitForTimeout(1000);
+    const avant = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#form-after-localisation')).toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#nitrates-map')).toBeFocused();
+    expect(await page.evaluate(() => window.scrollY)).toBe(avant);
+  });
+
+  test('clic souris sur la carte : le Tab suivant mène à la 1re question', async ({ page }) => {
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.96, 4.36], 13, { animate: false }));
+    await page.locator('#nitrates-map').click({ position: { x: 300, y: 250 } });
+    await expect(page.locator('#form-after-localisation')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.nitrates-depart-tab')).toBeFocused();
+    await page.keyboard.press('Tab');
+    const nom = await page.evaluate(() => (document.activeElement as HTMLInputElement).name);
+    expect(nom).toBe('cflow_destination');
   });
 });

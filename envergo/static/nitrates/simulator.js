@@ -7,8 +7,9 @@
 (function () {
   "use strict";
 
-  const INITIAL_CENTER = [48.96, 4.36];
-  const INITIAL_ZOOM = 8;
+  // #531 : vue par defaut centree France (echelle ~100 km), plus Grand Est.
+  const INITIAL_CENTER = [46.6, 2.45];
+  const INITIAL_ZOOM = 6;
 
   const ZV_COLORS_BY_BASSIN = {
     FRA: "#e7a854",
@@ -48,6 +49,45 @@
       },
       { once: true }
     );
+  }
+
+  // #531 : place le point de depart de la navigation au Tab juste avant la 1re
+  // question visible, SANS deplacer la vue ni activer de radio (focus sur son
+  // fieldset, rendu focusable le temps de ce focus). Pas en plein ecran : sortir
+  // le focus de la carte en fermerait le plein ecran.
+  // Les radios du flow culture/couvert (#272) sont rendus juste APRES
+  // l'evenement form-revealed (jusqu'a ~5 s sur un serveur lent) : on reessaie.
+  function poserDepartTabFormulaire(essai) {
+    essai = typeof essai === "number" ? essai : 0;
+    if (mapEl.classList.contains("nitrates-map--plein-ecran") || document.fullscreenElement) {
+      return;
+    }
+    // L'utilisateur a deja repris la main ailleurs : on ne lui vole pas le focus.
+    if (document.activeElement !== mapEl && document.activeElement !== document.body) {
+      return;
+    }
+    const zone = document.getElementById("form-after-localisation");
+    if (!zone) return;
+    const radio = Array.from(zone.querySelectorAll('input[type="radio"]')).find(
+      (r) => r.offsetParent !== null && !r.disabled
+    );
+    if (!radio) {
+      if (essai < 50) setTimeout(() => poserDepartTabFormulaire(essai + 1), 100);
+      return;
+    }
+    const bloc =
+      radio.closest("fieldset, .fr-fieldset, [role='radiogroup']") || radio.parentElement;
+    bloc.setAttribute("tabindex", "-1");
+    bloc.classList.add("nitrates-depart-tab");
+    bloc.addEventListener(
+      "blur",
+      () => {
+        bloc.removeAttribute("tabindex");
+        bloc.classList.remove("nitrates-depart-tab");
+      },
+      { once: true }
+    );
+    bloc.focus({ preventScroll: true });
   }
 
   function revealFormAfterLocalisation() {
@@ -473,6 +513,103 @@
     )
     .addTo(map);
 
+  // #531 : plein ecran. Bouton sous le zoom, 1er arret de Tab apres la carte.
+  // API Fullscreen si dispo (Echap natif du navigateur), sinon repli CSS
+  // (iPhone) avec Echap gere ici. Jamais enferme : bouton toujours visible,
+  // Echap sort, et sortir du cadre carte au Tab quitte aussi le plein ecran.
+  const ICONE_PLEIN_ECRAN =
+    '<svg aria-hidden="true" focusable="false" viewBox="0 0 49 49" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M39.6277 10.7278L31.0208 19.3347L29.6066 17.9204L38.2135 9.31354L30.6277 9.31354L30.6277 7.31384H41.6274V18.3136L39.6277 18.3136V10.7278Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M38.3997 39.6276L29.7928 31.0207L31.207 29.6065L39.8139 38.2134L39.8139 30.6276L41.8136 30.6276L41.8136 41.6273L30.8138 41.6273L30.8138 39.6276L38.3997 39.6276Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M9.49958 38.3997L18.1065 29.7928L19.5207 31.207L10.9138 39.8139L18.4996 39.8139L18.4996 41.8136L7.49988 41.8136L7.49988 30.8138L9.49958 30.8138L9.49958 38.3997Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M10.7276 9.49958L19.3345 18.1065L17.9203 19.5207L9.31342 10.9138L9.31342 18.4996L7.31372 18.4996V7.49988H18.3135L18.3135 9.49958H10.7276Z" fill="currentColor"/>' +
+    "</svg>";
+  const ICONE_QUITTER_PLEIN_ECRAN =
+    '<svg aria-hidden="true" focusable="false" viewBox="0 0 49 49" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M32.3134 15.2134L40.9203 6.60651L42.3346 8.02072L33.7276 16.6276L41.3135 16.6276L41.3135 18.6273L30.3137 18.6273L30.3137 7.62757L32.3134 7.62757L32.3134 15.2134Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M33.9138 32.3135L42.5207 40.9204L41.1065 42.3347L32.4996 33.7278L32.4996 41.3136L30.4999 41.3136L30.4999 30.3138L41.4996 30.3138L41.4996 32.3135L33.9138 32.3135Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M16.8139 33.9138L8.20699 42.5207L6.79277 41.1065L15.3997 32.4996L7.81384 32.4996L7.81384 30.4999H18.8136V41.4996L16.8139 41.4996V33.9138Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M15.2135 16.8139L6.60661 8.207L8.02083 6.79278L16.6277 15.3997L16.6277 7.81384L18.6274 7.81384V18.8136H7.62767L7.62767 16.8139H15.2135Z" fill="currentColor"/>' +
+    "</svg>";
+
+  const pleinEcran = (function () {
+    const CLASSE_REPLI = "nitrates-map--plein-ecran";
+    let bouton = null;
+
+    function natif() {
+      return document.fullscreenElement === mapEl;
+    }
+    function actif() {
+      return natif() || mapEl.classList.contains(CLASSE_REPLI);
+    }
+    function majBouton() {
+      if (!bouton) return;
+      const on = actif();
+      bouton.innerHTML = on ? ICONE_QUITTER_PLEIN_ECRAN : ICONE_PLEIN_ECRAN;
+      const label = on
+        ? "Quitter le plein écran (Échap)"
+        : "Afficher la carte en plein écran";
+      bouton.setAttribute("aria-label", label);
+      bouton.setAttribute("title", label);
+      bouton.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    function apresBascule() {
+      majBouton();
+      map.invalidateSize();
+    }
+    function repli(on) {
+      mapEl.classList.toggle(CLASSE_REPLI, on);
+      document.documentElement.classList.toggle("nitrates-plein-ecran-ouvert", on);
+      apresBascule();
+    }
+    function entrer() {
+      if (mapEl.requestFullscreen && document.fullscreenEnabled) {
+        mapEl.requestFullscreen().catch(() => repli(true));
+      } else {
+        repli(true);
+      }
+    }
+    function sortir() {
+      if (natif()) document.exitFullscreen();
+      else repli(false);
+    }
+
+    const Controle = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd: function () {
+        const conteneur = L.DomUtil.create(
+          "div",
+          "leaflet-bar nitrates-map-plein-ecran"
+        );
+        bouton = L.DomUtil.create("button", "", conteneur);
+        bouton.type = "button";
+        majBouton();
+        L.DomEvent.disableClickPropagation(conteneur);
+        L.DomEvent.on(bouton, "click", () => (actif() ? sortir() : entrer()));
+        return conteneur;
+      },
+    });
+    new Controle().addTo(map);
+
+    document.addEventListener("fullscreenchange", apresBascule);
+    // Repli CSS : Echap n'est pas gere par le navigateur, on s'en charge.
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && actif() && !natif()) {
+        e.preventDefault();
+        repli(false);
+      }
+    });
+    // Tab hors de la carte en plein ecran : on n'y reste pas coince derriere
+    // un cadre qui masque la page, on sort du plein ecran.
+    mapEl.addEventListener("focusout", (e) => {
+      if (actif() && e.relatedTarget && !mapEl.contains(e.relatedTarget)) {
+        sortir();
+      }
+    });
+
+    return { actif: actif };
+  })();
+
   // #531 : echelle metrique en bas a gauche, pour situer la maille des couches.
   L.control.scale({ position: "bottomleft", imperial: false }).addTo(map);
 
@@ -498,8 +635,9 @@
       toggle.setAttribute("aria-label", "Couches de la carte");
     }
     container.addEventListener("keydown", (e) => {
-      // Echap : retour sur la carte (pour zoomer / se deplacer / pointer).
-      if (e.key === "Escape") {
+      // Echap : retour sur la carte (pour zoomer / se deplacer / pointer). En
+      // plein ecran, Echap en sort (gere plus bas), on ne l'intercepte pas.
+      if (e.key === "Escape" && !pleinEcran.actif()) {
         e.preventDefault();
         mapEl.focus();
         return;
@@ -549,7 +687,8 @@
     } else if (action.type === "zoom") {
       map.setZoom(map.getZoom() + action.delta);
     } else if (action.type === "pointer") {
-      focusFormulaireApresRevelation();
+      // Au clavier, on reste sur la carte (pas de saut vers le formulaire) :
+      // l'utilisateur peut affiner son point, puis Tab pour continuer.
       // originalEvent : c'est un vrai pointage utilisateur (compte en analytics).
       map.fire("click", { latlng: map.getCenter(), originalEvent: e });
     }
@@ -755,16 +894,20 @@
     : null;
   let locLoadingTimer = null;
 
-  function demarrerChargementLoc() {
+  function demarrerChargementLoc(defiler) {
     if (!locLoadingEl || !locFillEl) return;
     clearInterval(locLoadingTimer);
     locLoadingEl.hidden = false;
-    // Le panneau est SOUS la carte : si l'utilisateur a la carte plein ecran il
-    // ne le verrait pas. On l'amene dans le viewport pour que le chargement soit
-    // visible (Carte #154). block:"nearest" -> ne bouge que si necessaire.
-    requestAnimationFrame(() => {
-      locLoadingEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
+    // #531 : pas de defilement quand on pointe au clavier (Entree) ni en plein
+    // ecran : la carte, qui garde le focus, sortirait de la vue.
+    if (defiler) {
+      // Le panneau est SOUS la carte : si l'utilisateur a la carte plein ecran
+      // il ne le verrait pas. On l'amene dans le viewport pour que le
+      // chargement soit visible (Carte #154).
+      requestAnimationFrame(() => {
+        locLoadingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
     let pct = 0;
     locFillEl.style.width = "0%";
     // Approche asymptotique : a chaque tick on comble une fraction du chemin
@@ -795,12 +938,21 @@
     if (e.originalEvent) {
       document.dispatchEvent(new CustomEvent("nitrates:point-carte"));
     }
+    // #531 : point choisi a la souris -> le Tab suivant mene a la 1re question
+    // (et non a la legende). Au clavier (Entree), on reste sur la carte.
+    if (e.originalEvent && !(e.originalEvent instanceof KeyboardEvent)) {
+      document.addEventListener("nitrates:form-revealed", poserDepartTabFormulaire, {
+        once: true,
+      });
+    }
 
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
 
-    demarrerChargementLoc();
+    demarrerChargementLoc(
+      !(e.originalEvent instanceof KeyboardEvent) && !pleinEcran.actif()
+    );
 
     // Carte #57 : on NE devoile PAS le formulaire immediatement. On attend
     // la reponse localisation (DebugView) qui indique si le simulateur est

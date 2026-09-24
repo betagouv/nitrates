@@ -1383,3 +1383,62 @@ body.drawer-open {
   pointer-events: none;
   z-index: 1000;
 }
+
+/* #531 : point de depart du Tab apres un clic carte (focus programmatique,
+   pas un element interactif) : pas d'anneau. */
+.nitrates-depart-tab:focus {
+  outline: none;
+}
+
+/* #531 : bouton plein ecran, sous le zoom. Bien visible (fond blanc, icone
+   contrastee, 36px) et anneau de focus net. */
+.nitrates-map-plein-ecran button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: #fff;
+  color: #161616;
+  cursor: pointer;
+}
+
+.nitrates-map-plein-ecran button:hover {
+  background: #f4f4f4;
+}
+
+.nitrates-map-plein-ecran button:focus-visible {
+  outline: 3px solid #0a76f6;
+  outline-offset: 2px;
+}
+
+.nitrates-map-plein-ecran svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Plein ecran natif (API Fullscreen) et repli CSS (iPhone). Selecteurs par id :
+   home.css fixe la hauteur via #nitrates-map.nitrates-map. */
+#nitrates-map:fullscreen {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+#nitrates-map.nitrates-map--plein-ecran {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+}
+
+html.nitrates-plein-ecran-ouvert,
+html.nitrates-plein-ecran-ouvert body {
+  overflow: hidden;
+}
