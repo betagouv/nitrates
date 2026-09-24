@@ -218,6 +218,8 @@
   // dans les radios du formulaire, et "Entree sur la carte" ne faisait rien.
   // La carte s'opere a la souris / via la recherche : on la sort donc de
   // l'ordre de tabulation et on libere les fleches pour les radios.
+  // #531 : la carte redevient focusable, mais avec notre propre handler clavier
+  // qui n'agit que si le focus est sur la carte (cf. plus bas).
   const map = L.map(mapEl, {
     attributionControl: false,
     keyboard: false,
@@ -252,8 +254,8 @@
   const planLayer = wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png");
   const photoLayer = wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg");
   // Carte #193 : fond par defaut = Photo aerienne (ortho), pas le Plan IGN
-  // (choix maquette : plus parlant pour reperer sa parcelle).
-  photoLayer.addTo(map);
+  // (choix maquette : plus parlant pour reperer sa parcelle). Ajoute plus bas,
+  // apres lecture des couches memorisees (#531).
 
   // Cadastre IGN (parcellaire express) : layer principal pour
   // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
@@ -263,7 +265,6 @@
     "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
     "png"
   );
-  cadastreOverlay.addTo(map);
 
   // RPG (Registre Parcellaire Graphique) : desactive en MVP (retour
   // juriste 0.0.1 : la donnee correcte pour la zone d'activation est
@@ -300,7 +301,11 @@
     zvLoaded = true;
     fetch(window.NITRATES_ZV_GEOJSON_URL)
       .then((r) => r.json())
-      .then((data) => zvLayer.addData(data))
+      .then((data) => {
+        zvLayer.addData(data);
+        // ZV chargee apres la ZAR (couches restaurees, #531) : garder la ZAR devant.
+        if (map.hasLayer(zarLayer)) zarLayer.bringToFront();
+      })
       .catch((err) => console.error("ZV GeoJSON load failed:", err));
   }
   zvLayer.on("add", loadZvIfNeeded);
@@ -344,7 +349,41 @@
     if (zarLoaded) zarLayer.bringToFront();
   });
 
-  L.control
+  // #531 : couches memorisees (localStorage) sinon reglage par defaut #193 :
+  // photo aerienne + cadastre, ZV et ZAR decochees.
+  const fonds = { plan: planLayer, photo: photoLayer };
+  const surcouches = { cadastre: cadastreOverlay, zv: zvLayer, zar: zarLayer };
+  const prefs = window.NitratesCartePrefs;
+  let storage = null;
+  try {
+    storage = window.localStorage;
+  } catch (e) {
+    storage = null;
+  }
+  const couches = (prefs &&
+    prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) || {
+    base: "photo",
+    surcouches: ["cadastre"],
+  };
+  fonds[couches.base].addTo(map);
+  // Ordre fixe (cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
+  Object.keys(surcouches).forEach((k) => {
+    if (couches.surcouches.includes(k)) surcouches[k].addTo(map);
+  });
+
+  function memoriserCouches() {
+    if (!prefs) return;
+    const base = Object.keys(fonds).find((k) => map.hasLayer(fonds[k]));
+    prefs.ecrireCouches(storage, {
+      base: base || "photo",
+      surcouches: Object.keys(surcouches).filter((k) =>
+        map.hasLayer(surcouches[k])
+      ),
+    });
+  }
+  map.on("baselayerchange overlayadd overlayremove", memoriserCouches);
+
+  const layersControl = L.control
     .layers(
       {
         "Plan IGN": planLayer,
@@ -359,8 +398,56 @@
     )
     .addTo(map);
 
-  // Carte #193 : ZAR DECOCHEE par defaut (l'utilisateur peut l'activer via la
-  // tickbox). On ne fait donc plus zarLayer.addTo(map) au chargement.
+  // #531 a11y : la legende Leaflet est une suite de cases sans nom de groupe,
+  // et Entree ne coche pas une case (seul Espace le fait nativement). On nomme
+  // les 2 groupes et on fait agir Entree comme Espace.
+  (function rendreLegendeAccessible() {
+    const container = layersControl.getContainer();
+    const groupes = [
+      [".leaflet-control-layers-base", "Fond de carte"],
+      [".leaflet-control-layers-overlays", "Couches affichées sur la carte"],
+    ];
+    groupes.forEach(([sel, label]) => {
+      const el = container.querySelector(sel);
+      if (!el) return;
+      el.setAttribute("role", "group");
+      el.setAttribute("aria-label", label);
+    });
+    container.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const input = e.target;
+      if (!input.classList || !input.classList.contains("leaflet-control-layers-selector")) {
+        return;
+      }
+      e.preventDefault();
+      if (input.type === "checkbox" || !input.checked) input.click();
+    });
+  })();
+
+  // #531 a11y bonus : carte pilotable au clavier. Le handler natif Leaflet
+  // reste coupe (keyboard: false, cf. #154) ; on rend le conteneur focusable
+  // et on ne reagit qu'aux touches tapees AVEC le focus sur la carte elle-meme.
+  mapEl.setAttribute("tabindex", "0");
+  mapEl.setAttribute("role", "application");
+  mapEl.setAttribute(
+    "aria-label",
+    "Carte. Flèches pour se déplacer, plus et moins pour zoomer, " +
+      "Entrée pour choisir le point au centre de la carte."
+  );
+  mapEl.addEventListener("keydown", (e) => {
+    if (e.target !== mapEl || !prefs) return;
+    const action = prefs.actionClavier(e);
+    if (!action) return;
+    e.preventDefault();
+    if (action.type === "pan") {
+      map.panBy([action.dx, action.dy]);
+    } else if (action.type === "zoom") {
+      map.setZoom(map.getZoom() + action.delta);
+    } else if (action.type === "pointer") {
+      // originalEvent : c'est un vrai pointage utilisateur (compte en analytics).
+      map.fire("click", { latlng: map.getCenter(), originalEvent: e });
+    }
+  });
 
   let marker = null;
 

@@ -1361,3 +1361,25 @@ body.drawer-open {
 [data-fr-theme="dark"] .drawer-conditions__panel {
   background: var(--background-default-grey, #1e1e1e);
 }
+
+/* #531 a11y : carte focusable au clavier. Anneau de focus + reticule au centre
+   (Entree pointe le centre de la carte). */
+.nitrates-map:focus-visible {
+  outline: 3px solid var(--border-active-blue-france, #0a76f6);
+  outline-offset: 2px;
+}
+
+.nitrates-map:focus-visible::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #000;
+  pointer-events: none;
+  z-index: 1000;
+}
