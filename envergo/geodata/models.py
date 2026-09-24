@@ -88,6 +88,24 @@ class Map(models.Model):
         blank=True,
     )
     created_at = models.DateTimeField(_("Date created"), default=timezone.now)
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : versioning des couches SIG
+    # nitrates. Plusieurs millesimes d'une meme couche (meme `name`)
+    # coexistent en base ; un seul est actif. Permet de basculer/rollbacker
+    # un millesime sans jamais detruire les zones de l'ancien.
+    version = models.CharField(
+        "Millésime de la couche",
+        max_length=32,
+        blank=True,
+        help_text="Ex. « 2026 ». Vide = couche historique non versionnée.",
+    )
+    is_active = models.BooleanField(
+        "Millésime actif ?",
+        default=True,
+        help_text=(
+            "Un seul millésime actif par (name, map_type). Les requêtes "
+            "métier ne voient que les couches actives."
+        ),
+    )
     expected_geometries = models.IntegerField(
         "Nb de formes (zones ou lignes) attendues", default=0
     )
@@ -112,6 +130,8 @@ class Map(models.Model):
         ordering = ["name"]
         indexes = [
             models.Index(fields=["map_type"]),
+            # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+            models.Index(fields=["map_type", "is_active"]),
         ]
 
     def __str__(self):

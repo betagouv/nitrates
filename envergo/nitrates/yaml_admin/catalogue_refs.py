@@ -76,7 +76,9 @@ def _resolve_zone_vulnerable_nitrates(ctx: ResolveContext) -> Any:
     if ctx.lng_lat is None:
         return CATALOGUE_NON_RESOLVABLE
     return Zone.objects.filter(
-        map__map_type=MAP_TYPES.zv_nitrates, geometry__intersects=ctx.lng_lat
+        map__map_type=MAP_TYPES.zv_nitrates,
+        map__is_active=True,
+        geometry__intersects=ctx.lng_lat,
     ).exists()
 
 

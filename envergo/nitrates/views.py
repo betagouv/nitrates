@@ -227,7 +227,7 @@ class ZoneVulnerableGeoJSONView(View):
                     z.attributes
                 FROM geodata_zone z
                 JOIN geodata_map m ON z.map_id = m.id
-                WHERE m.map_type = %s
+                WHERE m.map_type = %s AND m.is_active
                 """,
                 [self.SIMPLIFY_TOLERANCE, MAP_TYPES.zv_nitrates],
             )
@@ -282,7 +282,7 @@ class ZoneActionRenforceeGeoJSONView(View):
                     z.attributes
                 FROM geodata_zone z
                 JOIN geodata_map m ON z.map_id = m.id
-                WHERE m.map_type = %s
+                WHERE m.map_type = %s AND m.is_active
                 """,
                 [self.SIMPLIFY_TOLERANCE, MAP_TYPES.zone_action_renforcee],
             )
@@ -341,6 +341,7 @@ class DebugView(View):
         zv_zone = (
             Zone.objects.filter(
                 map__map_type=MAP_TYPES.zv_nitrates,
+                map__is_active=True,
                 geometry__intersects=point,
             )
             .only("attributes")
@@ -356,6 +357,7 @@ class DebugView(View):
 
         en_zar = Zone.objects.filter(
             map__map_type=MAP_TYPES.zone_action_renforcee,
+            map__is_active=True,
             geometry__intersects=point,
         ).exists()
 
