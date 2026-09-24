@@ -89,6 +89,8 @@ def activer_millesime(map_obj: Map) -> list[Map]:
     map_obj.is_active = True
     map_obj.save(update_fields=["is_active"])
 
+    _reporter_references(anciens, map_obj)
+
     logger.info(
         "Millesime actif pour %s : %s (desactives : %s)",
         map_obj.name,
@@ -96,6 +98,46 @@ def activer_millesime(map_obj: Map) -> list[Map]:
         ", ".join(m.version or "—" for m in anciens) or "aucun",
     )
     return anciens
+
+
+def _reporter_references(anciens: list[Map], cible: Map) -> None:
+    """Fait suivre les FK `activation_map` vers le millesime qui devient actif.
+
+    Une couche SIG n'est pas seulement lue par les requetes geo : elle est
+    aussi REFERENCEE par des objets metier qui pilotent l'affichage.
+
+      - `Criterion.activation_map` : la Map ZV conditionne l'activation du
+        critere « arbre_decision ». Si elle pointe sur un millesime
+        desactive, le critere ne s'active plus et le simulateur renvoie
+        « zone vulnerable : concerne » SANS AUCUNE prescription.
+      - `DecisionTree.activation_map` : idem pour les arbres ZAR.
+
+    Sans ce report, basculer un millesime casse silencieusement tous les
+    parcours — constate sur dev au deploiement du millesime 2026 : pas
+    d'erreur, pas de 500, juste un resultat vide partout.
+    """
+    if not anciens:
+        return
+
+    anciens_ids = [m.pk for m in anciens]
+
+    # Imports locaux : `sig_versioning` est importe par des commandes qui
+    # tournent tres tot, on evite une dependance circulaire au chargement.
+    from envergo.moulinette.models import Criterion
+    from envergo.nitrates.models import DecisionTree
+
+    for modele, libelle in ((Criterion, "critere"), (DecisionTree, "arbre")):
+        nb = modele.objects.filter(activation_map_id__in=anciens_ids).update(
+            activation_map=cible
+        )
+        if nb:
+            logger.info(
+                "Millesime %s : %d %s(s) repointe(s) vers %s",
+                cible.name,
+                nb,
+                libelle,
+                cible.version,
+            )
 
 
 @transaction.atomic

@@ -142,6 +142,52 @@ def test_millesimes_differents_coexistent():
     assert Map.objects.filter(name=COUCHE).count() == 3
 
 
+def test_bascule_repointe_le_critere_vers_le_millesime_actif():
+    """Régression (dev, 24/09/2026) : `Criterion.activation_map` pointait
+    encore sur le millésime désactivé après bascule. Le critère
+    « arbre_decision » ne s'activait donc plus, et TOUS les parcours du
+    simulateur renvoyaient « concerné » sans aucune prescription — sans
+    erreur ni 500, donc invisible en supervision."""
+    from envergo.moulinette.models import Criterion, Regulation
+
+    ancienne = _millesime("2021", nb_zones=1, actif=True)
+    regulation = Regulation.objects.create(regulation="nitrates")
+    crit = Criterion.objects.create(
+        title="arbre_decision",
+        regulation=regulation,
+        activation_map=ancienne,
+        evaluator="envergo.nitrates.regulations.arbre_decision.CriterionEvaluator",
+    )
+
+    nouvelle = _millesime("2026", nb_zones=1)
+    activer_millesime(nouvelle)
+
+    crit.refresh_from_db()
+    assert crit.activation_map_id == nouvelle.pk
+
+
+def test_rollback_repointe_aussi_le_critere():
+    """Le report de référence doit marcher dans les deux sens, sinon un
+    rollback laisserait le critère sur la Map devenue inactive."""
+    from envergo.moulinette.models import Criterion, Regulation
+
+    ancienne = _millesime("2021", nb_zones=1, actif=True)
+    regulation = Regulation.objects.create(regulation="nitrates")
+    crit = Criterion.objects.create(
+        title="arbre_decision",
+        regulation=regulation,
+        activation_map=ancienne,
+        evaluator="envergo.nitrates.regulations.arbre_decision.CriterionEvaluator",
+    )
+    nouvelle = _millesime("2026", nb_zones=1)
+    activer_millesime(nouvelle)
+
+    reactiver_millesime(name=COUCHE, version="2021")
+
+    crit.refresh_from_db()
+    assert crit.activation_map_id == ancienne.pk
+
+
 def test_adopte_une_couche_sans_millesime_au_lieu_de_la_dupliquer():
     """Les environnements ont déjà une Map sans millésime (créée par la
     migration nitrates 0002 ou un import antérieur au versioning). Le
