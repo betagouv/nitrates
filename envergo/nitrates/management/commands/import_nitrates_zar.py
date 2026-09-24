@@ -46,6 +46,7 @@ Idempotent : rejouer la commande sur un millésime déjà importé met à jour
 les zones, crée les nouvelles et supprime celles disparues de la source.
 """
 
+import os
 import shutil
 import tempfile
 import zipfile
@@ -61,7 +62,12 @@ from django.db import transaction
 from envergo.geodata.models import MAP_TYPES, Zone
 from envergo.nitrates.sig_versioning import activer_millesime, get_or_create_millesime
 
-BUCKET = "https://bucket-nitrates.cellar-c2.services.clever-cloud.com/sig"
+# Repli reseau si l'archive embarquee est absente. Pilotable par env :
+# chaque environnement a son propre bucket Cellar.
+BUCKET = os.environ.get(
+    "NITRATES_SIG_BUCKET_URL",
+    "https://bucket-nitrates.cellar-c2.services.clever-cloud.com/sig",
+).rstrip("/")
 
 # Les archives ZAR sont petites (< 500 Ko au total) et versionnées AVEC le
 # code, dans `envergo/nitrates/sig/`. Elles sont donc disponibles sur tous
