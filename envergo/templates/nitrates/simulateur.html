@@ -62,6 +62,8 @@
   {# Tracking metier -> Matomo (recherche commune, point carte, simulation, 2+). #}
   {# Charge avant simulator.js pour que ses listeners d'events soient prets. #}
   <script defer src="{% static_v 'nitrates/nitrates_analytics.js' %}"></script>
+  {# #531 : couches memorisees + clavier de la carte, avant simulator.js. #}
+  <script defer src="{% static_v 'nitrates/carte_preferences.js' %}"></script>
   <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
   {# #287 : recueil email « prévenez-moi à l'ouverture de ma région » (zone fermée). #}
   <script defer src="{% static_v 'nitrates/region_alerte.js' %}"></script>

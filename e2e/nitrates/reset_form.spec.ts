@@ -143,7 +143,7 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     await expect(page.locator('#qc-bloc[data-qc-en-attente]')).toHaveCount(0);
   });
 
-  test('editer une QC repondue retire le resultat (cas QC)', async ({ page }) => {
+  test('editer une QC repondue garde le volet QC ouvert (cas QC, #524)', async ({ page }) => {
     // culture_printemps + type_II pose la QC fertirrigation ; on la repond via
     // l'URL pour obtenir un resultat AVEC QC recap editable.
     await page.goto(
@@ -160,26 +160,17 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     // L'user change la reponse a la QC fertirrigation.
     await page.locator('label[for*="fertirrigation"][for*="True"]').first().click();
 
-    // Le resultat et le bloc QC disparaissent.
+    // Contrat #524 : un radio du bloc QC est toujours une reponse a une QC,
+    // jamais un champ amont -> on n'elague pas. Le volet QC reste ouvert avec
+    // la nouvelle reponse cochee (avant #524, il se refermait et il fallait
+    // relancer la simulation pour le retrouver). Le resultat, lui, n'est plus
+    // affiche : il est a relancer.
+    await expect(page.locator('#qc-bloc')).toHaveCount(1);
+    await expect(
+      page.locator('#qc-bloc input[name*="fertirrigation"][value="True"]')
+    ).toBeChecked();
     await expect(page.locator('.result-col')).toHaveCount(0);
-    await expect(page.locator('#qc-bloc')).toHaveCount(0);
 
-    // L'URL miroir porte la reponse QC qu'on vient de RE-CHOISIR (True), pas
-    // l'ancienne (False).
-    //
-    // NB : cette assertion attendait `null` a l'origine (ecrite avant #175).
-    // #175 a change le contrat : on PRESERVE la reponse amont re-choisie,
-    // sinon l'utilisateur qui vient de repondre « Oui » perd sa reponse a la
-    // resoumission (c'etait precisement un des bugs de la serie). Ce qui doit
-    // disparaitre, c'est le bloc QC obsolete (verifie ci-dessus), pas la
-    // reponse elle-meme.
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          new URLSearchParams(location.search).get('fertirrigation')
-        )
-      )
-      .toBe('True');
     const search = await page.evaluate(() => location.search);
     expect(dupKeys(search)).toEqual([]);
   });

@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nitrates map — fonds, overlays, contrôles', () => {
-  test('LayerControl is rendered with 2 base layers and 3 overlays', async ({ page }) => {
+  test('LayerControl is rendered with 3 base layers and 3 overlays', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
     const layerControl = page.locator('.leaflet-control-layers');
     await expect(layerControl).toBeVisible();
-    // 2 fonds de carte
+    // 3 fonds de carte (#531 : « Automatique » par défaut)
+    await expect(layerControl).toContainText('Automatique (selon le zoom)');
     await expect(layerControl).toContainText('Plan IGN');
     await expect(layerControl).toContainText('Photo aérienne');
     // 3 overlays. Le RPG (PAC) est désactivé en MVP au profit du Cadastre IGN ;
@@ -94,11 +95,21 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
       .toBeGreaterThan(0);
   });
 
-  test('ZV overlay renders 8 polygons with distinct colors per bassin', async ({
+  test('ZV overlay covers every metropolitan bassin with distinct colors', async ({
     page,
   }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
+
+    // Codes servis par l'endpoint : référence pour vérifier que la carte
+    // affiche tout ce qu'elle reçoit.
+    const servis: string[] = await page.evaluate(async () => {
+      const r = await fetch((window as any).NITRATES_ZV_GEOJSON_URL);
+      const data = await r.json();
+      return [
+        ...new Set<string>(data.features.map((f: any) => f.properties.bassin)),
+      ].sort();
+    });
 
     await page
       .locator('.leaflet-control-layers-overlays label')
@@ -106,59 +117,41 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
       .locator('input[type="checkbox"]')
       .check();
 
-    // On attend les 8 bassins. NB : chaque zone ZV est un MultiPolygon que
-    // Leaflet éclate en N sous-layers (getLayers().length ~= nombre de
-    // polygones composants, pas de features) -> on compte les BASSINS
-    // distincts (1 par feature ZV), pas les sous-layers.
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(() => {
-            const map = (window as any).nitratesMap;
-            const bassins = new Set<string>();
-            map.eachLayer((layer: any) => {
-              if (typeof layer.getLayers === 'function') {
-                layer.getLayers().forEach((sub: any) => {
-                  const props = sub.feature && sub.feature.properties;
-                  if (props && props.bassin) bassins.add(props.bassin);
-                });
-              }
+    // NB : chaque zone ZV est un MultiPolygon que Leaflet éclate en N
+    // sous-layers -> on compte les BASSINS distincts, pas les sous-layers.
+    const rendu = () =>
+      page.evaluate(() => {
+        const map = (window as any).nitratesMap;
+        const colors = new Set<string>();
+        const bassins = new Set<string>();
+        map.eachLayer((layer: any) => {
+          if (typeof layer.getLayers === 'function') {
+            layer.getLayers().forEach((sub: any) => {
+              const props = sub.feature && sub.feature.properties;
+              if (!props) return;
+              if (props.bassin) bassins.add(props.bassin);
+              if (sub.options && sub.options.fillColor) colors.add(sub.options.fillColor);
             });
-            return bassins.size;
-          }),
-        { timeout: 15000 }
-      )
-      .toBe(8);
-
-    // Vérifie qu'on a bien 8 bassins distincts et au moins 6 couleurs
-    // (deux peuvent se ressembler en hex mais c'est ok)
-    const final = await page.evaluate(() => {
-      const map = (window as any).nitratesMap;
-      const colors = new Set<string>();
-      const bassins = new Set<string>();
-      map.eachLayer((layer: any) => {
-        if (typeof layer.getLayers === 'function') {
-          layer.getLayers().forEach((sub: any) => {
-            const opts = sub.options || {};
-            if (opts.fillColor) colors.add(opts.fillColor);
-            const props = sub.feature && sub.feature.properties;
-            if (props && props.bassin) bassins.add(props.bassin);
-          });
-        }
+          }
+        });
+        return { bassins: [...bassins].sort(), colorCount: colors.size };
       });
-      return { bassins: [...bassins].sort(), colorCount: colors.size };
-    });
-    expect(final.bassins).toEqual([
-      'FRA',
-      'FRB1',
-      'FRB2',
-      'FRC',
-      'FRD',
-      'FRF',
-      'FRG',
-      'FRH',
-    ]);
-    expect(final.colorCount).toBeGreaterThanOrEqual(6);
+
+    await expect
+      .poll(async () => (await rendu()).bassins, { timeout: 15000 })
+      .toEqual(servis);
+
+    // Couverture métier indépendante du millésime : les 8 bassins DCE de
+    // métropole sont couverts, et aucun code inconnu. Depuis le millésime
+    // 2026, Rhin (FRC) et Meuse (FRB1) sont livrés d'un bloc sous le code
+    // composite « FRB1-FRC » (cf. bassins.py) : on le décompose.
+    const METROPOLE = ['FRA', 'FRB1', 'FRB2', 'FRC', 'FRD', 'FRF', 'FRG', 'FRH'];
+    const couverts = new Set(servis.flatMap((code) => code.split('-')));
+    expect([...couverts].filter((c) => !METROPOLE.includes(c))).toEqual([]);
+    expect(METROPOLE.filter((c) => !couverts.has(c))).toEqual([]);
+
+    // Au moins 6 couleurs (deux peuvent se ressembler en hex mais c'est ok).
+    expect((await rendu()).colorCount).toBeGreaterThanOrEqual(6);
   });
 
   test('clicking on a parcel fills the debug cartouche', async ({

@@ -7,8 +7,9 @@
 (function () {
   "use strict";
 
-  const INITIAL_CENTER = [48.96, 4.36];
-  const INITIAL_ZOOM = 8;
+  // #531 : vue par defaut centree France (echelle ~100 km), plus Grand Est.
+  const INITIAL_CENTER = [46.6, 2.45];
+  const INITIAL_ZOOM = 6;
 
   const ZV_COLORS_BY_BASSIN = {
     FRA: "#e7a854",
@@ -33,6 +34,69 @@
   // cote serveur via `hidden` sur #form-after-localisation + message
   // #form-locked-message visible. Idempotent (peut etre appele plusieurs
   // fois sans effet de bord).
+  // Carte #154 : apres un choix de lieu au clavier (recherche commune, ou
+  // Entree sur la carte #531), le focus passe au 1er radio de la 1re question
+  // des que le form est revele, pour enchainer au clavier. once:true -> ne se
+  // declenche que pour CE choix.
+  function focusFormulaireApresRevelation() {
+    document.addEventListener(
+      "nitrates:form-revealed",
+      () => {
+        const premier = document.querySelector(
+          '[data-cascade="categorie_culture"] input[type="radio"]'
+        );
+        if (premier) premier.focus();
+      },
+      { once: true }
+    );
+  }
+
+  // #531 : place le point de depart de la navigation au Tab juste avant la 1re
+  // question visible, SANS deplacer la vue ni activer de radio (focus sur son
+  // fieldset, rendu focusable le temps de ce focus). Pas en plein ecran : sortir
+  // le focus de la carte en fermerait le plein ecran.
+  // Les radios du flow culture/couvert (#272) sont rendus juste APRES
+  // l'evenement form-revealed (jusqu'a ~5 s sur un serveur lent) : on reessaie.
+  // 1er choix visible de la 1re question (« culture ou couvert », #272).
+  function premierRadioFormulaire() {
+    const zone = document.getElementById("form-after-localisation");
+    if (!zone || zone.hidden) return null;
+    return (
+      Array.from(zone.querySelectorAll('input[type="radio"]')).find(
+        (r) => r.offsetParent !== null && !r.disabled
+      ) || null
+    );
+  }
+
+  function poserDepartTabFormulaire(essai) {
+    essai = typeof essai === "number" ? essai : 0;
+    if (mapEl.classList.contains("nitrates-map--plein-ecran") || document.fullscreenElement) {
+      return;
+    }
+    // L'utilisateur a deja repris la main ailleurs : on ne lui vole pas le focus.
+    if (document.activeElement !== mapEl && document.activeElement !== document.body) {
+      return;
+    }
+    const radio = premierRadioFormulaire();
+    if (!radio) {
+      if (essai < 50) setTimeout(() => poserDepartTabFormulaire(essai + 1), 100);
+      return;
+    }
+    const bloc =
+      radio.closest("fieldset, .fr-fieldset, [role='radiogroup']") || radio.parentElement;
+    bloc.setAttribute("tabindex", "-1");
+    bloc.classList.add("nitrates-depart-tab");
+    bloc.addEventListener(
+      "blur",
+      () => {
+        bloc.removeAttribute("tabindex");
+        bloc.classList.remove("nitrates-depart-tab");
+      },
+      { once: true }
+    );
+    bloc.focus({ preventScroll: true });
+  }
+
   function revealFormAfterLocalisation() {
     const formZone = document.getElementById("form-after-localisation");
     const lockedMsg = document.getElementById("form-locked-message");
@@ -218,6 +282,8 @@
   // dans les radios du formulaire, et "Entree sur la carte" ne faisait rien.
   // La carte s'opere a la souris / via la recherche : on la sort donc de
   // l'ordre de tabulation et on libere les fleches pour les radios.
+  // #531 : la carte redevient focusable, mais avec notre propre handler clavier
+  // qui n'agit que si le focus est sur la carte (cf. plus bas).
   const map = L.map(mapEl, {
     attributionControl: false,
     keyboard: false,
@@ -230,7 +296,7 @@
 
   window.nitratesMap = map;
 
-  const wmts = (layer, format) =>
+  const wmts = (layer, format, extra) =>
     L.tileLayer(
       "https://data.geopf.fr/wmts?" +
         "&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0" +
@@ -246,14 +312,19 @@
         maxNativeZoom: 19,
         tileSize: 256,
         attribution: '&copy; <a href="https://www.ign.fr/">IGN</a>',
+        // #531 : pas de tuiles intermediaires pendant l'animation de zoom
+        // (requetes jetees aussitot), on charge au niveau d'arrivee.
+        updateWhenZooming: false,
+        ...extra,
       }
     );
 
   const planLayer = wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png");
   const photoLayer = wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg");
   // Carte #193 : fond par defaut = Photo aerienne (ortho), pas le Plan IGN
-  // (choix maquette : plus parlant pour reperer sa parcelle).
-  photoLayer.addTo(map);
+  // (choix maquette : plus parlant pour reperer sa parcelle). #531 : le defaut
+  // devient le mode « Automatique » (cf. autoLayer), ajoute plus bas apres
+  // lecture des couches memorisees.
 
   // Cadastre IGN (parcellaire express) : layer principal pour
   // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
@@ -263,7 +334,6 @@
     "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
     "png"
   );
-  cadastreOverlay.addTo(map);
 
   // RPG (Registre Parcellaire Graphique) : desactive en MVP (retour
   // juriste 0.0.1 : la donnee correcte pour la zone d'activation est
@@ -275,6 +345,91 @@
   //   "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024",
   //   "png"
   // );
+
+  // #531 : chargement des couches ZV / ZAR a la 1re activation, avec une
+  // ligne d'etat par couche dans la legende (visible aussi en plein ecran) :
+  // « Chargement des zones vulnerables… » + barre facon chargement de
+  // localisation (#154). Une ligne par couche -> ZV et ZAR peuvent charger en
+  // meme temps sans se marcher dessus. Decocher pendant le chargement masque la
+  // ligne mais laisse finir la requete (la recocher reprend ou elle en est).
+  // En cas d'echec : message + bouton « Réessayer ».
+  const chargementsEl = L.DomUtil.create("div", "nitrates-map-chargements");
+  chargementsEl.setAttribute("role", "status");
+  chargementsEl.setAttribute("aria-live", "polite");
+
+  function coucheDifferee(layer, url, libelle, apresChargement) {
+    let etat = "vide"; // vide | encours | ok | erreur
+    let pct = 0;
+    let timer = null;
+    const ligne = L.DomUtil.create("div", "nitrates-map-chargement", chargementsEl);
+    ligne.hidden = true;
+    const texte = L.DomUtil.create("p", "nitrates-map-chargement__texte", ligne);
+    const barre = L.DomUtil.create("div", "nitrates-loc-loading__bar", ligne);
+    const fill = L.DomUtil.create("div", "nitrates-loc-loading__fill", barre);
+    const reessayer = L.DomUtil.create("button", "nitrates-map-chargement__reessayer", ligne);
+    reessayer.type = "button";
+    reessayer.textContent = "Réessayer";
+    L.DomEvent.on(reessayer, "click", charger);
+
+    function maj() {
+      const utile = etat === "encours" || etat === "erreur";
+      ligne.hidden = !(utile && map.hasLayer(layer));
+      texte.textContent =
+        etat === "erreur"
+          ? `Échec du chargement des ${libelle}.`
+          : `Chargement des ${libelle}…`;
+      barre.hidden = etat === "erreur";
+      reessayer.hidden = etat !== "erreur";
+    }
+
+    function charger() {
+      if (etat === "encours" || etat === "ok") return;
+      etat = "encours";
+      pct = 0;
+      fill.style.width = "0%";
+      clearInterval(timer);
+      timer = setInterval(() => {
+        pct += (90 - pct) * 0.08;
+        fill.style.width = pct.toFixed(1) + "%";
+      }, 120);
+      maj();
+      fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then((data) => {
+          layer.addData(data);
+          if (apresChargement) apresChargement();
+          etat = "ok";
+          clearInterval(timer);
+          fill.style.width = "100%";
+          setTimeout(maj, 300);
+        })
+        .catch((err) => {
+          console.error(`${libelle} : chargement GeoJSON en échec`, err);
+          etat = "erreur";
+          clearInterval(timer);
+          maj();
+        });
+    }
+
+    layer.on("add", charger);
+    layer.on("add remove", maj);
+    return { estCharge: () => etat === "ok" };
+  }
+
+  // #531 a11y : Leaflet pose un listener « focus » sur chaque polygone a
+  // info-bulle (ZV, ZAR), ce qui suffit a Chrome pour rendre le <path> SVG
+  // tabulable : des centaines d'arrets de Tab sans interet, qui noient la
+  // legende et la carte. tabindex=-1 explicite a chaque rendu (le <path> est
+  // recree quand la couche est re-cochee).
+  function horsTabulation(layer) {
+    layer.on("add", () => {
+      const el = layer.getElement && layer.getElement();
+      if (el) el.setAttribute("tabindex", "-1");
+    });
+  }
 
   const zvLayer = L.geoJSON(null, {
     style: (feature) => {
@@ -288,22 +443,17 @@
       };
     },
     onEachFeature: (feature, layer) => {
+      horsTabulation(layer);
       const p = feature.properties || {};
       layer.bindTooltip(`${p.nom || "ZV"} (bassin ${p.bassin || "?"})`, {
         sticky: true,
       });
     },
   });
-  let zvLoaded = false;
-  function loadZvIfNeeded() {
-    if (zvLoaded) return;
-    zvLoaded = true;
-    fetch(window.NITRATES_ZV_GEOJSON_URL)
-      .then((r) => r.json())
-      .then((data) => zvLayer.addData(data))
-      .catch((err) => console.error("ZV GeoJSON load failed:", err));
-  }
-  zvLayer.on("add", loadZvIfNeeded);
+  coucheDifferee(zvLayer, window.NITRATES_ZV_GEOJSON_URL, "zones vulnérables", () => {
+    // ZV chargee apres la ZAR (couches restaurees, #531) : garder la ZAR devant.
+    if (map.hasLayer(zarLayer)) zarLayer.bringToFront();
+  });
   // Carte #193 : Zones vulnerables DECOCHEES par defaut (l'utilisateur peut
   // les activer via la tickbox). On ne fait donc plus zvLayer.addTo(map).
 
@@ -318,6 +468,7 @@
       fillOpacity: 0.6,
     }),
     onEachFeature: (feature, layer) => {
+      horsTabulation(layer);
       const p = feature.properties || {};
       const titre = p.nom_complet || p.nom || "ZAR";
       layer.bindTooltip(`${titre}${p.departement ? " (" + p.departement + ")" : ""}`, {
@@ -325,28 +476,94 @@
       });
     },
   });
-  let zarLoaded = false;
-  function loadZarIfNeeded() {
-    if (zarLoaded) return;
-    zarLoaded = true;
-    fetch(window.NITRATES_ZAR_GEOJSON_URL)
-      .then((r) => r.json())
-      .then((data) => {
-        zarLayer.addData(data);
-        // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
-        zarLayer.bringToFront();
-      })
-      .catch((err) => console.error("ZAR GeoJSON load failed:", err));
-  }
+  const zarChargement = coucheDifferee(
+    zarLayer,
+    window.NITRATES_ZAR_GEOJSON_URL,
+    "zones d'action renforcée",
+    // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
+    () => zarLayer.bringToFront()
+  );
   zarLayer.on("add", function () {
-    loadZarIfNeeded();
     // Si la couche est déjà chargée, on la repasse au premier plan au ré-add.
-    if (zarLoaded) zarLayer.bringToFront();
+    if (zarChargement.estCharge()) zarLayer.bringToFront();
   });
 
-  L.control
+  const prefs = window.NitratesCartePrefs;
+
+  // #531 : fond « Automatique » = on ne charge que ce qui est utile au zoom
+  // courant (cf. couchesAuto) : photo aerienne seule en vue large, + cadastre
+  // une fois assez zoome pour lire les parcelles. Instances de tuiles propres
+  // (et non photoLayer / cadastreOverlay) : sinon le controle de couches
+  // cocherait « Photo aerienne » / « Cadastre » a la place de l'utilisateur.
+  // Si l'utilisateur coche lui-meme le cadastre, on n'en ajoute pas un 2e.
+  const autoFonds = {
+    plan: wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png"),
+    photo: wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg"),
+  };
+  const autoCadastre = wmts("CADASTRALPARCELS.PARCELLAIRE_EXPRESS", "png", {
+    zIndex: 2,
+  });
+  const autoLayer = L.layerGroup();
+  function syncAuto() {
+    const voulu = prefs
+      ? prefs.couchesAuto(map.getZoom())
+      : { fond: "photo", cadastre: false };
+    Object.keys(autoFonds).forEach((k) => {
+      if (k === voulu.fond) autoLayer.addLayer(autoFonds[k]);
+      else autoLayer.removeLayer(autoFonds[k]);
+    });
+    if (voulu.cadastre && !map.hasLayer(cadastreOverlay)) {
+      autoLayer.addLayer(autoCadastre);
+    } else {
+      autoLayer.removeLayer(autoCadastre);
+    }
+  }
+  autoLayer.on("add", () => {
+    syncAuto();
+    map.on("zoomend overlayadd overlayremove", syncAuto);
+  });
+  autoLayer.on("remove", () => {
+    map.off("zoomend overlayadd overlayremove", syncAuto);
+    autoLayer.clearLayers();
+  });
+
+  // #531 : couches memorisees (localStorage) sinon mode automatique, sans
+  // surcouche (ZV, ZAR et cadastre explicite decoches).
+  const fonds = { auto: autoLayer, plan: planLayer, photo: photoLayer };
+  const surcouches = { cadastre: cadastreOverlay, zv: zvLayer, zar: zarLayer };
+  let storage = null;
+  try {
+    storage = window.localStorage;
+  } catch (e) {
+    storage = null;
+  }
+  const couches = (prefs &&
+    prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) || {
+    base: "auto",
+    surcouches: [],
+  };
+  fonds[couches.base].addTo(map);
+  // Ordre fixe (cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
+  Object.keys(surcouches).forEach((k) => {
+    if (couches.surcouches.includes(k)) surcouches[k].addTo(map);
+  });
+
+  function memoriserCouches() {
+    if (!prefs) return;
+    const base = Object.keys(fonds).find((k) => map.hasLayer(fonds[k]));
+    prefs.ecrireCouches(storage, {
+      base: base || "auto",
+      surcouches: Object.keys(surcouches).filter((k) =>
+        map.hasLayer(surcouches[k])
+      ),
+    });
+  }
+  map.on("baselayerchange overlayadd overlayremove", memoriserCouches);
+
+  const layersControl = L.control
     .layers(
       {
+        "Automatique (selon le zoom)": autoLayer,
         "Plan IGN": planLayer,
         "Photo aérienne": photoLayer,
       },
@@ -359,8 +576,306 @@
     )
     .addTo(map);
 
-  // Carte #193 : ZAR DECOCHEE par defaut (l'utilisateur peut l'activer via la
-  // tickbox). On ne fait donc plus zarLayer.addTo(map) au chargement.
+  // #531 : plein ecran. Bouton sous le zoom, 1er arret de Tab apres la carte.
+  // API Fullscreen si dispo (Echap natif du navigateur), sinon repli CSS
+  // (iPhone) avec Echap gere ici. Jamais enferme : bouton toujours visible,
+  // Echap sort, et sortir du cadre carte au Tab quitte aussi le plein ecran.
+  const ICONE_PLEIN_ECRAN =
+    '<svg aria-hidden="true" focusable="false" viewBox="0 0 49 49" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M39.6277 10.7278L31.0208 19.3347L29.6066 17.9204L38.2135 9.31354L30.6277 9.31354L30.6277 7.31384H41.6274V18.3136L39.6277 18.3136V10.7278Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M38.3997 39.6276L29.7928 31.0207L31.207 29.6065L39.8139 38.2134L39.8139 30.6276L41.8136 30.6276L41.8136 41.6273L30.8138 41.6273L30.8138 39.6276L38.3997 39.6276Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M9.49958 38.3997L18.1065 29.7928L19.5207 31.207L10.9138 39.8139L18.4996 39.8139L18.4996 41.8136L7.49988 41.8136L7.49988 30.8138L9.49958 30.8138L9.49958 38.3997Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M10.7276 9.49958L19.3345 18.1065L17.9203 19.5207L9.31342 10.9138L9.31342 18.4996L7.31372 18.4996V7.49988H18.3135L18.3135 9.49958H10.7276Z" fill="currentColor"/>' +
+    "</svg>";
+  const ICONE_QUITTER_PLEIN_ECRAN =
+    '<svg aria-hidden="true" focusable="false" viewBox="0 0 49 49" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M32.3134 15.2134L40.9203 6.60651L42.3346 8.02072L33.7276 16.6276L41.3135 16.6276L41.3135 18.6273L30.3137 18.6273L30.3137 7.62757L32.3134 7.62757L32.3134 15.2134Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M33.9138 32.3135L42.5207 40.9204L41.1065 42.3347L32.4996 33.7278L32.4996 41.3136L30.4999 41.3136L30.4999 30.3138L41.4996 30.3138L41.4996 32.3135L33.9138 32.3135Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M16.8139 33.9138L8.20699 42.5207L6.79277 41.1065L15.3997 32.4996L7.81384 32.4996L7.81384 30.4999H18.8136V41.4996L16.8139 41.4996V33.9138Z" fill="currentColor"/>' +
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M15.2135 16.8139L6.60661 8.207L8.02083 6.79278L16.6277 15.3997L16.6277 7.81384L18.6274 7.81384V18.8136H7.62767L7.62767 16.8139H15.2135Z" fill="currentColor"/>' +
+    "</svg>";
+
+  const pleinEcran = (function () {
+    const CLASSE_REPLI = "nitrates-map--plein-ecran";
+    let bouton = null;
+
+    function natif() {
+      return document.fullscreenElement === mapEl;
+    }
+    function actif() {
+      return natif() || mapEl.classList.contains(CLASSE_REPLI);
+    }
+    function majBouton() {
+      if (!bouton) return;
+      const on = actif();
+      bouton.innerHTML = on ? ICONE_QUITTER_PLEIN_ECRAN : ICONE_PLEIN_ECRAN;
+      const label = on
+        ? "Quitter le plein écran (Échap)"
+        : "Afficher la carte en plein écran";
+      bouton.setAttribute("aria-label", label);
+      bouton.setAttribute("title", label);
+      bouton.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    // Sortie du plein ecran (Echap, bouton, F) : on ne laisse pas l'utilisateur
+    // en haut de page. Point deja pose -> on l'amene a la 1re question (focus
+    // clavier sur son 1er choix, sans le cocher) ; sinon -> carte recentree a
+    // l'ecran, focus dessus. Sortie par Tab : l'utilisateur deplace lui-meme
+    // le focus, on ne touche a rien.
+    let etaitActif = false;
+    let sortieParTab = false;
+    function recadrerApresSortie() {
+      const comportement = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth";
+      const radio = latInput.value ? premierRadioFormulaire() : null;
+      if (radio) {
+        (radio.closest(".form-section") || radio).scrollIntoView({
+          behavior: comportement,
+          block: "center",
+        });
+        radio.focus({ preventScroll: true });
+      } else {
+        mapEl.scrollIntoView({ behavior: comportement, block: "center" });
+        mapEl.focus({ preventScroll: true });
+      }
+    }
+    function apresBascule() {
+      majBouton();
+      map.invalidateSize();
+      majAideClavier();
+      const on = actif();
+      if (etaitActif && !on && !sortieParTab) {
+        // Laisse le navigateur restaurer sa position de defilement d'abord.
+        setTimeout(recadrerApresSortie, 150);
+      }
+      if (!on) sortieParTab = false;
+      etaitActif = on;
+    }
+    function repli(on) {
+      mapEl.classList.toggle(CLASSE_REPLI, on);
+      document.documentElement.classList.toggle("nitrates-plein-ecran-ouvert", on);
+      apresBascule();
+    }
+    // clavier : on arrive au clavier -> le focus passe sur toute la carte
+    // (cadre visible), prete a naviguer. A la souris, il reste sur le bouton.
+    function entrer(clavier) {
+      const focusCarte = () => {
+        if (clavier) mapEl.focus({ preventScroll: true });
+      };
+      if (mapEl.requestFullscreen && document.fullscreenEnabled) {
+        mapEl
+          .requestFullscreen()
+          .then(focusCarte)
+          .catch(() => {
+            repli(true);
+            focusCarte();
+          });
+      } else {
+        repli(true);
+        focusCarte();
+      }
+    }
+    function sortir() {
+      if (natif()) document.exitFullscreen();
+      else repli(false);
+    }
+
+    const Controle = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd: function () {
+        const conteneur = L.DomUtil.create(
+          "div",
+          "leaflet-bar nitrates-map-plein-ecran"
+        );
+        bouton = L.DomUtil.create("button", "", conteneur);
+        bouton.type = "button";
+        majBouton();
+        L.DomEvent.disableClickPropagation(conteneur);
+        // detail === 0 : clic declenche au clavier (Entree / Espace).
+        L.DomEvent.on(bouton, "click", (e) =>
+          actif() ? sortir() : entrer(e.detail === 0)
+        );
+        return conteneur;
+      },
+    });
+    new Controle().addTo(map);
+
+    document.addEventListener("fullscreenchange", apresBascule);
+    // Repli CSS : Echap n'est pas gere par le navigateur, on s'en charge.
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && actif() && !natif()) {
+        e.preventDefault();
+        repli(false);
+      }
+    });
+    // Tab hors de la carte en plein ecran : on n'y reste pas coince derriere
+    // un cadre qui masque la page, on sort du plein ecran.
+    mapEl.addEventListener("focusout", (e) => {
+      if (actif() && e.relatedTarget && !mapEl.contains(e.relatedTarget)) {
+        sortieParTab = true;
+        sortir();
+      }
+    });
+
+    return {
+      actif: actif,
+      basculer: (clavier) => (actif() ? sortir() : entrer(clavier)),
+    };
+  })();
+
+  // #531 : echelle metrique en bas a gauche, pour situer la maille des couches.
+  L.control.scale({ position: "bottomleft", imperial: false }).addTo(map);
+
+  // Lignes de chargement ZV / ZAR sous les cases de la legende.
+  layersControl
+    .getContainer()
+    .querySelector(".leaflet-control-layers-list")
+    .appendChild(chargementsEl);
+
+  // #531 a11y : la legende Leaflet est une suite de cases sans nom de groupe,
+  // et Entree ne coche pas une case (seul Espace le fait nativement). On nomme
+  // les 2 groupes et on fait agir Entree comme Espace.
+  (function rendreLegendeAccessible() {
+    const container = layersControl.getContainer();
+    const groupes = [
+      [".leaflet-control-layers-base", "Fond de carte"],
+      [".leaflet-control-layers-overlays", "Couches affichées sur la carte"],
+    ];
+    groupes.forEach(([sel, label]) => {
+      const el = container.querySelector(sel);
+      if (!el) return;
+      el.setAttribute("role", "group");
+      el.setAttribute("aria-label", label);
+    });
+    const toggle = container.querySelector(".leaflet-control-layers-toggle");
+    if (toggle) {
+      // Lien masque (legende depliee) mais signale « lien sans intitule ».
+      toggle.setAttribute("title", "Couches de la carte");
+      toggle.setAttribute("aria-label", "Couches de la carte");
+    }
+    container.addEventListener("keydown", (e) => {
+      // Echap : retour sur la carte (pour zoomer / se deplacer / pointer). En
+      // plein ecran, Echap en sort (gere plus bas), on ne l'intercepte pas.
+      // C (carte) : meme chose, utilisable aussi en plein ecran natif.
+      const versCarte =
+        (e.key === "Escape" && !pleinEcran.actif()) ||
+        ((e.key === "c" || e.key === "C") && !e.ctrlKey && !e.metaKey && !e.altKey);
+      if (versCarte) {
+        e.preventDefault();
+        mapEl.focus();
+        return;
+      }
+      if (e.key !== "Enter") return;
+      const input = e.target;
+      if (!input.classList || !input.classList.contains("leaflet-control-layers-selector")) {
+        return;
+      }
+      e.preventDefault();
+      if (input.type === "checkbox" || !input.checked) input.click();
+    });
+  })();
+
+  // #531 a11y bonus : carte pilotable au clavier. Le handler natif Leaflet
+  // reste coupe (keyboard: false, cf. #154) ; on rend le conteneur focusable
+  // et on ne reagit qu'aux touches tapees AVEC le focus sur la carte elle-meme.
+  mapEl.setAttribute("tabindex", "0");
+  // Les boutons +/- font doublon avec les touches + et - de la carte : on les
+  // sort de l'ordre de tabulation pour que Tab depuis la carte mene tout droit
+  // a la legende (retour Max : legende introuvable au clavier sinon).
+  mapEl.querySelectorAll(".leaflet-control-zoom a").forEach((a) => {
+    a.setAttribute("tabindex", "-1");
+    a.setAttribute("title", a.classList.contains("leaflet-control-zoom-in") ? "Zoomer" : "Dézoomer");
+    a.setAttribute("aria-label", a.getAttribute("title"));
+  });
+  mapEl.setAttribute("role", "application");
+  mapEl.setAttribute(
+    "aria-label",
+    "Carte. Flèches pour se déplacer, plus et moins pour zoomer, " +
+      "Entrée pour choisir le point au centre de la carte, " +
+      "F pour le plein écran, L pour les couches affichées."
+  );
+  // Un clic / glisser sur la carte (y compris sur une zone ZV/ZAR) lui donne
+  // le focus : on enchaine ensuite fleches / + / - sans chercher la carte au Tab.
+  mapEl.addEventListener("pointerup", (e) => {
+    if (e.target.closest(".leaflet-control")) return;
+    mapEl.focus({ preventScroll: true });
+  });
+  // #531 : panneau d'aide clavier, visible seulement quand on navigue au
+  // clavier dans la carte (le focus y est et la derniere interaction etait une
+  // touche). Il liste les raccourcis du contexte courant (carte, legende,
+  // bouton plein ecran). Visuel seulement (aria-hidden) : le lecteur d'ecran a
+  // deja les consignes dans l'aria-label de la carte.
+  const aideEl = L.DomUtil.create("div", "nitrates-map-aide", mapEl);
+  aideEl.setAttribute("aria-hidden", "true");
+  aideEl.hidden = true;
+  L.DomEvent.disableClickPropagation(aideEl);
+  let modaliteClavier = false;
+
+  function contexteFocus(el) {
+    if (el.closest(".leaflet-control-layers")) return "legende";
+    if (el.closest(".nitrates-map-plein-ecran")) return "bouton";
+    return "carte";
+  }
+
+  function majAideClavier() {
+    const actifEl = document.activeElement;
+    if (!prefs || !modaliteClavier || !actifEl || !mapEl.contains(actifEl)) {
+      aideEl.hidden = true;
+      return;
+    }
+    const lignes = prefs.aideClavier(contexteFocus(actifEl), pleinEcran.actif());
+    aideEl.innerHTML = "";
+    lignes.forEach(([touche, action]) => {
+      const item = L.DomUtil.create("span", "nitrates-map-aide__item", aideEl);
+      L.DomUtil.create("kbd", "", item).textContent = touche;
+      item.appendChild(document.createTextNode(" " + action));
+    });
+    aideEl.hidden = false;
+  }
+
+  document.addEventListener(
+    "keydown",
+    () => {
+      modaliteClavier = true;
+      // Apres l'action par defaut de la touche (deplacement du focus au Tab).
+      setTimeout(majAideClavier, 0);
+    },
+    true
+  );
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      modaliteClavier = false;
+      majAideClavier();
+    },
+    true
+  );
+  mapEl.addEventListener("focusin", majAideClavier);
+  mapEl.addEventListener("focusout", () => setTimeout(majAideClavier, 0));
+
+  mapEl.addEventListener("keydown", (e) => {
+    if (e.target !== mapEl || !prefs) return;
+    const action = prefs.actionClavier(e);
+    if (!action) return;
+    e.preventDefault();
+    if (action.type === "pan") {
+      map.panBy([action.dx, action.dy]);
+    } else if (action.type === "zoom") {
+      map.setZoom(map.getZoom() + action.delta);
+    } else if (action.type === "pleinEcran") {
+      pleinEcran.basculer(true);
+    } else if (action.type === "legende") {
+      const cible = layersControl
+        .getContainer()
+        .querySelector(".leaflet-control-layers-base input:checked");
+      if (cible) cible.focus();
+    } else if (action.type === "pointer") {
+      // Au clavier, on reste sur la carte (pas de saut vers le formulaire) :
+      // l'utilisateur peut affiner son point, puis Tab pour continuer.
+      // originalEvent : c'est un vrai pointage utilisateur (compte en analytics).
+      map.fire("click", { latlng: map.getCenter(), originalEvent: e });
+    }
+  });
 
   let marker = null;
 
@@ -513,7 +1028,7 @@
   const initialLng = parseFloat(lngInput.value);
   const initialLat = parseFloat(latInput.value);
   if (!isNaN(initialLng) && !isNaN(initialLat)) {
-    marker = L.marker([initialLat, initialLng]).addTo(map);
+    marker = L.marker([initialLat, initialLng], { keyboard: false }).addTo(map);
     map.setView([initialLat, initialLng], 13);
     if (window.NITRATES_CATALOG) {
       Promise.all([
@@ -562,16 +1077,20 @@
     : null;
   let locLoadingTimer = null;
 
-  function demarrerChargementLoc() {
+  function demarrerChargementLoc(defiler) {
     if (!locLoadingEl || !locFillEl) return;
     clearInterval(locLoadingTimer);
     locLoadingEl.hidden = false;
-    // Le panneau est SOUS la carte : si l'utilisateur a la carte plein ecran il
-    // ne le verrait pas. On l'amene dans le viewport pour que le chargement soit
-    // visible (Carte #154). block:"nearest" -> ne bouge que si necessaire.
-    requestAnimationFrame(() => {
-      locLoadingEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
+    // #531 : pas de defilement quand on pointe au clavier (Entree) ni en plein
+    // ecran : la carte, qui garde le focus, sortirait de la vue.
+    if (defiler) {
+      // Le panneau est SOUS la carte : si l'utilisateur a la carte plein ecran
+      // il ne le verrait pas. On l'amene dans le viewport pour que le
+      // chargement soit visible (Carte #154).
+      requestAnimationFrame(() => {
+        locLoadingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
     let pct = 0;
     locFillEl.style.width = "0%";
     // Approche asymptotique : a chaque tick on comble une fraction du chemin
@@ -602,12 +1121,21 @@
     if (e.originalEvent) {
       document.dispatchEvent(new CustomEvent("nitrates:point-carte"));
     }
+    // #531 : point choisi a la souris -> le Tab suivant mene a la 1re question
+    // (et non a la legende). Au clavier (Entree), on reste sur la carte.
+    if (e.originalEvent && !(e.originalEvent instanceof KeyboardEvent)) {
+      document.addEventListener("nitrates:form-revealed", poserDepartTabFormulaire, {
+        once: true,
+      });
+    }
 
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
     lngInput.value = lng.toFixed(6);
     latInput.value = lat.toFixed(6);
 
-    demarrerChargementLoc();
+    demarrerChargementLoc(
+      !(e.originalEvent instanceof KeyboardEvent) && !pleinEcran.actif()
+    );
 
     // Carte #57 : on NE devoile PAS le formulaire immediatement. On attend
     // la reponse localisation (DebugView) qui indique si le simulateur est
@@ -617,7 +1145,8 @@
     if (marker) {
       marker.setLatLng(e.latlng);
     } else {
-      marker = L.marker(e.latlng).addTo(map);
+      // keyboard: false (#531) : marqueur decoratif, hors ordre de tabulation.
+      marker = L.marker(e.latlng, { keyboard: false }).addTo(map);
     }
 
     if (debugEl) {
@@ -804,21 +1333,8 @@
       closeSearch();
       // Analytics (#Matomo) : l'utilisateur a utilise la recherche de commune.
       document.dispatchEvent(new CustomEvent("nitrates:recherche-commune"));
-      // Une fois le form revele (apres le reverse-geocode async), on deplace le
-      // focus sur le 1er radio de la 1re question (Carte #154, a11y) : Max veut
-      // qu'apres selection d'une ville, Tab/Entree operent directement sur le
-      // formulaire sans re-cliquer. once:true -> ne se declenche que pour CETTE
-      // selection.
-      document.addEventListener(
-        "nitrates:form-revealed",
-        () => {
-          const premier = document.querySelector(
-            '[data-cascade="categorie_culture"] input[type="radio"]'
-          );
-          if (premier) premier.focus();
-        },
-        { once: true }
-      );
+      // Carte #154 : Tab/Entree enchainent sur le formulaire sans re-cliquer.
+      focusFormulaireApresRevelation();
       map.setView([lat, lng], 13);
       // Rejoue toute la chaine du clic carte (cf. map.on("click")).
       map.fire("click", { latlng: L.latLng(lat, lng) });

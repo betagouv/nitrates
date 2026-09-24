@@ -23,7 +23,7 @@ import { test, expect, Locator, Page } from '@playwright/test';
 
 /** Interdiction 01/07 -> 15/01 : zone collée au bord GAUCHE + borne à 0%. */
 const URL_BORD_GAUCHE =
-  '/simulateur/?lat=49.2583&lng=4.0345&code_insee=51454&categorie_culture=autres_cultures_principales&sous_culture_form=cultures_perennes_vergers_vignes&occupation_sol=culture_principale&sous_culture=autres_cultures&categorie_fertilisant=fumiers&sous_fertilisant=fumier_volaille&type_fertilisant=type_II';
+  '/simulateur/?lat=49.2583&lng=4.0345&code_insee=51454&categorie_culture=autres_cultures_principales&sous_culture_form=cultures_perennes_vignes&occupation_sol=culture_principale&sous_culture=autres_cultures&categorie_fertilisant=fumiers&sous_fertilisant=fumier_volaille&type_fertilisant=type_II';
 
 /** Zones aux deux bords (capture 3 du ticket). */
 const URL_DEUX_BORDS =
