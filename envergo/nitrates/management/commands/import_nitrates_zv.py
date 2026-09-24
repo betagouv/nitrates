@@ -46,6 +46,7 @@ façon dont le produit interroge la couche (un point -> un bassin). Le
 détail communal reste disponible dans les fichiers source.
 """
 
+import os
 import shutil
 import tempfile
 import zipfile
@@ -63,7 +64,13 @@ from envergo.nitrates.sig_versioning import activer_millesime, get_or_create_mil
 
 MAP_NAME = "ZV nitrates — national"
 
-BUCKET = "https://bucket-nitrates.cellar-c2.services.clever-cloud.com/sig"
+# Base des archives SIG sur le bucket Cellar. Pilotable par environnement :
+# chaque env a son propre bucket (bucket-nitrates-dev, bucket-nitrates...),
+# et l'archive ZV doit y etre deposee avant l'import.
+BUCKET = os.environ.get(
+    "NITRATES_SIG_BUCKET_URL",
+    "https://bucket-nitrates.cellar-c2.services.clever-cloud.com/sig",
+).rstrip("/")
 
 # Archive des livraisons DREAL 2026 (agrégat des 6 bassins), déposée sur le
 # bucket. 39 Mo zippés : trop pour le dépôt git, d'où le bucket.
