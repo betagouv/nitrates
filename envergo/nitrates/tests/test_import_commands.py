@@ -122,7 +122,9 @@ def make_department_shp(path, departments):
 
 def test_import_zv_missing_file_raises():
     with pytest.raises(CommandError, match="introuvable"):
-        call_command("import_nitrates_zv", "--file", "/does/not/exist.shp")
+        call_command(
+            "import_nitrates_zv", "--millesime", "2021", "--file", "/does/not/exist.shp"
+        )
 
 
 def test_import_rpg_missing_file_raises():
@@ -153,7 +155,7 @@ def test_import_zv_creates_map_and_zones(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
 
     assert Map.objects.filter(map_type=MAP_TYPES.zv_nitrates).count() == 1
     m = Map.objects.get(map_type=MAP_TYPES.zv_nitrates)
@@ -178,9 +180,9 @@ def test_import_zv_is_idempotent(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp))
-    call_command("import_nitrates_zv", "--file", str(shp))
-    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
     assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
 
 
@@ -200,7 +202,7 @@ def test_import_zv_updates_existing_zone_on_attribute_change(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp1))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp1))
 
     # Sandre publie une nouvelle version : meme CdEuZoneVu, nom different.
     shp2 = tmp_path / "zv2.shp"
@@ -217,7 +219,7 @@ def test_import_zv_updates_existing_zone_on_attribute_change(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp2))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp2))
 
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 1
@@ -240,7 +242,7 @@ def test_import_zv_prunes_zones_removed_from_shapefile(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp1))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp1))
     assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
 
     # Sandre supprime FRB_2 dans la nouvelle version.
@@ -254,7 +256,7 @@ def test_import_zv_prunes_zones_removed_from_shapefile(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp2))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp2))
 
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 1
@@ -281,7 +283,7 @@ def test_import_zv_skips_features_without_natural_key(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
 
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 1
@@ -305,7 +307,7 @@ def test_import_zv_handles_eu_schema(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
 
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 2
@@ -325,9 +327,9 @@ def test_import_zv_eu_schema_is_idempotent(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp))
-    call_command("import_nitrates_zv", "--file", str(shp))
-    call_command("import_nitrates_zv", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp))
     assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 1
 
 
@@ -347,7 +349,7 @@ def test_import_zv_eu_schema_prunes_orphans(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp1))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp1))
     assert Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates).count() == 2
 
     shp2 = tmp_path / "zv2.shp"
@@ -360,7 +362,7 @@ def test_import_zv_eu_schema_prunes_orphans(tmp_path):
             ),
         ],
     )
-    call_command("import_nitrates_zv", "--file", str(shp2))
+    call_command("import_nitrates_zv", "--millesime", "2021", "--file", str(shp2))
 
     zones = Zone.objects.filter(map__map_type=MAP_TYPES.zv_nitrates)
     assert zones.count() == 1

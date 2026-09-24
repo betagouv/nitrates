@@ -584,9 +584,12 @@ class MoulinetteNitrates(Moulinette):
             catalog["region_code"] = region_code
             catalog["region_label"] = region_label
 
+            # `map__is_active` : plusieurs millesimes d'une couche SIG
+            # coexistent en base, un seul est servi. cf. sig_versioning.
             zv_zone = (
                 Zone.objects.filter(
                     map__map_type=MAP_TYPES.zv_nitrates,
+                    map__is_active=True,
                     geometry__intersects=point,
                 )
                 .only("attributes")
@@ -614,6 +617,7 @@ class MoulinetteNitrates(Moulinette):
             zar_zone = (
                 Zone.objects.filter(
                     map__map_type=MAP_TYPES.zone_action_renforcee,
+                    map__is_active=True,
                     geometry__intersects=point,
                 )
                 .only("id")

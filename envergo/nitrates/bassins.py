@@ -19,6 +19,11 @@ BASSIN_NAMES = {
     "FRF": "Adour-Garonne",
     "FRG": "Loire-Bretagne",
     "FRH": "Seine-Normandie",
+    # Code composite : depuis le millesime 2026, la DREAL Grand Est livre
+    # une couche d'un seul bloc pour Rhin (FRC) et Meuse (FRB1), sans
+    # frontiere entre les deux bassins. Choisir l'un des deux afficherait un
+    # bassin faux sur la moitie du territoire couvert.
+    "FRB1-FRC": "Rhin-Meuse",
 }
 
 # Ordre d'essai pour l'extraction depuis inspireid : long d'abord pour
