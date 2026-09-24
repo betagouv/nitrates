@@ -142,6 +142,43 @@ def test_millesimes_differents_coexistent():
     assert Map.objects.filter(name=COUCHE).count() == 3
 
 
+def test_adopte_une_couche_sans_millesime_au_lieu_de_la_dupliquer():
+    """Les environnements ont déjà une Map sans millésime (créée par la
+    migration nitrates 0002 ou un import antérieur au versioning). Le
+    premier import doit l'étiqueter, pas en créer une seconde — sinon la
+    couche serait servie en double."""
+    ancienne = Map.objects.create(
+        name=COUCHE,
+        map_type=MAP_TYPES.zv_nitrates,
+        description="couche pré-versioning",
+    )
+    assert ancienne.version == ""
+
+    adoptee, created = get_or_create_millesime(
+        name=COUCHE, version="2021", defaults={"description": "x"}
+    )
+
+    assert created is False
+    assert adoptee.pk == ancienne.pk
+    assert adoptee.version == "2021"
+    assert Map.objects.filter(name=COUCHE).count() == 1
+
+
+def test_adoption_ne_vaut_que_pour_le_premier_millesime():
+    """Une fois la couche étiquetée, un millésime suivant crée bien une
+    nouvelle Map (sinon on écraserait l'ancien au lieu de le conserver)."""
+    Map.objects.create(
+        name=COUCHE, map_type=MAP_TYPES.zv_nitrates, description="pré-versioning"
+    )
+    get_or_create_millesime(name=COUCHE, version="2021", defaults={"description": "x"})
+    _, created = get_or_create_millesime(
+        name=COUCHE, version="2026", defaults={"description": "x"}
+    )
+
+    assert created is True
+    assert Map.objects.filter(name=COUCHE).count() == 2
+
+
 # ─── Commande de pilotage ──────────────────────────────────────────────────
 
 

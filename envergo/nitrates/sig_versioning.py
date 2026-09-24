@@ -48,10 +48,26 @@ def get_or_create_millesime(
     defaults["is_active"] = False
     defaults["version"] = version
 
-    map_obj, created = Map.objects.get_or_create(
-        name=name, version=version, defaults=defaults
-    )
-    return map_obj, created
+    existante = Map.objects.filter(name=name, version=version).first()
+    if existante is not None:
+        return existante, False
+
+    # Adoption d'une couche pre-versioning. Une Map sans millesime existe
+    # deja sur les environnements (creee par la migration nitrates 0002, ou
+    # par un import anterieur au versioning) : on l'etiquette au lieu d'en
+    # creer une seconde, sinon la couche serait servie en double.
+    #
+    # On ne fait cette adoption qu'UNE fois, pour le premier millesime
+    # importe ; les suivants creent bien une nouvelle Map.
+    orpheline = Map.objects.filter(name=name, version="").first()
+    if orpheline is not None:
+        orpheline.version = version
+        orpheline.is_active = False
+        orpheline.save(update_fields=["version", "is_active"])
+        return orpheline, False
+
+    map_obj = Map.objects.create(name=name, **defaults)
+    return map_obj, True
 
 
 @transaction.atomic
