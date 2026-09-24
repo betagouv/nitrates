@@ -242,15 +242,18 @@ test.describe('Carte #531', () => {
   });
 
   test('échec du chargement : message et bouton Réessayer', async ({ page }) => {
-    await page.route('**/geojson/zar/', (route) => route.abort());
+    // ZV et non ZAR : la base CI n'importe pas de ZAR (--skip-zar-sans-carte).
+    await page.route('**/geojson/zv/', (route) => route.abort());
     const legende = page.locator('.leaflet-control-layers');
-    await legende.getByLabel("Zones d'action renforcée (ZAR)").check();
-    await expect(legende).toContainText("Échec du chargement des zones d'action renforcée.");
-    await page.unroute('**/geojson/zar/');
+    await legende.getByLabel('Zones vulnérables nitrates').check();
+    await expect(legende).toContainText('Échec du chargement des zones vulnérables.');
+    await page.unroute('**/geojson/zv/');
     await legende.getByRole('button', { name: 'Réessayer' }).click();
     await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(0, {
       timeout: 20000,
     });
+    await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
+  });
     await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
   });
 
