@@ -33,6 +33,23 @@
   // cote serveur via `hidden` sur #form-after-localisation + message
   // #form-locked-message visible. Idempotent (peut etre appele plusieurs
   // fois sans effet de bord).
+  // Carte #154 : apres un choix de lieu au clavier (recherche commune, ou
+  // Entree sur la carte #531), le focus passe au 1er radio de la 1re question
+  // des que le form est revele, pour enchainer au clavier. once:true -> ne se
+  // declenche que pour CE choix.
+  function focusFormulaireApresRevelation() {
+    document.addEventListener(
+      "nitrates:form-revealed",
+      () => {
+        const premier = document.querySelector(
+          '[data-cascade="categorie_culture"] input[type="radio"]'
+        );
+        if (premier) premier.focus();
+      },
+      { once: true }
+    );
+  }
+
   function revealFormAfterLocalisation() {
     const formZone = document.getElementById("form-after-localisation");
     const lockedMsg = document.getElementById("form-locked-message");
@@ -232,7 +249,7 @@
 
   window.nitratesMap = map;
 
-  const wmts = (layer, format) =>
+  const wmts = (layer, format, extra) =>
     L.tileLayer(
       "https://data.geopf.fr/wmts?" +
         "&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0" +
@@ -248,14 +265,19 @@
         maxNativeZoom: 19,
         tileSize: 256,
         attribution: '&copy; <a href="https://www.ign.fr/">IGN</a>',
+        // #531 : pas de tuiles intermediaires pendant l'animation de zoom
+        // (requetes jetees aussitot), on charge au niveau d'arrivee.
+        updateWhenZooming: false,
+        ...extra,
       }
     );
 
   const planLayer = wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png");
   const photoLayer = wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg");
   // Carte #193 : fond par defaut = Photo aerienne (ortho), pas le Plan IGN
-  // (choix maquette : plus parlant pour reperer sa parcelle). Ajoute plus bas,
-  // apres lecture des couches memorisees (#531).
+  // (choix maquette : plus parlant pour reperer sa parcelle). #531 : le defaut
+  // devient le mode « Automatique » (cf. autoLayer), ajoute plus bas apres
+  // lecture des couches memorisees.
 
   // Cadastre IGN (parcellaire express) : layer principal pour
   // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
@@ -349,11 +371,49 @@
     if (zarLoaded) zarLayer.bringToFront();
   });
 
-  // #531 : couches memorisees (localStorage) sinon reglage par defaut #193 :
-  // photo aerienne + cadastre, ZV et ZAR decochees.
-  const fonds = { plan: planLayer, photo: photoLayer };
-  const surcouches = { cadastre: cadastreOverlay, zv: zvLayer, zar: zarLayer };
   const prefs = window.NitratesCartePrefs;
+
+  // #531 : fond « Automatique » = on ne charge que ce qui est utile au zoom
+  // courant (cf. couchesAuto) : photo aerienne seule en vue large, + cadastre
+  // une fois assez zoome pour lire les parcelles. Instances de tuiles propres
+  // (et non photoLayer / cadastreOverlay) : sinon le controle de couches
+  // cocherait « Photo aerienne » / « Cadastre » a la place de l'utilisateur.
+  // Si l'utilisateur coche lui-meme le cadastre, on n'en ajoute pas un 2e.
+  const autoFonds = {
+    plan: wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png"),
+    photo: wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg"),
+  };
+  const autoCadastre = wmts("CADASTRALPARCELS.PARCELLAIRE_EXPRESS", "png", {
+    zIndex: 2,
+  });
+  const autoLayer = L.layerGroup();
+  function syncAuto() {
+    const voulu = prefs
+      ? prefs.couchesAuto(map.getZoom())
+      : { fond: "photo", cadastre: false };
+    Object.keys(autoFonds).forEach((k) => {
+      if (k === voulu.fond) autoLayer.addLayer(autoFonds[k]);
+      else autoLayer.removeLayer(autoFonds[k]);
+    });
+    if (voulu.cadastre && !map.hasLayer(cadastreOverlay)) {
+      autoLayer.addLayer(autoCadastre);
+    } else {
+      autoLayer.removeLayer(autoCadastre);
+    }
+  }
+  autoLayer.on("add", () => {
+    syncAuto();
+    map.on("zoomend overlayadd overlayremove", syncAuto);
+  });
+  autoLayer.on("remove", () => {
+    map.off("zoomend overlayadd overlayremove", syncAuto);
+    autoLayer.clearLayers();
+  });
+
+  // #531 : couches memorisees (localStorage) sinon mode automatique, sans
+  // surcouche (ZV, ZAR et cadastre explicite decoches).
+  const fonds = { auto: autoLayer, plan: planLayer, photo: photoLayer };
+  const surcouches = { cadastre: cadastreOverlay, zv: zvLayer, zar: zarLayer };
   let storage = null;
   try {
     storage = window.localStorage;
@@ -362,8 +422,8 @@
   }
   const couches = (prefs &&
     prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) || {
-    base: "photo",
-    surcouches: ["cadastre"],
+    base: "auto",
+    surcouches: [],
   };
   fonds[couches.base].addTo(map);
   // Ordre fixe (cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
@@ -375,7 +435,7 @@
     if (!prefs) return;
     const base = Object.keys(fonds).find((k) => map.hasLayer(fonds[k]));
     prefs.ecrireCouches(storage, {
-      base: base || "photo",
+      base: base || "auto",
       surcouches: Object.keys(surcouches).filter((k) =>
         map.hasLayer(surcouches[k])
       ),
@@ -386,6 +446,7 @@
   const layersControl = L.control
     .layers(
       {
+        "Automatique (selon le zoom)": autoLayer,
         "Plan IGN": planLayer,
         "Photo aérienne": photoLayer,
       },
@@ -397,6 +458,9 @@
       { collapsed: false }
     )
     .addTo(map);
+
+  // #531 : echelle metrique en bas a gauche, pour situer la maille des couches.
+  L.control.scale({ position: "bottomleft", imperial: false }).addTo(map);
 
   // #531 a11y : la legende Leaflet est une suite de cases sans nom de groupe,
   // et Entree ne coche pas une case (seul Espace le fait nativement). On nomme
@@ -413,7 +477,19 @@
       el.setAttribute("role", "group");
       el.setAttribute("aria-label", label);
     });
+    const toggle = container.querySelector(".leaflet-control-layers-toggle");
+    if (toggle) {
+      // Lien masque (legende depliee) mais signale « lien sans intitule ».
+      toggle.setAttribute("title", "Couches de la carte");
+      toggle.setAttribute("aria-label", "Couches de la carte");
+    }
     container.addEventListener("keydown", (e) => {
+      // Echap : retour sur la carte (pour zoomer / se deplacer / pointer).
+      if (e.key === "Escape") {
+        e.preventDefault();
+        mapEl.focus();
+        return;
+      }
       if (e.key !== "Enter") return;
       const input = e.target;
       if (!input.classList || !input.classList.contains("leaflet-control-layers-selector")) {
@@ -428,11 +504,20 @@
   // reste coupe (keyboard: false, cf. #154) ; on rend le conteneur focusable
   // et on ne reagit qu'aux touches tapees AVEC le focus sur la carte elle-meme.
   mapEl.setAttribute("tabindex", "0");
+  // Les boutons +/- font doublon avec les touches + et - de la carte : on les
+  // sort de l'ordre de tabulation pour que Tab depuis la carte mene tout droit
+  // a la legende (retour Max : legende introuvable au clavier sinon).
+  mapEl.querySelectorAll(".leaflet-control-zoom a").forEach((a) => {
+    a.setAttribute("tabindex", "-1");
+    a.setAttribute("title", a.classList.contains("leaflet-control-zoom-in") ? "Zoomer" : "Dézoomer");
+    a.setAttribute("aria-label", a.getAttribute("title"));
+  });
   mapEl.setAttribute("role", "application");
   mapEl.setAttribute(
     "aria-label",
     "Carte. Flèches pour se déplacer, plus et moins pour zoomer, " +
-      "Entrée pour choisir le point au centre de la carte."
+      "Entrée pour choisir le point au centre de la carte. " +
+      "Tab pour choisir les couches affichées."
   );
   mapEl.addEventListener("keydown", (e) => {
     if (e.target !== mapEl || !prefs) return;
@@ -444,6 +529,7 @@
     } else if (action.type === "zoom") {
       map.setZoom(map.getZoom() + action.delta);
     } else if (action.type === "pointer") {
+      focusFormulaireApresRevelation();
       // originalEvent : c'est un vrai pointage utilisateur (compte en analytics).
       map.fire("click", { latlng: map.getCenter(), originalEvent: e });
     }
@@ -600,7 +686,7 @@
   const initialLng = parseFloat(lngInput.value);
   const initialLat = parseFloat(latInput.value);
   if (!isNaN(initialLng) && !isNaN(initialLat)) {
-    marker = L.marker([initialLat, initialLng]).addTo(map);
+    marker = L.marker([initialLat, initialLng], { keyboard: false }).addTo(map);
     map.setView([initialLat, initialLng], 13);
     if (window.NITRATES_CATALOG) {
       Promise.all([
@@ -704,7 +790,8 @@
     if (marker) {
       marker.setLatLng(e.latlng);
     } else {
-      marker = L.marker(e.latlng).addTo(map);
+      // keyboard: false (#531) : marqueur decoratif, hors ordre de tabulation.
+      marker = L.marker(e.latlng, { keyboard: false }).addTo(map);
     }
 
     if (debugEl) {
@@ -891,21 +978,8 @@
       closeSearch();
       // Analytics (#Matomo) : l'utilisateur a utilise la recherche de commune.
       document.dispatchEvent(new CustomEvent("nitrates:recherche-commune"));
-      // Une fois le form revele (apres le reverse-geocode async), on deplace le
-      // focus sur le 1er radio de la 1re question (Carte #154, a11y) : Max veut
-      // qu'apres selection d'une ville, Tab/Entree operent directement sur le
-      // formulaire sans re-cliquer. once:true -> ne se declenche que pour CETTE
-      // selection.
-      document.addEventListener(
-        "nitrates:form-revealed",
-        () => {
-          const premier = document.querySelector(
-            '[data-cascade="categorie_culture"] input[type="radio"]'
-          );
-          if (premier) premier.focus();
-        },
-        { once: true }
-      );
+      // Carte #154 : Tab/Entree enchainent sur le formulaire sans re-cliquer.
+      focusFormulaireApresRevelation();
       map.setView([lat, lng], 13);
       // Rejoue toute la chaine du clic carte (cf. map.on("click")).
       map.fire("click", { latlng: L.latLng(lat, lng) });

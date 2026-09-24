@@ -6,7 +6,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const prefs = require("./carte_preferences.js");
 
-const BASES = ["plan", "photo"];
+const BASES = ["auto", "plan", "photo"];
 const SURCOUCHES = ["cadastre", "zv", "zar"];
 
 function fakeStorage(initial) {
@@ -130,4 +130,15 @@ test("clavier : Tab, Alt+fleche et lettres ignores", () => {
     prefs.actionClavier({ key: "ArrowLeft", altKey: true }),
     null
   );
+});
+
+test("mode automatique : photo seule en vue large, + cadastre une fois zoome", () => {
+  const seuil = prefs.ZOOM_CADASTRE_AUTO;
+  assert.deepStrictEqual(prefs.couchesAuto(8), { fond: "photo", cadastre: false });
+  assert.deepStrictEqual(prefs.couchesAuto(seuil - 1), {
+    fond: "photo",
+    cadastre: false,
+  });
+  assert.deepStrictEqual(prefs.couchesAuto(seuil), { fond: "photo", cadastre: true });
+  assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo", cadastre: true });
 });

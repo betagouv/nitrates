@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nitrates map — fonds, overlays, contrôles', () => {
-  test('LayerControl is rendered with 2 base layers and 3 overlays', async ({ page }) => {
+  test('LayerControl is rendered with 3 base layers and 3 overlays', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
     const layerControl = page.locator('.leaflet-control-layers');
     await expect(layerControl).toBeVisible();
-    // 2 fonds de carte
+    // 3 fonds de carte (#531 : « Automatique » par défaut)
+    await expect(layerControl).toContainText('Automatique (selon le zoom)');
     await expect(layerControl).toContainText('Plan IGN');
     await expect(layerControl).toContainText('Photo aérienne');
     // 3 overlays. Le RPG (PAC) est désactivé en MVP au profit du Cadastre IGN ;

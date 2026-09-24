@@ -4,7 +4,8 @@
 //    ZV, ZAR) choisis dans la legende sont gardes en localStorage. Quand on
 //    revient sur le formulaire (modifier depuis les resultats, retour arriere,
 //    nouvelle recherche), la carte les reaffiche au lieu du reglage par defaut.
-//    Rien de memorise (ou storage indisponible) -> reglage par defaut.
+//    Rien de memorise (ou storage indisponible) -> reglage par defaut : mode
+//    « Automatique » (cf. couchesAuto).
 //
 // 2. Clavier : quand la carte a le focus, fleches (avec ou sans Ctrl) pour se
 //    deplacer, + / - (avec ou sans Ctrl) pour zoomer, Entree pour pointer le
@@ -19,6 +20,18 @@
 
   const STORAGE_KEY = "nitrates.carte.couches.v1";
   const PAN_PX = 100;
+
+  // Mode « Automatique » (fond par defaut) : on charge le minimum selon le zoom.
+  // Mesure des tuiles data.geopf.fr (09/2026, zooms 6 a 17) : la photo aerienne
+  // en JPEG pese 11-23 Ko/tuile, le Plan IGN en PNG 32-71 Ko/tuile, soit 2 a 3x
+  // plus. La photo reste donc le fond le plus leger a tous les zooms. Le
+  // cadastre n'est lisible qu'a partir du zoom 14 : en dessous, ses tuiles sont
+  // des requetes pour rien.
+  const ZOOM_CADASTRE_AUTO = 14;
+
+  function couchesAuto(zoom) {
+    return { fond: "photo", cadastre: zoom >= ZOOM_CADASTRE_AUTO };
+  }
 
   // Ne garde que des cles connues : une cle renommee/supprimee cote carte ne
   // doit pas casser le chargement, elle est juste ignoree.
@@ -89,6 +102,8 @@
     lireCouches: lireCouches,
     ecrireCouches: ecrireCouches,
     actionClavier: actionClavier,
+    couchesAuto: couchesAuto,
+    ZOOM_CADASTRE_AUTO: ZOOM_CADASTRE_AUTO,
   };
 
   if (typeof module !== "undefined" && module.exports) {
