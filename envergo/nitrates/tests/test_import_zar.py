@@ -66,7 +66,13 @@ def _props(nom, dept="08"):
 
 def test_import_zar_missing_file_raises():
     with pytest.raises(CommandError, match="introuvable"):
-        call_command("import_nitrates_zar", "--file", "/does/not/exist.shp")
+        call_command(
+            "import_nitrates_zar",
+            "--region",
+            "grand-est",
+            "--file",
+            "/does/not/exist.shp",
+        )
 
 
 # ─── Création ───────────────────────────────────────────────────────────────
@@ -81,7 +87,7 @@ def test_import_zar_cree_map_et_zones(tmp_path):
             (_CARRE_2, _props("AAC B")),
         ],
     )
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
 
     m = Map.objects.get(name="zar_par7_grand_est")
     assert m.map_type == MAP_TYPES.zone_action_renforcee
@@ -94,7 +100,7 @@ def test_import_zar_cree_map_et_zones(tmp_path):
 def test_import_zar_geometrie_reprojetee_wgs84(tmp_path):
     shp = tmp_path / "zar.shp"
     make_zar_shapefile(shp, [(_CARRE_1, _props("AAC A"))])
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
     z = Map.objects.get(name="zar_par7_grand_est").zones.first()
     # Les coords doivent être des longitudes/latitudes (France ~ lng 4-8, lat 47-50),
     # pas des coords Lambert 93 (~900000 / 6900000).
@@ -109,9 +115,9 @@ def test_import_zar_geometrie_reprojetee_wgs84(tmp_path):
 def test_import_zar_idempotent(tmp_path):
     shp = tmp_path / "zar.shp"
     make_zar_shapefile(shp, [(_CARRE_1, _props("AAC A")), (_CARRE_2, _props("AAC B"))])
-    call_command("import_nitrates_zar", "--file", str(shp))
-    call_command("import_nitrates_zar", "--file", str(shp))
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
     # 3 passages -> toujours 2 zones, pas 6.
     assert Map.objects.filter(name="zar_par7_grand_est").count() == 1
     assert Map.objects.get(name="zar_par7_grand_est").zones.count() == 2
@@ -132,7 +138,7 @@ def test_import_zar_doublon_nomzar_garde_zones_distinctes(tmp_path):
             (_CARRE_3, _props("AAC Unique")),
         ],
     )
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
     m = Map.objects.get(name="zar_par7_grand_est")
     # 3 zones distinctes malgré le doublon de nom.
     assert m.zones.count() == 3
@@ -147,8 +153,8 @@ def test_import_zar_doublon_idempotent(tmp_path):
         shp,
         [(_CARRE_1, _props("PPE-Doublon")), (_CARRE_2, _props("PPE-Doublon"))],
     )
-    call_command("import_nitrates_zar", "--file", str(shp))
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
     assert Map.objects.get(name="zar_par7_grand_est").zones.count() == 2
 
 
@@ -158,13 +164,13 @@ def test_import_zar_doublon_idempotent(tmp_path):
 def test_import_zar_prune_zones_disparues(tmp_path):
     shp1 = tmp_path / "zar1.shp"
     make_zar_shapefile(shp1, [(_CARRE_1, _props("AAC A")), (_CARRE_2, _props("AAC B"))])
-    call_command("import_nitrates_zar", "--file", str(shp1))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp1))
     assert Map.objects.get(name="zar_par7_grand_est").zones.count() == 2
 
     # Nouvelle source sans AAC B -> doit être supprimée.
     shp2 = tmp_path / "zar2.shp"
     make_zar_shapefile(shp2, [(_CARRE_1, _props("AAC A"))])
-    call_command("import_nitrates_zar", "--file", str(shp2))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp2))
     m = Map.objects.get(name="zar_par7_grand_est")
     assert m.zones.count() == 1
     assert m.zones.first().attributes.get("NOMZAR") == "AAC A"
@@ -180,7 +186,7 @@ def test_zar_geojson_endpoint(client, tmp_path):
     make_zar_shapefile(
         shp, [(_CARRE_1, _props("AAC A")), (_CARRE_2, _props("AAC B", dept="51"))]
     )
-    call_command("import_nitrates_zar", "--file", str(shp))
+    call_command("import_nitrates_zar", "--region", "grand-est", "--file", str(shp))
 
     # L'endpoint est cache_page en non-DEBUG : on vide pour lire l'état courant.
     cache.clear()
