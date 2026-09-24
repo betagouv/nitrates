@@ -9,9 +9,10 @@
 //
 // 2. Clavier : quand la carte a le focus, fleches (avec ou sans Ctrl) pour se
 //    deplacer, + / - (avec ou sans Ctrl) pour zoomer, Entree pour pointer le
-//    centre de la carte. Le handler clavier natif de Leaflet reste coupe
-//    (keyboard: false, #154) : on ne reagit QUE quand le focus est sur le
-//    conteneur carte lui-meme, jamais dans la legende ni le formulaire.
+//    centre de la carte, F pour le plein ecran, L pour aller a la legende. Le
+//    handler clavier natif de Leaflet reste coupe (keyboard: false, #154) : on
+//    ne reagit QUE quand le focus est sur le conteneur carte lui-meme, jamais
+//    dans la legende ni le formulaire.
 //
 // Pas de DOM ici : simulator.js branche ces helpers sur la carte. En Node
 // (tests unitaires), on exporte les memes helpers. cf. reset_form.js.
@@ -91,9 +92,47 @@
       case "Enter":
         if (e.ctrlKey || e.metaKey || e.shiftKey) return null;
         return { type: "pointer" };
+      // Lettres sans modificateur seulement : Ctrl/Cmd+L = barre d'adresse,
+      // Ctrl/Cmd+F = recherche du navigateur.
+      case "f":
+      case "F":
+        if (e.ctrlKey || e.metaKey) return null;
+        return { type: "pleinEcran" };
+      case "l":
+      case "L":
+        if (e.ctrlKey || e.metaKey) return null;
+        return { type: "legende" };
       default:
         return null;
     }
+  }
+
+  // Panneau d'aide clavier (#531) : raccourcis utiles selon l'endroit ou est
+  // le focus. contexte : "carte" | "legende" | "bouton". En plein ecran
+  // natif, Echap est pris par le navigateur (sortie du plein ecran) : on
+  // propose C pour revenir de la legende a la carte.
+  function aideClavier(contexte, pleinEcran) {
+    const sortie = pleinEcran ? [["Échap", "quitter le plein écran"]] : [];
+    if (contexte === "legende") {
+      return [
+        ["↑ ↓", "changer de fond de carte"],
+        ["Espace", "cocher / décocher"],
+        [pleinEcran ? "C" : "Échap ou C", "revenir à la carte"],
+      ].concat(sortie);
+    }
+    if (contexte === "bouton") {
+      return [
+        ["Entrée", pleinEcran ? "quitter le plein écran" : "plein écran"],
+        ["Tab", "couches de la carte"],
+      ].concat(sortie);
+    }
+    return [
+      ["← ↑ → ↓", "se déplacer"],
+      ["+ −", "zoomer"],
+      ["Entrée", "choisir le point au centre"],
+      ["F", pleinEcran ? "quitter le plein écran" : "plein écran"],
+      ["L", "couches de la carte"],
+    ].concat(sortie);
   }
 
   const api = {
@@ -103,6 +142,7 @@
     ecrireCouches: ecrireCouches,
     actionClavier: actionClavier,
     couchesAuto: couchesAuto,
+    aideClavier: aideClavier,
     ZOOM_CADASTRE_AUTO: ZOOM_CADASTRE_AUTO,
   };
 

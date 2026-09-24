@@ -134,10 +134,12 @@ test.describe('Carte #531', () => {
     await bouton.focus();
     await page.keyboard.press('Enter');
     await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
-    await expect(bouton).toBeFocused();
+    // Entré au clavier : le focus passe sur toute la carte.
+    await expect(carte).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(carte).not.toHaveClass(/nitrates-map--plein-ecran/);
     // Réouvre puis sort du cadre au Tab (après la légende) : le plein écran se ferme.
+    await bouton.focus();
     await page.keyboard.press('Enter');
     await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
     for (let i = 0; i < 10; i++) {
@@ -168,5 +170,38 @@ test.describe('Carte #531', () => {
     await page.keyboard.press('Tab');
     const nom = await page.evaluate(() => (document.activeElement as HTMLInputElement).name);
     expect(nom).toBe('cflow_destination');
+  });
+
+  test('plein écran au clavier : focus sur toute la carte, aide et raccourcis', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Element.prototype, 'requestFullscreen', { value: undefined });
+    });
+    await page.reload();
+    const carte = page.locator('#nitrates-map');
+    const aide = page.locator('.nitrates-map-aide');
+    await page.locator('#map-search').focus();
+    await page.keyboard.press('Tab');
+    await expect(aide).toContainText('plein écran');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
+    await expect(carte).toBeFocused();
+    await expect(aide).toContainText('quitter le plein écran');
+    await page.keyboard.press('l');
+    await expect(page.locator('.leaflet-control-layers-base input:checked')).toBeFocused();
+    await expect(aide).toContainText('revenir à la carte');
+    await page.keyboard.press('c');
+    await expect(carte).toBeFocused();
+    await page.keyboard.press('f');
+    await expect(carte).not.toHaveClass(/nitrates-map--plein-ecran/);
+  });
+
+  test('plein écran à la souris : le focus reste sur le bouton, pas d\'aide clavier', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Afficher la carte en plein écran' }).click();
+    await expect(page.getByRole('button', { name: 'Quitter le plein écran (Échap)' })).toBeFocused();
+    await expect(page.locator('.nitrates-map-aide')).toBeHidden();
+    await page.getByRole('button', { name: 'Quitter le plein écran (Échap)' }).click();
   });
 });

@@ -556,17 +556,30 @@
     function apresBascule() {
       majBouton();
       map.invalidateSize();
+      majAideClavier();
     }
     function repli(on) {
       mapEl.classList.toggle(CLASSE_REPLI, on);
       document.documentElement.classList.toggle("nitrates-plein-ecran-ouvert", on);
       apresBascule();
     }
-    function entrer() {
+    // clavier : on arrive au clavier -> le focus passe sur toute la carte
+    // (cadre visible), prete a naviguer. A la souris, il reste sur le bouton.
+    function entrer(clavier) {
+      const focusCarte = () => {
+        if (clavier) mapEl.focus({ preventScroll: true });
+      };
       if (mapEl.requestFullscreen && document.fullscreenEnabled) {
-        mapEl.requestFullscreen().catch(() => repli(true));
+        mapEl
+          .requestFullscreen()
+          .then(focusCarte)
+          .catch(() => {
+            repli(true);
+            focusCarte();
+          });
       } else {
         repli(true);
+        focusCarte();
       }
     }
     function sortir() {
@@ -585,7 +598,10 @@
         bouton.type = "button";
         majBouton();
         L.DomEvent.disableClickPropagation(conteneur);
-        L.DomEvent.on(bouton, "click", () => (actif() ? sortir() : entrer()));
+        // detail === 0 : clic declenche au clavier (Entree / Espace).
+        L.DomEvent.on(bouton, "click", (e) =>
+          actif() ? sortir() : entrer(e.detail === 0)
+        );
         return conteneur;
       },
     });
@@ -607,7 +623,10 @@
       }
     });
 
-    return { actif: actif };
+    return {
+      actif: actif,
+      basculer: (clavier) => (actif() ? sortir() : entrer(clavier)),
+    };
   })();
 
   // #531 : echelle metrique en bas a gauche, pour situer la maille des couches.
@@ -637,7 +656,11 @@
     container.addEventListener("keydown", (e) => {
       // Echap : retour sur la carte (pour zoomer / se deplacer / pointer). En
       // plein ecran, Echap en sort (gere plus bas), on ne l'intercepte pas.
-      if (e.key === "Escape" && !pleinEcran.actif()) {
+      // C (carte) : meme chose, utilisable aussi en plein ecran natif.
+      const versCarte =
+        (e.key === "Escape" && !pleinEcran.actif()) ||
+        ((e.key === "c" || e.key === "C") && !e.ctrlKey && !e.metaKey && !e.altKey);
+      if (versCarte) {
         e.preventDefault();
         mapEl.focus();
         return;
@@ -668,8 +691,8 @@
   mapEl.setAttribute(
     "aria-label",
     "Carte. Flèches pour se déplacer, plus et moins pour zoomer, " +
-      "Entrée pour choisir le point au centre de la carte. " +
-      "Tab pour choisir les couches affichées."
+      "Entrée pour choisir le point au centre de la carte, " +
+      "F pour le plein écran, L pour les couches affichées."
   );
   // Un clic / glisser sur la carte (y compris sur une zone ZV/ZAR) lui donne
   // le focus : on enchaine ensuite fleches / + / - sans chercher la carte au Tab.
@@ -677,6 +700,59 @@
     if (e.target.closest(".leaflet-control")) return;
     mapEl.focus({ preventScroll: true });
   });
+  // #531 : panneau d'aide clavier, visible seulement quand on navigue au
+  // clavier dans la carte (le focus y est et la derniere interaction etait une
+  // touche). Il liste les raccourcis du contexte courant (carte, legende,
+  // bouton plein ecran). Visuel seulement (aria-hidden) : le lecteur d'ecran a
+  // deja les consignes dans l'aria-label de la carte.
+  const aideEl = L.DomUtil.create("div", "nitrates-map-aide", mapEl);
+  aideEl.setAttribute("aria-hidden", "true");
+  aideEl.hidden = true;
+  L.DomEvent.disableClickPropagation(aideEl);
+  let modaliteClavier = false;
+
+  function contexteFocus(el) {
+    if (el.closest(".leaflet-control-layers")) return "legende";
+    if (el.closest(".nitrates-map-plein-ecran")) return "bouton";
+    return "carte";
+  }
+
+  function majAideClavier() {
+    const actifEl = document.activeElement;
+    if (!prefs || !modaliteClavier || !actifEl || !mapEl.contains(actifEl)) {
+      aideEl.hidden = true;
+      return;
+    }
+    const lignes = prefs.aideClavier(contexteFocus(actifEl), pleinEcran.actif());
+    aideEl.innerHTML = "";
+    lignes.forEach(([touche, action]) => {
+      const item = L.DomUtil.create("span", "nitrates-map-aide__item", aideEl);
+      L.DomUtil.create("kbd", "", item).textContent = touche;
+      item.appendChild(document.createTextNode(" " + action));
+    });
+    aideEl.hidden = false;
+  }
+
+  document.addEventListener(
+    "keydown",
+    () => {
+      modaliteClavier = true;
+      // Apres l'action par defaut de la touche (deplacement du focus au Tab).
+      setTimeout(majAideClavier, 0);
+    },
+    true
+  );
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      modaliteClavier = false;
+      majAideClavier();
+    },
+    true
+  );
+  mapEl.addEventListener("focusin", majAideClavier);
+  mapEl.addEventListener("focusout", () => setTimeout(majAideClavier, 0));
+
   mapEl.addEventListener("keydown", (e) => {
     if (e.target !== mapEl || !prefs) return;
     const action = prefs.actionClavier(e);
@@ -686,6 +762,13 @@
       map.panBy([action.dx, action.dy]);
     } else if (action.type === "zoom") {
       map.setZoom(map.getZoom() + action.delta);
+    } else if (action.type === "pleinEcran") {
+      pleinEcran.basculer(true);
+    } else if (action.type === "legende") {
+      const cible = layersControl
+        .getContainer()
+        .querySelector(".leaflet-control-layers-base input:checked");
+      if (cible) cible.focus();
     } else if (action.type === "pointer") {
       // Au clavier, on reste sur la carte (pas de saut vers le formulaire) :
       // l'utilisateur peut affiner son point, puis Tab pour continuer.

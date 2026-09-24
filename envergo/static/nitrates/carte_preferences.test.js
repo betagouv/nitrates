@@ -142,3 +142,26 @@ test("mode automatique : photo seule en vue large, + cadastre une fois zoome", (
   assert.deepStrictEqual(prefs.couchesAuto(seuil), { fond: "photo", cadastre: true });
   assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo", cadastre: true });
 });
+
+test("clavier : F plein écran, L légende, mais pas avec Ctrl/Cmd", () => {
+  assert.deepStrictEqual(prefs.actionClavier({ key: "f" }), { type: "pleinEcran" });
+  assert.deepStrictEqual(prefs.actionClavier({ key: "F" }), { type: "pleinEcran" });
+  assert.deepStrictEqual(prefs.actionClavier({ key: "l" }), { type: "legende" });
+  assert.strictEqual(prefs.actionClavier({ key: "l", metaKey: true }), null);
+  assert.strictEqual(prefs.actionClavier({ key: "f", ctrlKey: true }), null);
+});
+
+test("aide clavier : contenu selon le contexte et le plein écran", () => {
+  const touches = (l) => l.map((x) => x[0]);
+  assert.ok(touches(prefs.aideClavier("carte", false)).includes("Entrée"));
+  assert.ok(!touches(prefs.aideClavier("carte", false)).includes("Échap"));
+  assert.ok(touches(prefs.aideClavier("carte", true)).includes("Échap"));
+  // En plein écran, Échap appartient au navigateur : retour carte par C seul.
+  assert.ok(touches(prefs.aideClavier("legende", true)).includes("C"));
+  assert.ok(touches(prefs.aideClavier("legende", false)).includes("Échap ou C"));
+  assert.deepStrictEqual(prefs.aideClavier("bouton", false)[0], ["Entrée", "plein écran"]);
+  assert.deepStrictEqual(prefs.aideClavier("bouton", true)[0], [
+    "Entrée",
+    "quitter le plein écran",
+  ]);
+});
