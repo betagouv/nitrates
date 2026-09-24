@@ -57,6 +57,17 @@
   // le focus de la carte en fermerait le plein ecran.
   // Les radios du flow culture/couvert (#272) sont rendus juste APRES
   // l'evenement form-revealed (jusqu'a ~5 s sur un serveur lent) : on reessaie.
+  // 1er choix visible de la 1re question (« culture ou couvert », #272).
+  function premierRadioFormulaire() {
+    const zone = document.getElementById("form-after-localisation");
+    if (!zone || zone.hidden) return null;
+    return (
+      Array.from(zone.querySelectorAll('input[type="radio"]')).find(
+        (r) => r.offsetParent !== null && !r.disabled
+      ) || null
+    );
+  }
+
   function poserDepartTabFormulaire(essai) {
     essai = typeof essai === "number" ? essai : 0;
     if (mapEl.classList.contains("nitrates-map--plein-ecran") || document.fullscreenElement) {
@@ -66,11 +77,7 @@
     if (document.activeElement !== mapEl && document.activeElement !== document.body) {
       return;
     }
-    const zone = document.getElementById("form-after-localisation");
-    if (!zone) return;
-    const radio = Array.from(zone.querySelectorAll('input[type="radio"]')).find(
-      (r) => r.offsetParent !== null && !r.disabled
-    );
+    const radio = premierRadioFormulaire();
     if (!radio) {
       if (essai < 50) setTimeout(() => poserDepartTabFormulaire(essai + 1), 100);
       return;
@@ -609,10 +616,40 @@
       bouton.setAttribute("title", label);
       bouton.setAttribute("aria-pressed", on ? "true" : "false");
     }
+    // Sortie du plein ecran (Echap, bouton, F) : on ne laisse pas l'utilisateur
+    // en haut de page. Point deja pose -> on l'amene a la 1re question (focus
+    // clavier sur son 1er choix, sans le cocher) ; sinon -> carte recentree a
+    // l'ecran, focus dessus. Sortie par Tab : l'utilisateur deplace lui-meme
+    // le focus, on ne touche a rien.
+    let etaitActif = false;
+    let sortieParTab = false;
+    function recadrerApresSortie() {
+      const comportement = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth";
+      const radio = latInput.value ? premierRadioFormulaire() : null;
+      if (radio) {
+        (radio.closest(".form-section") || radio).scrollIntoView({
+          behavior: comportement,
+          block: "center",
+        });
+        radio.focus({ preventScroll: true });
+      } else {
+        mapEl.scrollIntoView({ behavior: comportement, block: "center" });
+        mapEl.focus({ preventScroll: true });
+      }
+    }
     function apresBascule() {
       majBouton();
       map.invalidateSize();
       majAideClavier();
+      const on = actif();
+      if (etaitActif && !on && !sortieParTab) {
+        // Laisse le navigateur restaurer sa position de defilement d'abord.
+        setTimeout(recadrerApresSortie, 150);
+      }
+      if (!on) sortieParTab = false;
+      etaitActif = on;
     }
     function repli(on) {
       mapEl.classList.toggle(CLASSE_REPLI, on);
@@ -675,6 +712,7 @@
     // un cadre qui masque la page, on sort du plein ecran.
     mapEl.addEventListener("focusout", (e) => {
       if (actif() && e.relatedTarget && !mapEl.contains(e.relatedTarget)) {
+        sortieParTab = true;
         sortir();
       }
     });

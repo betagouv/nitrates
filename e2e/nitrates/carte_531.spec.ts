@@ -253,4 +253,36 @@ test.describe('Carte #531', () => {
     });
     await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
   });
+
+  test('sortie du plein écran sans point posé : carte recentrée et focus dessus', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Element.prototype, 'requestFullscreen', { value: undefined });
+    });
+    await page.reload();
+    const carte = page.locator('#nitrates-map');
+    await page.locator('.nitrates-map-plein-ecran button').focus();
+    await page.keyboard.press('Enter');
+    await expect(carte).toHaveClass(/nitrates-map--plein-ecran/);
+    await page.keyboard.press('Escape');
+    await expect(carte).toBeFocused();
+    await expect(carte).toBeInViewport({ ratio: 0.8 });
+  });
+
+  test('sortie du plein écran avec un point posé : 1re question à l\'écran, focus sans cocher', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Afficher la carte en plein écran' }).click();
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.96, 4.36], 13, { animate: false }));
+    await page.locator('#nitrates-map').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#id_lat')).not.toHaveValue('');
+    await expect(page.locator('#form-after-localisation')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Quitter le plein écran (Échap)' }).click();
+    const radio = page.locator('#form-after-localisation input[type="radio"]').first();
+    await expect(radio).toBeFocused();
+    await expect(radio).not.toBeChecked();
+    await expect(radio).toBeInViewport();
+  });
 });
