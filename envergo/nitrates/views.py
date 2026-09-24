@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.views.decorators.gzip import gzip_page
 from django.views.generic import View
 
 from envergo.geodata.models import MAP_TYPES, Department, Zone
@@ -194,6 +195,7 @@ class PrescriptionDetailView(View):
 
 
 @method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
+@method_decorator(gzip_page, name="dispatch")
 class ZoneVulnerableGeoJSONView(View):
     """Renvoie les polygones ZV nitrates au format GeoJSON.
 
@@ -250,6 +252,7 @@ class ZoneVulnerableGeoJSONView(View):
 
 
 @method_decorator(_cache_in_prod(60 * 60 * 24), name="dispatch")
+@method_decorator(gzip_page, name="dispatch")
 class ZoneActionRenforceeGeoJSONView(View):
     """Renvoie les polygones ZAR (Zone d'Action Renforcée) en GeoJSON.
 

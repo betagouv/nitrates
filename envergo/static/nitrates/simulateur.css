@@ -1495,3 +1495,32 @@ html.nitrates-plein-ecran-ouvert body {
   font-size: 0.75rem;
   font-weight: 700;
 }
+
+/* #531 : lignes de chargement des couches ZV / ZAR dans la legende. La barre
+   reprend le style du chargement de localisation (.nitrates-loc-loading__*). */
+.nitrates-map-chargement {
+  max-width: 220px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #ddd;
+}
+
+.nitrates-map-chargement[hidden] {
+  display: none;
+}
+
+.nitrates-map-chargement__texte {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.nitrates-map-chargement__reessayer {
+  padding: 2px 8px;
+  border: 1px solid #000091;
+  border-radius: 3px;
+  background: #fff;
+  color: #000091;
+  font-size: 0.75rem;
+  cursor: pointer;
+}

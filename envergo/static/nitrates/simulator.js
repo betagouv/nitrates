@@ -339,6 +339,79 @@
   //   "png"
   // );
 
+  // #531 : chargement des couches ZV / ZAR a la 1re activation, avec une
+  // ligne d'etat par couche dans la legende (visible aussi en plein ecran) :
+  // « Chargement des zones vulnerables… » + barre facon chargement de
+  // localisation (#154). Une ligne par couche -> ZV et ZAR peuvent charger en
+  // meme temps sans se marcher dessus. Decocher pendant le chargement masque la
+  // ligne mais laisse finir la requete (la recocher reprend ou elle en est).
+  // En cas d'echec : message + bouton « Réessayer ».
+  const chargementsEl = L.DomUtil.create("div", "nitrates-map-chargements");
+  chargementsEl.setAttribute("role", "status");
+  chargementsEl.setAttribute("aria-live", "polite");
+
+  function coucheDifferee(layer, url, libelle, apresChargement) {
+    let etat = "vide"; // vide | encours | ok | erreur
+    let pct = 0;
+    let timer = null;
+    const ligne = L.DomUtil.create("div", "nitrates-map-chargement", chargementsEl);
+    ligne.hidden = true;
+    const texte = L.DomUtil.create("p", "nitrates-map-chargement__texte", ligne);
+    const barre = L.DomUtil.create("div", "nitrates-loc-loading__bar", ligne);
+    const fill = L.DomUtil.create("div", "nitrates-loc-loading__fill", barre);
+    const reessayer = L.DomUtil.create("button", "nitrates-map-chargement__reessayer", ligne);
+    reessayer.type = "button";
+    reessayer.textContent = "Réessayer";
+    L.DomEvent.on(reessayer, "click", charger);
+
+    function maj() {
+      const utile = etat === "encours" || etat === "erreur";
+      ligne.hidden = !(utile && map.hasLayer(layer));
+      texte.textContent =
+        etat === "erreur"
+          ? `Échec du chargement des ${libelle}.`
+          : `Chargement des ${libelle}…`;
+      barre.hidden = etat === "erreur";
+      reessayer.hidden = etat !== "erreur";
+    }
+
+    function charger() {
+      if (etat === "encours" || etat === "ok") return;
+      etat = "encours";
+      pct = 0;
+      fill.style.width = "0%";
+      clearInterval(timer);
+      timer = setInterval(() => {
+        pct += (90 - pct) * 0.08;
+        fill.style.width = pct.toFixed(1) + "%";
+      }, 120);
+      maj();
+      fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then((data) => {
+          layer.addData(data);
+          if (apresChargement) apresChargement();
+          etat = "ok";
+          clearInterval(timer);
+          fill.style.width = "100%";
+          setTimeout(maj, 300);
+        })
+        .catch((err) => {
+          console.error(`${libelle} : chargement GeoJSON en échec`, err);
+          etat = "erreur";
+          clearInterval(timer);
+          maj();
+        });
+    }
+
+    layer.on("add", charger);
+    layer.on("add remove", maj);
+    return { estCharge: () => etat === "ok" };
+  }
+
   // #531 a11y : Leaflet pose un listener « focus » sur chaque polygone a
   // info-bulle (ZV, ZAR), ce qui suffit a Chrome pour rendre le <path> SVG
   // tabulable : des centaines d'arrets de Tab sans interet, qui noient la
@@ -370,20 +443,10 @@
       });
     },
   });
-  let zvLoaded = false;
-  function loadZvIfNeeded() {
-    if (zvLoaded) return;
-    zvLoaded = true;
-    fetch(window.NITRATES_ZV_GEOJSON_URL)
-      .then((r) => r.json())
-      .then((data) => {
-        zvLayer.addData(data);
-        // ZV chargee apres la ZAR (couches restaurees, #531) : garder la ZAR devant.
-        if (map.hasLayer(zarLayer)) zarLayer.bringToFront();
-      })
-      .catch((err) => console.error("ZV GeoJSON load failed:", err));
-  }
-  zvLayer.on("add", loadZvIfNeeded);
+  coucheDifferee(zvLayer, window.NITRATES_ZV_GEOJSON_URL, "zones vulnérables", () => {
+    // ZV chargee apres la ZAR (couches restaurees, #531) : garder la ZAR devant.
+    if (map.hasLayer(zarLayer)) zarLayer.bringToFront();
+  });
   // Carte #193 : Zones vulnerables DECOCHEES par defaut (l'utilisateur peut
   // les activer via la tickbox). On ne fait donc plus zvLayer.addTo(map).
 
@@ -406,23 +469,16 @@
       });
     },
   });
-  let zarLoaded = false;
-  function loadZarIfNeeded() {
-    if (zarLoaded) return;
-    zarLoaded = true;
-    fetch(window.NITRATES_ZAR_GEOJSON_URL)
-      .then((r) => r.json())
-      .then((data) => {
-        zarLayer.addData(data);
-        // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
-        zarLayer.bringToFront();
-      })
-      .catch((err) => console.error("ZAR GeoJSON load failed:", err));
-  }
+  const zarChargement = coucheDifferee(
+    zarLayer,
+    window.NITRATES_ZAR_GEOJSON_URL,
+    "zones d'action renforcée",
+    // ZAR au premier plan : sinon la ZV (ajoutée avant) la masque.
+    () => zarLayer.bringToFront()
+  );
   zarLayer.on("add", function () {
-    loadZarIfNeeded();
     // Si la couche est déjà chargée, on la repasse au premier plan au ré-add.
-    if (zarLoaded) zarLayer.bringToFront();
+    if (zarChargement.estCharge()) zarLayer.bringToFront();
   });
 
   const prefs = window.NitratesCartePrefs;
@@ -631,6 +687,12 @@
 
   // #531 : echelle metrique en bas a gauche, pour situer la maille des couches.
   L.control.scale({ position: "bottomleft", imperial: false }).addTo(map);
+
+  // Lignes de chargement ZV / ZAR sous les cases de la legende.
+  layersControl
+    .getContainer()
+    .querySelector(".leaflet-control-layers-list")
+    .appendChild(chargementsEl);
 
   // #531 a11y : la legende Leaflet est une suite de cases sans nom de groupe,
   // et Entree ne coche pas une case (seul Espace le fait nativement). On nomme

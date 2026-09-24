@@ -204,4 +204,53 @@ test.describe('Carte #531', () => {
     await expect(page.locator('.nitrates-map-aide')).toBeHidden();
     await page.getByRole('button', { name: 'Quitter le plein écran (Échap)' }).click();
   });
+
+  test('chargement ZV + ZAR en parallèle : une ligne par couche, masquées à la fin', async ({
+    page,
+  }) => {
+    // Réponses retardées pour voir les deux chargements en même temps.
+    await page.route('**/geojson/**', async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    const legende = page.locator('.leaflet-control-layers');
+    await legende.getByLabel('Zones vulnérables nitrates').check();
+    await legende.getByLabel("Zones d'action renforcée (ZAR)").check();
+    const lignes = page.locator('.nitrates-map-chargement:visible');
+    await expect(lignes).toHaveCount(2);
+    await expect(legende).toContainText('Chargement des zones vulnérables…');
+    await expect(legende).toContainText("Chargement des zones d'action renforcée…");
+    await expect(lignes).toHaveCount(0, { timeout: 20000 });
+    await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
+  });
+
+  test('décocher pendant le chargement masque la ligne, recocher la réaffiche', async ({ page }) => {
+    await page.route('**/geojson/zar/', async (route) => {
+      await new Promise((r) => setTimeout(r, 2500));
+      await route.continue();
+    });
+    const zar = page.locator('.leaflet-control-layers').getByLabel("Zones d'action renforcée (ZAR)");
+    await zar.check();
+    await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(1);
+    await zar.uncheck();
+    await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(0);
+    await zar.check();
+    await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(1);
+    await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(0, {
+      timeout: 20000,
+    });
+  });
+
+  test('échec du chargement : message et bouton Réessayer', async ({ page }) => {
+    await page.route('**/geojson/zar/', (route) => route.abort());
+    const legende = page.locator('.leaflet-control-layers');
+    await legende.getByLabel("Zones d'action renforcée (ZAR)").check();
+    await expect(legende).toContainText("Échec du chargement des zones d'action renforcée.");
+    await page.unroute('**/geojson/zar/');
+    await legende.getByRole('button', { name: 'Réessayer' }).click();
+    await expect(page.locator('.nitrates-map-chargement:visible')).toHaveCount(0, {
+      timeout: 20000,
+    });
+    await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
+  });
 });
