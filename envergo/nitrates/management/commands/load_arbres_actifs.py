@@ -1,14 +1,12 @@
-"""Charge les arbres canoniques (specs/arbres_actifs/) en DB — reload du CD (#50).
+"""Charge les arbres canoniques (specs/arbres_actifs/) en DB.
 
 Pendant load du `dump_active_trees` : chaque fichier canonique est (re)chargé
 en base via le lifecycle draft->active (JAMAIS un override in-place), exactement
 comme si un humain avait empile une version dans l'editeur YAML.
 
-Cette commande est la 3e etape de la sequence de deploiement d'une merge request
-sur un environnement (cf. spike #50) :
-    1. dump_active_trees   -> capture l'etat ACTIF de la DB target dans le repo
-    2. merge git           -> la PR est mergee par-dessus cette capture (ff/conflit)
-    3. load_arbres_actifs  -> recharge le resultat merge en DB (draft->active)
+Sert a monter une base NEUVE (CI, e2e, poste local). Ce n'est PAS une etape du
+deploiement : sur un environnement, c'est la base qui fait autorite, et
+recharger ces fichiers ecraserait les corrections faites dans l'admin.
 
 Le scope/region est DEDUIT du nom de fichier (identite = (scope, region)) ; le
 name/weight/activation_map se deduisent (convention). Delegue a
@@ -43,7 +41,7 @@ from envergo.nitrates.models import DecisionTree
 
 
 class Command(BaseCommand):
-    help = "Charge les arbres canoniques specs/arbres_actifs/ en DB (reload CD #50)."
+    help = "Charge les arbres canoniques specs/arbres_actifs/ en DB (base neuve : CI, e2e, local)."
 
     def add_arguments(self, parser):
         parser.add_argument(
