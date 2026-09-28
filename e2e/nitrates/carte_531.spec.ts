@@ -254,8 +254,6 @@ test.describe('Carte #531', () => {
     });
     await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
   });
-    await expect(page.locator('.leaflet-overlay-pane path').first()).toBeAttached();
-  });
 
   test('sortie du plein écran sans point posé : carte recentrée et focus dessus', async ({
     page,
