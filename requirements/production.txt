@@ -171,7 +171,7 @@ graphql-core==3.2.6
     #   gql
 gunicorn==26.0.0
     # via -r production.in
-hiredis==3.2.1
+hiredis==3.4.1
     # via -r base.txt
 idna==3.15
     # via

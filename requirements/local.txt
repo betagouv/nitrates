@@ -220,7 +220,7 @@ graphql-core==3.2.6
     # via
     #   -r base.txt
     #   gql
-hiredis==3.2.1
+hiredis==3.4.1
     # via -r base.txt
 identify==2.6.12
     # via pre-commit
