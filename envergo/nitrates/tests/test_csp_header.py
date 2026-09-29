@@ -99,3 +99,79 @@ def test_admin_yaml_view_extends_policy_with_cdns(rf):
     script = response[CSP_ENFORCE]
     assert "cdnjs.cloudflare.com" in script  # exception admin
     assert "'self'" in script  # base préservée
+
+
+def test_csp_autorise_les_medias_cellar_en_domaine_nu():
+    """Régression (staging, 03/08 -> 29/09) : toutes les images de l'app de
+    validation étaient bloquées par la CSP.
+
+    Cellar adresse le bucket EN CHEMIN
+    (`cellar-c2.services.clever-cloud.com/bucket-nitrates/...`), là où
+    l'ancien fournisseur (scw.cloud) l'adressait en sous-domaine. La
+    politique avait gardé la forme `*.domaine`, or en CSP un wildcard ne
+    couvre PAS le domaine nu. Les juristes ont donc validé pendant deux mois
+    sans leurs captures Miro de référence.
+
+    Ce test lit la politique réelle de `config.settings.production`, pas une
+    copie : c'est ce qui le rend utile.
+    """
+    # On n'importe PAS config.settings.production (il tire sentry_sdk, absent
+    # en local) : on lit les sources declarees dans le fichier, ce qui teste
+    # bien la politique reelle et non une copie.
+    import ast
+    from pathlib import Path
+
+    src = Path("config/settings/production.py").read_text(encoding="utf-8")
+    arbre = ast.parse(src)
+    consts, policy = {}, None
+    for noeud in arbre.body:
+        if isinstance(noeud, ast.Assign) and isinstance(noeud.targets[0], ast.Name):
+            nom = noeud.targets[0].id
+            if isinstance(noeud.value, ast.Constant) and isinstance(
+                noeud.value.value, str
+            ):
+                consts[nom] = noeud.value.value
+            elif nom == "_CSP_POLICY" and isinstance(noeud.value, ast.Dict):
+                policy = noeud.value
+    assert policy is not None, "_CSP_POLICY introuvable dans production.py"
+
+    def sources_de(directive: str) -> list:
+        for cle, val in zip(policy.keys, policy.values):
+            if getattr(cle, "value", None) != directive:
+                continue
+            out = []
+            for elt in getattr(val, "elts", []):
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    out.append(elt.value)
+                elif isinstance(elt, ast.Name) and elt.id in consts:
+                    out.append(consts[elt.id])
+            return out
+        return []
+
+    url_reelle = (
+        "https://cellar-c2.services.clever-cloud.com"
+        "/bucket-nitrates/media/nitrates_validation/x.png"
+    )
+
+    def couvre(source: str, url: str) -> bool:
+        """Règle CSP host-source : `*.a.b` ne matche pas `a.b`."""
+        from urllib.parse import urlparse
+
+        src, cible = urlparse(source), urlparse(url)
+        if src.scheme and src.scheme != cible.scheme:
+            return False
+        if src.netloc.startswith("*."):
+            return cible.netloc.endswith(src.netloc[1:]) and (
+                cible.netloc != src.netloc[2:]
+            )
+        return src.netloc == cible.netloc
+
+    for directive in ("img-src", "media-src"):
+        sources = sources_de(directive)
+        assert any(
+            couvre(s, url_reelle) for s in sources
+        ), f"{directive} bloque les médias Cellar servis en domaine nu"
+
+    # Garde-fou : on n'a pas élargi à n'importe quoi au passage.
+    sources_img = sources_de("img-src")
+    assert not any(couvre(s, "https://evil.example.com/x.png") for s in sources_img)
