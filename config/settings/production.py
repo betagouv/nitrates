@@ -367,7 +367,15 @@ SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=FROM_EMAIL["amenagement"]["adm
 _GEOPF = "https://data.geopf.fr"  # IGN / Géoplateforme (carto + géocodage)
 _BAN = "https://api-adresse.data.gouv.fr"  # Base Adresse Nationale
 _GEO_API = "https://geo.api.gouv.fr"  # Reverse commune
-_CELLAR_S3 = "https://*.cellar-c2.services.clever-cloud.com"  # Médias validation
+# Médias de l'app de validation (captures Miro / YAML viewer / Playwright).
+# DEUX formes nécessaires : Cellar adresse le bucket EN CHEMIN
+# (`cellar-c2.services.clever-cloud.com/bucket-nitrates/...`), pas en
+# sous-domaine. Or en CSP `*.domaine` ne couvre PAS `domaine` lui-même.
+# Ne pas "simplifier" en retirant l'une des deux : la forme nue seule
+# casserait un futur bucket en sous-domaine, le wildcard seul bloque tout
+# aujourd'hui.
+_CELLAR_S3 = "https://cellar-c2.services.clever-cloud.com"
+_CELLAR_S3_SUB = "https://*.cellar-c2.services.clever-cloud.com"
 _SENTRY = "https://sentry.incubateur.net"  # Monitoring erreurs (loader JS + envoi)
 _MATOMO = "https://*.beta.gouv.fr"  # Stats Matomo (à venir)
 
@@ -376,9 +384,9 @@ _CSP_POLICY = {
     "script-src": [CSP.SELF, CSP.UNSAFE_INLINE, _SENTRY, _MATOMO],
     "connect-src": [CSP.SELF, _GEOPF, _BAN, _GEO_API, _SENTRY, _MATOMO],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
-    "img-src": [CSP.SELF, _GEOPF, _CELLAR_S3, "data:", _MATOMO],
+    "img-src": [CSP.SELF, _GEOPF, _CELLAR_S3, _CELLAR_S3_SUB, "data:", _MATOMO],
     "font-src": [CSP.SELF],
-    "media-src": [CSP.SELF, _CELLAR_S3],
+    "media-src": [CSP.SELF, _CELLAR_S3, _CELLAR_S3_SUB],
     "frame-src": [CSP.SELF, _MATOMO],  # iframe opt-out CNIL Matomo
     "worker-src": [CSP.SELF, "blob:"],
     "object-src": [CSP.NONE],
