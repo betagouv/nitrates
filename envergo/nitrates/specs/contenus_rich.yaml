@@ -833,7 +833,7 @@ contenus:
   - type: paragraphe
     data:
       texte: Seules les personnes habilitées de l'équipe Nitrat'Info ont accès aux adresses e-mail et aux
-        retours. Ils ne sont transmis à aucun organisme tiers, régional ou de contrôle.
+        retours. Ils ne sont transmis à aucun organisme tiers.
   - type: titre_principal
     data:
       texte: Sous-traitants
