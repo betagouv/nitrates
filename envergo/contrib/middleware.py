@@ -42,6 +42,15 @@ class SetUrlConfBasedOnSite:
         return self.get_response(request)
 
 
+PAGES_FOOTER_PUBLIQUES = (
+    "/mentions-legales/",
+    "/cgu/",
+    "/accessibilite/",
+    "/donnees-personnelles/",
+    "/contact/",
+)
+
+
 class RequireLoginEverywhere:
     """Verrouille toutes les URL derriere une auth Django admin.
 
@@ -88,6 +97,11 @@ class RequireLoginEverywhere:
         # Sans cet exempt, le middleware piege /oidc/authenticate/ et redirige
         # vers /admin/login/ -> boucle infinie de next= imbrique.
         if path.startswith("/oidc/"):
+            return True
+        # Pages du pied de page (#550) : mentions legales, CGU, accessibilite,
+        # donnees perso, contact. Obligations legales, lisibles par tout le
+        # monde y compris quand le simulateur est ferme.
+        if path in PAGES_FOOTER_PUBLIQUES:
             return True
         # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
         # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.

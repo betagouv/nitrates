@@ -61,7 +61,7 @@ def setup_geodata():
 def test_form_rendu_sans_params(client, nitrates_site):
     response = client.get("/simulateur/")
     assert response.status_code == 200
-    assert b"Simulateur nitrates" in response.content
+    assert "Nitrat'Info".encode() in response.content
     assert b'name="lng"' in response.content
     assert b'name="lat"' in response.content
 

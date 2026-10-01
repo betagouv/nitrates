@@ -368,3 +368,507 @@ contenus:
     data:
       texte: "Surface non utilisée en vue d'une production agricole, ni semée, ni\
         \ récoltée, ni fauchée, ni pâturée pendant une campagne culturale."
+
+# ── Pages autonomes du pied de page (#550) ───────────────────────────────
+# Textes Notion des juristes (CGU, mentions légales, déclaration
+# d'accessibilité, sept. 2026) + page contact (#341). Rendues par
+# PageRicheView, le titre h1 est porté par la vue, le contenu démarre en h2.
+# Seedées par la migration 0035 (création seule, jamais d'écrasement).
+
+- cle: page.mentions_legales
+  libelle_admin: Page — Mentions légales
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Date de mise à jour : 15/09/2026"
+  - type: titre_principal
+    data:
+      texte: Éditeur de la plateforme
+  - type: paragraphe
+    data:
+      texte: "La plateforme « Nitrat’Info » (https://nitrates.beta.gouv.fr/) est portée par le ministère\
+        \ en charge de l’agriculture et le ministère en charge de la transition écologique. Elle est\
+        \ éditée par la Ruche numérique rattachée au Secrétariat Général du ministère en charge de\
+        \ l’agriculture, située :"
+  - type: paragraphe
+    data:
+      texte: 78 rue de Varenne 75007 Paris - FRANCE
+  - type: titre_principal
+    data:
+      texte: Directrice de la publication
+  - type: paragraphe
+    data:
+      texte: La directrice de la publication est Madame Cécile BIGOT-DEKEYZER, secrétaire générale
+        du ministère en charge de l’agriculture.
+  - type: titre_principal
+    data:
+      texte: Hébergement de la plateforme
+  - type: paragraphe
+    data:
+      texte: "Cette plateforme est hébergée par Scalingo, dont le siège social est situé 13 rue Jacques\
+        \ Peirotes 67000 Strasbourg, France."
+  - type: titre_principal
+    data:
+      texte: Accessibilité
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "La conformité aux normes d’accessibilité numérique est un objectif ultérieur, mais nous\
+          \ tâchons de rendre cette plateforme accessible à toutes et à tous. Pour en savoir plus sur\
+          \ la politique d’accessibilité numérique de l’État : "
+      - texte: https://accessibilite.numerique.gouv.fr/
+        lien: https://accessibilite.numerique.gouv.fr/
+      - texte: .
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Pour nous signaler un défaut d’accessibilité vous empêchant d’accéder à un contenu ou\
+          \ une fonctionnalité de la plateforme, merci de nous en faire part à l’adresse suivante : "
+      - texte: nitrates@beta.gouv.fr
+        lien: mailto:nitrates@beta.gouv.fr
+  - type: paragraphe
+    data:
+      texte: Si vous n’obtenez pas de réponse rapide de notre part, vous êtes en droit de faire parvenir
+        vos doléances ou une demande de saisine au Défenseur des droits.
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Plus de détails sur notre "
+      - texte: page accessibilité
+        lien: /accessibilite/
+      - texte: .
+  - type: titre_principal
+    data:
+      texte: Sécurité
+  - type: paragraphe
+    data:
+      texte: La plateforme est protégée par un certificat électronique, matérialisé pour la grande majorité
+        des navigateurs par un cadenas. Cette protection participe à la confidentialité des échanges.
+        En aucun cas, les services associés à la plateforme ne seront à l’origine d’envoi de courriels
+        pour vous demander la saisie d’informations personnelles.
+
+- cle: page.cgu
+  libelle_admin: Page — Conditions générales d'utilisation
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Création : 15/09/2026 - mise à jour : 15/09/2026"
+  - type: titre_principal
+    data:
+      texte: Article 1 - Champ d’application
+  - type: paragraphe
+    data:
+      texte: Les présentes conditions générales d’utilisation (ci-après « CGU ») précisent le cadre juridique
+        du service numérique « Nitrat’Info » accessible depuis l’url https://nitrates.beta.gouv.fr/ (ci-après
+        « la Plateforme »).
+  - type: titre_principal
+    data:
+      texte: Article 2 - Objet de la Plateforme
+  - type: paragraphe
+    data:
+      texte: La Plateforme, en cours d’expérimentation, permet à tout Utilisateur de disposer d’un questionnaire
+        et d’une page de résultat permettant de savoir, pour sa parcelle, si l'épandage de fertilisants
+        azotés est autorisé, soumis à conditions ou interdit selon la réglementation nitrates en vigueur.
+  - type: paragraphe
+    data:
+      texte: La Plateforme ne s’adresse qu’aux exploitants agricoles et aux conseillers agricoles et ne
+        délivre que des informations indicatives qui ne se substituent en aucun cas à un accompagnement
+        complémentaire.
+  - type: titre_principal
+    data:
+      texte: Article 3 - Définitions
+  - type: paragraphe
+    data:
+      texte: « L’Utilisateur » est toute personne physique qui utilise la Plateforme.
+  - type: paragraphe
+    data:
+      texte: La « Plateforme » est le service numérique proposé par la Ruche numérique rattachée au Secrétariat
+        Général du ministère en charge de l’agriculture.
+  - type: paragraphe
+    data:
+      texte: « L’Éditeur » est la Ruche numérique rattachée au Secrétariat Général du ministère en charge
+        de l’agriculture qui met à la disposition du public la Plateforme.
+  - type: titre_principal
+    data:
+      texte: Article 4 - Fonctionnalités
+  - type: titre_paragraphe
+    data:
+      texte: 4.1 - Identifier les périodes minimales d’interdiction d’épandage et les conditions d’épandage
+        des fertilisants azotés
+  - type: paragraphe
+    data:
+      texte: La Plateforme propose via une série de questions d’orienter l’Utilisateur en fonction de
+        l’occupation du sol et du fertilisant qu’il prévoit d’épandre pour qu’il puisse obtenir un résultat
+        personnalisé concernant les périodes minimales d'interdiction d'épandage et les conditions d'épandage
+        du Programme d’Action National et des Programmes d’Action Régionaux des territoires d’expérimentation
+        sur sa parcelle selon la réglementation.
+  - type: titre_paragraphe
+    data:
+      texte: 4.2 - Améliorer la Plateforme
+  - type: paragraphe
+    data:
+      texte: La Plateforme permet aux Utilisateurs via deux champs libres de signaler un bug et d’exprimer
+        leurs attentes, propositions et opinions sur la Plateforme.
+  - type: titre_principal
+    data:
+      texte: Article 5 - Déploiement du Service
+  - type: paragraphe
+    data:
+      texte: Le Service est actuellement en cours d’expérimentation dans les départements du Nord et du
+        Pas-de-Calais et dans la région Grand-Est.
+  - type: titre_principal
+    data:
+      texte: Article 6 - Responsabilités
+  - type: titre_paragraphe
+    data:
+      texte: 6.1 Responsabilités de l’Éditeur
+  - type: paragraphe
+    data:
+      texte: Les sources des informations diffusées sur le Service sont réputées fiables mais le Service
+        ne garantit pas qu'elles soient exemptes de défauts, d'erreurs ou d'omissions.
+  - type: paragraphe
+    data:
+      texte: Le Service ne délivre aucune autorisation ou décision administrative créatrice de droits pour
+        les Utilisateurs. Il s'agit d'un portail que peuvent consulter les Utilisateurs à titre informatif.
+  - type: paragraphe
+    data:
+      texte: L'Editeur s'engage à la sécurisation du Service, notamment en prenant toutes les mesures nécessaires
+        permettant de garantir la sécurité et la confidentialité des informations fournies. L'Éditeur fournit
+        les moyens nécessaires et raisonnables pour assurer un accès continu, sans contrepartie financière.
+  - type: paragraphe
+    data:
+      texte: Il se réserve la liberté de faire évoluer, de modifier ou de suspendre, sans préavis, le Service
+        pour des raisons de maintenance ou pour tout autre motif jugé nécessaire.
+  - type: titre_paragraphe
+    data:
+      texte: 6.2 Responsabilités de l'Utilisateur
+  - type: paragraphe
+    data:
+      texte: L'Utilisateur déclare être pleinement informé et conscient que la Plateforme ne délivre aucune
+        autorisation ou décision administrative créatrice de droits pour les Utilisateurs. Il s'agit d'un
+        portail que peuvent consulter les Utilisateurs à titre informatif.
+  - type: paragraphe
+    data:
+      texte: "Dans le cadre de l'utilisation de la Plateforme, l'Utilisateur s'engage à :"
+  - type: liste
+    data:
+      items:
+      - texte: ne pas divulguer sur la Plateforme des propos ou des contenus illicites, et notamment tous
+          contenus contrefaits, diffamatoires, injurieux, insultants, obscènes, offensants, discriminatoires,
+          violents, xénophobes, incitant à la haine raciale ou faisant l'apologie du terrorisme, ou tout
+          autre contenu contraire à la législation et réglementation applicable ainsi qu'aux bonnes mœurs
+          et aux règles de bienséance ;
+      - texte: ne pas intégrer et diffuser sur la Plateforme du contenu qui serait contraire à la finalité
+          de celui-ci ;
+      - texte: ne pas communiquer ou envoyer, par l'intermédiaire de la Plateforme, du contenu, quel qu'il
+          soit, qui comprendrait des liens pointant vers des sites internet illicites, offensants ou incompatibles
+          avec la finalité de la Plateforme ;
+      - texte: ne pas utiliser la Plateforme pour envoyer massivement des messages non sollicités (publicitaires
+          ou autres).
+  - type: paragraphe
+    data:
+      texte: Il est rappelé que toute personne procédant à une fausse déclaration pour elle-même ou pour
+        autrui s’expose, notamment, aux sanctions prévues à l’article 441-1 du code pénal, prévoyant des
+        peines pouvant aller jusqu’à trois ans d’emprisonnement et 45 000 euros d’amende.
+  - type: titre_principal
+    data:
+      texte: Article 7 - Mise à jour des conditions générales d’utilisation
+  - type: paragraphe
+    data:
+      texte: Les termes des présentes CGU peuvent être amendés à tout moment, en fonction des modifications
+        apportées à la Plateforme, de l’évolution de la législation ou pour tout autre motif jugé nécessaire.
+        Chaque modification donne lieu à une information qui est publiée sur la Plateforme.
+
+- cle: page.accessibilite
+  libelle_admin: Page — Déclaration d'accessibilité
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: Établie le 18 septembre 2026.
+  - type: paragraphe
+    data:
+      texte: Les ministères chargés de l'Écologie et de l'Agriculture s’engagent à rendre leur service accessible,
+        conformément à l’article 47 de la loi n° 2005-102 du 11 février 2005 pour l'égalité des droits et
+        des chances, la participation et la citoyenneté des personnes handicapées.
+  - type: paragraphe
+    data:
+      texte: "À cette fin, le ministère de l’agriculture met en œuvre la stratégie et les actions suivantes :"
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: Schéma pluriannuel
+          lien: https://agriculture.gouv.fr/telecharger/149999
+      - texte:
+        - texte: Plan 2025
+          lien: https://agriculture.gouv.fr/telecharger/150002
+  - type: paragraphe
+    data:
+      texte: "Le ministère de l’écologie met en œuvre la stratégie et les actions suivantes :"
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: Schéma pluriannuel 2025-2027
+          lien: https://www.ecologie.gouv.fr/schema-pluriannuel-daccessibilite-numerique-2025-2027
+      - texte:
+        - texte: Plan 2026
+          lien: https://www.ecologie.gouv.fr/plan-annuel-2026#detail-du-plan-annuel-2026-2
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Cette déclaration d’accessibilité s’applique à "
+      - texte: Nitrat'Info
+        gras: true
+      - texte: " (https://nitrates.beta.gouv.fr/)."
+  - type: titre_principal
+    data:
+      texte: État de conformité
+  - type: paragraphe
+    data:
+      texte:
+      - texte: Nitrat'Info
+        gras: true
+      - texte: " est "
+      - texte: non conforme
+        gras: true
+      - texte: " avec le RGAA (référentiel général d’amélioration de l’accessibilité). Le site n’a encore pas été audité."
+  - type: titre_principal
+    data:
+      texte: Établissement de cette déclaration d’accessibilité
+  - type: paragraphe
+    data:
+      texte: Cette déclaration a été établie le 18 septembre 2026.
+  - type: titre_paragraphe
+    data:
+      texte: Technologies utilisées
+  - type: paragraphe
+    data:
+      texte: "L’accessibilité de Nitrat'Info s’appuie sur les technologies suivantes :"
+  - type: liste
+    data:
+      items:
+      - texte: HTML
+      - texte: WAI-ARIA
+      - texte: CSS
+      - texte: JavaScript
+  - type: titre_paragraphe
+    data:
+      texte: Contenus non accessibles
+  - type: paragraphe
+    data:
+      texte:
+      - texte: Cartographie
+        gras: true
+  - type: paragraphe
+    data:
+      texte: La carte interactive permettant de localiser une parcelle n'est pas entièrement accessible.
+        En particulier, le déplacement du marqueur de position nécessite une manipulation à la souris ou
+        au doigt et ne peut pas être réalisé au clavier ni avec une technologie d'assistance. La recherche
+        par commune reste utilisable comme alternative pour renseigner la localisation. Des travaux sont
+        prévus prochainement pour rendre la carte et le positionnement du marqueur pleinement opérables
+        au clavier.
+  - type: paragraphe
+    data:
+      texte:
+      - texte: Calendrier
+        gras: true
+  - type: paragraphe
+    data:
+      texte: L'affichage du calendrier repose sur un code couleur pour distinguer les périodes autorisées,
+        soumises à conditions et interdites, ce qui peut en gêner la lecture pour les personnes ayant un
+        trouble de la perception des couleurs ou utilisant un lecteur d'écran. L'ensemble des informations
+        portées par ce code couleur est toutefois restitué sous forme textuelle. Une amélioration de la
+        structure et de la restitution du calendrier est prévue prochainement.
+  - type: titre_principal
+    data:
+      texte: Amélioration et contact
+  - type: paragraphe
+    data:
+      texte: Si vous n’arrivez pas à accéder à un contenu ou à un service, vous pouvez contacter le responsable
+        de Nitrat'Info pour être orienté vers une alternative accessible ou obtenir le contenu sous une
+        autre forme.
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: "E-mail : "
+        - texte: nitrates@beta.gouv.fr
+          lien: mailto:nitrates@beta.gouv.fr
+      - texte: "Adresse : Ministère de l’Agriculture, de l’Agro-alimentaire et de la Souveraineté Alimentaire,\
+          \ 78 rue de Varenne, Paris"
+  - type: paragraphe
+    data:
+      texte: Nous essayons de répondre dans les 2 jours ouvrés.
+  - type: titre_principal
+    data:
+      texte: Voie de recours
+  - type: paragraphe
+    data:
+      texte: "Cette procédure est à utiliser dans le cas suivant : vous avez signalé au responsable du\
+        \ site internet un défaut d’accessibilité qui vous empêche d’accéder à un contenu ou à un des\
+        \ services du portail et vous n’avez pas obtenu de réponse satisfaisante."
+  - type: paragraphe
+    data:
+      texte: "Vous pouvez :"
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: "Écrire un message au "
+        - texte: Défenseur des droits
+          lien: https://formulaire.defenseurdesdroits.fr/
+      - texte:
+        - texte: "Contacter "
+        - texte: le délégué du Défenseur des droits dans votre région
+          lien: https://www.defenseurdesdroits.fr/saisir/delegues
+      - texte: "Envoyer un courrier par la poste (gratuit, ne pas mettre de timbre) : Défenseur des droits,\
+          \ Libre réponse 71120, 75342 Paris CEDEX 07"
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Cette déclaration d’accessibilité a été créée le 18 septembre 2026 grâce au "
+      - texte: Générateur de Déclaration d’Accessibilité
+        lien: https://betagouv.github.io/a11y-generateur-declaration/#create
+      - texte: .
+
+- cle: page.contact
+  libelle_admin: Page — Contact
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: Pour une question, une remarque, une suggestion…
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Vous pouvez joindre l'équipe de Nitrat'Info par mail : "
+      - texte: nitrates@beta.gouv.fr
+        lien: mailto:nitrates@beta.gouv.fr
+
+- cle: page.donnees_personnelles
+  libelle_admin: Page — Données personnelles
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Nitrat'Info ne demande ni compte, ni nom, ni adresse : le simulateur fonctionne uniquement\
+        \ à partir de la localisation d'une parcelle et des réponses au questionnaire, qui ne sont pas\
+        \ conservées. Les seules données personnelles traitées sont les adresses e-mail que vous choisissez\
+        \ de nous laisser."
+  - type: titre_principal
+    data:
+      texte: Responsable de traitement
+  - type: paragraphe
+    data:
+      texte: Le responsable de traitement est le Secrétariat Général du ministère en charge de l’agriculture,
+        représenté par Madame Cécile BIGOT-DEKEYZER, secrétaire générale.
+  - type: titre_principal
+    data:
+      texte: Données traitées et finalités
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: "Simulation : "
+          gras: true
+        - texte: la parcelle choisie et les réponses au questionnaire servent uniquement à calculer le
+            résultat affiché. Elles ne sont pas enregistrées et le parcours de simulation n'est pas conservé.
+      - texte:
+        - texte: "Adresse e-mail : "
+          gras: true
+        - texte: collectée uniquement si vous la saisissez et cochez la case de consentement, pour être
+            recontacté (avis sur l'outil, ouverture du service dans votre région). Elle est conservée
+            seule, sans lien avec vos simulations.
+      - texte:
+        - texte: "Avis et signalements : "
+          gras: true
+        - texte: la note, le commentaire libre et, pour un signalement de bug, des informations techniques
+            sur votre navigateur (type de navigateur, page consultée, messages d'erreur) servent à améliorer
+            la plateforme.
+      - texte:
+        - texte: "Mesure d'audience : "
+          gras: true
+        - texte: des statistiques de fréquentation anonymes (adresses IP anonymisées, non reliées à un
+            parcours ou à une parcelle).
+  - type: titre_principal
+    data:
+      texte: Base légale
+  - type: paragraphe
+    data:
+      texte: Le fonctionnement du simulateur relève de l'exécution d'une mission d'intérêt public (article
+        6-1 e du RGPD). La collecte de votre adresse e-mail repose sur votre consentement (article 6-1 a
+        du RGPD), que vous pouvez retirer à tout moment.
+  - type: titre_principal
+    data:
+      texte: Durée de conservation
+  - type: paragraphe
+    data:
+      texte: Les adresses e-mail sont conservées 1 an à compter de leur saisie, sauf retrait de votre
+        consentement avant cette date.
+  - type: titre_principal
+    data:
+      texte: Vos droits
+  - type: paragraphe
+    data:
+      texte: "Vous disposez d'un droit d'accès, de rectification, d'effacement, d'opposition et de limitation\
+        \ du traitement de vos données, ainsi que du droit de retirer votre consentement à tout moment."
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Pour les exercer, écrivez-nous à "
+      - texte: nitrates@beta.gouv.fr
+        lien: mailto:nitrates@beta.gouv.fr
+      - texte: ". Nous vous répondrons dans un délai d'un mois maximum. Si vous estimez, après nous avoir\
+          \ contactés, que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la "
+      - texte: CNIL
+        lien: https://www.cnil.fr/fr/plaintes
+      - texte: .
+  - type: titre_principal
+    data:
+      texte: Qui a accès aux données
+  - type: paragraphe
+    data:
+      texte: Seules les personnes habilitées de l'équipe Nitrat'Info ont accès aux adresses e-mail et aux
+        retours. Ils ne sont transmis à aucun organisme tiers, régional ou de contrôle.
+  - type: titre_principal
+    data:
+      texte: Sous-traitants
+  - type: tableau
+    data:
+      avec_entetes: true
+      lignes:
+      - - Prestataire
+        - Pays
+        - Traitement
+      - - Scalingo
+        - France
+        - Hébergement de la plateforme et de la base de données
+      - - Sentry (instance beta.gouv.fr)
+        - France
+        - Suivi des erreurs techniques
+      - - Matomo (instance beta.gouv.fr)
+        - France
+        - Mesure d'audience anonyme
+  - type: titre_principal
+    data:
+      texte: Cookies et stockage dans votre navigateur
+  - type: paragraphe
+    data:
+      texte: "Nitrat'Info n'utilise pas de cookie publicitaire. Nous utilisons uniquement :"
+  - type: liste
+    data:
+      items:
+      - texte: les cookies strictement nécessaires au fonctionnement et à la sécurité du site ;
+      - texte: la mesure d'audience Matomo, paramétrée pour être exemptée de consentement selon les recommandations
+          de la CNIL ;
+      - texte: le stockage local de votre navigateur, pour retenir vos préférences d'affichage (thème clair
+          ou sombre, couches de la carte), ne plus vous proposer la fenêtre d'avis une fois fermée et
+          compter le nombre de simulations lancées. Ces informations restent sur votre appareil.
+  - type: paragraphe
+    data:
+      texte: Les réponses saisies dans le formulaire sont gardées dans la page le temps de la simulation,
+        pour passer d'une question à l'autre. Elles ne sont pas enregistrées.

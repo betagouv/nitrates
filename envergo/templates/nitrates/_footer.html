@@ -37,8 +37,8 @@
   </div>
 
   {% comment %}
-  Pied de page bas DSFR (#63) : liens légaux obligatoires. Les pages sont des
-  gabarits placeholder tant que le contenu métier/juridique n'est pas rédigé.
+  Pied de page bas DSFR (#63, #550) : liens légaux obligatoires. Contenu
+  éditable en admin (ContenuRichDSFR page.*).
   On resout les URLs via `{% url ... as var %}` : cette forme ne leve PAS
   NoReverseMatch quand l'urlconf du contexte de rendu n'a pas ces routes (ex :
   page d'erreur 429/500, ou un Site dont l'urlconf n'est pas celui de nitrates).
@@ -47,8 +47,9 @@
   {% url 'nitrates_accessibilite' as url_accessibilite %}
   {% url 'nitrates_mentions_legales' as url_mentions_legales %}
   {% url 'nitrates_donnees_personnelles' as url_donnees_personnelles %}
+  {% url 'nitrates_cgu' as url_cgu %}
   {% url 'contact_us' as url_contact %}
-  {% if url_accessibilite or url_mentions_legales or url_donnees_personnelles or url_contact %}
+  {% if url_accessibilite or url_mentions_legales or url_donnees_personnelles or url_cgu or url_contact %}
     <div class="fr-footer__bottom">
       <ul class="fr-footer__bottom-list">
         {% if url_accessibilite %}
@@ -64,6 +65,11 @@
         {% if url_donnees_personnelles %}
           <li class="fr-footer__bottom-item">
             <a class="fr-footer__bottom-link" href="{{ url_donnees_personnelles }}">Données personnelles</a>
+          </li>
+        {% endif %}
+        {% if url_cgu %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_cgu }}">Conditions générales d'utilisation</a>
           </li>
         {% endif %}
         {% if url_contact %}

@@ -12,7 +12,7 @@ test.describe('Nitrates debug view', () => {
   test('home page shows the Leaflet map and the placeholder cartouche', async ({ page }) => {
     await page.goto('/simulateur/');
 
-    await expect(page).toHaveTitle(/Simulateur nitrates/);
+    await expect(page).toHaveTitle(/Nitrat'Info/);
     // Le panneau debug parcelle (#nitrates-debug) n'existe que sur
     // `/simulateur/` (la home publique `/` le masque : force_debug=False).
     // h1 narrative validee UX.
