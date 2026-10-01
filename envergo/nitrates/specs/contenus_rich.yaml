@@ -468,13 +468,17 @@ contenus:
       texte: Article 2 - Objet de la Plateforme
   - type: paragraphe
     data:
-      texte: La Plateforme, en cours d’expérimentation, permet à tout Utilisateur de disposer d’un questionnaire
-        et d’une page de résultat permettant de savoir, pour sa parcelle, si l'épandage de fertilisants
-        azotés est autorisé, soumis à conditions ou interdit selon la réglementation nitrates en vigueur.
+      texte: La Plateforme, en cours d’expérimentation, permet à tout Utilisateur de savoir, pour sa parcelle,
+        si l'épandage de fertilisants azotés est autorisé, soumis à conditions ou interdit selon la réglementation
+        nitrates en vigueur.
   - type: paragraphe
     data:
-      texte: La Plateforme ne s’adresse qu’aux exploitants agricoles et aux conseillers agricoles et ne
-        délivre que des informations indicatives qui ne se substituent en aucun cas à un accompagnement
+      texte: Elle s’adresse aux personnes qui souhaitent connaître les règles issues des programmes d’actions
+        nitrates qui s’appliquent sur une parcelle donnée. Actuellement, ce sont les mesures 1 (périodes
+        d’interdiction d’épandage) et 6 du programme d’actions nitrates qui sont implémentées dans la plateforme.
+  - type: paragraphe
+    data:
+      texte: La Plateforme s’adresse aux exploitants agricoles et aux conseillers agricoles et ne délivre que des informations indicatives qui ne se substituent en aucun cas à un accompagnement
         complémentaire.
   - type: titre_principal
     data:
@@ -502,7 +506,7 @@ contenus:
       texte: La Plateforme propose via une série de questions d’orienter l’Utilisateur en fonction de
         l’occupation du sol et du fertilisant qu’il prévoit d’épandre pour qu’il puisse obtenir un résultat
         personnalisé concernant les périodes minimales d'interdiction d'épandage et les conditions d'épandage
-        du Programme d’Action National et des Programmes d’Action Régionaux des territoires d’expérimentation
+        du Programme d’Actions National et des Programmes d’Actions Régionaux des territoires d’expérimentation
         sur sa parcelle selon la réglementation.
   - type: titre_paragraphe
     data:
