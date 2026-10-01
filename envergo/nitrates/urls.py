@@ -71,6 +71,14 @@ from envergo.nitrates.views_yaml_browser import (
     YamlBrowserListView,
 )
 
+
+def _page_riche(titre, cle):
+    return TemplateView.as_view(
+        template_name="nitrates/page_riche.html",
+        extra_context={"titre": titre, "cle": cle},
+    )
+
+
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
     path(
@@ -276,17 +284,23 @@ urlpatterns = [
         EditRawYamlView.as_view(),
         name="nitrates_admin_yaml_edit_raw",
     ),
+    # Pages du pied de page (#63, #550). Contenu riche editable en admin
+    # (ContenuRichDSFR `page.*`, seede par la migration 0035), public meme
+    # en lockdown (cf. RequireLoginEverywhere).
     path(
         _("contact-us/"),
-        TemplateView.as_view(template_name="nitrates/contact_us.html"),
+        _page_riche("Contactez-nous", "page.contact"),
         name="contact_us",
     ),
-    # Pages légales du pied de page DSFR (#63). Contenu placeholder à
-    # compléter côté métier/juridique.
     path(
         _("mentions-legales/"),
-        TemplateView.as_view(template_name="nitrates/mentions_legales.html"),
+        _page_riche("Mentions légales", "page.mentions_legales"),
         name="nitrates_mentions_legales",
+    ),
+    path(
+        "cgu/",
+        _page_riche("Conditions générales d'utilisation de Nitrat'Info", "page.cgu"),
+        name="nitrates_cgu",
     ),
     path(
         _("donnees-personnelles/"),
@@ -295,7 +309,7 @@ urlpatterns = [
     ),
     path(
         _("accessibilite/"),
-        TemplateView.as_view(template_name="nitrates/accessibilite.html"),
+        _page_riche("Déclaration d'accessibilité", "page.accessibilite"),
         name="nitrates_accessibilite",
     ),
     # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)

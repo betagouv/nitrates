@@ -1,0 +1,27 @@
+{% extends "nitrates/base.html" %}
+
+{% load nitrates_tags %}
+
+{% comment %}
+Page autonome du pied de page (mentions legales, CGU, accessibilite,
+contact, #550). Le h1 vient de la vue (extra_context), le corps est un
+ContenuRichDSFR editable dans l'admin (cle `page.*`), rendu a partir du h2.
+calendrier.css porte le style .contenu-rich (cf. prescription_detail).
+{% endcomment %}
+{% block extra_css %}
+  <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block article %}
+  <div class="page-riche">
+    <h1>{{ titre }}</h1>
+    {% contenu_rich cle niveau_base=2 as corps %}
+    {% if corps %}
+      {{ corps }}
+    {% else %}
+      <p>Contenu bientôt disponible.</p>
+    {% endif %}
+  </div>
+{% endblock %}

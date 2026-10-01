@@ -28,6 +28,9 @@ from django.utils.safestring import mark_safe
 # titres principaux de contenu en h3, et on descend (h4...) dans les foldables.
 NIVEAU_TITRE_BASE = 3
 NIVEAU_TITRE_MAX = 6  # <h6> est le plus profond en HTML
+# Plancher : les pages autonomes (mentions legales, CGU...) ont deja leur <h1>
+# et demarrent leurs sections en h2. Jamais de h1 genere par le contenu.
+NIVEAU_TITRE_MIN = 2
 
 # Compteur d'id pour les accordéons (aria-controls doit être unique dans la
 # page). On le passe en paramètre mutable pour rester sans état global.
@@ -57,14 +60,14 @@ def _url_segment(seg, ctx):
 
 
 def _url_sure(url):
-    """Filtre l'URL d'un segment lien : uniquement relative au site ou http(s).
+    """Filtre l'URL d'un segment lien : relative au site, http(s) ou mailto.
 
     Tout autre schéma (javascript:, data:...) est écarté -> le segment est
     rendu comme du texte simple, sans lien."""
     if not isinstance(url, str):
         return None
     url = url.strip()
-    if url.startswith("/") or url.startswith(("https://", "http://")):
+    if url.startswith("/") or url.startswith(("https://", "http://", "mailto:")):
         return url
     return None
 
@@ -100,7 +103,10 @@ def _rich(valeur, ctx=None) -> str:
             else:
                 txt = format_html("{0}", txt)
             url = _url_segment(seg, ctx if ctx is not None else {})
-            if url:
+            if url and url.startswith("mailto:"):
+                # pas de nouvel onglet pour un mailto, ca ouvre le client mail
+                txt = format_html('<a href="{0}" class="fr-link">{1}</a>', url, txt)
+            elif url:
                 txt = format_html(
                     '<a href="{0}" class="fr-link" target="_blank" '
                     'rel="noopener">{1}</a>',
@@ -122,7 +128,7 @@ def _texte(data: dict, ctx=None) -> str:
 
 
 def _niveau(n: int) -> int:
-    return max(NIVEAU_TITRE_BASE, min(NIVEAU_TITRE_MAX, n))
+    return max(NIVEAU_TITRE_MIN, min(NIVEAU_TITRE_MAX, n))
 
 
 def _compile_titre_principal(data, niveau, ctx):
