@@ -476,10 +476,6 @@ contenus:
       texte: Elle s’adresse aux personnes qui souhaitent connaître les règles issues des programmes d’actions
         nitrates qui s’appliquent sur une parcelle donnée. Actuellement, ce sont les mesures 1 (périodes
         d’interdiction d’épandage) et 6 du programme d’actions nitrates qui sont implémentées dans la plateforme.
-  - type: paragraphe
-    data:
-      texte: La Plateforme s’adresse aux exploitants agricoles et aux conseillers agricoles et ne délivre que des informations indicatives qui ne se substituent en aucun cas à un accompagnement
-        complémentaire.
   - type: titre_principal
     data:
       texte: Article 3 - Définitions
