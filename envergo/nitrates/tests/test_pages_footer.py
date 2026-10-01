@@ -22,6 +22,7 @@ PAGES = [
     ("nitrates_cgu", "page.cgu", "Article 7"),
     ("nitrates_accessibilite", "page.accessibilite", "non conforme"),
     ("contact_us", "page.contact", "nitrates@beta.gouv.fr"),
+    ("nitrates_donnees_personnelles", "page.donnees_personnelles", "BIGOT-DEKEYZER"),
 ]
 
 

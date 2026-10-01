@@ -748,3 +748,127 @@ contenus:
       - texte: "Vous pouvez joindre l'équipe de Nitrat'Info par mail : "
       - texte: nitrates@beta.gouv.fr
         lien: mailto:nitrates@beta.gouv.fr
+
+- cle: page.donnees_personnelles
+  libelle_admin: Page — Données personnelles
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Nitrat'Info ne demande ni compte, ni nom, ni adresse : le simulateur fonctionne uniquement\
+        \ à partir de la localisation d'une parcelle et des réponses au questionnaire, qui ne sont pas\
+        \ conservées. Les seules données personnelles traitées sont les adresses e-mail que vous choisissez\
+        \ de nous laisser."
+  - type: titre_principal
+    data:
+      texte: Responsable de traitement
+  - type: paragraphe
+    data:
+      texte: Le responsable de traitement est le Secrétariat Général du ministère en charge de l’agriculture,
+        représenté par Madame Cécile BIGOT-DEKEYZER, secrétaire générale.
+  - type: titre_principal
+    data:
+      texte: Données traitées et finalités
+  - type: liste
+    data:
+      items:
+      - texte:
+        - texte: "Simulation : "
+          gras: true
+        - texte: la parcelle choisie et les réponses au questionnaire servent uniquement à calculer le
+            résultat affiché. Elles ne sont pas enregistrées et le parcours de simulation n'est pas conservé.
+      - texte:
+        - texte: "Adresse e-mail : "
+          gras: true
+        - texte: collectée uniquement si vous la saisissez et cochez la case de consentement, pour être
+            recontacté (avis sur l'outil, ouverture du service dans votre région). Elle est conservée
+            seule, sans lien avec vos simulations.
+      - texte:
+        - texte: "Avis et signalements : "
+          gras: true
+        - texte: la note, le commentaire libre et, pour un signalement de bug, des informations techniques
+            sur votre navigateur (type de navigateur, page consultée, messages d'erreur) servent à améliorer
+            la plateforme.
+      - texte:
+        - texte: "Mesure d'audience : "
+          gras: true
+        - texte: des statistiques de fréquentation anonymes (adresses IP anonymisées, non reliées à un
+            parcours ou à une parcelle).
+  - type: titre_principal
+    data:
+      texte: Base légale
+  - type: paragraphe
+    data:
+      texte: Le fonctionnement du simulateur relève de l'exécution d'une mission d'intérêt public (article
+        6-1 e du RGPD). La collecte de votre adresse e-mail repose sur votre consentement (article 6-1 a
+        du RGPD), que vous pouvez retirer à tout moment.
+  - type: titre_principal
+    data:
+      texte: Durée de conservation
+  - type: paragraphe
+    data:
+      texte: Les adresses e-mail sont conservées 1 an à compter de leur saisie, sauf retrait de votre
+        consentement avant cette date.
+  - type: titre_principal
+    data:
+      texte: Vos droits
+  - type: paragraphe
+    data:
+      texte: "Vous disposez d'un droit d'accès, de rectification, d'effacement, d'opposition et de limitation\
+        \ du traitement de vos données, ainsi que du droit de retirer votre consentement à tout moment."
+  - type: paragraphe
+    data:
+      texte:
+      - texte: "Pour les exercer, écrivez-nous à "
+      - texte: nitrates@beta.gouv.fr
+        lien: mailto:nitrates@beta.gouv.fr
+      - texte: ". Nous vous répondrons dans un délai d'un mois maximum. Si vous estimez, après nous avoir\
+          \ contactés, que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la "
+      - texte: CNIL
+        lien: https://www.cnil.fr/fr/plaintes
+      - texte: .
+  - type: titre_principal
+    data:
+      texte: Qui a accès aux données
+  - type: paragraphe
+    data:
+      texte: Seules les personnes habilitées de l'équipe Nitrat'Info ont accès aux adresses e-mail et aux
+        retours. Ils ne sont transmis à aucun organisme tiers, régional ou de contrôle.
+  - type: titre_principal
+    data:
+      texte: Sous-traitants
+  - type: tableau
+    data:
+      avec_entetes: true
+      lignes:
+      - - Prestataire
+        - Pays
+        - Traitement
+      - - Scalingo
+        - France
+        - Hébergement de la plateforme et de la base de données
+      - - Sentry (instance beta.gouv.fr)
+        - France
+        - Suivi des erreurs techniques
+      - - Matomo (instance beta.gouv.fr)
+        - France
+        - Mesure d'audience anonyme
+  - type: titre_principal
+    data:
+      texte: Cookies et stockage dans votre navigateur
+  - type: paragraphe
+    data:
+      texte: "Nitrat'Info n'utilise pas de cookie publicitaire. Nous utilisons uniquement :"
+  - type: liste
+    data:
+      items:
+      - texte: les cookies strictement nécessaires au fonctionnement et à la sécurité du site ;
+      - texte: la mesure d'audience Matomo, paramétrée pour être exemptée de consentement selon les recommandations
+          de la CNIL ;
+      - texte: le stockage local de votre navigateur, pour retenir vos préférences d'affichage (thème clair
+          ou sombre, couches de la carte), ne plus vous proposer la fenêtre d'avis une fois fermée et
+          compter le nombre de simulations lancées. Ces informations restent sur votre appareil.
+  - type: paragraphe
+    data:
+      texte: Les réponses saisies dans le formulaire sont gardées dans la page le temps de la simulation,
+        pour passer d'une question à l'autre. Elles ne sont pas enregistrées.

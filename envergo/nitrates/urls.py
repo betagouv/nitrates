@@ -304,7 +304,7 @@ urlpatterns = [
     ),
     path(
         _("donnees-personnelles/"),
-        TemplateView.as_view(template_name="nitrates/donnees_personnelles.html"),
+        _page_riche("Données personnelles", "page.donnees_personnelles"),
         name="nitrates_donnees_personnelles",
     ),
     path(

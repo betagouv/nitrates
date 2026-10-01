@@ -1,4 +1,7 @@
-"""Seed des pages du pied de page en contenu riche (#550)."""
+"""Seed de la page donnees personnelles (#550), ajoutee apres 0035.
+
+Meme seed idempotent : ne cree que les page.* absentes.
+"""
 
 from django.db import migrations
 
@@ -8,7 +11,7 @@ from envergo.nitrates.contenu_rich.pages import seed_pages
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("nitrates", "0034_lienreference"),
+        ("nitrates", "0035_seed_pages_footer"),
     ]
 
     operations = [
