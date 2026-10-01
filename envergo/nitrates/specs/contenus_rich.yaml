@@ -590,12 +590,12 @@ contenus:
       texte: Établie le 18 septembre 2026.
   - type: paragraphe
     data:
-      texte: Les ministères chargés de l'Écologie et de l'Agriculture s’engagent à rendre leur service accessible,
-        conformément à l’article 47 de la loi n° 2005-102 du 11 février 2005 pour l'égalité des droits et
+      texte: Le ministère en charge de la transition écologique et le ministère en charge de l'agriculture
+        s’engagent à rendre leur service accessible, conformément à l’article 47 de la loi n° 2005-102 du 11 février 2005 pour l'égalité des droits et
         des chances, la participation et la citoyenneté des personnes handicapées.
   - type: paragraphe
     data:
-      texte: "À cette fin, le ministère de l’agriculture met en œuvre la stratégie et les actions suivantes :"
+      texte: "À cette fin, le ministère en charge de l’agriculture met en œuvre la stratégie et les actions suivantes :"
   - type: liste
     data:
       items:
@@ -603,11 +603,11 @@ contenus:
         - texte: Schéma pluriannuel
           lien: https://agriculture.gouv.fr/telecharger/149999
       - texte:
-        - texte: Plan 2025
-          lien: https://agriculture.gouv.fr/telecharger/150002
+        - texte: Plan 2026
+          lien: https://agriculture.gouv.fr/telecharger/154563
   - type: paragraphe
     data:
-      texte: "Le ministère de l’écologie met en œuvre la stratégie et les actions suivantes :"
+      texte: "Le ministère en charge de la transition écologique met en œuvre la stratégie et les actions suivantes :"
   - type: liste
     data:
       items:
@@ -665,12 +665,11 @@ contenus:
         gras: true
   - type: paragraphe
     data:
-      texte: La carte interactive permettant de localiser une parcelle n'est pas entièrement accessible.
-        En particulier, le déplacement du marqueur de position nécessite une manipulation à la souris ou
-        au doigt et ne peut pas être réalisé au clavier ni avec une technologie d'assistance. La recherche
-        par commune reste utilisable comme alternative pour renseigner la localisation. Des travaux sont
-        prévus prochainement pour rendre la carte et le positionnement du marqueur pleinement opérables
-        au clavier.
+      texte: "La carte interactive permettant de localiser une parcelle est utilisable au clavier : flèches\
+        \ pour se déplacer, + et − pour zoomer, Entrée pour choisir le point au centre de la carte, F pour\
+        \ le plein écran et L pour accéder aux couches. Le contenu visuel de la carte (fonds de plan, zones\
+        \ réglementaires) n'est en revanche pas restitué par les technologies d'assistance. La recherche\
+        \ par commune reste utilisable comme alternative pour renseigner la localisation."
   - type: paragraphe
     data:
       texte:
