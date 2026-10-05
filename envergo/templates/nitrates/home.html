@@ -1,6 +1,6 @@
 {% extends "nitrates/base.html" %}
 
-{% load static leaflet_tags %}
+{% load static leaflet_tags nitrates_tags %}
 
 {% block title %}Accueil{% endblock %}
 
@@ -11,6 +11,8 @@
 
 {% block extra_js %}
   {% leaflet_js %}
+  {% couleurs_zones "zv_nitrates" as zv_couleurs %}
+  {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
   <script>
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";

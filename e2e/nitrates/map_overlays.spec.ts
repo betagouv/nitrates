@@ -150,7 +150,8 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     expect([...couverts].filter((c) => !METROPOLE.includes(c))).toEqual([]);
     expect(METROPOLE.filter((c) => !couverts.has(c))).toEqual([]);
 
-    // Au moins 6 couleurs (deux peuvent se ressembler en hex mais c'est ok).
+    // Au moins 6 couleurs : Escaut (FRA) et Sambre (FRB2) partagent celle
+    // d'Artois-Picardie, comme Rhin (FRC) et Meuse (FRB1) celle de Rhin-Meuse.
     expect((await rendu()).colorCount).toBeGreaterThanOrEqual(6);
   });
 

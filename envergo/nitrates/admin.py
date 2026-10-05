@@ -604,6 +604,30 @@ class DepartementOuvertureAdmin(admin.ModelAdmin):
         self.message_user(request, f"{n} département(s) fermé(s).")
 
 
+# ─── Couleurs des zones sur la carte du simulateur ───────────────────────────
+
+from envergo.nitrates.models import CouleurZone  # noqa: E402
+
+
+@admin.register(CouleurZone)
+class CouleurZoneAdmin(admin.ModelAdmin):
+    """Couleur de chaque bassin ZV sur la carte. Prise en compte au
+    rechargement de la page (pas de cache sur les couleurs)."""
+
+    list_display = ("cle", "libelle", "apercu", "couleur", "map_type")
+    list_editable = ("couleur",)
+    list_filter = ("map_type",)
+    search_fields = ("cle", "libelle")
+
+    @admin.display(description="Aperçu")
+    def apercu(self, obj):
+        return format_html(
+            '<span style="display:inline-block;width:2.5em;height:1em;'
+            'background:{};border:1px solid #666"></span>',
+            obj.couleur,
+        )
+
+
 # ─── Contenu riche éditable « textes volants » (carte #131) ──────────────────
 
 from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
