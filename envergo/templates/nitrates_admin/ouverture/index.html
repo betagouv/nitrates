@@ -231,6 +231,11 @@
       affichent un message « pas encore ouvert ».
       <em>Fermé par défaut.</em>
     </p>
+    {% if lecture_seule %}
+      <p>
+        <strong>Lecture seule</strong> : votre profil d'observateur permet de consulter l'ouverture, pas de la modifier.
+      </p>
+    {% endif %}
   </div>
 
   <div class="ouverture__cols">
@@ -261,8 +266,9 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
-  <script>
+  {% if not lecture_seule %}
+    <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
+    <script>
     (function () {
       const toggleUrl = "{% url 'nitrates_admin_ouverture_toggle' %}";
       const toggleRegionUrl = "{% url 'nitrates_admin_ouverture_toggle_region' %}";
@@ -348,5 +354,6 @@
         });
       });
     })();
-  </script>
+    </script>
+  {% endif %}
 {% endblock %}

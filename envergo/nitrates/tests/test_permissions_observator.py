@@ -328,3 +328,50 @@ def test_provision_admin_neutralise_password_existant(db):
     u.refresh_from_db()
     assert u.is_staff is True
     assert u.has_usable_password() is False
+
+
+# ---------------------------------------------------------------------------
+# Migration 0039 : permissions du groupe sur une base neuve
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_migration_0039_recable_le_groupe_vide():
+    """Reproduit la prod : groupe cree vide par 0010 (permissions pas encore
+    en base). 0039 doit lui rattacher la consultation de tous les modeles
+    nitrates, sans aucun droit de modification hors arbres."""
+    import importlib
+
+    from django.apps import apps as global_apps
+
+    mig = importlib.import_module(
+        "envergo.nitrates.migrations.0039_external_observator_permissions"
+    )
+    group, _ = Group.objects.get_or_create(name=EXTERNAL_OBSERVATOR_GROUP)
+    group.permissions.clear()
+
+    mig.recabler(global_apps, None)
+
+    codes = set(group.permissions.values_list("codename", flat=True))
+    for attendu in (
+        "view_codeprescription",
+        "view_contenurichdsfr",
+        "view_departementouverture",
+        "view_lienreference",
+        "view_couleurzone",
+        "add_decisiontree",
+        "add_branchevalidationaction",
+    ):
+        assert attendu in codes
+    modifs = {c for c in codes if c.startswith(("change_", "delete_", "add_"))}
+    assert modifs <= {
+        "add_decisiontree",
+        "change_decisiontree",
+        "delete_decisiontree",
+        "add_decisiontreerevision",
+        "add_branchevalidationaction",
+    }
+
+    # Idempotent
+    mig.recabler(global_apps, None)
+    assert set(group.permissions.values_list("codename", flat=True)) == codes

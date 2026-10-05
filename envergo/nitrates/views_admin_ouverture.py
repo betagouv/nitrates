@@ -11,12 +11,21 @@ header de l'admin nitrates.
 import json
 
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from envergo.nitrates.models import DepartementOuverture
+from envergo.nitrates.permissions import is_external_observator
+
+
+def _refuser_observateur(user):
+    """Un observateur externe consulte le panel mais ne bascule rien :
+    ouvrir un département en prod rend le simulateur public."""
+    if is_external_observator(user):
+        raise PermissionDenied("Lecture seule pour les observateurs externes.")
 
 
 def _liste_avec_entetes(departements):
@@ -70,6 +79,7 @@ def ouverture_index(request):
             "items_fermes": _liste_avec_entetes(fermes),
             "nb_ouverts": len(ouverts),
             "nb_fermes": len(fermes),
+            "lecture_seule": is_external_observator(request.user),
         },
     )
 
@@ -86,6 +96,7 @@ def ouverture_toggle(request):
     Renvoie un fragment vide + un HX-Trigger toast. Le DOM est déjà à jour
     côté client (SortableJS a déplacé l'élément) ; on ne fait que persister.
     """
+    _refuser_observateur(request.user)
     code = (request.POST.get("code") or "").strip()
     cible = (request.POST.get("est_ouvert") or "").strip().lower()
     if not code or cible not in ("true", "false"):
@@ -118,6 +129,7 @@ def ouverture_toggle_region(request):
     Renvoie la page entière re-rendue (HX-Refresh) pour repositionner les
     départements dans les bonnes colonnes.
     """
+    _refuser_observateur(request.user)
     region_code = (request.POST.get("region_code") or "").strip()
     cible = (request.POST.get("est_ouvert") or "").strip().lower()
     if not region_code or cible not in ("true", "false"):

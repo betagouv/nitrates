@@ -230,3 +230,50 @@ def test_admin_orm_action_ouvrir(staff_client):
     )
     assert r.status_code in (200, 302)
     assert departement_est_ouvert("75") is True
+
+
+# ─── Observateur externe : lecture seule ────────────────────────────────────
+
+
+@pytest.fixture
+def observateur_client(db):
+    from django.contrib.auth.models import Group
+
+    from envergo.nitrates.permissions import EXTERNAL_OBSERVATOR_GROUP
+
+    u = User.objects.create(
+        email="obs@test.local", is_staff=True, is_superuser=False, is_active=True
+    )
+    u.groups.add(Group.objects.get_or_create(name=EXTERNAL_OBSERVATOR_GROUP)[0])
+    c = Client()
+    c.force_login(u)
+    return c
+
+
+def test_observateur_voit_le_panel_en_lecture_seule(observateur_client):
+    r = observateur_client.get("/admin/nitrates/ouverture-geographique/")
+    assert r.status_code == 200
+    assert b"Lecture seule" in r.content
+    # Pas de drag&drop : le JS de persistance n'est pas servi.
+    assert b"sortable.min.js" not in r.content
+
+
+def test_observateur_ne_bascule_pas_un_departement(observateur_client):
+    assert not departement_est_ouvert("75")
+    r = observateur_client.post(
+        "/admin/nitrates/ouverture-geographique/toggle/",
+        {"code": "75", "est_ouvert": "true"},
+    )
+    assert r.status_code == 403
+    assert departement_est_ouvert("75") is False
+
+
+def test_observateur_ne_bascule_pas_une_region(observateur_client):
+    r = observateur_client.post(
+        "/admin/nitrates/ouverture-geographique/toggle-region/",
+        {"region_code": "11", "est_ouvert": "true"},
+    )
+    assert r.status_code == 403
+    assert not DepartementOuverture.objects.filter(
+        region_code="11", est_ouvert=True
+    ).exists()
