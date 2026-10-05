@@ -11,17 +11,35 @@
   const INITIAL_CENTER = [46.6, 2.45];
   const INITIAL_ZOOM = 6;
 
-  const ZV_COLORS_BY_BASSIN = {
-    FRA: "#e7a854",
-    FRB1: "#7fcfcf",
-    FRB2: "#02f9f9",
-    FRC: "#1e7fcb",
-    FRD: "#f7e269",
-    FRF: "#e1ce9a",
-    FRG: "#bbae98",
-    FRH: "#ffcb60",
-  };
-  const ZV_COLOR_FALLBACK = "#a06fc7";
+  // Couleur par bassin DCE, editable dans l'admin (CouleurZone) et injectee
+  // dans la page (json_script). La palette ci-dessous n'est qu'un filet si
+  // l'injection manque ; elle reprend le seed de la migration 0038.
+  const ZV_COLORS_BY_BASSIN = Object.assign(
+    {
+      FRA: "#00b0ff",
+      FRB2: "#00b0ff",
+      "FRB1-FRC": "#7c4dff",
+      FRB1: "#7c4dff",
+      FRC: "#7c4dff",
+      FRD: "#00c853",
+      FRF: "#ff6d00",
+      FRG: "#f50057",
+      FRH: "#ffd600",
+    },
+    (function () {
+      const el = document.getElementById("nitrates-zv-couleurs");
+      try {
+        return el ? JSON.parse(el.textContent) : {};
+      } catch (e) {
+        return {};
+      }
+    })()
+  );
+  const ZV_COLOR_FALLBACK = ZV_COLORS_BY_BASSIN["*"] || "#a06fc7";
+  // Couleurs vives + remplissage leger : le fond doit rester lisible sous la
+  // couche. La photo, plus chargee, supporte moins de remplissage que le plan.
+  const ZV_FILL_OPACITY_PAR_FOND = { plan: 0.2, photo: 0.15 };
+  let zvFillOpacity = ZV_FILL_OPACITY_PAR_FOND.photo;
 
   const mapEl = document.getElementById("nitrates-map");
   const debugEl = document.getElementById("nitrates-debug");
@@ -439,7 +457,7 @@
         color: color,
         weight: 1.5,
         fillColor: color,
-        fillOpacity: 0.45,
+        fillOpacity: zvFillOpacity,
       };
     },
     onEachFeature: (feature, layer) => {
@@ -517,7 +535,19 @@
     } else {
       autoLayer.removeLayer(autoCadastre);
     }
+    majOpaciteZv();
   }
+
+  // Remplissage ZV selon le fond reellement affiche (le mode automatique
+  // peut basculer de l'un a l'autre au zoom).
+  function majOpaciteZv() {
+    const plan = map.hasLayer(planLayer) || map.hasLayer(autoFonds.plan);
+    const o = ZV_FILL_OPACITY_PAR_FOND[plan ? "plan" : "photo"];
+    if (o === zvFillOpacity) return;
+    zvFillOpacity = o;
+    zvLayer.setStyle({ fillOpacity: o });
+  }
+  map.on("baselayerchange", majOpaciteZv);
   autoLayer.on("add", () => {
     syncAuto();
     map.on("zoomend overlayadd overlayremove", syncAuto);
@@ -543,6 +573,7 @@
     surcouches: [],
   };
   fonds[couches.base].addTo(map);
+  majOpaciteZv();
   // Ordre fixe (cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
   Object.keys(surcouches).forEach((k) => {
     if (couches.surcouches.includes(k)) surcouches[k].addTo(map);

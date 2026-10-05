@@ -1126,3 +1126,17 @@ def glossaire_json(element_id: str = "glossaire-data"):
         "url_definitions": _url_definitions(),
     }
     return json_script(payload, element_id)
+
+
+@register.simple_tag
+def couleurs_zones(map_type):
+    """Couleurs des zones de la carte, par clé (code bassin pour la ZV).
+
+    Usage : {% couleurs_zones "zv_nitrates" as c %}{{ c|json_script:"id" }}.
+    Lu par le JS de la carte (cf. CouleurZone). Servi dans la page et non
+    dans le GeoJSON, qui est mis en cache 24 h : un changement de couleur
+    dans l'admin est ainsi visible au rechargement suivant.
+    """
+    from envergo.nitrates.models_carto import couleurs_par_cle
+
+    return couleurs_par_cle(map_type)
