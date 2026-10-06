@@ -188,6 +188,28 @@ def test_rollback_repointe_aussi_le_critere():
     assert crit.activation_map_id == ancienne.pk
 
 
+def test_activation_rattrape_une_reference_restee_sur_un_millesime_deja_inactif():
+    """Régression (local, 06/10/2026) : le critère pointait encore sur la ZV
+    2021, désactivée AVANT que le report de références existe. Réactiver le
+    millésime courant (déjà actif) doit rattraper la référence orpheline."""
+    from envergo.moulinette.models import Criterion, Regulation
+
+    orpheline = _millesime("2021", nb_zones=1)
+    courante = _millesime("2026", nb_zones=1, actif=True)
+    regulation = Regulation.objects.create(regulation="nitrates")
+    crit = Criterion.objects.create(
+        title="arbre_decision",
+        regulation=regulation,
+        activation_map=orpheline,
+        evaluator="envergo.nitrates.regulations.arbre_decision.CriterionEvaluator",
+    )
+
+    activer_millesime(courante)
+
+    crit.refresh_from_db()
+    assert crit.activation_map_id == courante.pk
+
+
 def test_adopte_une_couche_sans_millesime_au_lieu_de_la_dupliquer():
     """Les environnements ont déjà une Map sans millésime (créée par la
     migration nitrates 0002 ou un import antérieur au versioning). Le
