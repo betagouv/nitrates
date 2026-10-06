@@ -180,7 +180,7 @@ django-ratelimit==4.1.0
     # via -r base.txt
 django-redis==6.0.0
     # via -r base.txt
-django-stubs==6.0.5
+django-stubs==6.1.0
     # via -r local.in
 django-stubs-ext==6.1.0
     # via django-stubs
