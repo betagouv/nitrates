@@ -158,6 +158,7 @@
       region: data.region_code || "",
       zge1: !!data.zone_grand_est_1,
       zge2: !!data.zone_grand_est_2,
+      zmb: data.zone_mais_bretagne || "",
       insee: codeInsee || "",
     };
   }
@@ -170,6 +171,7 @@
       region: cat.region_code || "",
       zge1: !!cat.zone_grand_est_1,
       zge2: !!cat.zone_grand_est_2,
+      zmb: cat.zone_mais_bretagne || "",
       // Le catalog ne porte pas le code INSEE : on passe l'ancien code capturé
       // AVANT écrasement du hidden (celui de la simulation en cours).
       insee: ancienInsee || "",
@@ -252,6 +254,7 @@
       region_code: nouveau.region,
       zone_grand_est_1: nouveau.zge1,
       zone_grand_est_2: nouveau.zge2,
+      zone_mais_bretagne: nouveau.zmb,
     });
   }
 
@@ -943,6 +946,10 @@
         `<dt>Zone Grand Est 1</dt>${badge(data.zone_grand_est_1)}` +
         `<dt>Zone Grand Est 2</dt>${badge(data.zone_grand_est_2)}`
       : "";
+    // Zone maïs Bretagne (annexe 7 du PAR) : affichée seulement en Bretagne.
+    const bretagneHtml = data.en_bretagne
+      ? `<dt>Zone maïs Bretagne</dt><dd class="${data.zone_mais_bretagne ? "nitrates-debug__badge-yes" : "nitrates-debug__badge-no"}">${data.zone_mais_bretagne === "zone_1" ? "ZONE 1" : data.zone_mais_bretagne === "zone_2" ? "ZONE 2" : "AUCUNE"}</dd>`
+      : "";
 
     const ci = communeInfo || {};
     const communeHtml = ci.nom
@@ -970,6 +977,7 @@
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
         <dt>Zone d'action renforcée (ZAR)</dt><dd class="${zarClass}">${zarText}</dd>
         ${grandEstHtml}
+        ${bretagneHtml}
       </dl>
     `;
   }
@@ -1089,6 +1097,8 @@
             en_grand_est: cat.en_grand_est,
             zone_grand_est_1: cat.zone_grand_est_1,
             zone_grand_est_2: cat.zone_grand_est_2,
+            en_bretagne: cat.en_bretagne,
+            zone_mais_bretagne: cat.zone_mais_bretagne,
           },
           communeInfo,
           parcelInfo

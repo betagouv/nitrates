@@ -56,6 +56,8 @@
       en_grand_est: {% if moulinette.catalog.region_code == "44" %}true{% else %}false{% endif %},
       zone_grand_est_1: {% if moulinette.catalog.zone_grand_est_1 %}true{% else %}false{% endif %},
       zone_grand_est_2: {% if moulinette.catalog.zone_grand_est_2 %}true{% else %}false{% endif %},
+      en_bretagne: {% if moulinette.catalog.region_code == "53" %}true{% else %}false{% endif %},
+      zone_mais_bretagne: "{{ moulinette.catalog.zone_mais_bretagne|default:'' }}",
     };
     {% endif %}
   </script>

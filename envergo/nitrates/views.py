@@ -20,6 +20,7 @@ from envergo.nitrates.models_ouverture import departement_est_ouvert
 from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
+from envergo.nitrates.zonage_zones_mais_bretagne import zone_mais_bretagne
 
 
 def _cache_in_prod(seconds):
@@ -398,6 +399,11 @@ class DebugView(View):
                 ),
                 "zone_grand_est_2": (
                     est_zone_grand_est_2(code_insee) if en_grand_est else None
+                ),
+                # Zone maïs 1 / 2 du PAR Bretagne : seulement en Bretagne.
+                "en_bretagne": region_code == "53",
+                "zone_mais_bretagne": (
+                    zone_mais_bretagne(code_insee) if region_code == "53" else None
                 ),
                 # Bornage géographique (carte #57) : le simulateur n'est ouvert
                 # que dans certaines régions/départements. Si fermé, le front

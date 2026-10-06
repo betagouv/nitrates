@@ -25,6 +25,7 @@ TERRITOIRES = [
     {"id": "R32", "label": "Hauts-de-France", "region_code": "32", "en_zar": False},
     {"id": "R44", "label": "Grand Est", "region_code": "44", "en_zar": False},
     {"id": "R44_ZAR", "label": "Grand Est — ZAR", "region_code": "44", "en_zar": True},
+    {"id": "R53", "label": "Bretagne", "region_code": "53", "en_zar": False},
 ]
 
 # Ids d'inputs de dates lus par les feuilles calculatrice des couverts. On
