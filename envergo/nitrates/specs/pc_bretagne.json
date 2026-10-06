@@ -1,0 +1,579 @@
+[
+  {
+    "identifiant": "pc6_bzh",
+    "variante_de": "pc6",
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "effluent peu chargé Bretagne",
+    "texte_court": "Épandage des effluents liquides peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé jusqu'au 31 août, dans la limite de 50 kg d'azote efficace par hectare.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (2) : « Les effluents liquides peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) peuvent être épandus sur culture de printemps jusqu'au 31 août dans la limite de 50 kg d'azote efficace par ha. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Sur culture de printemps, l'épandage d'effluents liquides peu chargés issus d'un traitement d'effluents bruts est possible jusqu'au 31 août, dans la limite d'une dose maximale."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les effluents concernés"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Effluents liquides peu chargés issus d'un traitement d'effluents bruts, contenant moins de 0,5 kg d'azote par m³."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "texte": "La dose maximale est de "
+              },
+              {
+                "gras": true,
+                "texte": "50 kg d'azote efficace par hectare"
+              },
+              {
+                "texte": ", jusqu'au 31 août."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), annexe 6, note (2)."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc7_bzh",
+    "variante_de": "pc7",
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "effluent peu chargé Bretagne",
+    "texte_court": "Épandage des effluents peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé pendant la période d'interdiction, dans la limite de 20 kg d'azote efficace par hectare et dans le respect des autres règles d'épandage.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (3) : « L'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) est autorisé dans la limite de 20 kg d'azote efficace /ha durant les périodes d'interdiction fixées pour ces types de cultures, et dans le respect des autres règles d'épandage en vigueur. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Sur prairie implantée depuis plus de six mois (dont prairie permanente et luzerne), l'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts est possible pendant la période d'interdiction, dans la limite d'une dose maximale et dans le respect des autres règles d'épandage."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les effluents concernés"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Effluents peu chargés issus d'un traitement d'effluents bruts, contenant moins de 0,5 kg d'azote par m³."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La dose maximale"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": [
+              {
+                "texte": "La dose maximale est de "
+              },
+              {
+                "gras": true,
+                "texte": "20 kg d'azote efficace par hectare"
+              },
+              {
+                "texte": " sur la période d'interdiction."
+              }
+            ]
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), annexe 6, note (3)."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_cine_type_i",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "CINE culture suivante Bretagne",
+    "texte_court": "Toute fertilisation d'un couvert non exporté (CINE) est interdite, sauf les apports de fertilisants de type I destinés à la culture suivante, autorisés à partir du 15 janvier.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 6.1 : « Toute fertilisation d'un CINE est interdite à l'exception des apports de fertilisants de type I destinés à la culture suivante autorisés à partir du 15 janvier »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Fertilisation des couverts non exportés en Bretagne"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Toute fertilisation d'un couvert d'interculture non exporté (CINE) est interdite."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La seule exception"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les apports de fertilisants de type I destinés à la culture suivante sont autorisés à partir du 15 janvier."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), art. 6.1."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_derobees",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "dérobées GREN Bretagne",
+    "texte_court": "Fertilisation des dérobées limitée aux seuls mois de juillet (50 kg d'azote par hectare) ou d'août (40 kg d'azote par hectare), sans cumul. Apport interdit en octobre, novembre et décembre. En septembre, seul l'épandage d'effluents peu chargés (moins de 0,5 kg d'azote par m³) est autorisé, dans la limite de 20 kg d'azote efficace par hectare.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (1) : « L'apport de fertilisants sur dérobées (et donc, l'épandage) est interdit en octobre, novembre et décembre conformément à l'arrêté GREN, qui limite les possibilités de fertilisation aux seuls mois de juillet (50 UN/ha) ou août (40 UN/ha), sans possibilité de cumul. En septembre, aucun apport n'est autorisé, sauf effluent peu chargé (issu d'un traitement d'effluent brut avec une teneur < 0.5 uN/m3) dans la limite de 20 uN efficace/ha. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Fertilisation des dérobées en Bretagne"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "L'arrêté régional d'équilibre de la fertilisation azotée (GREN) limite la fertilisation des dérobées à un seul des deux mois d'été, sans possibilité de cumul."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Ce qui est possible"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "En juillet : 50 kg d'azote par hectare au maximum"
+              },
+              {
+                "texte": "Ou en août : 40 kg d'azote par hectare au maximum"
+              },
+              {
+                "texte": "En septembre : seulement des effluents peu chargés (moins de 0,5 kg d'azote par m³), dans la limite de 20 kg d'azote efficace par hectare"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Ce qui est interdit"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Tout apport de fertilisant sur dérobée est interdit en octobre, novembre et décembre."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), annexe 6, note (1) ; arrêté GREN Bretagne du 29/03/2023."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_mais_semis",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "maïs semis Bretagne",
+    "texte_court": "Les apports de fertilisants de type II avant un semis de maïs doivent être réalisés au plus près de la date prévisionnelle du semis.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1 : « Dans tous les cas, les apports de fertilisants type II avant un semis de maïs doivent être réalisés au plus près de la date prévisionnelle de celui-ci. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Apports de type II avant un semis de maïs"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Les apports de fertilisants de type II avant un semis de maïs doivent être réalisés au plus près de la date prévisionnelle du semis."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), art. 4.1."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_mais_z1",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "maïs zone 1 Bretagne",
+    "texte_court": "Zone 1 : en cas de situation météorologique favorable, la fin de la période d'interdiction (15 mars) peut être avancée au 1er mars par arrêté du préfet de département, signé entre le 25 février et le 1er mars.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1, zone 1 de l'annexe 7 : « en cas de situation météorologique favorable et dès lors que les services de l'État enregistrent une demande en ce sens émanant d'une structure régionale de type syndicale, consulaire ou économique, les services de l'État examinent la possibilité d'accorder une dérogation pour permettre un épandage plus précoce, à partir du 1er mars, date qui pourra alors être confirmée par arrêté signé par le préfet de département entre le 25 février et le 1er mars. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Maïs en zone 1 : fin de période avançable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Votre parcelle est en zone 1 (annexe 7). En cas de situation météorologique favorable, la fin de la période d'interdiction d'épandage des fertilisants de type II sur maïs (15 mars) peut être avancée."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Comment"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Demande d'une structure régionale de type syndical, consulaire ou économique"
+              },
+              {
+                "texte": "Épandage possible à partir du 1er mars si la dérogation est accordée"
+              },
+              {
+                "texte": "Confirmation par arrêté du préfet de département signé entre le 25 février et le 1er mars"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Indicateurs pris en compte"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Pluviométrie des 15 jours précédant la décision (stations Météo-France)"
+              },
+              {
+                "texte": "Pluviométrie prévisionnelle des 12 jours à venir"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), art. 4.1 et annexe 7."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_mais_z2",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "maïs zone 2 Bretagne",
+    "texte_court": "Zone 2 : en cas de situation météorologique défavorable, la période d'interdiction peut être prolongée jusqu'au 31 mars par arrêté du préfet de département, signé entre le 10 et le 15 mars.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1, zone 2 de l'annexe 7 : « en cas de situation météorologique défavorable, un arrêté prolongeant la période d'interdiction d'épandage jusqu'au 31 mars pourra être signé par le préfet de département entre le 10 mars et le 15 mars. »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Maïs en zone 2 : fin de période prolongeable"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Votre parcelle est en zone 2 (annexe 7). En cas de situation météorologique défavorable, la période d'interdiction d'épandage des fertilisants de type II sur maïs peut être prolongée."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Comment"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Prolongation possible jusqu'au 31 mars"
+              },
+              {
+                "texte": "Arrêté du préfet de département signé entre le 10 et le 15 mars"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Indicateurs pris en compte"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Pluviométrie des 15 jours précédant la décision (stations Météo-France)"
+              },
+              {
+                "texte": "Pluviométrie prévisionnelle des 12 jours à venir"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), art. 4.1 et annexe 7."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  },
+  {
+    "identifiant": "pc_bzh_prairie_aut_sept",
+    "variante_de": null,
+    "scope": "region",
+    "region_code": "53",
+    "plafond": false,
+    "mots_cles": "prairie jeune septembre Bretagne",
+    "texte_court": "Épandage des effluents peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé du 1er au 30 septembre, dans la limite de 20 kg d'azote efficace par hectare.",
+    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (4) : « L'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) est autorisé du 1er au 30 septembre dans la limite de 20 kg d'azote efficace /ha »",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Conditions à respecter pour épandre en période d'autorisation sous condition"
+          },
+          "type": "titre_principal"
+        },
+        {
+          "data": {
+            "texte": "Le principe"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "Sur prairie de moins de six mois implantée à l'automne ou en fin d'été, l'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts est possible en septembre, dans la limite d'une dose maximale."
+          },
+          "type": "paragraphe"
+        },
+        {
+          "data": {
+            "texte": "La période et la dose"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "items": [
+              {
+                "texte": "Quand : du 1er au 30 septembre"
+              },
+              {
+                "texte": "Dose maximale : 20 kg d'azote efficace par hectare"
+              },
+              {
+                "texte": "Effluents concernés : moins de 0,5 kg d'azote par m³"
+              }
+            ]
+          },
+          "type": "liste"
+        },
+        {
+          "data": {
+            "texte": "Référence"
+          },
+          "type": "titre_paragraphe"
+        },
+        {
+          "data": {
+            "texte": "PAR Bretagne modifié (arrêté préfectoral régional du 28/08/2026), annexe 6, note (4)."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    }
+  }
+]
