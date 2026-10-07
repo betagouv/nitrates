@@ -1150,26 +1150,9 @@ def seo_url_absolue(chemin):
     return url_absolue(chemin)
 
 
-@register.simple_tag
+@register.inclusion_tag("nitrates/seo/_json_ld.html")
 def seo_json_ld():
-    """Données structurées schema.org du site (#290, SEO + GEO).
+    """Données structurées schema.org du site (#290, SEO + GEO)."""
+    from envergo.nitrates.views_seo import url_absolue
 
-    Sérialisées côté serveur avec `<` échappé pour qu'aucune valeur ne puisse
-    fermer la balise <script type="application/ld+json">.
-    """
-    import json
-
-    from django.utils.safestring import mark_safe
-
-    from envergo.nitrates.views_seo import DESCRIPTION_SERVICE, url_absolue
-
-    donnees = {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Nitrat'Info",
-        "url": url_absolue("/"),
-        "inLanguage": "fr-FR",
-        "description": DESCRIPTION_SERVICE,
-    }
-    texte = json.dumps(donnees, ensure_ascii=False).replace("<", "\\u003c")
-    return mark_safe(f'<script type="application/ld+json">{texte}</script>')
+    return {"url_accueil": url_absolue("/")}

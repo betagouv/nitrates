@@ -9,13 +9,14 @@
 {% endblock %}
 
 {% block description %}
-  Conditions d'épandage des fertilisants azotés pour les agriculteurs en zones vulnérables
+  Service de l'État : savoir pour sa parcelle quand épandre des fertilisants azotés en zone vulnérable nitrates, selon les programmes d'actions (mesures 1 et 6).
 {% endblock %}
 
 {% comment %}
 Balises de référencement (#290) : canonical sur le domaine de l'env (évite le
 contenu dupliqué entre alias Scalingo et domaine public), Open Graph pour les
-aperçus de partage, JSON-LD schema.org pour moteurs et assistants IA.
+aperçus de partage, JSON-LD schema.org pour moteurs et assistants IA (contenu
+dans nitrates/seo/_json_ld.html). Textes repris des CGU validées (#550).
 {% endcomment %}
 {% block app_json_ld %}
   {% seo_json_ld %}
@@ -28,9 +29,9 @@ aperçus de partage, JSON-LD schema.org pour moteurs et assistants IA.
   <meta property="og:locale" content="fr_FR">
   <meta property="og:url" content="{% seo_url_absolue request.path %}">
   <meta property="og:title"
-        content="Nitrat'Info : conditions d'épandage des fertilisants azotés">
+        content="Nitrat'Info : quand épandre des fertilisants azotés sur sa parcelle">
   <meta property="og:description"
-        content="Conditions d'épandage des fertilisants azotés pour les agriculteurs en zones vulnérables">
+        content="Service de l'État porté par les ministères en charge de l'agriculture et de la transition écologique : périodes d'interdiction et conditions d'épandage des fertilisants azotés pour une parcelle en zone vulnérable nitrates.">
 {% endblock %}
 
 {% block include_header %}
