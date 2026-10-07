@@ -1140,3 +1140,36 @@ def couleurs_zones(map_type):
     from envergo.nitrates.models_carto import couleurs_par_cle
 
     return couleurs_par_cle(map_type)
+
+
+@register.simple_tag
+def seo_url_absolue(chemin):
+    """URL absolue canonique (domaine de l'env, https) pour canonical/og:url."""
+    from envergo.nitrates.views_seo import url_absolue
+
+    return url_absolue(chemin)
+
+
+@register.simple_tag
+def seo_json_ld():
+    """Données structurées schema.org du site (#290, SEO + GEO).
+
+    Sérialisées côté serveur avec `<` échappé pour qu'aucune valeur ne puisse
+    fermer la balise <script type="application/ld+json">.
+    """
+    import json
+
+    from django.utils.safestring import mark_safe
+
+    from envergo.nitrates.views_seo import DESCRIPTION_SERVICE, url_absolue
+
+    donnees = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Nitrat'Info",
+        "url": url_absolue("/"),
+        "inLanguage": "fr-FR",
+        "description": DESCRIPTION_SERVICE,
+    }
+    texte = json.dumps(donnees, ensure_ascii=False).replace("<", "\\u003c")
+    return mark_safe(f'<script type="application/ld+json">{texte}</script>')

@@ -66,6 +66,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
 )
 from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
 from envergo.nitrates.views_retour import RetourUtilisateurCreateView
+from envergo.nitrates.views_seo import llms_txt, robots_txt, sitemap_xml
 from envergo.nitrates.views_yaml_browser import (
     YamlBrowserDetailView,
     YamlBrowserListView,
@@ -81,6 +82,11 @@ def _page_riche(titre, cle):
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
+    # Referencement SEO/GEO (#290, #565) : publics meme en lockdown, cf.
+    # CHEMINS_SEO_PUBLICS dans envergo/contrib/middleware.py.
+    path("robots.txt", robots_txt, name="nitrates_robots_txt"),
+    path("sitemap.xml", sitemap_xml, name="nitrates_sitemap_xml"),
+    path("llms.txt", llms_txt, name="nitrates_llms_txt"),
     path(
         "definitions/",
         AideDefinitionsView.as_view(),

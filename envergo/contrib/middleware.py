@@ -50,6 +50,16 @@ PAGES_FOOTER_PUBLIQUES = (
     "/contact/",
 )
 
+#: Referencement SEO et GEO (#290, #565). REGLE : tout ce qui sert le
+#: referencement est en acces libre, sans condition. Un robot ne se loggue
+#: pas ; c'est le contenu du robots.txt (Disallow hors prod) qui distingue
+#: les environnements, jamais son accessibilite. Cf. docs/seo_geo.md.
+CHEMINS_SEO_PUBLICS = (
+    "/robots.txt",
+    "/sitemap.xml",
+    "/llms.txt",
+)
+
 
 class RequireLoginEverywhere:
     """Verrouille toutes les URL derriere une auth Django admin.
@@ -69,6 +79,8 @@ class RequireLoginEverywhere:
         propre auth, login inclus)
       - /static/*  (assets servis par whitenoise)
       - /healthcheck/  (sonde Scalingo, si on en ajoute une)
+      - robots.txt, sitemap.xml, llms.txt  (referencement, cf.
+        CHEMINS_SEO_PUBLICS)
     """
 
     def __init__(self, get_response):
@@ -102,6 +114,10 @@ class RequireLoginEverywhere:
         # donnees perso, contact. Obligations legales, lisibles par tout le
         # monde y compris quand le simulateur est ferme.
         if path in PAGES_FOOTER_PUBLIQUES:
+            return True
+        # Fichiers de referencement (#565) : avant toute condition sur
+        # NITRATES_ROOT_OUVERT, ils doivent repondre meme site ferme.
+        if path in CHEMINS_SEO_PUBLICS:
             return True
         # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
         # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.
