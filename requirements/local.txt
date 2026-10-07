@@ -169,7 +169,7 @@ django-ratelimit==4.1.0
     # via -r base.txt
 django-redis==6.0.0
     # via -r base.txt
-djlint==1.40.4
+djlint==1.45.2
     # via -r local.in
 editorconfig==0.17.1
     # via
@@ -476,6 +476,7 @@ typing-extensions==4.15.0
     # via
     #   -r base.txt
     #   anyio
+    #   djlint
     #   psycopg
     #   referencing
 tzdata==2025.2
