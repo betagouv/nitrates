@@ -115,3 +115,11 @@ def test_liste_utilisateurs_et_recherche(admin_client_su):
     r = admin_client_su.get("/admin/users/user/", {"q": "Trouvable"})
     assert r.status_code == 200
     assert r.context["cl"].result_count == 1
+
+
+def test_les_checks_django_passent_avec_le_perimetre_restreint():
+    """Retirer un ModelAdmin peut casser un autre admin qui le référence
+    (autocomplete_fields -> admin.E039)."""
+    from django.core.management import call_command
+
+    call_command("check", fail_level="ERROR")

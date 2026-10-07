@@ -29,8 +29,9 @@ PERIMETRE = {
     # Couches SIG et leurs millésimes.
     "geodata": {"Map", "Zone", "Department"},
     # Le simulateur tourne dans le moteur `moulinette` : la réglementation
-    # nitrates et son critère (carte d'activation) vivent dans ces deux tables.
-    "moulinette": {"Regulation", "Criterion"},
+    # nitrates et son critère (carte d'activation) vivent dans ces tables ;
+    # Perimeter est requis par l'autocomplete de CriterionAdmin.
+    "moulinette": {"Regulation", "Criterion", "Perimeter"},
     # Rapports de violation CSP envoyés par les navigateurs (sécurité).
     "analytics": {"CSPReport"},
 }
