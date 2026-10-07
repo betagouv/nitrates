@@ -167,8 +167,9 @@ jobs:
         run: python manage.py dump_referentiels --check
 
       # On lance la suite sous coverage.py (deja installe via requirements) au
-      # lieu de `pytest` seul, pour mesurer la couverture des apps Python
-      # (nitrates, moulinette...). La config vit dans setup.cfg [coverage:*].
+      # lieu de `pytest` seul, pour mesurer la couverture du perimetre nitrates.
+      # Tests joues : `testpaths` de pytest.ini ; code mesure : setup.cfg
+      # [coverage:*]. Les apps Envergo dormantes sont hors des deux.
       # Pas de pytest-cov ni d'integration externe (Codecov) : coverage natif.
       - name: Run Django Tests
         run: coverage run -m pytest

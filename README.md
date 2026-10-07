@@ -27,8 +27,12 @@ isolée, `envergo/nitrates/`.
 Les apps métier d'Envergo (moulinette aménagement, guichet unique de la haie,
 avis réglementaires, pétitions...) sont toujours présentes **mais dormantes** :
 le middleware `SetUrlConfBasedOnSite` route toutes les requêtes vers
-`config/urls_nitrates.py`, aucune de leurs pages n'est servie. On ne les
-supprime pas pour garder un remerge upstream possible.
+`config/urls_nitrates.py`, aucune de leurs pages n'est servie, leurs modèles
+sont retirés de l'admin (`envergo/nitrates/admin_perimetre.py`), leurs tests
+ne sont plus joués (`testpaths` de `pytest.ini`) et leur code est hors
+couverture. Elles restent installées parce que le simulateur tourne dans le
+moteur `moulinette` d'Envergo, qui les importe : les retirer demande d'abord
+d'extraire ce moteur.
 
 Toute modification d'un fichier hors de `envergo/nitrates/` faite pour le
 simulateur porte le marqueur `REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO` (en
@@ -167,10 +171,14 @@ prod), qui est l'endroit où l'on lit la configuration réelle.
 ### Python
 
 ```bash
-docker compose run --rm django pytest envergo/nitrates          # suite nitrates
-docker compose run --rm django coverage run -m pytest           # suite complète + couverture
+docker compose run --rm django pytest                           # périmètre nitrates (testpaths)
+docker compose run --rm django coverage run -m pytest           # idem + couverture
 docker compose run --rm django coverage report
 ```
+
+En local, après un run qui a joué des tests transactionnels, `--reuse-db`
+peut réutiliser une base vidée de ses données de migration (erreurs en masse
+« Aucun arbre actif applicable ») : relancer avec `--create-db`.
 
 - `envergo/nitrates/tests/conftest.py` seed les référentiels une fois par
   session et fournit `make_active_tree(yaml_text)` pour monter un arbre actif
