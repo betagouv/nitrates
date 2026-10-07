@@ -1140,3 +1140,19 @@ def couleurs_zones(map_type):
     from envergo.nitrates.models_carto import couleurs_par_cle
 
     return couleurs_par_cle(map_type)
+
+
+@register.simple_tag
+def seo_url_absolue(chemin):
+    """URL absolue canonique (domaine de l'env, https) pour canonical/og:url."""
+    from envergo.nitrates.views_seo import url_absolue
+
+    return url_absolue(chemin)
+
+
+@register.inclusion_tag("nitrates/seo/_json_ld.html")
+def seo_json_ld():
+    """Données structurées schema.org du site (#290, SEO + GEO)."""
+    from envergo.nitrates.views_seo import url_absolue
+
+    return {"url_accueil": url_absolue("/")}

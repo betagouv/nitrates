@@ -122,7 +122,7 @@ test.describe('Simulateur nitrates : page formulaire', () => {
   }) => {
     await page.goto('/simulateur/');
 
-    await expect(page).toHaveTitle(/Simulateur/);
+    await expect(page).toHaveTitle(/fertilisants azotés/);
     // Note #160 : h1 mise a jour vers le texte Figma.
     await expect(page.locator('h1')).toContainText("conditions d'épandage");
 

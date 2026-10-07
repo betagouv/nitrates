@@ -1,0 +1,13 @@
+# Nitrat'Info ({{ domaine }}) : service public de l'État français sur les conditions
+# d'épandage des fertilisants azotés en zone vulnérable nitrates.
+#
+# Robots des moteurs de recherche ET des assistants IA (GPTBot, ClaudeBot,
+# PerplexityBot, Google-Extended...) bienvenus : l'information réglementaire
+# publique a vocation à être reprise. On n'exclut que les écrans internes et
+# les endpoints techniques.
+
+User-agent: *
+Allow: /
+{% for chemin in chemins_non_indexes %}Disallow: {{ chemin }}
+{% endfor %}
+Sitemap: {{ url_sitemap }}

@@ -1,0 +1,51 @@
+{% comment %}
+Données structurées schema.org (#290), lues par les moteurs et les assistants
+IA. Textes repris des CGU validées par les juristes (contenus_rich.yaml, #550).
+Seule variable : l'URL d'accueil, issue de la configuration (pas de saisie).
+{% endcomment %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "{{ url_accueil }}#site",
+      "name": "Nitrat'Info",
+      "url": "{{ url_accueil }}",
+      "inLanguage": "fr-FR",
+      "publisher": {"@id": "{{ url_accueil }}#editeur"}
+    },
+    {
+      "@type": "GovernmentOrganization",
+      "@id": "{{ url_accueil }}#editeur",
+      "name": "Ruche numérique, Secrétariat général du ministère en charge de l'agriculture",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "78 rue de Varenne",
+        "postalCode": "75007",
+        "addressLocality": "Paris",
+        "addressCountry": "FR"
+      }
+    },
+    {
+      "@type": "GovernmentService",
+      "@id": "{{ url_accueil }}#service",
+      "name": "Nitrat'Info",
+      "url": "{{ url_accueil }}",
+      "serviceType": "Information réglementaire sur l'épandage des fertilisants azotés en zone vulnérable nitrates",
+      "description": "Service public gratuit de l'État français qui aide à comprendre, pour une parcelle en zone vulnérable nitrates, les périodes d'interdiction d'épandage des fertilisants azotés (mesure 1) et les conditions d'épandage (mesure 6) du programme d'actions national et des programmes d'actions régionaux. Les six autres mesures et les dérogations préfectorales ne sont pas couvertes. Résultat informatif : ne constitue pas une preuve opposable en cas de contrôle.",
+      "isAccessibleForFree": true,
+      "areaServed": {"@type": "Country", "name": "France"},
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Agriculteurs et conseillers agricoles"
+      },
+      "provider": [
+        {"@type": "GovernmentOrganization", "name": "Ministère en charge de l'agriculture"},
+        {"@type": "GovernmentOrganization", "name": "Ministère en charge de la transition écologique"}
+      ],
+      "broker": {"@id": "{{ url_accueil }}#editeur"}
+    }
+  ]
+}
+</script>
