@@ -1,139 +1,61 @@
-# Déploiement — Simulateur nitrates
+# Déploiement, simulateur nitrates
 
-Ce document couvre **uniquement** le pipeline de déploiement du fork
-nitrates (Min. Agriculture / beta.gouv.fr). Pour le code applicatif, voir
-le `README.md`. Pour le upstream Envergo, voir
-[Recette et déploiement](../README.md#recette-et-déploiement).
+Ce document couvre le déploiement de Nitrat'Info sur Scalingo. Pour le code
+applicatif, voir le [`README.md`](../README.md).
 
 ## Architecture
 
-| Brique | Outil | Repo / lieu |
+| Brique | Outil | Lieu |
 |---|---|---|
 | Code applicatif | Django + PostGIS | ce repo (`betagouv/nitrates`) |
-| Infrastructure | OpenTofu + provider Scalingo | repo séparé `betagouv/nitrates-iac` |
-| Hébergement | Scalingo (région `osc-fr1`) | app `nitrates-staging` (prod à venir) |
-| Auth admin | ProConnect (OIDC) | env d'intégration ProConnect |
+| Infrastructure | OpenTofu + provider Scalingo | repo `betagouv/nitrates-iac` |
+| Hébergement dev / staging | Scalingo `osc-fr1` | apps `nitrates-dev`, `nitrates-staging` |
+| Hébergement prod | Scalingo SecNumCloud `osc-secnum-fr1` | app `nitrates-prod` (nitrates.beta.gouv.fr) |
+| Auth admin | ProConnect (OIDC) | |
 
-Le code applicatif et l'infrastructure sont **dans deux repos distincts**.
-Modifier les variables d'env, le plan Postgres, les secrets, les domaines
-custom = `nitrates-iac`. Modifier le code Django = ce repo.
+Modifier les variables d'environnement, les addons, les secrets ou les
+domaines se fait dans `nitrates-iac` (`tofu apply` redémarre l'app). Modifier
+le code se fait ici. Les deux flux sont indépendants.
 
-## Flux de déploiement
+## Flux nominal : GitHub Actions
 
-```
-                    ┌─────────────────┐
-                    │ ce repo         │
-                    │ feature/xxx     │
-                    └────────┬────────┘
-                             │ merge --ff
-                             ▼
-                    ┌─────────────────┐         ┌──────────────────┐
-                    │ deploy/staging  │────push▶│ scalingo:master  │
-                    │ (worktree dédié)│         │ -> build + deploy│
-                    └─────────────────┘         └──────────────────┘
-                             ▲
-                             │ git fetch local
-                             │
-                    ┌─────────────────┐
-                    │ ce repo         │
-                    │ origin-betagouv │
-                    └─────────────────┘
-```
+| Cible | Déclencheur | Workflow |
+|---|---|---|
+| `nitrates-dev` | merge sur `main` | `deploy-dev.yml` |
+| `nitrates-staging` | publication d'une release GitHub marquée *pre-release* | `deploy-staging.yml` |
+| `nitrates-prod` | publication d'une release GitHub normale, puis approbation manuelle | `deploy-prod.yml` |
 
-Côté infra, en parallèle :
+Staging et prod rejouent la CI complète (linter, pytest, seuil de couverture)
+et la suite e2e sur le SHA du tag avant d'écrire quoi que ce soit. La prod
+déclenche en plus un backup Postgres. Le code part par `git archive` +
+`scalingo deploy` (token API dans l'environment GitHub, pas de clé SSH).
 
-```
-┌──────────────────┐         ┌──────────────────┐
-│ nitrates-iac     │─tofu──▶ │ Scalingo API     │
-│ envs/staging/    │  apply  │ (env vars,       │
-│ main.tf          │         │  addons,         │
-│ secrets.enc.yaml │         │  scaling)        │
-└──────────────────┘         └──────────────────┘
-```
+Le `Procfile` enchaîne ensuite :
 
-Les deux flux sont **indépendants** :
-- Push Scalingo → redéploie le code (build, migrate, restart)
-- Tofu apply → ajuste env vars / plan addon (restart automatique de l'app)
-
-Tu peux faire l'un sans l'autre selon ce qui change.
-
-## Setup machine (une seule fois)
-
-Voir [`nitrates-iac/docs/setup-local.md`](https://github.com/betagouv/nitrates-iac/blob/main/docs/setup-local.md)
-pour installer les outils (`tofu`, `sops`, `age`, `scalingo` CLI), récupérer
-la clé age, et exporter les env vars (`SCALINGO_API_TOKEN`,
-`TF_VAR_encryption_passphrase`).
-
-Ce repo lui-même demande juste Docker (cf. README "Démarrage > Avec Docker").
-
-### Worktrees git
-
-Le déploiement se fait depuis un worktree git séparé pour ne pas mélanger
-le code en cours de dev avec le code déployé. Convention :
-
-```bash
-# Une fois, à la racine du repo (où la .git/ vit) :
-git worktree add ../envergo-nitrates-deploy deploy/staging
-```
-
-- Worktree dev : tu travailles sur tes feature branches
-- Worktree deploy : ne contient que la branche `deploy/staging`, alignée
-  sur ce qui doit être push Scalingo. Pas de bidouille en cours dedans.
-
-## Déployer une nouvelle version applicative
-
-### Cas standard : du code en `feature/xxx` à pousser sur staging
-
-```bash
-# 1. Aller dans le worktree de deploy
-cd ../envergo-nitrates-deploy   # ajuster selon ton arbo
-
-# 2. Récupérer la branche depuis ton clone local de dev
-git fetch /chemin/vers/le/worktree/dev feature/xxx
-git merge --ff-only FETCH_HEAD
-
-# 3. Push Scalingo (déclenche build, migrate, postdeploy)
-git push scalingo deploy/staging:master
-
-# 4. Suivre les logs en direct
-scalingo --app nitrates-staging logs --follow
-```
-
-Le `Procfile` enchaîne :
 1. `postcompile` : `bin/build_assets.sh` (npm build, collectstatic, compilemessages)
-2. `web` : démarre gunicorn
-3. `postdeploy` : `bin/post_deploy.sh` (migrate, imports SIG)
+2. `web` : gunicorn
+3. `postdeploy` : `bin/post_deploy.sh` (`migrate`, imports départements et ZV)
 
-Build typique : ~10 min (collectstatic 11k fichiers + post-process). À
-prévoir avant une démo.
+Le déploiement **ne recharge jamais** les arbres, référentiels ni contenus :
+la base de chaque environnement fait autorité. Propager une donnée d'un
+environnement à l'autre est un geste explicite.
 
-### Cas où ce sont juste des env vars / secrets qui changent
-
-Pas besoin de `git push scalingo`. Modifier `nitrates-iac` puis
-`tofu apply` redémarrera l'app avec les nouvelles vars.
-Voir [`nitrates-iac/docs/runbook.md`](https://github.com/betagouv/nitrates-iac/blob/main/docs/runbook.md).
+Entre deux releases, les migrations restent **additives** : le rollback
+redéploie du code, pas un schéma.
 
 ### Vérifier le succès
 
 ```bash
-scalingo --app nitrates-staging deployments | head -3
-# La 1ère ligne doit avoir status=success
-
-curl -sI https://nitrates-staging.osc-fr1.scalingo.io/ | head -3
-# Doit redirect vers /<admin-url>/login/
+scalingo --app nitrates-staging deployments | head -3   # 1re ligne : status=success
 ```
 
 ## Rollback
 
-Voir [`nitrates-iac/docs/runbook.md`](https://github.com/betagouv/nitrates-iac/blob/main/docs/runbook.md)
-section "Rollback du code applicatif" et "Rollback de l'infra Tofu".
-Résumé :
-
-```bash
-scalingo --app nitrates-staging deployments        # récupère le SHA précédent
-cd worktree-deploy
-git push scalingo <sha>:master --force
-```
+Onglet Actions, workflow **Rollback**, choisir l'environnement et le tag à
+restaurer. Il redéploie l'archive d'un tag antérieur par le même chemin que le
+déploiement nominal (sans gate e2e). Il restaure le code, pas le schéma : en
+cas de migration destructive, passer par la restauration du backup Postgres
+(cf. `nitrates-iac/docs/runbook.md`).
 
 ## Authentification admin (ProConnect)
 
@@ -223,14 +145,8 @@ Pour les pannes plus complexes (DB en recovery, env var manquante au
 boot), voir [`nitrates-iac/docs/runbook.md`](https://github.com/betagouv/nitrates-iac/blob/main/docs/runbook.md)
 section "Debug".
 
-## Limites connues du setup actuel
+## Limites connues
 
-- **Pas de CI** : `tofu apply` et `git push scalingo` se font à la main
-  depuis un poste local. Risque de drift si plusieurs personnes opèrent
-  en parallèle.
-- **Pas de prod** : seul `staging` est provisionné. Le scaffolding
-  `envs/prod/` côté `nitrates-iac` sera ajouté quand le go prod sera
-  donné.
-- **User Postgres non rotable** : le user système Scalingo ne peut pas
-  être changé. Pour la prod, on créera un user `nitrates_app` dédié dès
-  le setup initial. Cf. `nitrates-iac/docs/runbook.md`.
+- **User Postgres non rotable** : le user système Scalingo ne peut pas être
+  changé. Pour la prod, un user applicatif dédié est créé dès le setup
+  initial. Cf. `nitrates-iac/docs/runbook.md`.

@@ -5,8 +5,6 @@ ipdb
 
 # Testing
 # ------------------------------------------------------------------------------
-mypy
-django-stubs
 pytest
 pytest-sugar
 
@@ -16,9 +14,7 @@ flake8
 flake8-isort
 coverage
 black
-pylint-django
 pre-commit
-djhtml
 djlint
 
 # Django
@@ -27,6 +23,5 @@ factory-boy
 
 django-debug-toolbar
 django-extensions
-django-coverage-plugin
 pytest-django
 watchdog
