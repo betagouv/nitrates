@@ -89,7 +89,14 @@ def activer_millesime(map_obj: Map) -> list[Map]:
     map_obj.is_active = True
     map_obj.save(update_fields=["is_active"])
 
-    _reporter_references(anciens, map_obj)
+    # Report depuis TOUS les autres millesimes de la couche, pas seulement
+    # ceux desactives a l'instant : une reference restee sur un millesime
+    # deja inactif (bascule faite avant l'existence de ce report, saisie a
+    # la main...) serait sinon orpheline pour toujours. Constate en local le
+    # 06/10/2026 : critere sur la ZV 2021, arbre ZAR GE sur la ZAR 2024.
+    _reporter_references(
+        list(Map.objects.filter(name=map_obj.name).exclude(pk=map_obj.pk)), map_obj
+    )
 
     logger.info(
         "Millesime actif pour %s : %s (desactives : %s)",

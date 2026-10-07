@@ -33,6 +33,7 @@ from envergo.nitrates.zonage_montagne import (
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
 from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
+from envergo.nitrates.zonage_zones_mais_bretagne import zone_mais_bretagne
 
 # Sentinelle retournée par un résolveur quand on ne sait pas trancher
 # (dataset SIG manquant, code INSEE absent, etc.). L'évaluator l'attrape
@@ -108,6 +109,10 @@ def _resolve_zone_grand_est_1(ctx: ResolveContext) -> Any:
 
 def _resolve_zone_grand_est_2(ctx: ResolveContext) -> Any:
     return est_zone_grand_est_2(ctx.code_insee)
+
+
+def _resolve_zone_mais_bretagne(ctx: ResolveContext) -> Any:
+    return zone_mais_bretagne(ctx.code_insee)
 
 
 # ─── Registre ─────────────────────────────────────────────────────────
@@ -210,6 +215,20 @@ CATALOGUE_RESOLVERS: tuple[CatalogueResolver, ...] = (
         champ="zone_grand_est_2",
         valeurs_branches=("True", "False"),
         resolve=_resolve_zone_grand_est_2,
+    ),
+    CatalogueResolver(
+        reference="zone_mais_bretagne",
+        label="Zone maïs Bretagne (PAR Bretagne, zones 1 / 2)",
+        description=(
+            "Zone d'adaptation de la fin de l'interdiction d'épandage de type II "
+            "sur maïs (art. 4.1 et annexe 7 du PAR Bretagne modifié du "
+            "28/08/2026) : zone_1 (avancement possible au 1er mars) ou zone_2 "
+            "(prolongation possible au 31 mars). Les deux zones sont listées "
+            "commune par commune. Résolu via le code INSEE."
+        ),
+        champ="zone_mais_bretagne",
+        valeurs_branches=("zone_1", "zone_2"),
+        resolve=_resolve_zone_mais_bretagne,
     ),
 )
 

@@ -109,6 +109,19 @@ _POINTS = {
         "lng": "4.21806",
         "code_insee": "51046",
     },
+    # ─── Zones maïs Bretagne (PAR Bretagne, annexe 7) ────────────────────────
+    "zone_mais_bretagne_1": {
+        # Rennes (35238), Ille-et-Vilaine : ZV oui, region 53, zone maïs 1.
+        "lat": "48.1173",
+        "lng": "-1.6778",
+        "code_insee": "35238",
+    },
+    "zone_mais_bretagne_2": {
+        # Guingamp (22070), Côtes-d'Armor : ZV oui, region 53, zone maïs 2.
+        "lat": "48.5617",
+        "lng": "-3.1503",
+        "code_insee": "22070",
+    },
     # ─── Points PAR par region (metropole) ───────────────────────────────────
     # Un PAR regional s'active par region (ZV + region), et son point de preview
     # doit tomber DANS la region de l'arbre (accuracy demandee). Points generes
@@ -249,6 +262,10 @@ _SIG_RESOLVERS = [
     # sinon un point ZV quelconque hors zone Est).
     (lambda c: _traverse_true_ou_defaut(c, "zone_grand_est_1"), "zone_grand_est_1"),
     (lambda c: _traverse_true_ou_defaut(c, "zone_grand_est_2"), "zone_grand_est_2"),
+    # Zones maïs Bretagne : la branche traversée (zone_1 / zone_2) impose un
+    # point (avec code_insee) dans la bonne zone.
+    (lambda c: c.get("zone_mais_bretagne") == "zone_1", "zone_mais_bretagne_1"),
+    (lambda c: c.get("zone_mais_bretagne") == "zone_2", "zone_mais_bretagne_2"),
     # En ZAR (couche zar_par7_grand_est) traverse / choisi.
     (lambda c: _traverse_true_ou_defaut(c, "en_zar"), "zar_grand_est"),
     # 2. Une branche traversee porte une valeur en *note_7 (ex: montagne_note_7,

@@ -1,0 +1,1033 @@
+arbre:
+  noeud:
+    id: n_en_zone_vulnerable
+    champ: en_zone_vulnerable
+    source: sig
+    branches:
+    - regle:
+        id: r_hors_zvn
+        type: non_applicable
+        message: La parcelle n'est pas en zone vulnérable aux nitrates. La réglementation nitrates ne s'applique pas.
+        source_juridique: 'PAN : arrêté du 19/12/2011 modifié, annexe I ; Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 3 (zone vulnérable : arrêté du 03/08/2026)'
+      valeur: false
+      libelle: Non
+    - noeud:
+        id: q_occupation_sol
+        champ: occupation_sol
+        texte: Est-ce que la culture en place est une culture principale ou un couvert végétal d'interculture ?
+        niveau: culture
+        branches:
+        - noeud:
+            id: q_sous_culture
+            champ: sous_culture
+            texte: Quelle est la culture principale ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_colza_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_colza_type_II
+                    type: interdiction
+                    periodes:
+                    - au: 31/01
+                      du: 01/10
+                    source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Colza d'hiver implanté à l'automne », type II (renforcement du 01/10 au 15/10)
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: colza
+              libelle: Colza
+            - noeud:
+                id: n_hiver_resolution_prairie_moins6
+                champ: resolution_prairie_moins_6_mois_automne
+                branches:
+                - noeud:
+                    id: q_prairie_moins6_automne_fertilisant
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - noeud:
+                        id: n_prairie_moins6_automne_type_II_effluent
+                        champ: effluent_peu_charge
+                        branches:
+                        - regle:
+                            id: r_prairie_moins6_automne_type_II_peu_charge
+                            type: mixte
+                            periodes:
+                            - au: 30/09
+                              du: 01/09
+                              regime: autorisation_sous_condition
+                            - au: 31/01
+                              du: 01/10
+                              regime: interdiction
+                            source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies de moins de six mois implantées à l'automne ou en fin d'été », type II (renforcement du 01/09 au 30/09) ; annexe 6, note (4) (effluents peu chargés autorisés du 01/09 au 30/09, 20 kg N efficace/ha)
+                            code_prescription:
+                            - pc_bzh_prairie_aut_sept
+                          valeur: true
+                          libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                          expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                        - regle:
+                            id: r_prairie_moins6_automne_type_II
+                            type: interdiction
+                            periodes:
+                            - au: 31/01
+                              du: 01/09
+                            source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies de moins de six mois implantées à l'automne ou en fin d'été », type II (renforcement du 01/09 au 30/09)
+                          valeur: false
+                          libelle: Autre fertilisant de type II
+                          expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type II
+                    type_noeud: formulaire
+                  valeur: prairie_moins_6_mois_automne
+                  libelle: Prairie de moins de 6 mois implantée à l'automne ou en fin d'été
+                  expression: sous_culture_form == 'prairie_moins_6_mois_automne'
+                - noeud:
+                    id: q_hiver_fertilisant
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - regle:
+                        id: r_hiver_type_II
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/07
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Cultures implantées à l'automne ou en fin d'été (autres que colza, cultures dérobées et prairies de moins de six mois) », type II (renforcement du 01/07 au 30/09)
+                      valeur: type_II
+                      libelle: Type II
+                    - regle:
+                        id: r_hiver_type_III
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/07
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Cultures implantées à l'automne ou en fin d'été (autres que colza, cultures dérobées et prairies de moins de six mois) », type III (renforcement du 01/07 au 31/08)
+                      valeur: type_III
+                      libelle: Type III
+                    type_noeud: formulaire
+                  valeur: hors_prairie_moins_6_mois_automne
+                  libelle: Autre culture implantée à l'automne ou en fin d'été (hors colza, CIE et prairies de moins de six mois)
+                  expression: sous_culture_form != 'prairie_moins_6_mois_automne'
+                type_noeud: catalogue_parametre
+              valeur: culture_hiver_hors_colza
+              libelle: Culture principale d'hiver autre que colza
+            - noeud:
+                id: n_printemps_resolution_mais
+                champ: resolution_mais
+                branches:
+                - noeud:
+                    id: q_mais_fertilisant
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - regle:
+                        id: r_mais_type_I
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/05
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Maïs », types I.a et I.b (renforcement du 01/05 au 30/06 ; et du 01/09 au 15/11 pour le type I.a)
+                      valeur: type_I
+                      libelle: Type I (Ia ou Ib)
+                    - noeud:
+                        id: n_mais_type_II_zone_mais_bretagne
+                        champ: zone_mais_bretagne
+                        source: sig
+                        branches:
+                        - noeud:
+                            id: n_mais_type_II_effluent_z1
+                            champ: effluent_peu_charge
+                            branches:
+                            - regle:
+                                id: r_mais_type_II_peu_charge_z1
+                                type: mixte
+                                periodes:
+                                - au: 31/08
+                                  du: 01/07
+                                  regime: autorisation_sous_condition
+                                - au: 15/03
+                                  du: 01/09
+                                  regime: interdiction
+                                source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 (période du 01/07 au 15/03 inclus, adaptation zones 1 et 2, apports au plus près du semis) ; annexe 6, ligne « Maïs », type II (renforcement du 01/02 au 15/03) et cas particulier Z I / Z II ; annexe 6, note (2) (effluents peu chargés jusqu'au 31/08, 50 kg N efficace/ha) ; annexe 7, zone 1 de l'annexe 7 (avancement possible au 01/03)
+                                code_prescription:
+                                - pc6
+                                - pc_bzh_mais_semis
+                                - pc_bzh_mais_z1
+                              valeur: true
+                              libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                              expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            - regle:
+                                id: r_mais_type_II_z1
+                                type: interdiction
+                                periodes:
+                                - au: 15/03
+                                  du: 01/07
+                                source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 (période du 01/07 au 15/03 inclus, adaptation zones 1 et 2, apports au plus près du semis) ; annexe 6, ligne « Maïs », type II (renforcement du 01/02 au 15/03) et cas particulier Z I / Z II ; annexe 7, zone 1 de l'annexe 7 (avancement possible au 01/03)
+                                code_prescription:
+                                - pc_bzh_mais_semis
+                                - pc_bzh_mais_z1
+                              valeur: false
+                              libelle: Autre fertilisant de type II
+                              expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            type_noeud: catalogue_parametre
+                          valeur: zone_1
+                          libelle: 'Zone 1 (annexe 7) : fin de période avançable au 1er mars par arrêté préfectoral'
+                        - noeud:
+                            id: n_mais_type_II_effluent_z2
+                            champ: effluent_peu_charge
+                            branches:
+                            - regle:
+                                id: r_mais_type_II_peu_charge_z2
+                                type: mixte
+                                periodes:
+                                - au: 31/08
+                                  du: 01/07
+                                  regime: autorisation_sous_condition
+                                - au: 15/03
+                                  du: 01/09
+                                  regime: interdiction
+                                source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 (période du 01/07 au 15/03 inclus, adaptation zones 1 et 2, apports au plus près du semis) ; annexe 6, ligne « Maïs », type II (renforcement du 01/02 au 15/03) et cas particulier Z I / Z II ; annexe 6, note (2) (effluents peu chargés jusqu'au 31/08, 50 kg N efficace/ha) ; annexe 7, zone 2 de l'annexe 7 (prolongation possible au 31/03)
+                                code_prescription:
+                                - pc6
+                                - pc_bzh_mais_semis
+                                - pc_bzh_mais_z2
+                              valeur: true
+                              libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                              expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            - regle:
+                                id: r_mais_type_II_z2
+                                type: interdiction
+                                periodes:
+                                - au: 15/03
+                                  du: 01/07
+                                source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 (période du 01/07 au 15/03 inclus, adaptation zones 1 et 2, apports au plus près du semis) ; annexe 6, ligne « Maïs », type II (renforcement du 01/02 au 15/03) et cas particulier Z I / Z II ; annexe 7, zone 2 de l'annexe 7 (prolongation possible au 31/03)
+                                code_prescription:
+                                - pc_bzh_mais_semis
+                                - pc_bzh_mais_z2
+                              valeur: false
+                              libelle: Autre fertilisant de type II
+                              expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                            type_noeud: catalogue_parametre
+                          valeur: zone_2
+                          libelle: 'Zone 2 (annexe 7) : fin de période prolongeable au 31 mars par arrêté préfectoral'
+                        reference: zone_mais_bretagne
+                        type_noeud: catalogue
+                      valeur: type_II
+                      libelle: Type II
+                    - noeud:
+                        id: q_mais_III_irriguee
+                        champ: culture_irriguee
+                        texte: Culture irriguée ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_mais_type_III_irrigue
+                            type: mixte
+                            message: Sur maïs irrigué, le début de la période d'interdiction (15 juillet) peut être décalé jusqu'au stade du brunissement des soies si celui-ci survient après cette date.
+                            periodes:
+                            - au: 15/03
+                              du: 15/07
+                              regime: interdiction
+                            - au: brunissement_des_soies
+                              du: 15/07
+                              regime: autorisation_sous_condition
+                            inputs_requis: []
+                            source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Maïs », type III (renforcement du 15/02 au 15/03) ; PAN : arrêté du 19/12/2011 modifié, annexe I (maïs irrigué : début reporté au 15/07, tolérance jusqu'au brunissement des soies ; non fermée par le texte de 2026)"
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_mais_type_III
+                            type: interdiction
+                            periodes:
+                            - au: 15/03
+                              du: 01/07
+                            source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Maïs », type III (renforcement du 15/02 au 15/03)
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: type_III
+                      libelle: Type III
+                    type_noeud: formulaire
+                  valeur: mais
+                  libelle: Maïs
+                  expression: sous_culture_form == 'mais'
+                - noeud:
+                    id: q_printemps_autres_fertilisant
+                    champ: type_fertilisant
+                    texte: Quel type de fertilisant est utilisé ?
+                    niveau: type_fertilisant
+                    branches:
+                    - regle:
+                        id: r_printemps_autres_type_Ia
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/07
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Cultures implantées au printemps (autres que maïs) y compris les prairies implantées depuis moins de six mois », type I.a (renforcement du 01/09 au 15/11)
+                      valeur: type_Ia
+                      libelle: Type Ia
+                    - noeud:
+                        id: n_printemps_autres_type_II_effluent
+                        champ: effluent_peu_charge
+                        branches:
+                        - regle:
+                            id: r_printemps_autres_type_II_peu_charge
+                            type: mixte
+                            periodes:
+                            - au: 31/08
+                              du: 01/07
+                              regime: autorisation_sous_condition
+                            - au: 31/01
+                              du: 01/09
+                              regime: interdiction
+                            source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Cultures implantées au printemps (autres que maïs) y compris les prairies implantées depuis moins de six mois », type II (2) ; annexe 6, note (2) (effluents peu chargés jusqu'au 31/08, 50 kg N efficace/ha) ; PAN : arrêté du 19/12/2011 modifié, annexe I (période 01/07 au 31/01)"
+                            code_prescription:
+                            - pc6
+                          valeur: true
+                          libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                          expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                        type_noeud: catalogue_parametre
+                      valeur: type_II
+                      libelle: Type II
+                    type_noeud: formulaire
+                  valeur: hors_mais
+                  libelle: Culture de printemps autre que maïs (y compris prairie de moins de 6 mois implantée au printemps)
+                  expression: sous_culture_form != 'mais'
+                type_noeud: catalogue_parametre
+              valeur: culture_printemps
+              libelle: Culture de printemps
+            - noeud:
+                id: q_prairie_plus6_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_prairie_plus6_II_effluent
+                    champ: effluent_peu_charge
+                    branches:
+                    - regle:
+                        id: r_prairie_plus6_type_II_peu_charge
+                        type: autorisation_sous_condition
+                        periodes:
+                        - au: 31/01
+                          du: 01/10
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type II (3) (renforcement du 01/10 au 15/11 et du 15/01 au 31/01) ; annexe 6, note (3) (effluents peu chargés autorisés pendant la période d'interdiction, 20 kg N efficace/ha)
+                        code_prescription: pc7
+                      valeur: true
+                      libelle: Oui
+                      expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    - regle:
+                        id: r_prairie_plus6_type_II
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/10
+                        source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type II (renforcement du 01/10 au 15/11 et du 15/01 au 31/01)
+                      valeur: false
+                      libelle: Non
+                      expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                - regle:
+                    id: r_prairie_plus6_type_III
+                    type: interdiction
+                    periodes:
+                    - au: 31/01
+                      du: 01/09
+                    source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type III (renforcement du 01/09 au 30/09)
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: prairie_plus_6_mois
+              libelle: Prairie implantée depuis plus de 6 mois (dont prairie permanente)
+            - noeud:
+                id: q_luzerne_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_luzerne_II_icpe
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_luzerne_II_icpe_a_iaa
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_luzerne_II_icpe_a_iaa
+                            type: mixte
+                            periodes:
+                            - au: 31/01
+                              du: 01/10
+                              regime: interdiction
+                            - au: 31/01
+                              du: derniere_coupe_luzerne
+                              regime: autorisation_sous_condition
+                            composant: luzerne_post_coupe
+                            parametres:
+                              code_prescription: pc10
+                              texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/10 au 31/01.
+                              periode_reglementaire:
+                                au: 31/01
+                                du: 01/10
+                            inputs_requis:
+                            - date_derniere_coupe_luzerne
+                            source_juridique: 'Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type II (bornes 01/10 au 31/01) ; PAN : arrêté du 19/12/2011 modifié, annexe I, note 12 (luzerne : dérogation après la dernière coupe, non fermée par le PAR)'
+                            code_prescription: pc10
+                          valeur: true
+                          libelle: Oui
+                        - valeur: false
+                          libelle: Non
+                          renvoi_vers: q_prairie_plus6_II_effluent
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui
+                    - valeur: autre
+                      libelle: Non
+                      renvoi_vers: q_prairie_plus6_II_effluent
+                    type_noeud: formulaire
+                  valeur: type_II
+                  libelle: Type II
+                - noeud:
+                    id: q_luzerne_III_icpe
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
+                    niveau: complement
+                    branches:
+                    - noeud:
+                        id: q_luzerne_III_icpe_a_iaa
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_luzerne_III_iaa
+                            type: mixte
+                            periodes:
+                            - au: 31/01
+                              du: 01/09
+                              regime: interdiction
+                            - au: 31/12
+                              du: derniere_coupe_luzerne
+                              regime: autorisation_sous_condition
+                            composant: luzerne_post_coupe
+                            parametres:
+                              code_prescription: pc10
+                              texte_alternative: Autorisé sous conditions après la dernière coupe de luzerne. Sinon interdit du 01/09 au 31/01.
+                              periode_reglementaire:
+                                au: 31/01
+                                du: 01/09
+                            inputs_requis:
+                            - date_derniere_coupe_luzerne
+                            source_juridique: 'Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type III (début 01/09) ; PAN : arrêté du 19/12/2011 modifié, annexe I, note 12 (luzerne : dérogation après la dernière coupe, non fermée par le PAR)'
+                            code_prescription: pc10
+                          valeur: true
+                          libelle: Oui
+                        - valeur: false
+                          libelle: Non
+                          renvoi_vers: r_prairie_plus6_type_III
+                        type_noeud: formulaire
+                      valeur: icpe_a
+                      libelle: Oui
+                    - valeur: autre
+                      libelle: Non
+                      renvoi_vers: r_prairie_plus6_type_III
+                    type_noeud: formulaire
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: luzerne
+              libelle: Luzerne
+            - noeud:
+                id: q_autres_cultures_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_autres_cultures_type_I
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 15/11
+                    source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Autres cultures (cultures pérennes, vergers, vignes, cultures légumières, et cultures porte-graines) », type I (renforcement du 15/11 au 15/12)
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - regle:
+                    id: r_autres_cultures_type_II
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 01/10
+                    source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Autres cultures (cultures pérennes, vergers, vignes, cultures légumières, et cultures porte-graines) », type II (renforcement du 01/10 au 15/12)
+                  valeur: type_II
+                  libelle: Type II
+                type_noeud: formulaire
+              valeur: autres_cultures
+              libelle: Autres cultures (cultures pérennes, vergers, vignes, cultures légumières et cultures porte-graines)
+            type_noeud: formulaire
+          valeur: culture_principale
+          libelle: Culture principale
+        - noeud:
+            id: q_couvert_sous_culture
+            champ: sous_culture
+            texte: Quel type de couvert d'interculture ?
+            niveau: sous_culture
+            branches:
+            - noeud:
+                id: q_cine_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_cine_interdit_annee
+                    type: interdiction
+                    message: En Bretagne, toute fertilisation d'un couvert d'interculture non exporté (CINE) est interdite.
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                    source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 6.1 (toute fertilisation d'un CINE est interdite) ; annexe 6, ligne « Sols non cultivés, CINE, légumineuses », types I, II et III (renforcement CINE)
+                  valeur: type_0
+                  libelle: Type 0
+                - regle:
+                    id: r_cine_type_I
+                    type: mixte
+                    periodes:
+                    - au: 14/01
+                      du: 01/07
+                      regime: interdiction
+                    - au: 30/06
+                      du: 15/01
+                      regime: autorisation_sous_condition
+                    source_juridique: 'Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 6.1 (exception : apports de type I destinés à la culture suivante autorisés à partir du 15 janvier) ; annexe 6, ligne « Sols non cultivés, CINE, légumineuses », types I, II et III (renforcement CINE)'
+                    code_prescription:
+                    - pc_bzh_cine_type_i
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - valeur: type_II
+                  libelle: Type II
+                  renvoi_vers: r_cine_interdit_annee
+                type_noeud: formulaire
+              valeur: cine_avant_3112
+              libelle: Couvert non exporté (CIPAN) plus en place après le 31 décembre
+            - valeur: cine_apres_0101
+              libelle: Couvert non exporté (CIPAN) toujours en place après le 1er janvier
+              renvoi_vers: q_cine_fertilisant
+            - valeur: cine_courte
+              libelle: Couvert non exporté d'interculture courte
+              renvoi_vers: q_cine_fertilisant
+            - noeud:
+                id: q_cie_avant_3112_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_cie_type_0
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 01/10
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (type 0 : 15/12 au 15/01)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_0
+                  libelle: Type 0
+                - regle:
+                    id: r_cie_avant_3112_type_Ia
+                    type: calculatrice
+                    periodes:
+                    - au: 15/01
+                      du: 01/09
+                      regime: interdiction
+                    - au: 15/01
+                      du: date_destruction_couvert-20jours
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_destruction_couvert
+                      max: 31/12
+                      type: date
+                      label: Date de destruction prévue du couvert
+                      label_court: destruction
+                      placeholder: 01/11
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction à partir de 20 jours avant destruction)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_Ia
+                  libelle: Type Ia
+                - regle:
+                    id: r_cie_avant_3112_type_Ib
+                    type: calculatrice
+                    periodes:
+                    - au: date_semis_couvert-15jours
+                      du: 01/07
+                      regime: interdiction
+                    - au: 15/01
+                      du: 01/09
+                      regime: interdiction
+                    - au: 15/01
+                      du: date_destruction_couvert-20jours
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
+                    - id: date_destruction_couvert
+                      max: 31/12
+                      type: date
+                      label: Date de destruction prévue du couvert
+                      label_court: destruction
+                      placeholder: 01/11
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_Ib
+                  libelle: Type Ib
+                - noeud:
+                    id: n_cie_avant_3112_type_II_effluent
+                    champ: effluent_peu_charge
+                    branches:
+                    - regle:
+                        id: r_cie_avant_3112_type_II_peu_charge
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                        - au: 30/09
+                          du: 01/09
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 01/10
+                          regime: interdiction
+                        - au: 31/01
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          max: 31/12
+                          type: date
+                          label: Date de destruction prévue du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; annexe 6, note (1) (septembre : effluents peu chargés seuls, 20 uN efficace/ha ; octobre à décembre interdit, GREN) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: true
+                      libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                      expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    - regle:
+                        id: r_cie_avant_3112_type_II
+                        type: calculatrice
+                        periodes:
+                        - au: date_semis_couvert-15jours
+                          du: 01/07
+                          regime: interdiction
+                        - au: 31/01
+                          du: 01/09
+                          regime: interdiction
+                        - au: 31/01
+                          du: date_destruction_couvert-20jours
+                          regime: interdiction
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          max: 31/12
+                          type: date
+                          label: Date de destruction prévue du couvert
+                          label_court: destruction
+                          placeholder: 01/11
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: false
+                      libelle: Autre fertilisant de type II
+                      expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                - regle:
+                    id: r_cie_avant_3112_type_III
+                    type: calculatrice
+                    periodes:
+                    - au: date_semis_couvert
+                      du: 01/07
+                      regime: interdiction
+                    - au: 31/01
+                      du: date_semis_couvert+15jours
+                      regime: interdiction
+                    - au: 15/11
+                      du: 01/09
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      max: 31/12
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11 ; « max. 15 j après semis ») ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: cie_avant_3112
+              libelle: Couvert exporté (dérobée, CIVE) plus en place après le 31 décembre
+            - noeud:
+                id: q_cie_apres_0101_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - noeud:
+                    id: q_cie_apres_0101_type_0_icpe
+                    aide: ''
+                    champ: plan_epandage
+                    texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
+                    niveau: complement
+                    branches:
+                    - regle:
+                        id: r_cie_apres_0101_type_0_icpe_a
+                        type: calculatrice
+                        periodes:
+                        - au: 31/12
+                          du: 01/10
+                          regime: interdiction
+                        - au: 15/01
+                          du: 15/12
+                          regime: autorisation_sous_condition
+                        - au: date_semis_couvert+4semaines
+                          du: 15/12
+                          masque: true
+                          regime: interdiction
+                          condition: 15/12 < date_semis_couvert+4semaines
+                        - au: 15/01
+                          du: date_destruction_couvert-20jours
+                          masque: true
+                          regime: interdiction
+                          condition: date_destruction_couvert-20jours < 15/01
+                        composant: calendrier_dynamique_couvert
+                        inputs_requis:
+                        - id: date_semis_couvert
+                          type: date
+                          label: Date de semis du couvert
+                          label_court: semis
+                          placeholder: 15/08
+                        - id: date_destruction_couvert
+                          min: 01/01
+                          type: date
+                          label: Date de destruction prévue du couvert
+                          label_court: destruction
+                          placeholder: 15/01
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
+                        code_prescription:
+                        - pc1
+                        - pc12
+                        - pc_bzh_derobees
+                      valeur: icpe_a
+                      libelle: Oui, plan d'épandage ICPE soumis à autorisation
+                    - noeud:
+                        id: q_cie_apres_0101_type_0_iaa
+                        champ: fertilisant_q6
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        niveau: complement
+                        branches:
+                        - regle:
+                            id: r_cie_apres_0101_type_0_icpe_icpe_ed_q6_true
+                            type: calculatrice
+                            periodes:
+                            - au: 31/12
+                              du: 01/10
+                              regime: interdiction
+                            - au: 15/01
+                              du: 15/12
+                              regime: autorisation_sous_condition
+                            - au: date_semis_couvert+4semaines
+                              du: 15/12
+                              masque: true
+                              regime: interdiction
+                              condition: 15/12 < date_semis_couvert+4semaines
+                            - au: 15/01
+                              du: date_destruction_couvert-20jours
+                              masque: true
+                              regime: interdiction
+                              condition: date_destruction_couvert-20jours < 15/01
+                            composant: calendrier_dynamique_couvert
+                            inputs_requis:
+                            - id: date_semis_couvert
+                              type: date
+                              label: Date de semis du couvert
+                              label_court: semis
+                              placeholder: 15/08
+                            - id: date_destruction_couvert
+                              min: 01/01
+                              type: date
+                              label: Date de destruction prévue du couvert
+                              label_court: destruction
+                              placeholder: 15/01
+                            source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
+                            code_prescription:
+                            - pc3
+                            - pc12
+                            - pc_bzh_derobees
+                          valeur: true
+                          libelle: Oui
+                        - regle:
+                            id: r_cie_apres_0101_type_0_icpe_icpe_ed_q6_false
+                            type: interdiction
+                            periodes:
+                            - au: 15/01
+                              du: 01/10
+                            inputs_requis: []
+                            source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
+                            code_prescription:
+                            - pc12
+                            - pc_bzh_derobees
+                          valeur: false
+                          libelle: Non
+                        type_noeud: formulaire
+                      valeur: icpe_ed
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                    - regle:
+                        id: r_cie_apres_0101_type_0_autre
+                        type: interdiction
+                        periodes:
+                        - au: 15/01
+                          du: 01/10
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
+                        code_prescription:
+                        - pc12
+                        - pc_bzh_derobees
+                      valeur: Non
+                      libelle: Non concerné
+                    type_noeud: formulaire
+                  valeur: type_0
+                  libelle: Type 0
+                - regle:
+                    id: r_cie_type_I
+                    type: interdiction
+                    periodes:
+                    - au: 15/01
+                      du: 01/09
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - noeud:
+                    id: n_cie_type_II_effluent
+                    champ: effluent_peu_charge
+                    branches:
+                    - regle:
+                        id: r_cie_type_II_peu_charge
+                        type: mixte
+                        periodes:
+                        - au: 30/09
+                          du: 01/09
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 01/10
+                          regime: interdiction
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; annexe 6, note (1) (septembre : effluents peu chargés seuls, 20 uN efficace/ha ; octobre à décembre interdit, GREN)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: true
+                      libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                      expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    - regle:
+                        id: r_cie_type_II
+                        type: interdiction
+                        periodes:
+                        - au: 31/01
+                          du: 01/09
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: false
+                      libelle: Autre fertilisant de type II
+                      expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                - regle:
+                    id: r_cie_apres_0101_type_III
+                    type: calculatrice
+                    periodes:
+                    - au: date_semis_couvert
+                      du: 01/07
+                      regime: interdiction
+                    - au: 31/01
+                      du: date_semis_couvert+15jours
+                      regime: interdiction
+                      condition: date_semis_couvert+15jours < 31/01
+                    - au: 15/11
+                      du: 01/09
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11 ; « max. 15 j après semis ») ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: cie_apres_0101
+              libelle: Couvert exporté (dérobée, CIVE) toujours en place après le 1er janvier
+            - noeud:
+                id: q_cie_courte_fertilisant
+                champ: type_fertilisant
+                texte: Quel type de fertilisant est utilisé ?
+                niveau: type_fertilisant
+                branches:
+                - regle:
+                    id: r_cie_courte_type_0
+                    type: mixte
+                    periodes:
+                    - au: 30/09
+                      du: 01/01
+                      regime: autorisation_sous_condition
+                    - au: 31/12
+                      du: 01/10
+                      regime: interdiction
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (couvert d'interculture courte : apports selon les conditions du PAR)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_0
+                  libelle: Type 0
+                - regle:
+                    id: r_cie_courte_type_I
+                    type: mixte
+                    periodes:
+                    - au: 31/08
+                      du: 16/01
+                      regime: autorisation_sous_condition
+                    - au: 15/01
+                      du: 01/09
+                      regime: interdiction
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (couvert d'interculture courte : apports selon les conditions du PAR)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_I
+                  libelle: Type I (Ia ou Ib)
+                - noeud:
+                    id: n_cie_courte_type_II_effluent
+                    champ: effluent_peu_charge
+                    branches:
+                    - regle:
+                        id: r_cie_courte_type_II_peu_charge
+                        type: mixte
+                        periodes:
+                        - au: 30/09
+                          du: 01/02
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 01/10
+                          regime: interdiction
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; annexe 6, note (1) (septembre : effluents peu chargés seuls, 20 uN efficace/ha ; octobre à décembre interdit, GREN) ; PAN : arrêté du 19/12/2011 modifié, annexe I (couvert d'interculture courte : apports selon les conditions du PAR)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: true
+                      libelle: Effluent peu chargé issu d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³)
+                      expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    - regle:
+                        id: r_cie_courte_type_II
+                        type: mixte
+                        periodes:
+                        - au: 31/08
+                          du: 01/02
+                          regime: autorisation_sous_condition
+                        - au: 31/01
+                          du: 01/09
+                          regime: interdiction
+                        source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (couvert d'interculture courte : apports selon les conditions du PAR)"
+                        code_prescription:
+                        - pc_bzh_derobees
+                      valeur: false
+                      libelle: Autre fertilisant de type II
+                      expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
+                    type_noeud: catalogue_parametre
+                  valeur: type_II
+                  libelle: Type II
+                - regle:
+                    id: r_cie_courte_type_III
+                    type: calculatrice
+                    periodes:
+                    - au: 30/06
+                      du: 01/07
+                      regime: interdiction
+                    - au: date_semis_couvert+15jours
+                      du: date_semis_couvert
+                      masque: true
+                      regime: libre
+                    - au: 15/11
+                      du: 01/09
+                      masque: true
+                      regime: interdiction
+                    composant: calendrier_dynamique_couvert
+                    inputs_requis:
+                    - id: date_semis_couvert
+                      type: date
+                      label: Date de semis du couvert
+                      label_court: semis
+                      placeholder: 15/08
+                    source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11) ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
+                    code_prescription:
+                    - pc_bzh_derobees
+                  valeur: type_III
+                  libelle: Type III
+                type_noeud: formulaire
+              valeur: cie_courte
+              libelle: Couvert exporté d'interculture courte (dérobée, CIVE)
+            type_noeud: formulaire
+          valeur: couvert_intercultures
+          libelle: Couvert végétal d'interculture
+        type_noeud: formulaire
+      valeur: true
+      libelle: Oui
+    reference: zone_vulnerable_nitrates
+    type_noeud: catalogue
+metadata:
+  scope: region
+  region: '53'
+  source: "PAR Bretagne modifié (arrêté du 28/08/2026), mesure 1 : calendrier d'épandage. v3.2, diff du PAN actif."
+  version: 0.3.2-draft
+  source_juridique: 'Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié) : art. 4.1 (calendrier, annexe 6), art. 4.2 (flexibilité, non modélisée), art. 6.1 (fertilisation des CINE), annexe 6 (renforcements régionaux du calendrier, notes * et (1) à (4)), annexe 7 (zones 1 et 2 maïs).'

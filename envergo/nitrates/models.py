@@ -40,6 +40,7 @@ from envergo.nitrates.zonage_montagne import (
 )
 from envergo.nitrates.zonage_note_5 import zone_note_5_pour_commune
 from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
+from envergo.nitrates.zonage_zones_mais_bretagne import zone_mais_bretagne
 
 EPSG_WGS84 = 4326
 
@@ -646,6 +647,8 @@ class MoulinetteNitrates(Moulinette):
             # pourquoi un arbre PAR Grand Est route vers tel sous-cas.
             catalog["zone_grand_est_1"] = est_zone_grand_est_1(code_insee)
             catalog["zone_grand_est_2"] = est_zone_grand_est_2(code_insee)
+            # Zones maïs 1 / 2 du PAR Bretagne (cf. zonage_zones_mais_bretagne).
+            catalog["zone_mais_bretagne"] = zone_mais_bretagne(code_insee)
 
         return catalog
 
