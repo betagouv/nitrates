@@ -1,15 +1,18 @@
-.editorconfig
-.gitattributes
-.github
-.gitignore
-.gitlab-ci.yml
-.idea
-.pre-commit-config.yaml
-.readthedocs.yml
-.travis.yml
-venv
+# Contexte de build de l'image de dev (compose/django/Dockerfile). La prod
+# build via les buildpacks Scalingo et n'utilise pas ce fichier.
 .git
-.envs
+.github
+.idea
 .vscode
+.venv
+venv
+.envs
 .ipython
 .pytest_cache/
+node_modules
+staticfiles
+_coverage_html
+htmlcov*
+playwright-report
+test-results
+nuclei_reports

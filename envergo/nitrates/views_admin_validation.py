@@ -16,7 +16,7 @@ import json
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Case, IntegerField, Max, Prefetch, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -199,19 +199,25 @@ def validation_create(request):
             branche_label = chemin_yaml.rsplit("/", 1)[-1]
 
         try:
-            branche = BrancheValidation.objects.create(
-                chemin_yaml=chemin_yaml,
-                ordre=ordre_max + 1,
-                regle_id=regle_id,
-                branche_label=branche_label,
-                branche_miro=request.POST.get("branche_miro", "").strip()[:200],
-                type_fertilisant_miro=request.POST.get(
-                    "type_fertilisant_miro", ""
-                ).strip()[:50],
-                resultat_miro=request.POST.get("resultat_miro", "").strip()[:500],
-                code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:300],
-                url_simulateur=request.POST.get("url_simulateur", "").strip()[:2000],
-            )
+            # Savepoint : sous ATOMIC_REQUESTS, une IntegrityError non isolée
+            # casse la transaction de la requête et le rendu du formulaire
+            # d'erreur finit en 500.
+            with transaction.atomic():
+                branche = BrancheValidation.objects.create(
+                    chemin_yaml=chemin_yaml,
+                    ordre=ordre_max + 1,
+                    regle_id=regle_id,
+                    branche_label=branche_label,
+                    branche_miro=request.POST.get("branche_miro", "").strip()[:200],
+                    type_fertilisant_miro=request.POST.get(
+                        "type_fertilisant_miro", ""
+                    ).strip()[:50],
+                    resultat_miro=request.POST.get("resultat_miro", "").strip()[:500],
+                    code_pc_miro=request.POST.get("code_pc_miro", "").strip()[:300],
+                    url_simulateur=request.POST.get("url_simulateur", "").strip()[
+                        :2000
+                    ],
+                )
         except IntegrityError:
             messages.error(
                 request,

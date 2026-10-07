@@ -1,7 +1,7 @@
 """Ingère les crops du board Miro (un PNG par regle_id) dans le champ
 `screenshot_miro` des BrancheValidation couvert.
 
-Les crops sont produits hors-app (parsing SVG + crop_svg_viewbox.mjs, cf.
+Les crops sont produits hors-app (parsing SVG + snapshot_miro/crop_svg_viewbox.mjs, cf.
 snapshot_miro/arbre_complet/<date>/crops_named/<regle_id>.png) et nommés
 par le nom technique de la feuille (regle_id). Carte #140.
 

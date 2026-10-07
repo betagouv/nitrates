@@ -827,3 +827,6 @@ class RetourUtilisateurAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # On garde la possibilité de purge RGPD (droit à l'effacement).
         return True
+
+
+from envergo.nitrates import admin_perimetre  # noqa: E402,F401
