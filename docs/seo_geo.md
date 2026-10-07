@@ -28,7 +28,16 @@ jamais son accessibilité.
 
 ## Fichiers servis
 
-Code : `envergo/nitrates/views_seo.py`.
+Contenu : templates `envergo/templates/nitrates/seo/` (`robots.txt`,
+`robots_hors_prod.txt`, `sitemap.xml`, `llms.txt`, `_json_ld.html`). Logique
+(prod ou pas, pages publiques) : `envergo/nitrates/views_seo.py`.
+
+Le `llms.txt` est la présentation de référence du service pour les
+assistants IA : qui le porte, à qui il s'adresse, ce qu'il couvre (mesures 1
+et 6), ce qu'il ne couvre pas (six autres mesures, dérogations préfectorales),
+sa portée (informatif, pas une preuve opposable en contrôle), et des consignes
+explicites pour les assistants. Toute évolution du périmètre (nouvelle mesure,
+nouveau territoire) doit y être reportée, ainsi que dans `_json_ld.html`.
 
 | Chemin | Prod (`ENV_NAME` = `prod`) | Dev / staging |
 |---|---|---|

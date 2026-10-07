@@ -1,0 +1,5 @@
+# Nitrat'Info, environnement {{ env_name }} : ne pas indexer.
+# Le site de référence est https://nitrates.beta.gouv.fr/
+
+User-agent: *
+Disallow: /

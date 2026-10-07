@@ -1,8 +1,12 @@
-"""Fichiers de référencement : robots.txt, sitemap.xml, llms.txt (#290, #565).
+"""Référencement SEO et GEO : robots.txt, sitemap.xml, llms.txt (#290, #565).
+
+Le CONTENU de ces fichiers vit dans les templates `nitrates/seo/` (lisibles
+en revue). Ce module ne porte que la logique : prod ou pas, et quelles pages
+sont réellement publiques dans la configuration courante.
 
 REGLE : tout ce qui sert le référencement (SEO, moteurs de recherche) et le
-GEO (Generative Engine Optimization, référencement par les assistants IA) est
-en ACCES LIBRE, sans authentification, quel que soit l'état du lockdown. Un
+GEO (Generative Engine Optimization, reprise par les assistants IA) est en
+ACCES LIBRE, sans authentification, quel que soit l'état du lockdown. Un
 robot ne se loggue pas : un robots.txt derrière le login admin est un
 robots.txt qui n'existe pas. Les chemins sont exemptés une fois pour toutes
 dans `CHEMINS_SEO_PUBLICS` (envergo/contrib/middleware.py), et un test
@@ -12,16 +16,10 @@ Ce qui distingue les environnements, c'est le CONTENU du robots.txt, pas son
 accessibilité : seule la prod s'ouvre à l'indexation, dev et staging
 répondent `Disallow: /` pour ne jamais concurrencer la prod dans les
 résultats de recherche.
-
-Le sitemap et le llms.txt ne listent que les pages réellement lisibles par
-un anonyme dans la configuration courante (`pages_publiques`) : on ne
-pointe pas les robots vers des pages qui redirigent vers un login.
 """
 
-from xml.sax.saxutils import escape
-
 from django.conf import settings
-from django.http import HttpResponse
+from django.shortcuts import render
 from django.urls import reverse
 
 from envergo.nitrates.models import CodePrescription
@@ -49,13 +47,6 @@ CHEMINS_NON_INDEXES = (
     "/csp/",
 )
 
-DESCRIPTION_SERVICE = (
-    "Nitrat'Info indique aux agriculteurs les périodes et conditions "
-    "d'épandage des fertilisants azotés applicables à leur parcelle en zone "
-    "vulnérable aux nitrates, selon le programme d'actions national (PAN) et "
-    "les programmes d'actions régionaux (PAR)."
-)
-
 
 def est_indexable():
     return getattr(settings, "ENV_NAME", "") in ENVS_INDEXABLES
@@ -69,34 +60,43 @@ def _nitrates(nom, **kwargs):
     return reverse(nom, urlconf="config.urls_nitrates", kwargs=kwargs or None)
 
 
+def _root_public():
+    lockdown = getattr(settings, "LOCKDOWN_BEHIND_LOGIN", False)
+    return not lockdown or getattr(settings, "NITRATES_ROOT_OUVERT", False)
+
+
 def pages_publiques():
     """Pages de contenu lisibles par un anonyme, dans l'ordre d'importance.
 
     Liste de tuples (chemin, titre, description courte). Le simulateur
     interne (/simulateur/) n'y figure jamais : c'est un outil de recette.
     """
-    lockdown = getattr(settings, "LOCKDOWN_BEHIND_LOGIN", False)
-    root_ouvert = getattr(settings, "NITRATES_ROOT_OUVERT", False)
     pages = []
-    if not lockdown or root_ouvert:
+    if _root_public():
         pages += [
             (
                 _nitrates("home"),
                 "Accueil et simulateur",
-                "Carte des zones vulnérables et calcul des conditions "
-                "d'épandage pour une parcelle.",
+                "situer sa parcelle sur la carte, répondre à quelques questions "
+                "sur la culture et le fertilisant, obtenir le calendrier "
+                "d'épandage et les conditions à respecter.",
             ),
             (
                 _nitrates("nitrates_definitions"),
                 "Aide & définitions",
-                "Définitions réglementaires : types de fertilisants, "
-                "cultures, zones, périodes d'interdiction.",
+                "définitions des termes de la réglementation nitrates utilisés "
+                "par le simulateur.",
             ),
         ]
     # Pied de page : public en toutes circonstances (#550).
     pages += [
+        (
+            _nitrates("nitrates_cgu"),
+            "Conditions générales d'utilisation",
+            "objet du service, périmètre réglementaire, territoires "
+            "d'expérimentation.",
+        ),
         (_nitrates("nitrates_mentions_legales"), "Mentions légales", ""),
-        (_nitrates("nitrates_cgu"), "Conditions générales d'utilisation", ""),
         (_nitrates("nitrates_accessibilite"), "Déclaration d'accessibilité", ""),
         (_nitrates("nitrates_donnees_personnelles"), "Données personnelles", ""),
         (_nitrates("contact_us"), "Contact", ""),
@@ -106,9 +106,7 @@ def pages_publiques():
 
 def prescriptions_publiques():
     """Pages /prescription/<id>/ si elles sont lisibles par un anonyme."""
-    lockdown = getattr(settings, "LOCKDOWN_BEHIND_LOGIN", False)
-    root_ouvert = getattr(settings, "NITRATES_ROOT_OUVERT", False)
-    if lockdown and not root_ouvert:
+    if not _root_public():
         return []
     return [
         (
@@ -120,72 +118,50 @@ def prescriptions_publiques():
 
 
 def robots_txt(request):
-    if not est_indexable():
-        lignes = [
-            "# Environnement hors production : pas d'indexation.",
-            "User-agent: *",
-            "Disallow: /",
-        ]
+    if est_indexable():
+        template = "nitrates/seo/robots.txt"
     else:
-        # Les robots d'assistants IA (GPTBot, ClaudeBot, PerplexityBot,
-        # Google-Extended...) sont volontairement couverts par `*` : on veut
-        # que l'information réglementaire publique soit reprise (GEO).
-        lignes = [
-            "User-agent: *",
-            "Allow: /",
-            *(f"Disallow: {chemin}" for chemin in CHEMINS_NON_INDEXES),
-            "",
-            f"Sitemap: {url_absolue('/sitemap.xml')}",
-        ]
-    return HttpResponse(
-        "\n".join(lignes) + "\n", content_type="text/plain; charset=utf-8"
-    )
+        template = "nitrates/seo/robots_hors_prod.txt"
+    contexte = {
+        "domaine": settings.ENVERGO_NITRATES_DOMAIN,
+        "env_name": getattr(settings, "ENV_NAME", ""),
+        "chemins_non_indexes": CHEMINS_NON_INDEXES,
+        "url_sitemap": url_absolue("/sitemap.xml"),
+    }
+    return render(request, template, contexte, content_type="text/plain; charset=utf-8")
 
 
 def sitemap_xml(request):
     entrees = [
-        (chemin, "1.0" if chemin == "/" else "0.5") for chemin, *_ in pages_publiques()
+        (url_absolue(chemin), "1.0" if chemin == "/" else "0.5")
+        for chemin, _titre, _description in pages_publiques()
     ]
-    entrees += [(chemin, "0.3") for chemin, _pc in prescriptions_publiques()]
-    corps = "".join(
-        f"<url><loc>{escape(url_absolue(chemin))}</loc>"
-        f"<priority>{priorite}</priority></url>\n"
-        for chemin, priorite in entrees
+    entrees += [
+        (url_absolue(chemin), "0.3") for chemin, _pc in prescriptions_publiques()
+    ]
+    return render(
+        request,
+        "nitrates/seo/sitemap.xml",
+        {"entrees": entrees},
+        content_type="application/xml; charset=utf-8",
     )
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"{corps}</urlset>\n"
-    )
-    return HttpResponse(xml, content_type="application/xml; charset=utf-8")
 
 
 def llms_txt(request):
-    """Résumé du service pour les assistants IA (format llmstxt.org)."""
-    lignes = [
-        "# Nitrat'Info",
-        "",
-        f"> {DESCRIPTION_SERVICE}",
-        "",
-        "Service public numérique (beta.gouv.fr).",
-        "",
-        "Vocabulaire : ZV = zone vulnérable aux nitrates ; ZAR = zone "
-        "d'actions renforcées ; PAN = programme d'actions national ; PAR = "
-        "programme d'actions régional ; PC = prescription conditionnée.",
-        "",
-        "## Pages",
-        "",
-    ]
-    for chemin, titre, description in pages_publiques():
-        suffixe = f" : {description}" if description else ""
-        lignes.append(f"- [{titre}]({url_absolue(chemin)}){suffixe}")
-    prescriptions = prescriptions_publiques()
-    if prescriptions:
-        lignes += ["", "## Prescriptions conditionnées", ""]
-        for chemin, pc in prescriptions:
-            titre = pc.identifiant.upper()
-            suffixe = f" : {pc.mots_cles}" if pc.mots_cles else ""
-            lignes.append(f"- [{titre}]({url_absolue(chemin)}){suffixe}")
-    return HttpResponse(
-        "\n".join(lignes) + "\n", content_type="text/markdown; charset=utf-8"
+    """Présentation du service pour les assistants IA (format llmstxt.org)."""
+    contexte = {
+        "url_accueil": url_absolue("/"),
+        "pages": [
+            (url_absolue(chemin), titre, description)
+            for chemin, titre, description in pages_publiques()
+        ],
+        "prescriptions": [
+            (url_absolue(chemin), pc) for chemin, pc in prescriptions_publiques()
+        ],
+    }
+    return render(
+        request,
+        "nitrates/seo/llms.txt",
+        contexte,
+        content_type="text/markdown; charset=utf-8",
     )
