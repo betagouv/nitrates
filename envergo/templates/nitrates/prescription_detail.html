@@ -16,6 +16,8 @@ Sans lui, la page standalone rend des puces/indent cassés (#467).
   {% if pc.mots_cles %}· {{ pc.mots_cles }}{% endif %}
 {% endblock %}
 
+{% block description %}{{ meta_description }}{% endblock %}
+
 {% block article %}
   <p class="fr-text--sm fr-mb-1w">Prescription conditionnée</p>
   <h1 class="fr-h3">
