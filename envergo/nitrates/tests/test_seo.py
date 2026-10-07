@@ -50,7 +50,7 @@ def test_robots_prod_ouvre_et_pointe_le_sitemap(client, settings, env_name):
     assert "Disallow: /\n" not in body
     assert "Disallow: /simulateur/" in body
     assert "Sitemap: https://nitrates.beta.gouv.fr/sitemap.xml" in body
-    assert "service public de l'État" in body
+    assert "service public de l'État français" in body
 
 
 def test_robots_prod_ne_divulgue_pas_admin_secret(client, settings):
@@ -103,14 +103,15 @@ def test_llms_txt_presente_le_service(client, settings):
     assert response["Content-Type"].startswith("text/markdown")
     assert body.startswith("# Nitrat'Info\n")
     # Qui porte le service, quoi, quel périmètre (textes des CGU, #550).
-    assert "service public numérique de l'État" in body
+    assert "service public numérique de l'État français" in body
     assert "ministère en charge de l'agriculture" in body
     assert "ministère en charge de la transition écologique" in body
-    assert "Mesure 1 des programmes d'actions nitrates" in body
+    assert "Mesure 1 : périodes d'interdiction d'épandage" in body
     assert "titre informatif" in body
     assert "pas une preuve opposable en cas de contrôle" in body
     assert "dérogations préfectorales" in body
-    assert "seules les mesures 1 et 6 sont traitées" in body
+    assert "Seules les mesures 1 et 6 sont traitées" in body
+    assert "Mesure 2 : stockage des effluents d'élevage" in body
     assert "conseillères et conseillers agricoles" in body
     assert "](https://testserver/definitions/)" in body
     assert "&#x27;" not in body  # pas d'échappement HTML dans du markdown
@@ -121,7 +122,7 @@ def test_balises_canonical_opengraph_jsonld(client, settings):
     html = client.get("/cgu/").content.decode()
     assert '<link rel="canonical" href="https://testserver/cgu/">' in html
     assert 'property="og:url" content="https://testserver/cgu/"' in html
-    assert "Service de l'État : savoir pour sa parcelle" in html  # meta
+    assert "Service de l'État français : savoir pour sa parcelle" in html  # meta
     bloc = re.search(r'<script type="application/ld\+json">(.+?)</script>', html, re.S)
     graphe = {n["@type"]: n for n in json.loads(bloc.group(1))["@graph"]}
     assert graphe["WebSite"]["url"] == "https://testserver/"
