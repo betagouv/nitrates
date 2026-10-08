@@ -195,7 +195,7 @@ jobs:
 
       - name: Upload rapport de couverture
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-html-${{ github.sha }}
           path: _coverage_html/
