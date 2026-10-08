@@ -1,13 +1,17 @@
 """Tests de `load_arbres_actifs` (chargement des arbres canoniques en DB,
 pour une base neuve : CI, e2e, poste local)."""
 
+import json
 import textwrap
 
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from envergo.nitrates.management.commands.seed_referentiels import _DEFAULT_FIXTURE
 from envergo.nitrates.models import DecisionTree
+from envergo.nitrates.models_referentiels import CodePrescription
+from envergo.nitrates.yaml_tree.loader import invalider_cache_referentiels
 
 pytestmark = pytest.mark.django_db
 
@@ -125,3 +129,36 @@ def test_skip_si_identique_ne_recree_pas_de_version(tmp_path, capsys):
     assert "skip — identique à l'actif" in out, out
     # Toujours un seul actif, pas de doublon de version.
     assert DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).count() == 1
+
+
+def test_arbres_canoniques_chargent_sur_base_seedee_comme_en_e2e(capsys):
+    """Rejoue la préparation de base du workflow e2e : `seed_referentiels`
+    puis `load_arbres_actifs --skip-zar-sans-carte` sur les arbres canoniques
+    du repo. Un arbre de arbres_actifs/ qui référence une PC absente de la
+    fixture packagée (cas de region_53.yaml et des PC Bretagne, #566) fait
+    échouer la préparation et donc tout le run e2e, qui ne tourne pas sur
+    les PR : ce test le détecte dès la CI de la PR."""
+    call_command("seed_referentiels")
+    # loaddata est un upsert : avec --reuse-db, une PC créée par un autre test
+    # ou une autre commande resterait en base et masquerait un oubli dans la
+    # fixture. On ne garde que les PC de la fixture, comme sur la base neuve
+    # de la CI.
+    fixture = json.loads(_DEFAULT_FIXTURE.read_text(encoding="utf-8"))
+    pcs_fixture = {
+        o["fields"]["identifiant"]
+        for o in fixture
+        if o["model"] == "nitrates.codeprescription"
+    }
+    hors_fixture = CodePrescription.objects.exclude(identifiant__in=pcs_fixture)
+    hors_fixture.exclude(variante_de__isnull=True).delete()
+    hors_fixture.delete()
+    invalider_cache_referentiels()
+    call_command("load_arbres_actifs", "--skip-zar-sans-carte")
+    out = capsys.readouterr().out
+    assert "Reload terminé" in out
+    actifs = DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+    assert actifs.filter(scope=DecisionTree.SCOPE_NATIONAL).exists()
+    # Les arbres en revue (specs/arbres_en_revue/, ex. PAR Bretagne) ne sont
+    # jamais chargés par load_arbres_actifs : ils ne pèsent ni sur la CI ni sur
+    # l'e2e tant qu'ils ne sont pas promus dans arbres_actifs/.
+    assert not actifs.filter(scope=DecisionTree.SCOPE_REGION, region_code="53").exists()
