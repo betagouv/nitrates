@@ -18,7 +18,15 @@ permissions:
   contents: read
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      ref:
+        description: >-
+          SHA a tester. Les gates de release le passent explicitement : sans
+          lui, un deploy lance a la main (workflow_dispatch) testerait main au
+          lieu du tag deploye.
+        required: false
+        type: string
   workflow_dispatch: {}
   schedule:
     # Tous les jours a 03:17 UTC. Heure decalee (pas pile) pour eviter le pic
@@ -55,6 +63,8 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       # --- Locale FR : les specs assertent des libelles francais (dates,
       # intitules de cultures). Sans la locale, les tests echouent sur du
@@ -242,6 +252,8 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Installer la locale francaise
         run: |
