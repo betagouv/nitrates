@@ -476,6 +476,11 @@ contenus:
       texte: Elle s’adresse aux personnes qui souhaitent connaître les règles issues des programmes d’actions
         nitrates qui s’appliquent sur une parcelle donnée. Actuellement, ce sont les mesures 1 (périodes
         d’interdiction d’épandage) et 6 du programme d’actions nitrates qui sont implémentées dans la plateforme.
+  - type: paragraphe
+    data:
+      texte: Pendant la phase d'expérimentation en cours, cet outil fournit des informations à titre indicatif
+        et ne saurait, en aucune circonstance, dispenser l’Utilisateur de vérifier les conditions réglementaires,
+        légales ou administratives applicables à sa situation.
   - type: titre_principal
     data:
       texte: Article 3 - Définitions
@@ -516,7 +521,7 @@ contenus:
       texte: Article 5 - Déploiement du Service
   - type: paragraphe
     data:
-      texte: Le Service est actuellement en cours d’expérimentation dans les départements du Nord et du
+      texte: La Plateforme est actuellement en cours d’expérimentation dans les départements du Nord et du
         Pas-de-Calais et dans la région Grand-Est.
   - type: titre_principal
     data:
@@ -526,15 +531,15 @@ contenus:
       texte: 6.1 Responsabilités de l’Éditeur
   - type: paragraphe
     data:
-      texte: Les sources des informations diffusées sur le Service sont réputées fiables mais le Service
+      texte: Les sources des informations diffusées sur le Service sont réputées fiables mais la Plateforme
         ne garantit pas qu'elles soient exemptes de défauts, d'erreurs ou d'omissions.
   - type: paragraphe
     data:
-      texte: Le Service ne délivre aucune autorisation ou décision administrative créatrice de droits pour
+      texte: La Plateforme ne délivre aucune autorisation ou décision administrative créatrice de droits pour
         les Utilisateurs. Il s'agit d'un portail que peuvent consulter les Utilisateurs à titre informatif.
   - type: paragraphe
     data:
-      texte: L'Editeur s'engage à la sécurisation du Service, notamment en prenant toutes les mesures nécessaires
+      texte: L'Editeur s'engage à la sécurisation de la Plateforme, notamment en prenant toutes les mesures nécessaires
         permettant de garantir la sécurité et la confidentialité des informations fournies. L'Éditeur fournit
         les moyens nécessaires et raisonnables pour assurer un accès continu, sans contrepartie financière.
   - type: paragraphe
