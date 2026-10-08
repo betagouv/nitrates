@@ -103,6 +103,8 @@ jobs:
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
 
   # --- 4+5. Deploy + smoke -----------------------------------------------
   deploy-staging:

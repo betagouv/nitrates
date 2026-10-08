@@ -92,6 +92,8 @@ jobs:
   gate-e2e:
     needs: gate-ci
     uses: ./.github/workflows/e2e.yml
+    with:
+      ref: ${{ needs.gate-ci.outputs.sha }}
 
   deploy-prod:
     needs: [gate-ci, gate-ci-complet, gate-e2e]
