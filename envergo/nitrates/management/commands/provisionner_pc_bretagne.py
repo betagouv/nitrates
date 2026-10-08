@@ -10,9 +10,19 @@ rédigées. Deux familles, toutes en scope region / region_code 53 :
     pc_bzh_derobees, pc_bzh_prairie_aut_sept, pc_bzh_cine_type_i,
     pc_bzh_mais_semis, pc_bzh_mais_z1, pc_bzh_mais_z2.
 
-Sans effet hors Bretagne. Avec `load_arbres_actifs --only region_53`, c'est
-ce qui allume le PAR Bretagne sur un environnement : le déploiement de code
-ne le fait pas (le CD ne touche pas aux données).
+Sans effet hors Bretagne. Avec l'import de l'arbre en revue
+`specs/arbres_en_revue/region_53.yaml`, c'est ce qui allume le PAR Bretagne
+sur un environnement :
+
+    python manage.py provisionner_pc_bretagne
+    python manage.py import_decision_tree \
+        envergo/nitrates/specs/arbres_en_revue/region_53.yaml \
+        --scope region --region-code 53 --mode force-active --name "PAR Bretagne"
+
+Ni le déploiement de code, ni seed_referentiels, ni load_arbres_actifs (CI,
+e2e) ne le font : le PAR Bretagne ne pèse sur aucun autre environnement tant
+qu'il est en revue. Le promouvoir = déplacer l'arbre dans arbres_actifs/ et
+les PC dans la fixture référentiels.
 
 Idempotent : une PC existante n'est pas retouchée (les juristes peuvent la
 réécrire dans l'admin), sauf avec --maj.

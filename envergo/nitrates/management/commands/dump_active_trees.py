@@ -19,6 +19,14 @@ Le YAML est normalise via le meme dump ruamel que l'editeur admin
 (`yaml_admin.editor._dump_yaml`, width=4096, preserve_quotes) : round-trip
 stable (teste 2026-07-20), donc redump idempotent et diffs git minimaux.
 
+Arbres EN REVUE : un arbre dont le fichier est dans `specs/arbres_en_revue/`
+(ex. un PAR candidat qui vit sur dev le temps de la revue juristes) est dumpe
+et controle LA, pas dans `arbres_actifs/`. Ce dossier n'est lu ni par
+`load_arbres_actifs`, ni par la CI, ni par l'e2e : l'arbre se charge a la main
+(`import_decision_tree specs/arbres_en_revue/<fichier> ...`) sur les seuls
+environnements voulus, sans peser sur les autres PR ni sur les releases.
+Promouvoir l'arbre = deplacer son fichier dans `arbres_actifs/`.
+
 Usage :
     # Ecrit/rafraichit tous les fichiers canoniques
     python manage.py dump_active_trees
@@ -38,6 +46,8 @@ from envergo.nitrates.yaml_admin.editor import _dump_yaml
 
 # Sous-repertoire miroir dedie : le hook/gate n'autorise le force-push QUE la.
 ARBRES_ACTIFS_SUBDIR = "arbres_actifs"
+# Arbres candidats charges a la main (hors CI/e2e/load_arbres_actifs), cf. docstring.
+ARBRES_EN_REVUE_SUBDIR = "arbres_en_revue"
 
 
 def canonical_filename(scope: str, region_code: str) -> str:
@@ -86,6 +96,7 @@ class Command(BaseCommand):
         check = options["check"]
         specs_dir = Path(options["dir"] or settings.NITRATES_SPECS_DIR)
         out_dir = specs_dir / ARBRES_ACTIFS_SUBDIR
+        revue_dir = specs_dir / ARBRES_EN_REVUE_SUBDIR
 
         actifs = list(
             DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE).order_by(
@@ -115,6 +126,8 @@ class Command(BaseCommand):
             seen.add(fname)
 
             path = out_dir / fname
+            if (revue_dir / fname).exists():
+                path = revue_dir / fname
             new_yaml = canonical_yaml(tree)
 
             if check:
