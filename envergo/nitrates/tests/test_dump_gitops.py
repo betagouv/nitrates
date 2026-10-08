@@ -112,6 +112,33 @@ def test_dump_active_trees_check_echoue_si_absent(tmp_path):
         )
 
 
+def test_dump_active_trees_suit_un_arbre_en_revue(tmp_path):
+    """Un arbre dont le fichier est dans arbres_en_revue/ y est dumpé et contrôlé,
+    pas recréé dans arbres_actifs/ (qui est chargé par la CI et l'e2e)."""
+    tree = _make_active_tree()
+    specs = tmp_path / "specs"
+    call_command("dump_active_trees", dir=str(specs), stdout=StringIO())
+    actif = specs / "arbres_actifs" / "national.yaml"
+    revue = specs / "arbres_en_revue" / "national.yaml"
+    revue.parent.mkdir(parents=True)
+    actif.rename(revue)
+
+    call_command("dump_active_trees", dir=str(specs), check=True, stdout=StringIO())
+    call_command("dump_active_trees", dir=str(specs), stdout=StringIO())
+    assert not actif.exists()
+
+    tree.contenu = {"meta": {"version": "2"}, "racine": {"type": "resultat"}}
+    tree.save()
+    with pytest.raises(CommandError):
+        call_command(
+            "dump_active_trees",
+            dir=str(specs),
+            check=True,
+            stdout=StringIO(),
+            stderr=StringIO(),
+        )
+
+
 # ─── validate_arbres_actifs (déduction scope + garde-fou CI) ─────────────────
 
 
