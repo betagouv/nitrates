@@ -871,3 +871,23 @@ contenus:
     data:
       texte: Les réponses saisies dans le formulaire sont gardées dans la page le temps de la simulation,
         pour passer d'une question à l'autre. Elles ne sont pas enregistrées.
+
+- cle: page.stats
+  libelle_admin: Page — Statistiques
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: Notre objectif est de faciliter la compréhension et l'application de la réglementation nitrates
+        pour les agriculteurs et les conseillers agricoles.
+  - type: paragraphe
+    data:
+      texte: Le produit permet de connaître la date et les conditions d'épandage selon, entre autres, la
+        localisation de la parcelle, la culture et le fertilisant utilisé.
+  - type: paragraphe
+    data:
+      texte: L'expérimentation est en cours dans la région Grand Est et dans les départements du Nord et
+        du Pas-de-Calais.
+  - type: paragraphe
+    data:
+      texte: À date, nous pouvons mesurer l'usage de notre produit, à savoir le nombre de simulations effectuées.
