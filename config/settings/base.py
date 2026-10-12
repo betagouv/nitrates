@@ -517,6 +517,11 @@ NITRATES_ROOT_OUVERT = env.bool("DJANGO_NITRATES_ROOT_OUVERT", default=False)
 # Configurable car le board peut être dupliqué/refactoré (cf. carte #140).
 NITRATES_MIRO_BOARD_ID = env("DJANGO_NITRATES_MIRO_BOARD_ID", default="uXjVG_mixZA=")
 
+# Page statistiques (#517) : date (AAAA-MM-JJ) à partir de laquelle on compte
+# les simulations dans Matomo, pour écarter les tests faits avant l'ouverture.
+# Vide = les 12 dernières semaines / 12 derniers mois.
+NITRATES_STATS_DATE_DEBUT = env("DJANGO_NITRATES_STATS_DATE_DEBUT", default="")
+
 # Sonde d'observabilite infrastructure (carte #111). Vide = routes non montees.
 # Les metriques Scalingo ne suffisent pas a diagnostiquer les ralentissements
 # intermittents ; cette sonde lit cgroup v2 + PSI dans le container.

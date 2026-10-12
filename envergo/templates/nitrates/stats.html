@@ -1,0 +1,109 @@
+{% extends "nitrates/base.html" %}
+
+{% load l10n nitrates_tags %}
+
+{% comment %}
+Page statistiques (#517). Texte : ContenuRichDSFR `page.stats` (admin).
+Chiffres : event Matomo SimulationLancee (stats_matomo), graphe SVG calculé
+par la vue (views_stats.geometrie) + tableau de données équivalent.
+{% endcomment %}
+{% block extra_css %}
+  <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/stats.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block description %}
+  Mesure d'usage de Nitrat'Info : nombre de simulations effectuées par semaine et par mois.
+{% endblock %}
+
+{% block article %}
+  <div class="page-riche page-stats">
+    <h1>{{ titre }}</h1>
+    {% contenu_rich "page.stats" niveau_base=2 as corps %}
+    {% if corps %}{{ corps }}{% endif %}
+
+    <h2>Nombre de simulations effectuées</h2>
+
+    <ul class="fr-btns-group fr-btns-group--inline fr-btns-group--sm"
+        aria-label="Choix de la période">
+      {% for cle, libelle in periodes %}
+        <li>
+          <a class="fr-btn {% if cle != periode %}fr-btn--secondary{% endif %}"
+             href="?periode={{ cle }}"
+             {% if cle == periode %}aria-current="true"{% endif %}>{{ libelle }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if points is None %}
+      <div class="fr-alert fr-alert--info fr-alert--sm">
+        <p>Les statistiques sont momentanément indisponibles. Merci de réessayer plus tard.</p>
+      </div>
+    {% elif not points %}
+      <p>Aucune simulation enregistrée pour le moment.</p>
+    {% else %}
+      <p class="page-stats__total">
+        <span class="page-stats__total-valeur">{{ total }}</span>
+        {{ total_libelle }} sur la période affichée
+      </p>
+
+      {% comment %}
+      localize off : sans lui, Django ecrit les coordonnees a la francaise
+      (212,0) et le SVG ne se dessine plus.
+      {% endcomment %}
+      {% localize off %}
+      <figure class="page-stats__figure"
+              role="group"
+              aria-labelledby="stats-legende">
+        <svg class="page-stats__graphe"
+             viewBox="0 0 {{ graphe.largeur }} {{ graphe.hauteur }}"
+             role="img"
+             aria-labelledby="stats-legende">
+          {% for g in graphe.graduations %}
+            <line class="page-stats__grille" x1="{{ graphe.x_axe }}" x2="{{ graphe.largeur }}" y1="{{ g.y }}" y2="{{ g.y }}" />
+            <text class="page-stats__axe" x="{{ graphe.x_axe|add:'-8' }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle">{{ g.valeur }}</text>
+          {% endfor %}
+          {% for b in graphe.barres %}
+            <g class="page-stats__barre">
+            <title>{{ b.titre }}</title>
+            <rect class="page-stats__cible" x="{{ b.x }}" y="0" width="{{ b.largeur }}" height="{{ graphe.y_base }}" />
+            {% if b.hauteur %}
+              <rect class="page-stats__valeur" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.largeur }}" height="{{ b.hauteur }}" rx="2" />
+            {% endif %}
+            </g>
+            {% if b.etiquette %}
+              <text class="page-stats__axe" x="{{ b.centre }}" y="{{ graphe.y_etiquettes }}" text-anchor="middle">{{ b.point.libelle }}</text>
+            {% endif %}
+          {% endfor %}
+          <line class="page-stats__base" x1="{{ graphe.x_axe }}" x2="{{ graphe.largeur }}" y1="{{ graphe.y_base }}" y2="{{ graphe.y_base }}" />
+        </svg>
+        <figcaption id="stats-legende" class="fr-text--sm">
+          Nombre de simulations {{ periode_texte }}. La dernière période est en cours. Source : mesure d'audience Matomo, mise à jour toutes les 6 heures.
+        </figcaption>
+      </figure>
+    {% endlocalize %}
+
+    <div class="fr-table fr-table--sm">
+      <table>
+        <caption>Données du graphique</caption>
+        <thead>
+          <tr>
+            <th scope="col">{{ colonne_periode }}</th>
+            <th scope="col">Simulations</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in points %}
+            <tr>
+              <td>{{ p.libelle_long|capfirst }}</td>
+              <td>{{ p.simulations }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

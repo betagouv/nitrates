@@ -100,6 +100,11 @@ def pages_publiques():
         (_nitrates("nitrates_accessibilite"), "Déclaration d'accessibilité", ""),
         (_nitrates("nitrates_donnees_personnelles"), "Données personnelles", ""),
         (_nitrates("contact_us"), "Contact", ""),
+        (
+            _nitrates("nitrates_stats"),
+            "Statistiques",
+            "nombre de simulations effectuées par semaine et par mois.",
+        ),
     ]
     return pages
 

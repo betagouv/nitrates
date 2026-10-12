@@ -1,0 +1,56 @@
+/* Page statistiques (#517). Couleurs = tokens DSFR : suivent le thème clair/sombre. */
+
+.page-stats__total {
+  margin-bottom: 1rem;
+}
+
+.page-stats__total-valeur {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-title-grey);
+  margin-right: 0.25rem;
+}
+
+.page-stats__figure {
+  margin: 0 0 1.5rem;
+}
+
+.page-stats__graphe {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 48rem;
+}
+
+.page-stats__grille {
+  stroke: var(--border-default-grey);
+  stroke-width: 1;
+}
+
+.page-stats__base {
+  stroke: var(--border-plain-grey);
+  stroke-width: 1;
+}
+
+.page-stats__axe {
+  fill: var(--text-mention-grey);
+  font-size: 12px;
+}
+
+.page-stats__valeur {
+  fill: var(--background-action-high-blue-france);
+}
+
+/* Zone de survol plus large que la barre : tooltip natif via <title>. */
+.page-stats__cible {
+  fill: transparent;
+}
+
+.page-stats__barre:hover .page-stats__valeur {
+  fill: var(--background-action-high-blue-france-hover);
+}
+
+.page-stats__barre:hover .page-stats__cible {
+  fill: var(--background-alt-grey);
+}
