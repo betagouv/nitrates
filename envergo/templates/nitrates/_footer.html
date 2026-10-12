@@ -49,7 +49,8 @@
   {% url 'nitrates_donnees_personnelles' as url_donnees_personnelles %}
   {% url 'nitrates_cgu' as url_cgu %}
   {% url 'contact_us' as url_contact %}
-  {% if url_accessibilite or url_mentions_legales or url_donnees_personnelles or url_cgu or url_contact %}
+  {% url 'nitrates_stats' as url_stats %}
+  {% if url_accessibilite or url_mentions_legales or url_donnees_personnelles or url_cgu or url_contact or url_stats %}
     <div class="fr-footer__bottom">
       <ul class="fr-footer__bottom-list">
         {% if url_accessibilite %}
@@ -75,6 +76,11 @@
         {% if url_contact %}
           <li class="fr-footer__bottom-item">
             <a class="fr-footer__bottom-link" href="{{ url_contact }}">Contact</a>
+          </li>
+        {% endif %}
+        {% if url_stats %}
+          <li class="fr-footer__bottom-item">
+            <a class="fr-footer__bottom-link" href="{{ url_stats }}">Statistiques</a>
           </li>
         {% endif %}
       </ul>

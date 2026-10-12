@@ -48,6 +48,7 @@ PAGES_FOOTER_PUBLIQUES = (
     "/accessibilite/",
     "/donnees-personnelles/",
     "/contact/",
+    "/stats/",
 )
 
 #: Referencement SEO et GEO (#290, #565). REGLE : tout ce qui sert le
