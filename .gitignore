@@ -286,6 +286,8 @@ envergo/media/
 
 project*.css
 *.min.js
+# libs JS embarquees telles quelles (cf. envergo/static/nitrates/vendor/README.md)
+!envergo/static/nitrates/vendor/*.min.js
 
 data.*
 

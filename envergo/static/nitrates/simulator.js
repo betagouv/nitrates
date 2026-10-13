@@ -356,16 +356,54 @@
     "png"
   );
 
-  // RPG (Registre Parcellaire Graphique) : desactive en MVP (retour
-  // juriste 0.0.1 : la donnee correcte pour la zone d'activation est
-  // le cadastre, pas le RPG). On garde l'import et la table en DB
-  // pour reactivation V1+ : resoudre la culture declaree par
-  // l'agriculteur a partir de la parcelle RPG. Le layer reste defini
-  // mais n'est pas ajoute au LayerControl.
-  // const rpgOverlay = wmts(
-  //   "IGNF_RPG_PARCELLES-AGRICOLES-CATEGORISEES_2024",
-  //   "png"
-  // );
+  // #583 : parcelles RPG (Registre Parcellaire Graphique, parcelles declarees
+  // a la PAC) en couche principale, le cadastre reste dispo en secours pour les
+  // parcelles hors PAC. Contours en tuiles vectorielles IGN dessinees en canvas
+  // (cf. rpg_parcelle.js), rien en base chez nous. Pane au-dessus des ZV/ZAR
+  // (sinon leur remplissage noie les contours), sans evenements souris : les
+  // infobulles ZV/ZAR et le clic carte passent au travers.
+  const rpg = window.NitratesRpg;
+  [
+    ["nitratesRpg", 450],
+    ["nitratesSelection", 460],
+  ].forEach(([nom, z]) => {
+    const pane = map.createPane(nom);
+    pane.style.zIndex = z;
+    pane.style.pointerEvents = "none";
+  });
+  // Blanc sur photo aerienne, gris fonce sur plan IGN (cf. majContourRpg).
+  let couleurContourRpg = "#ffffff";
+  function coucheRpg() {
+    // VectorGrid absent (script bloque) : couche vide, la carte marche quand meme.
+    if (!rpg || !L.vectorGrid) return L.layerGroup();
+    const couche = L.vectorGrid.protobuf(rpg.URL_TUILES, {
+      pane: "nitratesRpg",
+      rendererFactory: L.canvas.tile,
+      interactive: false,
+      // Pas de minZoom : Leaflet griserait la case en vue large. Les tuiles
+      // sous ZOOM_NATIF_MIN (que l'IGN ne sert pas) sont court-circuitees
+      // plus bas. Pas d'attribution : « © IGN » est deja affiche par les fonds.
+      maxNativeZoom: rpg.ZOOM_NATIF_MAX,
+      maxZoom: 22,
+      updateWhenZooming: false,
+      vectorTileLayerStyles: {
+        [rpg.COUCHE_TUILES]: () => ({
+          color: couleurContourRpg,
+          weight: 1.2,
+          opacity: 0.9,
+          fill: false,
+        }),
+      },
+    });
+    // Vue large : tuile vide sans requete (sinon une 404 IGN par tuile).
+    const tuileIgn = couche._getVectorTilePromise;
+    couche._getVectorTilePromise = function (coords) {
+      if (coords.z < rpg.ZOOM_NATIF_MIN) return Promise.resolve({ layers: {} });
+      return tuileIgn.call(this, coords);
+    };
+    return couche;
+  }
+  const rpgOverlay = coucheRpg();
 
   // #531 : chargement des couches ZV / ZAR a la 1re activation, avec une
   // ligne d'etat par couche dans la legende (visible aussi en plein ecran) :
@@ -512,43 +550,46 @@
   const prefs = window.NitratesCartePrefs;
 
   // #531 : fond « Automatique » = on ne charge que ce qui est utile au zoom
-  // courant (cf. couchesAuto) : photo aerienne seule en vue large, + cadastre
-  // une fois assez zoome pour lire les parcelles. Instances de tuiles propres
-  // (et non photoLayer / cadastreOverlay) : sinon le controle de couches
-  // cocherait « Photo aerienne » / « Cadastre » a la place de l'utilisateur.
-  // Si l'utilisateur coche lui-meme le cadastre, on n'en ajoute pas un 2e.
+  // courant (cf. couchesAuto). #583 : il ne gere plus que le fond ; le
+  // cadastre qu'il ajoutait une fois zoome est remplace par la case
+  // « Parcelles agricoles (RPG) », cochee par defaut. (Un RPG ajoute par le
+  // mode auto revenait des qu'on decochait la case.) Instances propres (et non
+  // photoLayer) : sinon le controle de couches cocherait « Photo aerienne » a
+  // la place de l'utilisateur.
   const autoFonds = {
     plan: wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png"),
     photo: wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg"),
   };
-  const autoCadastre = wmts("CADASTRALPARCELS.PARCELLAIRE_EXPRESS", "png", {
-    zIndex: 2,
-  });
   const autoLayer = L.layerGroup();
   function syncAuto() {
-    const voulu = prefs
-      ? prefs.couchesAuto(map.getZoom())
-      : { fond: "photo", cadastre: false };
+    const voulu = prefs ? prefs.couchesAuto(map.getZoom()) : { fond: "photo" };
     Object.keys(autoFonds).forEach((k) => {
       if (k === voulu.fond) autoLayer.addLayer(autoFonds[k]);
       else autoLayer.removeLayer(autoFonds[k]);
     });
-    if (voulu.cadastre && !map.hasLayer(cadastreOverlay)) {
-      autoLayer.addLayer(autoCadastre);
-    } else {
-      autoLayer.removeLayer(autoCadastre);
-    }
     majOpaciteZv();
+  }
+
+  function fondPlan() {
+    return map.hasLayer(planLayer) || map.hasLayer(autoFonds.plan);
   }
 
   // Remplissage ZV selon le fond reellement affiche (le mode automatique
   // peut basculer de l'un a l'autre au zoom).
   function majOpaciteZv() {
-    const plan = map.hasLayer(planLayer) || map.hasLayer(autoFonds.plan);
-    const o = ZV_FILL_OPACITY_PAR_FOND[plan ? "plan" : "photo"];
+    majContourRpg();
+    const o = ZV_FILL_OPACITY_PAR_FOND[fondPlan() ? "plan" : "photo"];
     if (o === zvFillOpacity) return;
     zvFillOpacity = o;
     zvLayer.setStyle({ fillOpacity: o });
+  }
+
+  // #583 : contour RPG blanc illisible sur le plan IGN (fond clair).
+  function majContourRpg() {
+    const c = fondPlan() ? "#4d4d4d" : "#ffffff";
+    if (c === couleurContourRpg) return;
+    couleurContourRpg = c;
+    if (rpgOverlay.redraw && map.hasLayer(rpgOverlay)) rpgOverlay.redraw();
   }
   map.on("baselayerchange", majOpaciteZv);
   autoLayer.on("add", () => {
@@ -560,10 +601,15 @@
     autoLayer.clearLayers();
   });
 
-  // #531 : couches memorisees (localStorage) sinon mode automatique, sans
-  // surcouche (ZV, ZAR et cadastre explicite decoches).
+  // #531 : couches memorisees (localStorage) sinon reglage par defaut : mode
+  // automatique + parcelles RPG, ZV et ZAR cochees (#583, avant : aucune).
   const fonds = { auto: autoLayer, plan: planLayer, photo: photoLayer };
-  const surcouches = { cadastre: cadastreOverlay, zv: zvLayer, zar: zarLayer };
+  const surcouches = {
+    rpg: rpgOverlay,
+    cadastre: cadastreOverlay,
+    zv: zvLayer,
+    zar: zarLayer,
+  };
   let storage = null;
   try {
     storage = window.localStorage;
@@ -571,13 +617,11 @@
     storage = null;
   }
   const couches = (prefs &&
-    prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) || {
-    base: "auto",
-    surcouches: [],
-  };
+    prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) ||
+    (prefs && prefs.couchesParDefaut()) || { base: "auto", surcouches: ["rpg", "zv", "zar"] };
   fonds[couches.base].addTo(map);
   majOpaciteZv();
-  // Ordre fixe (cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
+  // Ordre fixe (rpg, cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
   Object.keys(surcouches).forEach((k) => {
     if (couches.surcouches.includes(k)) surcouches[k].addTo(map);
   });
@@ -602,6 +646,7 @@
         "Photo aérienne": photoLayer,
       },
       {
+        "Parcelles agricoles (RPG)": rpgOverlay,
         "Cadastre": cadastreOverlay,
         "Zones vulnérables nitrates": zvLayer,
         "Zones d'action renforcée (ZAR)": zarLayer,
@@ -913,6 +958,117 @@
 
   let marker = null;
 
+  // #583 : selection de LA parcelle RPG cliquee, une seule a la fois. En gris :
+  // les zones ont deja violet, jaune, bleu ciel, rose, orange, vert clair et
+  // rouge, une couleur de plus clasherait. Halo blanc dessous pour rester
+  // lisible sur les champs sombres de la photo aerienne.
+  const STYLE_SELECTION_HALO = { color: "#ffffff", weight: 6, opacity: 0.9, fill: false };
+  const STYLE_SELECTION = {
+    color: "#3a3a3a",
+    weight: 3,
+    opacity: 1,
+    fillColor: "#808080",
+    fillOpacity: 0.45,
+  };
+  // IGN qui rame : au-dela on garde le point clique, la simulation n'attend pas.
+  const DELAI_WFS_RPG_MS = 2500;
+
+  // La selection suit la case « Parcelles agricoles (RPG) » : decochee, plus
+  // de contours ni de zone grise (le point, lui, reste pose) ; un clic carte
+  // pose alors le point clique, sans chercher de parcelle. Recochee, la
+  // parcelle selectionnee reapparait.
+  const rpgActif = () => !!rpg && map.hasLayer(rpgOverlay);
+
+  const selectionRpg = (function () {
+    let courante = null; // { feature, point: {lat, lng}, layer }
+
+    function deselectionner() {
+      if (courante) map.removeLayer(courante.layer);
+      courante = null;
+    }
+
+    function contient(lat, lng) {
+      return (
+        rpgActif() && !!courante && rpg.pointDansGeometrie(lat, lng, courante.feature.geometry)
+      );
+    }
+
+    rpgOverlay.on("add", () => {
+      if (courante) courante.layer.addTo(map);
+    });
+    rpgOverlay.on("remove", () => {
+      if (courante) map.removeLayer(courante.layer);
+    });
+
+    // Parcelle RPG sous le point -> la selectionne et resout { feature, point }
+    // (point = point central, garanti dans la parcelle). Resout null hors RPG
+    // (parcelle hors PAC), si l'IGN ne repond pas ou si la reponse est
+    // perimee (clic plus recent entre-temps).
+    let jeton = 0;
+    function selectionnerAuPoint(lat, lng) {
+      deselectionner();
+      const mon = ++jeton;
+      if (!rpg) return Promise.resolve(null);
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), DELAI_WFS_RPG_MS) : null;
+      return fetch(rpg.urlParcelleAuPoint(lat, lng), ctrl ? { signal: ctrl.signal } : {})
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then((data) => {
+          if (mon !== jeton) return null;
+          const f = (data.features || [])[0];
+          const point = f ? rpg.pointCentral(f.geometry) : null;
+          if (!point) return null;
+          const opts = (style) => ({ pane: "nitratesSelection", interactive: false, style: style });
+          const layer = L.layerGroup([
+            L.geoJSON(f, opts(STYLE_SELECTION_HALO)),
+            L.geoJSON(f, opts(STYLE_SELECTION)),
+          ]);
+          if (rpgActif()) layer.addTo(map);
+          courante = { feature: f, point: point, layer: layer };
+          return courante;
+        })
+        .catch((err) => {
+          console.warn("Parcelle RPG : WFS IGN en echec", err);
+          return null;
+        })
+        .finally(() => {
+          if (timer) clearTimeout(timer);
+        });
+    }
+
+    return {
+      deselectionner: deselectionner,
+      contient: contient,
+      selectionnerAuPoint: selectionnerAuPoint,
+      courante: () => courante,
+    };
+  })();
+
+  const echapperHtml = (v) =>
+    String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  // Panneau debug : tout ce que l'IGN donne sur la parcelle RPG (#583), pour
+  // voir ce qui est a disposition.
+  function rpgDebugHtml(sel) {
+    if (!sel) {
+      return rpgActif()
+        ? "<dt>Parcelle RPG</dt><dd>aucune parcelle RPG (hors PAC ?)</dd>"
+        : "<dt>Parcelle RPG</dt><dd>couche « Parcelles agricoles » décochée</dd>";
+    }
+    const p = sel.feature.properties || {};
+    const meta = Object.keys(p)
+      .map((k) => `${echapperHtml(k)}=${p[k] === null ? "∅" : echapperHtml(p[k])}`)
+      .join(", ");
+    return (
+      `<dt>Parcelle RPG ${rpg.MILLESIME}</dt><dd>n° ${echapperHtml(p.num_parcel || "—")}, îlot ${echapperHtml(p.num_ilot || "—")}</dd>` +
+      `<dt>Point central (moulinette)</dt><dd>${sel.point.lng.toFixed(6)}, ${sel.point.lat.toFixed(6)}</dd>` +
+      `<dt>Métadonnées RPG</dt><dd><code>${meta}</code></dd>`
+    );
+  }
+
   function cultureLabel(parcel) {
     if (!parcel || !parcel.code_cultu) return "";
     if (parcel.libelle_cultu) {
@@ -921,7 +1077,7 @@
     return parcel.code_cultu;
   }
 
-  function renderDebug(data, communeInfo, parcelInfo) {
+  function renderDebug(data, communeInfo, parcelInfo, rpgSel) {
     if (!debugEl) return;
 
     const zvClass = data.en_zone_vulnerable
@@ -973,6 +1129,7 @@
             ? `${data.region_code} (${data.region_label})`
             : "—"
         }</dd>
+        ${rpgDebugHtml(rpgSel)}
         <dt>Parcelle cadastre</dt><dd>${parcelHtml}</dd>
         <dt>Zone vulnérable nitrates</dt><dd class="${zvClass}">${zvText}</dd>
         <dt>Zone d'action renforcée (ZAR)</dt><dd class="${zarClass}">${zarText}</dd>
@@ -1073,7 +1230,10 @@
       Promise.all([
         fetchCommuneInfo(initialLat, initialLng),
         fetchParcelInfo(initialLat, initialLng),
-      ]).then(([communeInfo, parcelInfo]) => {
+        // Le point vient d'une selection precedente (point central) : il est
+        // dans la parcelle, on la resurligne.
+        rpgActif() ? selectionRpg.selectionnerAuPoint(initialLat, initialLng) : null,
+      ]).then(([communeInfo, parcelInfo, rpgSel]) => {
         updateLocalisationReadonly(window.NITRATES_CATALOG, communeInfo.nom);
         // Reconstruit le payload attendu par renderDebug a partir du
         // catalog serveur + lng/lat. Le bassin/bassin_label arrive sous
@@ -1101,7 +1261,8 @@
             zone_mais_bretagne: cat.zone_mais_bretagne,
           },
           communeInfo,
-          parcelInfo
+          parcelInfo,
+          rpgSel
         );
       });
     }
@@ -1153,8 +1314,21 @@
     }, 300);
   }
 
+  // Clics carte successifs : seul le dernier met a jour formulaire et panneaux.
+  let numeroClic = 0;
+  const PERIME = new Error("clic perime");
+
   map.on("click", function (e) {
-    const { lat, lng } = e.latlng;
+    const latClic = e.latlng.lat;
+    const lngClic = e.latlng.lng;
+
+    // #583 : reclic dans la parcelle selectionnee = deselection. Le point reste
+    // pose (le formulaire en depend), seul le surlignage part.
+    if (e.originalEvent && selectionRpg.contient(latClic, lngClic)) {
+      selectionRpg.deselectionner();
+      return;
+    }
+    const clic = ++numeroClic;
 
     // Analytics (#Matomo) : ne compter que les clics carte REELS. selectCommune
     // rejoue ce handler via map.fire(...) sans originalEvent -> on l'exclut ici
@@ -1171,8 +1345,10 @@
     }
 
     // Pre-remplit le form -- c'est l'objectif principal de cette page.
-    lngInput.value = lng.toFixed(6);
-    latInput.value = lat.toFixed(6);
+    // Point clique d'abord, remplace par le point central de la parcelle RPG
+    // des qu'on la connait (plus bas).
+    lngInput.value = lngClic.toFixed(6);
+    latInput.value = latClic.toFixed(6);
 
     demarrerChargementLoc(
       !(e.originalEvent instanceof KeyboardEvent) && !pleinEcran.actif()
@@ -1195,10 +1371,35 @@
         '<p class="nitrates-debug__placeholder">Chargement…</p>';
     }
 
+    // #583 : la moulinette travaille sur UN point -> le point central de la
+    // parcelle RPG cliquee (garanti dedans). Hors RPG ou IGN indisponible : le
+    // point clique, comme avant (idem case RPG decochee). La recherche commune
+    // (map.fire sans originalEvent) pointe le centre-ville : pas de parcelle.
+    const resolutionRpg =
+      e.originalEvent && rpgActif()
+        ? selectionRpg.selectionnerAuPoint(latClic, lngClic)
+        : (selectionRpg.deselectionner(), Promise.resolve(null));
+    let lat = latClic;
+    let lng = lngClic;
+    let rpgSel = null;
+
     // On resout d'abord la commune (code INSEE) puis on interroge l'endpoint
     // debug AVEC ce code : les Zones Est (ZGE1/ZGE2) se resolvent par INSEE
     // cote serveur, sinon elles ressortent toujours None dans le panneau.
-    Promise.all([fetchCommuneInfo(lat, lng), fetchParcelInfo(lat, lng)])
+    resolutionRpg
+      .then((sel) => {
+        // Clic plus recent entre-temps : c'est lui qui finit le travail.
+        if (clic !== numeroClic) throw PERIME;
+        if (sel) {
+          rpgSel = sel;
+          lat = sel.point.lat;
+          lng = sel.point.lng;
+          latInput.value = lat.toFixed(6);
+          lngInput.value = lng.toFixed(6);
+          marker.setLatLng([lat, lng]);
+        }
+        return Promise.all([fetchCommuneInfo(lat, lng), fetchParcelInfo(lat, lng)]);
+      })
       .then(([communeInfo, parcelInfo]) => {
         const code = communeInfo.code || "";
         const url =
@@ -1216,7 +1417,8 @@
           .then((data) => [data, communeInfo, parcelInfo]);
       })
       .then(([data, communeInfo, parcelInfo]) => {
-        renderDebug(data, communeInfo, parcelInfo);
+        if (clic !== numeroClic) throw PERIME;
+        renderDebug(data, communeInfo, parcelInfo, rpgSel);
         updateLocalisationReadonly(data, communeInfo.nom);
         // Carte #57 : bornage geographique. Le backend renvoie
         // simulateur_ouvert selon le departement de la parcelle. Si ouvert,
@@ -1250,6 +1452,7 @@
         terminerChargementLoc();
       })
       .catch((err) => {
+        if (err === PERIME) return;
         terminerChargementLoc();
         renderError(err.message || String(err));
       });

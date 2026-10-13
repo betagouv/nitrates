@@ -18,6 +18,34 @@ const tuilesChargees = (page: Page, layer: string) =>
     layer
   );
 
+// #583 : contours RPG = tuiles vectorielles IGN, dessinees en canvas dans le
+// pane dedie. On compte les tuiles reellement demandees a l'IGN, et les canvas
+// affiches (vides en vue large, ou la couche ne demande rien).
+const tuilesRpg = (page: Page) =>
+  page.evaluate(
+    () =>
+      performance.getEntriesByType('resource').filter((e) => e.name.includes('RPG-2025-TMS'))
+        .length
+  );
+const canvasRpg = (page: Page) =>
+  page.evaluate(() => document.querySelectorAll('.leaflet-nitratesRpg-pane canvas').length);
+
+const ZONES_PAR_DEFAUT = [
+  'Parcelles agricoles (RPG)',
+  'Zones vulnérables nitrates',
+  "Zones d'action renforcée (ZAR)",
+];
+
+// ZV et ZAR sont cochees d'office (#583) : pour tester leur chargement, on
+// repart d'une carte memorisee sans surcouche.
+async function sansZones(page: Page) {
+  await page.evaluate(() =>
+    localStorage.setItem('nitrates.carte.couches.v2', JSON.stringify({ base: 'auto', surcouches: [] }))
+  );
+  await page.reload();
+  await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
+}
+
 test.describe('Carte #531', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/simulateur/');
@@ -26,29 +54,45 @@ test.describe('Carte #531', () => {
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
   });
 
-  test('défaut : mode automatique, photo seule, pas de cadastre en vue large', async ({ page }) => {
-    expect(await couchesCochees(page)).toEqual(['Automatique (selon le zoom)']);
+  test("défaut : mode automatique + RPG, ZV et ZAR, photo seule, rien demandé à l'IGN en vue large", async ({
+    page,
+  }) => {
+    expect(await couchesCochees(page)).toEqual(['Automatique (selon le zoom)', ...ZONES_PAR_DEFAUT]);
     await expect.poll(() => tuilesChargees(page, 'ORTHOIMAGERY.ORTHOPHOTOS')).toBeGreaterThan(0);
+    expect(await tuilesRpg(page)).toBe(0);
     expect(await tuilesChargees(page, 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS')).toBe(0);
     expect(await tuilesChargees(page, 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2')).toBe(0);
   });
 
-  test('mode automatique : le cadastre apparaît une fois zoomé', async ({ page }) => {
-    await page.evaluate(() => (window as any).nitratesMap.setZoom(15, { animate: false }));
-    await expect
-      .poll(() => tuilesChargees(page, 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS'))
-      .toBeGreaterThan(0);
-    // La case « Cadastre » reste décochée : c'est le mode auto qui l'affiche.
-    expect(await couchesCochees(page)).toEqual(['Automatique (selon le zoom)']);
+  test('zoomé : parcelles RPG affichées, pas le cadastre ; décocher les cache, recocher les remet', async ({
+    page,
+  }) => {
+    const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
+    // Jamais grisee, meme en vue large.
+    await expect(rpg).toBeEnabled();
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 15, { animate: false }));
+    await expect.poll(() => tuilesRpg(page)).toBeGreaterThan(0);
+    expect(await tuilesChargees(page, 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS')).toBe(0);
+    await rpg.uncheck();
+    expect(await canvasRpg(page)).toBe(0);
+    // Le mode auto ne la remet pas derriere le dos de l'utilisateur.
+    await page.evaluate(() => (window as any).nitratesMap.setZoom(16, { animate: false }));
+    expect(await canvasRpg(page)).toBe(0);
+    await rpg.check();
+    await expect.poll(() => canvasRpg(page)).toBeGreaterThan(0);
   });
 
   test('les couches choisies sont retrouvées au rechargement', async ({ page }) => {
     const legende = page.locator('.leaflet-control-layers');
     await legende.getByLabel('Plan IGN').check();
-    await legende.getByLabel('Zones vulnérables nitrates').check();
+    await legende.getByLabel("Zones d'action renforcée (ZAR)").uncheck();
     await page.reload();
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
-    expect(await couchesCochees(page)).toEqual(['Plan IGN', 'Zones vulnérables nitrates']);
+    expect(await couchesCochees(page)).toEqual([
+      'Plan IGN',
+      'Parcelles agricoles (RPG)',
+      'Zones vulnérables nitrates',
+    ]);
   });
 
   test('clavier : Tab depuis la carte mène au plein écran puis à la légende, Entrée coche, Échap revient', async ({
@@ -63,7 +107,8 @@ test.describe('Carte #531', () => {
     await expect(page.locator('.leaflet-control-layers-base input:checked')).toBeFocused();
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
-    expect(await couchesCochees(page)).toContain('Cadastre');
+    // 1re case de la legende = « Parcelles agricoles (RPG) », cochee par defaut.
+    expect(await couchesCochees(page)).not.toContain('Parcelles agricoles (RPG)');
     await page.keyboard.press('Escape');
     await expect(page.locator('#nitrates-map')).toBeFocused();
   });
@@ -208,6 +253,7 @@ test.describe('Carte #531', () => {
   test('chargement ZV + ZAR en parallèle : une ligne par couche, masquées à la fin', async ({
     page,
   }) => {
+    await sansZones(page);
     // Réponses retardées pour voir les deux chargements en même temps.
     await page.route('**/geojson/**', async (route) => {
       await new Promise((r) => setTimeout(r, 1500));
@@ -225,6 +271,7 @@ test.describe('Carte #531', () => {
   });
 
   test('décocher pendant le chargement masque la ligne, recocher la réaffiche', async ({ page }) => {
+    await sansZones(page);
     await page.route('**/geojson/zar/', async (route) => {
       await new Promise((r) => setTimeout(r, 2500));
       await route.continue();
@@ -242,6 +289,7 @@ test.describe('Carte #531', () => {
   });
 
   test('échec du chargement : message et bouton Réessayer', async ({ page }) => {
+    await sansZones(page);
     // ZV et non ZAR : la base CI n'importe pas de ZAR (--skip-zar-sans-carte).
     await page.route('**/geojson/zv/', (route) => route.abort());
     const legende = page.locator('.leaflet-control-layers');

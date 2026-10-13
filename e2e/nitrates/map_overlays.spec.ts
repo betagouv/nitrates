@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nitrates map — fonds, overlays, contrôles', () => {
-  test('LayerControl is rendered with 3 base layers and 3 overlays', async ({ page }) => {
+  test('LayerControl is rendered with 3 base layers and 4 overlays', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
 
@@ -11,8 +11,8 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     await expect(layerControl).toContainText('Automatique (selon le zoom)');
     await expect(layerControl).toContainText('Plan IGN');
     await expect(layerControl).toContainText('Photo aérienne');
-    // 3 overlays. Le RPG (PAC) est désactivé en MVP au profit du Cadastre IGN ;
-    // la ZAR a été ajoutée (#34).
+    // 4 overlays : parcelles RPG (#583, principal), cadastre en secours, ZV, ZAR (#34).
+    await expect(layerControl).toContainText('Parcelles agricoles (RPG)');
     await expect(layerControl).toContainText('Cadastre');
     await expect(layerControl).toContainText('Zones vulnérables nitrates');
     await expect(layerControl).toContainText("Zones d'action renforcée (ZAR)");
