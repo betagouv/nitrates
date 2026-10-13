@@ -381,8 +381,8 @@
       rendererFactory: L.canvas.tile,
       interactive: false,
       // Pas de minZoom : Leaflet griserait la case en vue large. Les tuiles
-      // sous ZOOM_NATIF_MIN (que l'IGN ne sert pas) sont court-circuitees
-      // plus bas. Pas d'attribution : « © IGN » est deja affiche par les fonds.
+      // sous ZOOM_AFFICHAGE_MIN sont court-circuitees plus bas. Pas
+      // d'attribution : « © IGN » est deja affiche par les fonds.
       maxNativeZoom: rpg.ZOOM_NATIF_MAX,
       maxZoom: 22,
       updateWhenZooming: false,
@@ -395,10 +395,10 @@
         }),
       },
     });
-    // Vue large : tuile vide sans requete (sinon une 404 IGN par tuile).
+    // Trop dezoome : tuile vide, sans requete ni dessin.
     const tuileIgn = couche._getVectorTilePromise;
     couche._getVectorTilePromise = function (coords) {
-      if (coords.z < rpg.ZOOM_NATIF_MIN) return Promise.resolve({ layers: {} });
+      if (coords.z < rpg.ZOOM_AFFICHAGE_MIN) return Promise.resolve({ layers: {} });
       return tuileIgn.call(this, coords);
     };
     return couche;

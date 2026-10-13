@@ -70,7 +70,12 @@ test.describe('Carte #531', () => {
     const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
     // Jamais grisee, meme en vue large.
     await expect(rpg).toBeEnabled();
-    await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 15, { animate: false }));
+    // Echelle ~1 km (zoom 13) : trop de parcelles, rien n'est demande a l'IGN.
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 13, { animate: false }));
+    await page.waitForTimeout(1000);
+    expect(await tuilesRpg(page)).toBe(0);
+    // Echelle ~500 m (zoom 14) : les parcelles s'affichent.
+    await page.evaluate(() => (window as any).nitratesMap.setZoom(14, { animate: false }));
     await expect.poll(() => tuilesRpg(page)).toBeGreaterThan(0);
     expect(await tuilesChargees(page, 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS')).toBe(0);
     await rpg.uncheck();
