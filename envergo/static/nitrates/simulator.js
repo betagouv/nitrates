@@ -363,8 +363,6 @@
   // (sinon leur remplissage noie les contours), sans evenements souris : les
   // infobulles ZV/ZAR et le clic carte passent au travers.
   const rpg = window.NitratesRpg;
-  const ZOOM_PARCELLES =
-    (window.NitratesCartePrefs && window.NitratesCartePrefs.ZOOM_PARCELLES_AUTO) || 14;
   [
     ["nitratesRpg", 450],
     ["nitratesSelection", 460],
@@ -378,18 +376,16 @@
   function coucheRpg() {
     // VectorGrid absent (script bloque) : couche vide, la carte marche quand meme.
     if (!rpg || !L.vectorGrid) return L.layerGroup();
-    return L.vectorGrid.protobuf(rpg.URL_TUILES, {
+    const couche = L.vectorGrid.protobuf(rpg.URL_TUILES, {
       pane: "nitratesRpg",
       rendererFactory: L.canvas.tile,
       interactive: false,
-      // Pas de minZoom : cochee a la main, la couche s'affiche a tout zoom
-      // (Leaflet griserait la case en vue large). C'est le mode auto qui ne la
-      // charge qu'a partir de ZOOM_PARCELLES. NB : l'IGN ne sert ces tuiles
-      // qu'a partir du zoom 11.
+      // Pas de minZoom : Leaflet griserait la case en vue large. Les tuiles
+      // sous ZOOM_NATIF_MIN (que l'IGN ne sert pas) sont court-circuitees
+      // plus bas. Pas d'attribution : « © IGN » est deja affiche par les fonds.
       maxNativeZoom: rpg.ZOOM_NATIF_MAX,
       maxZoom: 22,
       updateWhenZooming: false,
-      attribution: '&copy; <a href="https://www.ign.fr/">IGN</a> RPG ' + rpg.MILLESIME,
       vectorTileLayerStyles: {
         [rpg.COUCHE_TUILES]: () => ({
           color: couleurContourRpg,
@@ -399,6 +395,13 @@
         }),
       },
     });
+    // Vue large : tuile vide sans requete (sinon une 404 IGN par tuile).
+    const tuileIgn = couche._getVectorTilePromise;
+    couche._getVectorTilePromise = function (coords) {
+      if (coords.z < rpg.ZOOM_NATIF_MIN) return Promise.resolve({ layers: {} });
+      return tuileIgn.call(this, coords);
+    };
+    return couche;
   }
   const rpgOverlay = coucheRpg();
 
@@ -547,30 +550,23 @@
   const prefs = window.NitratesCartePrefs;
 
   // #531 : fond « Automatique » = on ne charge que ce qui est utile au zoom
-  // courant (cf. couchesAuto) : photo aerienne seule en vue large, + parcelles
-  // RPG (#583, avant : cadastre) une fois assez zoome pour les lire. Instances
-  // propres (et non photoLayer / rpgOverlay) : sinon le controle de couches
-  // cocherait « Photo aerienne » / « Parcelles agricoles » a la place de
-  // l'utilisateur. S'il coche lui-meme le RPG, on n'en ajoute pas un 2e.
+  // courant (cf. couchesAuto). #583 : il ne gere plus que le fond ; le
+  // cadastre qu'il ajoutait une fois zoome est remplace par la case
+  // « Parcelles agricoles (RPG) », cochee par defaut. (Un RPG ajoute par le
+  // mode auto revenait des qu'on decochait la case.) Instances propres (et non
+  // photoLayer) : sinon le controle de couches cocherait « Photo aerienne » a
+  // la place de l'utilisateur.
   const autoFonds = {
     plan: wmts("GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "png"),
     photo: wmts("ORTHOIMAGERY.ORTHOPHOTOS", "jpeg"),
   };
-  const autoRpg = coucheRpg();
   const autoLayer = L.layerGroup();
   function syncAuto() {
-    const voulu = prefs
-      ? prefs.couchesAuto(map.getZoom())
-      : { fond: "photo", rpg: map.getZoom() >= ZOOM_PARCELLES };
+    const voulu = prefs ? prefs.couchesAuto(map.getZoom()) : { fond: "photo" };
     Object.keys(autoFonds).forEach((k) => {
       if (k === voulu.fond) autoLayer.addLayer(autoFonds[k]);
       else autoLayer.removeLayer(autoFonds[k]);
     });
-    if (voulu.rpg && !map.hasLayer(rpgOverlay)) {
-      autoLayer.addLayer(autoRpg);
-    } else {
-      autoLayer.removeLayer(autoRpg);
-    }
     majOpaciteZv();
   }
 
@@ -593,9 +589,7 @@
     const c = fondPlan() ? "#4d4d4d" : "#ffffff";
     if (c === couleurContourRpg) return;
     couleurContourRpg = c;
-    [rpgOverlay, autoRpg].forEach((l) => {
-      if (l.redraw && map.hasLayer(l)) l.redraw();
-    });
+    if (rpgOverlay.redraw && map.hasLayer(rpgOverlay)) rpgOverlay.redraw();
   }
   map.on("baselayerchange", majOpaciteZv);
   autoLayer.on("add", () => {
@@ -608,7 +602,7 @@
   });
 
   // #531 : couches memorisees (localStorage) sinon reglage par defaut : mode
-  // automatique + ZV et ZAR cochees (#583, avant : aucune surcouche).
+  // automatique + parcelles RPG, ZV et ZAR cochees (#583, avant : aucune).
   const fonds = { auto: autoLayer, plan: planLayer, photo: photoLayer };
   const surcouches = {
     rpg: rpgOverlay,
@@ -624,7 +618,7 @@
   }
   const couches = (prefs &&
     prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) ||
-    (prefs && prefs.couchesParDefaut()) || { base: "auto", surcouches: ["zv", "zar"] };
+    (prefs && prefs.couchesParDefaut()) || { base: "auto", surcouches: ["rpg", "zv", "zar"] };
   fonds[couches.base].addTo(map);
   majOpaciteZv();
   // Ordre fixe (rpg, cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
@@ -979,6 +973,12 @@
   // IGN qui rame : au-dela on garde le point clique, la simulation n'attend pas.
   const DELAI_WFS_RPG_MS = 2500;
 
+  // La selection suit la case « Parcelles agricoles (RPG) » : decochee, plus
+  // de contours ni de zone grise (le point, lui, reste pose) ; un clic carte
+  // pose alors le point clique, sans chercher de parcelle. Recochee, la
+  // parcelle selectionnee reapparait.
+  const rpgActif = () => !!rpg && map.hasLayer(rpgOverlay);
+
   const selectionRpg = (function () {
     let courante = null; // { feature, point: {lat, lng}, layer }
 
@@ -988,8 +988,17 @@
     }
 
     function contient(lat, lng) {
-      return !!courante && rpg.pointDansGeometrie(lat, lng, courante.feature.geometry);
+      return (
+        rpgActif() && !!courante && rpg.pointDansGeometrie(lat, lng, courante.feature.geometry)
+      );
     }
+
+    rpgOverlay.on("add", () => {
+      if (courante) courante.layer.addTo(map);
+    });
+    rpgOverlay.on("remove", () => {
+      if (courante) map.removeLayer(courante.layer);
+    });
 
     // Parcelle RPG sous le point -> la selectionne et resout { feature, point }
     // (point = point central, garanti dans la parcelle). Resout null hors RPG
@@ -1016,7 +1025,8 @@
           const layer = L.layerGroup([
             L.geoJSON(f, opts(STYLE_SELECTION_HALO)),
             L.geoJSON(f, opts(STYLE_SELECTION)),
-          ]).addTo(map);
+          ]);
+          if (rpgActif()) layer.addTo(map);
           courante = { feature: f, point: point, layer: layer };
           return courante;
         })
@@ -1044,7 +1054,9 @@
   // voir ce qui est a disposition.
   function rpgDebugHtml(sel) {
     if (!sel) {
-      return "<dt>Parcelle RPG</dt><dd>aucune parcelle RPG (hors PAC ?)</dd>";
+      return rpgActif()
+        ? "<dt>Parcelle RPG</dt><dd>aucune parcelle RPG (hors PAC ?)</dd>"
+        : "<dt>Parcelle RPG</dt><dd>couche « Parcelles agricoles » décochée</dd>";
     }
     const p = sel.feature.properties || {};
     const meta = Object.keys(p)
@@ -1220,7 +1232,7 @@
         fetchParcelInfo(initialLat, initialLng),
         // Le point vient d'une selection precedente (point central) : il est
         // dans la parcelle, on la resurligne.
-        selectionRpg.selectionnerAuPoint(initialLat, initialLng),
+        rpgActif() ? selectionRpg.selectionnerAuPoint(initialLat, initialLng) : null,
       ]).then(([communeInfo, parcelInfo, rpgSel]) => {
         updateLocalisationReadonly(window.NITRATES_CATALOG, communeInfo.nom);
         // Reconstruit le payload attendu par renderDebug a partir du
@@ -1361,11 +1373,12 @@
 
     // #583 : la moulinette travaille sur UN point -> le point central de la
     // parcelle RPG cliquee (garanti dedans). Hors RPG ou IGN indisponible : le
-    // point clique, comme avant. La recherche commune (map.fire sans
-    // originalEvent) pointe le centre-ville : pas de parcelle a selectionner.
-    const resolutionRpg = e.originalEvent
-      ? selectionRpg.selectionnerAuPoint(latClic, lngClic)
-      : (selectionRpg.deselectionner(), Promise.resolve(null));
+    // point clique, comme avant (idem case RPG decochee). La recherche commune
+    // (map.fire sans originalEvent) pointe le centre-ville : pas de parcelle.
+    const resolutionRpg =
+      e.originalEvent && rpgActif()
+        ? selectionRpg.selectionnerAuPoint(latClic, lngClic)
+        : (selectionRpg.deselectionner(), Promise.resolve(null));
     let lat = latClic;
     let lng = lngClic;
     let rpgSel = null;

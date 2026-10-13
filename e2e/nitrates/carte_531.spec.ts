@@ -18,17 +18,29 @@ const tuilesChargees = (page: Page, layer: string) =>
     layer
   );
 
-// #583 : contours RPG = tuiles vectorielles dessinees en canvas dans le pane dedie.
+// #583 : contours RPG = tuiles vectorielles IGN, dessinees en canvas dans le
+// pane dedie. On compte les tuiles reellement demandees a l'IGN, et les canvas
+// affiches (vides en vue large, ou la couche ne demande rien).
 const tuilesRpg = (page: Page) =>
+  page.evaluate(
+    () =>
+      performance.getEntriesByType('resource').filter((e) => e.name.includes('RPG-2025-TMS'))
+        .length
+  );
+const canvasRpg = (page: Page) =>
   page.evaluate(() => document.querySelectorAll('.leaflet-nitratesRpg-pane canvas').length);
 
-const ZONES_PAR_DEFAUT = ['Zones vulnérables nitrates', "Zones d'action renforcée (ZAR)"];
+const ZONES_PAR_DEFAUT = [
+  'Parcelles agricoles (RPG)',
+  'Zones vulnérables nitrates',
+  "Zones d'action renforcée (ZAR)",
+];
 
 // ZV et ZAR sont cochees d'office (#583) : pour tester leur chargement, on
 // repart d'une carte memorisee sans surcouche.
 async function sansZones(page: Page) {
   await page.evaluate(() =>
-    localStorage.setItem('nitrates.carte.couches.v1', JSON.stringify({ base: 'auto', surcouches: [] }))
+    localStorage.setItem('nitrates.carte.couches.v2', JSON.stringify({ base: 'auto', surcouches: [] }))
   );
   await page.reload();
   await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
@@ -42,7 +54,7 @@ test.describe('Carte #531', () => {
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
   });
 
-  test('défaut : mode automatique + ZV et ZAR, photo seule, pas de parcelles en vue large', async ({
+  test("défaut : mode automatique + RPG, ZV et ZAR, photo seule, rien demandé à l'IGN en vue large", async ({
     page,
   }) => {
     expect(await couchesCochees(page)).toEqual(['Automatique (selon le zoom)', ...ZONES_PAR_DEFAUT]);
@@ -52,23 +64,22 @@ test.describe('Carte #531', () => {
     expect(await tuilesChargees(page, 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2')).toBe(0);
   });
 
-  test('mode automatique : les parcelles RPG apparaissent une fois zoomé, pas le cadastre', async ({
+  test('zoomé : parcelles RPG affichées, pas le cadastre ; décocher les cache, recocher les remet', async ({
     page,
   }) => {
+    const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
+    // Jamais grisee, meme en vue large.
+    await expect(rpg).toBeEnabled();
     await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 15, { animate: false }));
     await expect.poll(() => tuilesRpg(page)).toBeGreaterThan(0);
     expect(await tuilesChargees(page, 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS')).toBe(0);
-    // La case « Parcelles agricoles » reste décochée : c'est le mode auto qui l'affiche.
-    expect(await couchesCochees(page)).toEqual(['Automatique (selon le zoom)', ...ZONES_PAR_DEFAUT]);
-  });
-
-  test('RPG coché à la main : affiché même en vue moyenne, case jamais grisée', async ({ page }) => {
-    const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
-    await expect(rpg).toBeEnabled();
-    await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 12, { animate: false }));
-    expect(await tuilesRpg(page)).toBe(0);
+    await rpg.uncheck();
+    expect(await canvasRpg(page)).toBe(0);
+    // Le mode auto ne la remet pas derriere le dos de l'utilisateur.
+    await page.evaluate(() => (window as any).nitratesMap.setZoom(16, { animate: false }));
+    expect(await canvasRpg(page)).toBe(0);
     await rpg.check();
-    await expect.poll(() => tuilesRpg(page)).toBeGreaterThan(0);
+    await expect.poll(() => canvasRpg(page)).toBeGreaterThan(0);
   });
 
   test('les couches choisies sont retrouvées au rechargement', async ({ page }) => {
@@ -77,7 +88,11 @@ test.describe('Carte #531', () => {
     await legende.getByLabel("Zones d'action renforcée (ZAR)").uncheck();
     await page.reload();
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
-    expect(await couchesCochees(page)).toEqual(['Plan IGN', 'Zones vulnérables nitrates']);
+    expect(await couchesCochees(page)).toEqual([
+      'Plan IGN',
+      'Parcelles agricoles (RPG)',
+      'Zones vulnérables nitrates',
+    ]);
   });
 
   test('clavier : Tab depuis la carte mène au plein écran puis à la légende, Entrée coche, Échap revient', async ({
@@ -92,7 +107,8 @@ test.describe('Carte #531', () => {
     await expect(page.locator('.leaflet-control-layers-base input:checked')).toBeFocused();
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
-    expect(await couchesCochees(page)).toContain('Parcelles agricoles (RPG)');
+    // 1re case de la legende = « Parcelles agricoles (RPG) », cochee par defaut.
+    expect(await couchesCochees(page)).not.toContain('Parcelles agricoles (RPG)');
     await page.keyboard.press('Escape');
     await expect(page.locator('#nitrates-map')).toBeFocused();
   });

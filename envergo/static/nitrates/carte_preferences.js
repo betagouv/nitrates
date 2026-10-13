@@ -5,7 +5,7 @@
 //    Quand on revient sur le formulaire (modifier depuis les resultats, retour
 //    arriere, nouvelle recherche), la carte les reaffiche au lieu du reglage
 //    par defaut. Rien de memorise (ou storage indisponible) -> COUCHES_PAR_DEFAUT :
-//    mode « Automatique » (cf. couchesAuto) + ZV et ZAR cochees.
+//    mode « Automatique » (cf. couchesAuto) + parcelles RPG, ZV et ZAR cochees.
 //
 // 2. Clavier : quand la carte a le focus, fleches (avec ou sans Ctrl) pour se
 //    deplacer, + / - (avec ou sans Ctrl) pour zoomer, Entree pour pointer le
@@ -19,26 +19,26 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "nitrates.carte.couches.v1";
+  // v2 (#583) : la case « Parcelles agricoles (RPG) » arrive. Les choix v1
+  // sont repris tels quels, RPG coche en plus (cf. lireCouches).
+  const STORAGE_KEY = "nitrates.carte.couches.v2";
+  const STORAGE_KEY_V1 = "nitrates.carte.couches.v1";
   const PAN_PX = 100;
 
   // Mode « Automatique » (fond par defaut) : on charge le minimum selon le zoom.
   // Mesure des tuiles data.geopf.fr (09/2026, zooms 6 a 17) : la photo aerienne
   // en JPEG pese 11-23 Ko/tuile, le Plan IGN en PNG 32-71 Ko/tuile, soit 2 a 3x
   // plus. La photo reste donc le fond le plus leger a tous les zooms.
-  // #583 : les parcelles RPG remplacent le cadastre. Comme lui, illisibles
-  // avant le zoom 14 : en dessous le mode auto n'affiche ni l'un ni l'autre.
-  // Cochees a la main, ces couches s'affichent a tout zoom.
-  const ZOOM_PARCELLES_AUTO = 14;
-
-  function couchesAuto(zoom) {
-    return { fond: "photo", rpg: zoom >= ZOOM_PARCELLES_AUTO };
+  // #583 : le mode auto ne gere plus que le fond. Parcelles RPG et cadastre
+  // suivent uniquement leur case dans la legende (RPG cochee par defaut).
+  function couchesAuto() {
+    return { fond: "photo" };
   }
 
-  // 1re visite (rien de memorise) : ZV et ZAR affichees d'office, c'est ce
-  // que l'utilisateur vient chercher. Il peut les decocher, c'est alors
-  // memorise.
-  const COUCHES_PAR_DEFAUT = { base: "auto", surcouches: ["zv", "zar"] };
+  // 1re visite (rien de memorise) : parcelles RPG, ZV et ZAR affichees
+  // d'office, c'est ce que l'utilisateur vient chercher. Il peut les decocher,
+  // c'est alors memorise.
+  const COUCHES_PAR_DEFAUT = { base: "auto", surcouches: ["rpg", "zv", "zar"] };
 
   function couchesParDefaut() {
     return { base: COUCHES_PAR_DEFAUT.base, surcouches: COUCHES_PAR_DEFAUT.surcouches.slice() };
@@ -61,8 +61,16 @@
   function lireCouches(storage, basesConnues, surcouchesConnues) {
     try {
       const txt = storage && storage.getItem(STORAGE_KEY);
-      if (!txt) return null;
-      return normaliserCouches(JSON.parse(txt), basesConnues, surcouchesConnues);
+      if (txt) return normaliserCouches(JSON.parse(txt), basesConnues, surcouchesConnues);
+      // Choix memorises avant #583 : on les garde, RPG en plus (il remplace le
+      // cadastre que le mode auto affichait).
+      const v1 = storage && storage.getItem(STORAGE_KEY_V1);
+      if (!v1) return null;
+      const couches = normaliserCouches(JSON.parse(v1), basesConnues, surcouchesConnues);
+      if (couches && surcouchesConnues.includes("rpg") && !couches.surcouches.includes("rpg")) {
+        couches.surcouches.unshift("rpg");
+      }
+      return couches;
     } catch (e) {
       return null;
     }
@@ -147,6 +155,7 @@
 
   const api = {
     STORAGE_KEY: STORAGE_KEY,
+    STORAGE_KEY_V1: STORAGE_KEY_V1,
     normaliserCouches: normaliserCouches,
     lireCouches: lireCouches,
     ecrireCouches: ecrireCouches,
@@ -154,7 +163,6 @@
     couchesAuto: couchesAuto,
     couchesParDefaut: couchesParDefaut,
     aideClavier: aideClavier,
-    ZOOM_PARCELLES_AUTO: ZOOM_PARCELLES_AUTO,
   };
 
   if (typeof module !== "undefined" && module.exports) {

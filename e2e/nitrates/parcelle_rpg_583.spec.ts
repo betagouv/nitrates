@@ -77,4 +77,18 @@ test.describe('Carte #583 : parcelles RPG', () => {
     // Toujours une seule parcelle surlignee (halo + parcelle = meme nombre de traces).
     expect(await selectionAffichee(page)).toBe(avant);
   });
+
+  test('décocher « Parcelles agricoles » : contours et zone grise cachés, le point reste', async ({
+    page,
+  }) => {
+    await cliquerCentre(page);
+    await expect.poll(() => selectionAffichee(page), { timeout: 10000 }).toBeGreaterThan(0);
+    const point = await pointFormulaire(page);
+    const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
+    await rpg.uncheck();
+    expect(await selectionAffichee(page)).toBe(0);
+    expect(await pointFormulaire(page)).toEqual(point);
+    await rpg.check();
+    expect(await selectionAffichee(page)).toBeGreaterThan(0);
+  });
 });

@@ -22,6 +22,7 @@
   const MILLESIME = "2025";
   const URL_TUILES = "https://data.geopf.fr/tms/1.0.0/RPG-2025-TMS/{z}/{x}/{y}.pbf";
   const COUCHE_TUILES = "parcelles_graphiques_libelle";
+  const ZOOM_NATIF_MIN = 11; // en dessous l'IGN ne sert rien (404)
   const ZOOM_NATIF_MAX = 16;
   const URL_WFS = "https://data.geopf.fr/wfs/ows";
   const TYPENAME_WFS = "RPG.LATEST:parcelles_graphiques";
@@ -172,6 +173,7 @@
     MILLESIME: MILLESIME,
     URL_TUILES: URL_TUILES,
     COUCHE_TUILES: COUCHE_TUILES,
+    ZOOM_NATIF_MIN: ZOOM_NATIF_MIN,
     ZOOM_NATIF_MAX: ZOOM_NATIF_MAX,
     urlParcelleAuPoint: urlParcelleAuPoint,
     pointDansGeometrie: pointDansGeometrie,

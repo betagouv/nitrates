@@ -132,22 +132,40 @@ test("clavier : Tab, Alt+fleche et lettres ignores", () => {
   );
 });
 
-test("mode automatique : photo seule en vue large, + parcelles RPG une fois zoome", () => {
-  const seuil = prefs.ZOOM_PARCELLES_AUTO;
-  assert.deepStrictEqual(prefs.couchesAuto(8), { fond: "photo", rpg: false });
-  assert.deepStrictEqual(prefs.couchesAuto(seuil - 1), { fond: "photo", rpg: false });
-  assert.deepStrictEqual(prefs.couchesAuto(seuil), { fond: "photo", rpg: true });
-  assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo", rpg: true });
+test("mode automatique : ne gere que le fond (photo), plus les parcelles", () => {
+  assert.deepStrictEqual(prefs.couchesAuto(8), { fond: "photo" });
+  assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo" });
 });
 
-test("1re visite : mode automatique, ZV et ZAR cochees", () => {
+test("1re visite : mode automatique, parcelles RPG, ZV et ZAR cochees", () => {
   assert.deepStrictEqual(prefs.couchesParDefaut(), {
     base: "auto",
-    surcouches: ["zv", "zar"],
+    surcouches: ["rpg", "zv", "zar"],
   });
   // Copie : la carte peut la modifier sans toucher au defaut.
   prefs.couchesParDefaut().surcouches.push("cadastre");
-  assert.deepStrictEqual(prefs.couchesParDefaut().surcouches, ["zv", "zar"]);
+  assert.deepStrictEqual(prefs.couchesParDefaut().surcouches, ["rpg", "zv", "zar"]);
+});
+
+test("choix memorises avant #583 (v1) : repris, RPG coche en plus", () => {
+  const s = fakeStorage({
+    [prefs.STORAGE_KEY_V1]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
+  });
+  assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
+    base: "plan",
+    surcouches: ["rpg", "zv"],
+  });
+});
+
+test("v2 present : la v1 est ignoree, RPG decoche reste decoche", () => {
+  const s = fakeStorage({
+    [prefs.STORAGE_KEY]: JSON.stringify({ base: "photo", surcouches: [] }),
+    [prefs.STORAGE_KEY_V1]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
+  });
+  assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
+    base: "photo",
+    surcouches: [],
+  });
 });
 
 test("clavier : F plein écran, L légende, mais pas avec Ctrl/Cmd", () => {
