@@ -18,7 +18,6 @@ from __future__ import annotations
 import re
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
@@ -26,6 +25,7 @@ from django.utils.html import escape
 from django.utils.text import slugify
 from django.views import View
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.models import DecisionTree, DecisionTreeRevision
 from envergo.nitrates.yaml_admin import editor
 from envergo.nitrates.yaml_admin.catalogue_refs import CATALOGUE_RESOLVERS, get_resolver

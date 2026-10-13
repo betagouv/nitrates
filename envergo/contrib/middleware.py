@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.shortcuts import redirect
 
 from envergo.contrib.sites_from_settings import build_site_from_settings
 
@@ -67,9 +66,9 @@ class RequireLoginEverywhere:
 
     REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
     Staging nitrates ferme : tant qu'on n'ouvre pas le simulateur au
-    public, toute requete anonyme est redirigee vers le login Django
-    admin. A retirer (du settings et du fichier) le jour de la mise
-    en ligne publique.
+    public, toute requete anonyme est redirigee vers la connexion
+    (ProConnect, cf. envergo.nitrates.connexion, #577). A retirer (du
+    settings et du fichier) le jour de la mise en ligne publique.
 
     Active si `settings.LOCKDOWN_BEHIND_LOGIN` est truthy. Sinon
     no-op : utile pour les tests et le dev local qui veulent acceder
@@ -170,6 +169,8 @@ class RequireLoginEverywhere:
             return self.get_response(request)
         if request.user.is_authenticated or self._is_exempt(request.path):
             return self.get_response(request)
-        admin_url = getattr(settings, "ADMIN_URL", "admin/")
-        login_url = "/" + admin_url.lstrip("/").rstrip("/") + "/login/"
-        return redirect(f"{login_url}?next={request.get_full_path()}")
+        # Directement vers ProConnect, jamais vers le login admin dont l'URL
+        # porte le prefixe secret (#577).
+        from envergo.nitrates.connexion import rediriger_vers_connexion
+
+        return rediriger_vers_connexion(request)

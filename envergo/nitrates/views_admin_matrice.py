@@ -6,9 +6,9 @@ rejouant la cascade PAN/PAR/ZAR pour chaque combinaison. Cf. matrice.py
 pour le moteur et ses hypothèses (défauts SIG + questions complémentaires).
 """
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.matrice import (
     LIGNES_FERTILISANTS,
     cle_affichage,

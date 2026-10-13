@@ -8,7 +8,6 @@ via `?tree_id=<pk>` (defaut : tree actif). SSR pur, pas de JS.
 Source de verite : la table `DecisionTree`.
 """
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -20,6 +19,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import YamlLexer
 
 from envergo.decorators.csp import csp_update
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.models import DecisionTree
 from envergo.nitrates.permissions import can_activate_tree, can_edit_active
 from envergo.nitrates.yaml_admin.flatten import iter_entries

@@ -15,7 +15,6 @@ import json
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError, transaction
 from django.db.models import Case, IntegerField, Max, Prefetch, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,6 +22,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.models import (
     BrancheValidation,
     BrancheValidationAction,

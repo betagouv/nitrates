@@ -10,13 +10,13 @@ header de l'admin nitrates.
 
 import json
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.models import DepartementOuverture
 from envergo.nitrates.permissions import is_external_observator
 
