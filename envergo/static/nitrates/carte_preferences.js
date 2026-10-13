@@ -1,11 +1,11 @@
 // Preferences de la carte du simulateur (#531, amelioration carto).
 //
-// 1. Couches memorisees : le fond (plan / photo) et les surcouches (cadastre,
-//    ZV, ZAR) choisis dans la legende sont gardes en localStorage. Quand on
-//    revient sur le formulaire (modifier depuis les resultats, retour arriere,
-//    nouvelle recherche), la carte les reaffiche au lieu du reglage par defaut.
-//    Rien de memorise (ou storage indisponible) -> reglage par defaut : mode
-//    « Automatique » (cf. couchesAuto).
+// 1. Couches memorisees : le fond (plan / photo) et les surcouches (RPG,
+//    cadastre, ZV, ZAR) choisis dans la legende sont gardes en localStorage.
+//    Quand on revient sur le formulaire (modifier depuis les resultats, retour
+//    arriere, nouvelle recherche), la carte les reaffiche au lieu du reglage
+//    par defaut. Rien de memorise (ou storage indisponible) -> COUCHES_PAR_DEFAUT :
+//    mode « Automatique » (cf. couchesAuto) + ZV et ZAR cochees.
 //
 // 2. Clavier : quand la carte a le focus, fleches (avec ou sans Ctrl) pour se
 //    deplacer, + / - (avec ou sans Ctrl) pour zoomer, Entree pour pointer le
@@ -25,13 +25,23 @@
   // Mode « Automatique » (fond par defaut) : on charge le minimum selon le zoom.
   // Mesure des tuiles data.geopf.fr (09/2026, zooms 6 a 17) : la photo aerienne
   // en JPEG pese 11-23 Ko/tuile, le Plan IGN en PNG 32-71 Ko/tuile, soit 2 a 3x
-  // plus. La photo reste donc le fond le plus leger a tous les zooms. Le
-  // cadastre n'est lisible qu'a partir du zoom 14 : en dessous, ses tuiles sont
-  // des requetes pour rien.
-  const ZOOM_CADASTRE_AUTO = 14;
+  // plus. La photo reste donc le fond le plus leger a tous les zooms.
+  // #583 : les parcelles RPG remplacent le cadastre. Comme lui, illisibles
+  // avant le zoom 14 : en dessous le mode auto n'affiche ni l'un ni l'autre.
+  // Cochees a la main, ces couches s'affichent a tout zoom.
+  const ZOOM_PARCELLES_AUTO = 14;
 
   function couchesAuto(zoom) {
-    return { fond: "photo", cadastre: zoom >= ZOOM_CADASTRE_AUTO };
+    return { fond: "photo", rpg: zoom >= ZOOM_PARCELLES_AUTO };
+  }
+
+  // 1re visite (rien de memorise) : ZV et ZAR affichees d'office, c'est ce
+  // que l'utilisateur vient chercher. Il peut les decocher, c'est alors
+  // memorise.
+  const COUCHES_PAR_DEFAUT = { base: "auto", surcouches: ["zv", "zar"] };
+
+  function couchesParDefaut() {
+    return { base: COUCHES_PAR_DEFAUT.base, surcouches: COUCHES_PAR_DEFAUT.surcouches.slice() };
   }
 
   // Ne garde que des cles connues : une cle renommee/supprimee cote carte ne
@@ -142,8 +152,9 @@
     ecrireCouches: ecrireCouches,
     actionClavier: actionClavier,
     couchesAuto: couchesAuto,
+    couchesParDefaut: couchesParDefaut,
     aideClavier: aideClavier,
-    ZOOM_CADASTRE_AUTO: ZOOM_CADASTRE_AUTO,
+    ZOOM_PARCELLES_AUTO: ZOOM_PARCELLES_AUTO,
   };
 
   if (typeof module !== "undefined" && module.exports) {

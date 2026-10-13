@@ -68,6 +68,10 @@
   <script defer src="{% static_v 'nitrates/nitrates_analytics.js' %}"></script>
   {# #531 : couches memorisees + clavier de la carte, avant simulator.js. #}
   <script defer src="{% static_v 'nitrates/carte_preferences.js' %}"></script>
+  {# #583 : contours RPG (tuiles vectorielles IGN) + selection de parcelle, avant simulator.js. #}
+  <script defer
+          src="{% static 'nitrates/vendor/leaflet.vectorgrid-1.3.0.bundled.min.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/rpg_parcelle.js' %}"></script>
   <script defer src="{% static_v 'nitrates/simulator.js' %}"></script>
   {# #287 : recueil email « prévenez-moi à l'ouverture de ma région » (zone fermée). #}
   <script defer src="{% static_v 'nitrates/region_alerte.js' %}"></script>

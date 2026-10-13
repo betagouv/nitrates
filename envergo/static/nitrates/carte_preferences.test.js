@@ -7,7 +7,7 @@ const assert = require("node:assert");
 const prefs = require("./carte_preferences.js");
 
 const BASES = ["auto", "plan", "photo"];
-const SURCOUCHES = ["cadastre", "zv", "zar"];
+const SURCOUCHES = ["rpg", "cadastre", "zv", "zar"];
 
 function fakeStorage(initial) {
   const data = Object.assign({}, initial);
@@ -62,7 +62,7 @@ test("JSON corrompu ou fond inconnu -> null", () => {
 test("surcouches inconnues ou en double ignorees", () => {
   const k = prefs.STORAGE_KEY;
   const s = fakeStorage({
-    [k]: JSON.stringify({ base: "photo", surcouches: ["rpg", "zv", "zv"] }),
+    [k]: JSON.stringify({ base: "photo", surcouches: ["parcelles", "zv", "zv"] }),
   });
   assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
     base: "photo",
@@ -132,15 +132,22 @@ test("clavier : Tab, Alt+fleche et lettres ignores", () => {
   );
 });
 
-test("mode automatique : photo seule en vue large, + cadastre une fois zoome", () => {
-  const seuil = prefs.ZOOM_CADASTRE_AUTO;
-  assert.deepStrictEqual(prefs.couchesAuto(8), { fond: "photo", cadastre: false });
-  assert.deepStrictEqual(prefs.couchesAuto(seuil - 1), {
-    fond: "photo",
-    cadastre: false,
+test("mode automatique : photo seule en vue large, + parcelles RPG une fois zoome", () => {
+  const seuil = prefs.ZOOM_PARCELLES_AUTO;
+  assert.deepStrictEqual(prefs.couchesAuto(8), { fond: "photo", rpg: false });
+  assert.deepStrictEqual(prefs.couchesAuto(seuil - 1), { fond: "photo", rpg: false });
+  assert.deepStrictEqual(prefs.couchesAuto(seuil), { fond: "photo", rpg: true });
+  assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo", rpg: true });
+});
+
+test("1re visite : mode automatique, ZV et ZAR cochees", () => {
+  assert.deepStrictEqual(prefs.couchesParDefaut(), {
+    base: "auto",
+    surcouches: ["zv", "zar"],
   });
-  assert.deepStrictEqual(prefs.couchesAuto(seuil), { fond: "photo", cadastre: true });
-  assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo", cadastre: true });
+  // Copie : la carte peut la modifier sans toucher au defaut.
+  prefs.couchesParDefaut().surcouches.push("cadastre");
+  assert.deepStrictEqual(prefs.couchesParDefaut().surcouches, ["zv", "zar"]);
 });
 
 test("clavier : F plein écran, L légende, mais pas avec Ctrl/Cmd", () => {
