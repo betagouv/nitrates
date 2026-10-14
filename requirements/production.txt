@@ -362,7 +362,7 @@ texttable==1.7.0
     # via
     #   -r base.txt
     #   py7zr
-tqdm==4.68.3
+tqdm==4.70.1
     # via -r base.txt
 typing-extensions==4.15.0
     # via
