@@ -136,6 +136,7 @@ def test_admin_form_termes_une_variante_par_ligne():
             "titre_public": "C / N",
             "categorie": "fertilisants-effluents",
             "termes_declencheurs": "C/N\n  \nrapport C/N\n",
+            "motif_modification": "test",
         }
     )
     assert form.is_valid(), form.errors

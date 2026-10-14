@@ -15,6 +15,10 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
+from envergo.nitrates.admin_historique import (  # noqa: F401  (enregistre RevisionContenuAdmin)
+    HistoriqueAdminMixin,
+    MotifRevisionFormMixin,
+)
 from envergo.nitrates.models import DecisionTree, RetourUtilisateur, RpgCulture
 from envergo.nitrates.permissions import (
     can_change_tree,
@@ -66,6 +70,80 @@ def _clean_blocs_json(valeur):
         return json.loads(valeur)
     except (TypeError, ValueError):
         raise forms.ValidationError(_("Contenu invalide (JSON illisible)."))
+
+
+def _texte_item(item):
+    texte = item.get("texte", "") if isinstance(item, dict) else item
+    if isinstance(texte, list):
+        texte = "".join(
+            s if isinstance(s, str) else (s or {}).get("texte", "") for s in texte
+        )
+    return (texte or "").strip()
+
+
+def _sous_puces(blocs):
+    """{texte de la puce parente: [textes des sous-puces]} de tout le contenu
+    (foldables compris)."""
+    if isinstance(blocs, dict):
+        blocs = blocs.get("blocs") or []
+    trouvees = {}
+
+    def items(liste):
+        for item in liste or []:
+            if not isinstance(item, dict):
+                continue
+            enfants = item.get("enfants") or []
+            if enfants:
+                trouvees.setdefault(_texte_item(item), []).extend(
+                    _texte_item(e) for e in enfants
+                )
+            items(enfants)
+
+    for bloc in blocs or []:
+        data = (bloc or {}).get("data") or {}
+        if bloc.get("type") == "liste":
+            items(data.get("items"))
+        elif bloc.get("type") == "foldable":
+            for parent, enfants in _sous_puces(data.get("blocs")).items():
+                trouvees.setdefault(parent, []).extend(enfants)
+    return trouvees
+
+
+def _textes_items(blocs):
+    if isinstance(blocs, dict):
+        blocs = blocs.get("blocs") or []
+    textes = set()
+    for bloc in blocs or []:
+        data = (bloc or {}).get("data") or {}
+        if bloc.get("type") == "liste":
+            textes |= {_texte_item(i) for i in data.get("items") or []}
+        elif bloc.get("type") == "foldable":
+            textes |= _textes_items(data.get("blocs"))
+    return textes
+
+
+def verifier_sous_puces_conservees(avant, apres):
+    """Garde-fou : l'éditeur admin n'affiche pas les sous-puces et les jette à
+    l'enregistrement (incident du 14/10/2026). On refuse tout enregistrement
+    qui ferait disparaître une sous-puce dont la puce parente est toujours là :
+    ce n'est jamais une suppression voulue par la personne qui édite."""
+    items_apres = _textes_items(apres)
+    sous_puces_apres = _sous_puces(apres)
+    perdues = [
+        enfant
+        for parent, enfants in _sous_puces(avant).items()
+        if parent in items_apres
+        for enfant in enfants
+        if enfant not in sous_puces_apres.get(parent, [])
+    ]
+    if perdues:
+        raise forms.ValidationError(
+            "Enregistrement refusé, rien n'a été modifié : ce contenu contient des "
+            "sous-puces que l'éditeur n'affiche pas encore, et les enregistrer "
+            "les supprimerait : "
+            + " ; ".join(f"« {p} »" for p in perdues)
+            + ". Signalez-le à l'équipe technique, qui fera la modification."
+        )
 
 
 @admin.register(RpgCulture)
@@ -466,7 +544,7 @@ class NoteReglementaireAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     ordering = ("ordre_affichage", "identifiant")
 
 
-class CodePrescriptionForm(forms.ModelForm):
+class CodePrescriptionForm(MotifRevisionFormMixin, forms.ModelForm):
     """Form admin du PC : le champ `blocs` est édité via l'éditeur WYSIWYG
     (carte #136), comme ContenuRichDSFR. Le JSON est produit sous le capot.
 
@@ -480,7 +558,10 @@ class CodePrescriptionForm(forms.ModelForm):
         widgets = {"blocs": ContenuRichEditorWidget}
 
     def clean_blocs(self):
-        return _clean_blocs_json(self.cleaned_data.get("blocs"))
+        blocs = _clean_blocs_json(self.cleaned_data.get("blocs"))
+        if self.instance.pk:
+            verifier_sous_puces_conservees(self.instance.blocs, blocs)
+        return blocs
 
     def clean(self):
         cleaned = super().clean()
@@ -513,7 +594,9 @@ class CodePrescriptionForm(forms.ModelForm):
 
 
 @admin.register(CodePrescription)
-class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
+class CodePrescriptionAdmin(
+    HistoriqueAdminMixin, _ReferentielsListMixin, admin.ModelAdmin
+):
     form = CodePrescriptionForm
     list_display = (
         "identifiant",
@@ -532,7 +615,7 @@ class CodePrescriptionAdmin(_ReferentielsListMixin, admin.ModelAdmin):
     autocomplete_fields = ("note_reglementaire", "variante_de")
     filter_horizontal = ("composants_fusion",)
     ordering = ("ordre_affichage", "identifiant")
-    readonly_fields = ("apercu_rendu",)
+    readonly_fields = ("apercu_rendu", "historique_revisions")
 
     @admin.display(description="Contenu riche", boolean=True)
     def a_du_contenu_riche(self, obj):
@@ -633,7 +716,7 @@ class CouleurZoneAdmin(admin.ModelAdmin):
 from envergo.nitrates.models import ContenuRichDSFR  # noqa: E402
 
 
-class ContenuRichDSFRForm(forms.ModelForm):
+class ContenuRichDSFRForm(MotifRevisionFormMixin, forms.ModelForm):
     # Les juristes n'écrivent pas de JSON : les termes déclencheurs s'éditent
     # en « une variante par ligne » et sont convertis ↔ liste (carte #110).
     termes_declencheurs = forms.CharField(
@@ -657,7 +740,10 @@ class ContenuRichDSFRForm(forms.ModelForm):
             self.initial["termes_declencheurs"] = "\n".join(self.instance.liste_termes)
 
     def clean_blocs(self):
-        return _clean_blocs_json(self.cleaned_data.get("blocs"))
+        blocs = _clean_blocs_json(self.cleaned_data.get("blocs"))
+        if self.instance.pk:
+            verifier_sous_puces_conservees(self.instance.blocs, blocs)
+        return blocs
 
     def clean_termes_declencheurs(self):
         brut = self.cleaned_data.get("termes_declencheurs") or ""
@@ -665,7 +751,7 @@ class ContenuRichDSFRForm(forms.ModelForm):
 
 
 @admin.register(ContenuRichDSFR)
-class ContenuRichDSFRAdmin(admin.ModelAdmin):
+class ContenuRichDSFRAdmin(HistoriqueAdminMixin, admin.ModelAdmin):
     form = ContenuRichDSFRForm
     list_display = (
         "cle",
@@ -677,11 +763,20 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
     )
     list_filter = ("type_contenu", "categorie")
     search_fields = ("cle", "libelle_admin", "titre_public")
-    readonly_fields = ("updated_at", "apercu_rendu")
+    readonly_fields = ("updated_at", "apercu_rendu", "historique_revisions")
     fieldsets = (
         (
             None,
-            {"fields": ("cle", "libelle_admin", "blocs", "updated_at", "apercu_rendu")},
+            {
+                "fields": (
+                    "cle",
+                    "libelle_admin",
+                    "blocs",
+                    "motif_modification",
+                    "updated_at",
+                    "apercu_rendu",
+                )
+            },
         ),
         (
             "Glossaire (définitions — carte #110)",
@@ -698,6 +793,7 @@ class ContenuRichDSFRAdmin(admin.ModelAdmin):
                 ),
             },
         ),
+        ("Historique", {"fields": ("historique_revisions",)}),
     )
 
     @admin.display(description="Aperçu du rendu")

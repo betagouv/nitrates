@@ -346,6 +346,7 @@ def test_code_prescription_form_fusion_valide(db):
             "ordre_affichage": 0,
             "scope": "national",
             "composants_fusion": [composant.pk],
+            "motif_modification": "test",
         },
         instance=fusion,
     )

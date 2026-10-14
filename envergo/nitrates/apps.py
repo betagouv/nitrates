@@ -70,6 +70,34 @@ class NitratesConfig(AppConfig):
             dispatch_uid="invalider_contenu_rich_delete",
         )
 
+        # Historique des PC et contenus riches : une révision par écriture
+        # (où, quand, qui, par quel canal, pourquoi). cf. historique.py.
+        from django.db.models.signals import pre_delete
+
+        from envergo.nitrates import historique
+
+        for modele in (CodePrescription, ContenuRichDSFR):
+            post_save.connect(
+                historique.apres_sauvegarde,
+                sender=modele,
+                dispatch_uid=f"historique_{modele.__name__}_save",
+            )
+            pre_delete.connect(
+                historique.avant_suppression,
+                sender=modele,
+                dispatch_uid=f"historique_{modele.__name__}_pre_delete",
+            )
+            post_delete.connect(
+                historique.apres_suppression,
+                sender=modele,
+                dispatch_uid=f"historique_{modele.__name__}_delete",
+            )
+        m2m_changed.connect(
+            historique.composants_modifies,
+            sender=CodePrescription.composants_fusion.through,
+            dispatch_uid="historique_CodePrescription_composants",
+        )
+
         # Cache du glossaire (carte #110) : invalidé sur les mêmes signaux,
         # sinon définitions fantômes après édition admin jusqu'au restart.
         from envergo.nitrates.contenu_rich.glossaire import invalider_cache_glossaire

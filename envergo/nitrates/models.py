@@ -1014,6 +1014,7 @@ from envergo.nitrates.models_carto import CouleurZone  # noqa: E402, F401
 from envergo.nitrates.models_contenu_rich import (  # noqa: E402, F401  (carte #131)
     ContenuRichDSFR,
 )
+from envergo.nitrates.models_historique import RevisionContenu  # noqa: E402, F401
 from envergo.nitrates.models_ouverture import (  # noqa: E402, F401  (carte #57)
     DepartementOuverture,
     departement_est_ouvert,
