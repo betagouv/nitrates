@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.contrib.admin.forms import AdminAuthenticationForm
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponseForbidden
 from django.urls import reverse
 from django_otp.admin import OTPAdminAuthenticationForm, OTPAdminSite
@@ -72,6 +74,20 @@ class EnvergoAdminSite(OTPAdminSite):
             return HttpResponseForbidden(
                 "Connexion par mot de passe desactivee. "
                 "Authentification admin via ProConnect uniquement."
+            )
+        # #577 : avec ProConnect, la page n'affiche que son bouton. Un anonyme
+        # y part donc directement (plus rapide). Le POST mot de passe, lui,
+        # garde son comportement (recovery quand le fallback est rouvert).
+        if (
+            request.method == "GET"
+            and getattr(settings, "PROCONNECT_ENABLED", False)
+            and not request.user.is_authenticated
+        ):
+            from envergo.nitrates.connexion import url_connexion
+
+            next_url = request.GET.get(REDIRECT_FIELD_NAME, "")
+            return redirect_to_login(
+                next_url or reverse("admin:index"), url_connexion()
             )
         return super().login(request, extra_context)
 

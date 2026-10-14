@@ -6,12 +6,12 @@ CSS DSFR + le CSS calendrier/simulateur. Sert à voir le rendu final tel qu'il
 apparaîtra côté public, depuis un lien dans l'admin (nouvel onglet).
 """
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
 
 

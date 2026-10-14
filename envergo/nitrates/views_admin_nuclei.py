@@ -12,9 +12,10 @@ jamais etre exposes sur staging/prod, meme derriere l'admin.
 from pathlib import Path
 
 from django.conf import settings
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
+
+from envergo.nitrates.connexion import staff_member_required
 
 REPORTS_DIR = Path(settings.ROOT_DIR) / "nuclei_reports"
 

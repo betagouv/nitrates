@@ -52,7 +52,7 @@ def test_anonymous_redirected(client, url):
 def test_non_staff_refused(client, url, regular_user):
     client.force_login(regular_user)
     resp = client.post(url)
-    assert resp.status_code in (301, 302)
+    assert resp.status_code == 403
 
 
 def test_clone_active_par_defaut(client, url, staff_user):

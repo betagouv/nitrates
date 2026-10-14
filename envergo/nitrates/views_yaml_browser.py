@@ -8,11 +8,11 @@ Acces restreint aux superadmin Django (`is_superuser`). A retirer
 avant production publique.
 """
 
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404
 from django.utils.decorators import method_decorator
 from django.views.generic import DetailView, TemplateView
 
+from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.models import DecisionTree
 
 

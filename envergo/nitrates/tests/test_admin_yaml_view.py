@@ -158,10 +158,12 @@ def test_anonymous_redirected_to_login(client, url, specs_dir):
     assert "/admin/login" in resp["Location"] or "/login" in resp["Location"]
 
 
-def test_non_staff_redirected(client, url, specs_dir, regular_user):
+def test_non_staff_refused(client, url, specs_dir, regular_user):
+    # Connecte sans droits staff : 403, pas de renvoi vers la connexion qui
+    # bouclerait avec la session ProConnect (#577).
     client.force_login(regular_user)
     resp = client.get(url)
-    assert resp.status_code in (302, 301)
+    assert resp.status_code == 403
 
 
 def test_staff_can_access(client, url, specs_dir, staff_user):
