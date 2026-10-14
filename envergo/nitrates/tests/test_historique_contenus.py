@@ -231,22 +231,97 @@ def test_pages_admin_historique(admin_client):
     pc = CodePrescription.objects.create(identifiant="pc_h10", texte_court="t")
     pc.blocs = BLOCS
     pc.save()
-    rev = _revisions("pc_h10")[-1]
+    creation, modif = _revisions("pc_h10")
+    page = reverse("admin:nitrates_revisioncontenu_historique", args=["pc", "pc_h10"])
 
+    # La fiche résume les dernières versions et mène à la page d'historique.
     fiche = client.get(reverse("admin:nitrates_codeprescription_change", args=[pc.pk]))
-    assert (
-        reverse("admin:nitrates_revisioncontenu_change", args=[rev.pk])
-        in fiche.content.decode()
+    assert page in fiche.content.decode()
+    # Le bouton « Historique » standard de la fiche aussi.
+    bouton = client.get(
+        reverse("admin:nitrates_codeprescription_history", args=[pc.pk])
     )
+    assert bouton.status_code == 302 and bouton.url == page
+    # L'ancienne page de détail d'une révision redirige vers l'historique.
+    detail = client.get(
+        reverse("admin:nitrates_revisioncontenu_change", args=[modif.pk])
+    )
+    assert detail.status_code == 302 and detail.url == f"{page}?a={modif.pk}"
 
-    detail = client.get(reverse("admin:nitrates_revisioncontenu_change", args=[rev.pk]))
-    html = detail.content.decode()
-    assert detail.status_code == 200
+    # Par défaut : la dernière version comparée à la précédente.
+    resp = client.get(page)
+    html = resp.content.decode()
+    assert resp.status_code == 200
+    assert resp.context["cible"] == modif and resp.context["base"] == creation
     assert "la durée du couvert" in html
-    assert "révision précédente" in html
+    assert f"type=revision&amp;id={modif.pk}&amp;nu=1" in html
+
+    # Comparaison libre, dans n'importe quel ordre.
+    resp = client.get(f"{page}?de={modif.pk}&a={creation.pk}")
+    assert resp.context["cible"] == modif and resp.context["base"] == creation
 
     liste = client.get(reverse("admin:nitrates_revisioncontenu_changelist"))
     assert liste.status_code == 200
+
+
+def test_historique_d_un_contenu_supprime_reste_consultable(admin_client):
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h12", texte_court="t", blocs=BLOCS
+    )
+    pc.delete()
+    page = reverse("admin:nitrates_revisioncontenu_historique", args=["pc", "pc_h12"])
+    resp = client.get(page)
+    assert resp.status_code == 200
+    assert "(supprimé)" in resp.content.decode()
+
+
+def test_resume_signale_les_sous_puces_supprimees():
+    from envergo.nitrates.admin_historique import resume_changement
+
+    avant = {"blocs": BLOCS}
+    sans = json.loads(json.dumps(BLOCS))
+    sans["blocs"][1]["data"]["items"][0].pop("enfants")
+    resume, perte = resume_changement(avant, {"blocs": sans})
+    assert resume == "1 sous-puce supprimée"
+    assert perte is True
+    assert resume_changement(None, avant) == ("Version initiale (3 lignes)", False)
+
+
+def test_diff_mot_a_mot_et_lignes_repliees():
+    from envergo.nitrates.admin_historique import diff_lignes, grouper
+
+    avant = (
+        ["# Titre"]
+        + [f"ligne {i}" for i in range(10)]
+        + ["L'épandage est autorisé, le cas échéant, en période."]
+    )
+    apres = (
+        ["# Titre"]
+        + [f"ligne {i}" for i in range(10)]
+        + ["L'épandage est autorisé en période, sous condition."]
+    )
+    lignes = diff_lignes(avant, apres)
+    genre, html, _ = lignes[-1]
+    assert genre == "modif"
+    assert "<del>" in html and "<ins>" in html and "sous condition" in html
+    groupes = grouper(lignes)
+    assert groupes[0]["pli"] is True and len(groupes[0]["lignes"]) == 9
+
+
+def test_apercu_d_une_revision_au_rendu_du_site(admin_client):
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h13", texte_court="t", blocs=BLOCS
+    )
+    rev = _revisions("pc_h13")[-1]
+    url = reverse("nitrates_admin_contenu_rich_preview", urlconf="config.urls_nitrates")
+    resp = client.get(f"{url}?type=revision&id={rev.pk}&nu=1")
+    html = resp.content.decode()
+    assert resp.status_code == 200
+    assert "la durée du couvert" in html
+    assert "dsfr.css" in html and "calendrier.css" in html
+    assert pc.identifiant in html
 
 
 # ─── Garde-fou : l'éditeur ne doit plus jamais supprimer de sous-puces ───────
@@ -331,3 +406,12 @@ def test_seed_contenus_rich_preserve_les_editions_admin():
     rev = _revisions(c.cle, RevisionContenu.TYPE_CONTENU_RICH)[-1]
     assert rev.motif == "retour au YAML"
     assert rev.source.startswith("seed_contenus_rich")
+
+
+def test_apercu_integrable_en_cadre_du_meme_site(admin_client):
+    client, _ = admin_client
+    CodePrescription.objects.create(identifiant="pc_h14", texte_court="t", blocs=BLOCS)
+    rev = _revisions("pc_h14")[-1]
+    url = reverse("nitrates_admin_contenu_rich_preview", urlconf="config.urls_nitrates")
+    resp = client.get(f"{url}?type=revision&id={rev.pk}&nu=1")
+    assert resp["X-Frame-Options"] == "SAMEORIGIN"
