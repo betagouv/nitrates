@@ -149,7 +149,7 @@ def _compile_paragraphe(data, niveau, ctx):
     return format_html("<p>{0}</p>", _texte(data, ctx))
 
 
-def _compile_items_liste(items, ctx=None) -> str:
+def _compile_items_liste(items, ctx=None, balise="ul") -> str:
     """Rend récursivement une liste d'items (puces + sous-puces)."""
     morceaux = []
     for item in items or []:
@@ -160,7 +160,7 @@ def _compile_items_liste(items, ctx=None) -> str:
                 format_html(
                     "<li>{0}{1}</li>",
                     texte,
-                    mark_safe(_compile_liste_ul(enfants, ctx)),
+                    mark_safe(_compile_liste_ul(enfants, ctx, balise)),
                 )
             )
         else:
@@ -168,15 +168,24 @@ def _compile_items_liste(items, ctx=None) -> str:
     return mark_safe("".join(morceaux))
 
 
-def _compile_liste_ul(items, ctx=None) -> str:
-    return format_html("<ul>{0}</ul>", _compile_items_liste(items, ctx))
+def _compile_liste_ul(items, ctx=None, balise="ul") -> str:
+    return format_html(
+        "<{0}>{1}</{0}>", balise, _compile_items_liste(items, ctx, balise)
+    )
 
 
 def _compile_liste(data, niveau, ctx):
     items = (data or {}).get("items") or []
+    # Liste numérotée si l'éditeur l'a posée (style « ordered »), à puces sinon
+    # (y compris « checklist », sans équivalent DSFR).
+    balise = "ol" if (data or {}).get("style") == "ordered" else "ul"
     # La 1re liste porte fr-mb-0 (cohérent avec le hardcode d'origine) ; les
     # sous-listes héritent du style DSFR par défaut.
-    return format_html('<ul class="fr-mb-0">{0}</ul>', _compile_items_liste(items, ctx))
+    return format_html(
+        '<{0} class="fr-mb-0">{1}</{0}>',
+        balise,
+        _compile_items_liste(items, ctx, balise),
+    )
 
 
 def _compile_citation(data, niveau, ctx):

@@ -130,6 +130,12 @@ jobs:
       - name: Build assets
         run: bash bin/build_assets.sh
 
+      # Logique JS pure (calendrier, formulaire) et aller-retour de l'éditeur
+      # admin des contenus riches sur toute la fixture : un enregistrement sans
+      # modification ne doit rien perdre (sous-puces supprimées, 14/10/2026).
+      - name: Tests JS nitrates
+        run: npm run test-nitrates-js
+
       # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
       # Garde-fous GitOps (carte #50). Autonomes : tournent sur la base ephemere
       # CI, sans acces a nitrates-dev. Le check "fixture/arbres a jour vs DB

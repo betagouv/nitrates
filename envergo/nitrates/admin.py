@@ -49,7 +49,7 @@ class ContenuRichEditorWidget(forms.Textarea):
         js = (
             "nitrates_admin/vendor/editorjs/editorjs.umd.min.js",
             "nitrates_admin/vendor/editorjs/header.umd.min.js",
-            "nitrates_admin/vendor/editorjs/list.umd.min.js",
+            "nitrates_admin/vendor/editorjs/list-2.0.9.umd.js",
             "nitrates_admin/vendor/editorjs/quote.umd.min.js",
             "nitrates_admin/vendor/editorjs/table.umd.min.js",
             "nitrates_admin/foldable_tool.js",
@@ -122,11 +122,28 @@ def _textes_items(blocs):
     return textes
 
 
+EDITEUR_LISTES_IMBRIQUEES = "listes-imbriquees"
+
+
+def _clean_blocs_editeur(instance, valeur):
+    """Blocs postés par l'éditeur. Le garde-fou des sous-puces ne vise que les
+    envois d'un ancien éditeur resté en cache (sans signature) : l'éditeur
+    actuel affiche les sous-puces, leur suppression y est donc voulue."""
+    blocs = _clean_blocs_json(valeur)
+    signe = (
+        isinstance(blocs, dict)
+        and blocs.pop("_editeur", None) == EDITEUR_LISTES_IMBRIQUEES
+    )
+    if instance.pk and not signe:
+        verifier_sous_puces_conservees(instance.blocs, blocs)
+    return blocs
+
+
 def verifier_sous_puces_conservees(avant, apres):
-    """Garde-fou : l'éditeur admin n'affiche pas les sous-puces et les jette à
-    l'enregistrement (incident du 14/10/2026). On refuse tout enregistrement
-    qui ferait disparaître une sous-puce dont la puce parente est toujours là :
-    ce n'est jamais une suppression voulue par la personne qui édite."""
+    """Garde-fou : l'ancien éditeur admin jetait les sous-puces à
+    l'enregistrement sans les afficher (incident du 14/10/2026). Pour un envoi
+    de cet ancien éditeur, on refuse tout enregistrement qui ferait disparaître
+    une sous-puce dont la puce parente est toujours là."""
     items_apres = _textes_items(apres)
     sous_puces_apres = _sous_puces(apres)
     perdues = [
@@ -138,11 +155,11 @@ def verifier_sous_puces_conservees(avant, apres):
     ]
     if perdues:
         raise forms.ValidationError(
-            "Enregistrement refusé, rien n'a été modifié : ce contenu contient des "
-            "sous-puces que l'éditeur n'affiche pas encore, et les enregistrer "
-            "les supprimerait : "
+            "Enregistrement refusé, rien n'a été modifié : votre navigateur "
+            "utilise une ancienne version de l'éditeur, qui supprimerait ces "
+            "sous-puces : "
             + " ; ".join(f"« {p} »" for p in perdues)
-            + ". Signalez-le à l'équipe technique, qui fera la modification."
+            + ". Rechargez la page (Ctrl+Maj+R ou Cmd+Maj+R) puis recommencez."
         )
 
 
@@ -558,10 +575,7 @@ class CodePrescriptionForm(MotifRevisionFormMixin, forms.ModelForm):
         widgets = {"blocs": ContenuRichEditorWidget}
 
     def clean_blocs(self):
-        blocs = _clean_blocs_json(self.cleaned_data.get("blocs"))
-        if self.instance.pk:
-            verifier_sous_puces_conservees(self.instance.blocs, blocs)
-        return blocs
+        return _clean_blocs_editeur(self.instance, self.cleaned_data.get("blocs"))
 
     def clean(self):
         cleaned = super().clean()
@@ -740,10 +754,7 @@ class ContenuRichDSFRForm(MotifRevisionFormMixin, forms.ModelForm):
             self.initial["termes_declencheurs"] = "\n".join(self.instance.liste_termes)
 
     def clean_blocs(self):
-        blocs = _clean_blocs_json(self.cleaned_data.get("blocs"))
-        if self.instance.pk:
-            verifier_sous_puces_conservees(self.instance.blocs, blocs)
-        return blocs
+        return _clean_blocs_editeur(self.instance, self.cleaned_data.get("blocs"))
 
     def clean_termes_declencheurs(self):
         brut = self.cleaned_data.get("termes_declencheurs") or ""
