@@ -32,6 +32,7 @@ const canvasRpg = (page: Page) =>
 
 const ZONES_PAR_DEFAUT = [
   'Parcelles agricoles (RPG)',
+  'Communes',
   'Zones vulnérables nitrates',
   "Zones d'action renforcée (ZAR)",
 ];
@@ -40,7 +41,7 @@ const ZONES_PAR_DEFAUT = [
 // repart d'une carte memorisee sans surcouche.
 async function sansZones(page: Page) {
   await page.evaluate(() =>
-    localStorage.setItem('nitrates.carte.couches.v2', JSON.stringify({ base: 'auto', surcouches: [] }))
+    localStorage.setItem('nitrates.carte.couches.v3', JSON.stringify({ base: 'auto', surcouches: [] }))
   );
   await page.reload();
   await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
@@ -64,7 +65,7 @@ test.describe('Carte #531', () => {
     expect(await tuilesChargees(page, 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2')).toBe(0);
   });
 
-  test('zoomé : parcelles RPG affichées, pas le cadastre ; décocher les cache, recocher les remet', async ({
+  test('zoomé : parcelles RPG affichées, jamais le cadastre ; décocher les cache, recocher les remet', async ({
     page,
   }) => {
     const rpg = page.locator('.leaflet-control-layers').getByLabel('Parcelles agricoles (RPG)');
@@ -96,6 +97,7 @@ test.describe('Carte #531', () => {
     expect(await couchesCochees(page)).toEqual([
       'Plan IGN',
       'Parcelles agricoles (RPG)',
+      'Communes',
       'Zones vulnérables nitrates',
     ]);
   });

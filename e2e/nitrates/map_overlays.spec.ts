@@ -11,9 +11,10 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
     await expect(layerControl).toContainText('Automatique (selon le zoom)');
     await expect(layerControl).toContainText('Plan IGN');
     await expect(layerControl).toContainText('Photo aérienne');
-    // 4 overlays : parcelles RPG (#583, principal), cadastre en secours, ZV, ZAR (#34).
+    // 4 overlays : parcelles RPG et communes (#583), ZV, ZAR (#34).
     await expect(layerControl).toContainText('Parcelles agricoles (RPG)');
-    await expect(layerControl).toContainText('Cadastre');
+    await expect(layerControl).toContainText('Communes');
+    await expect(layerControl).not.toContainText('Cadastre');
     await expect(layerControl).toContainText('Zones vulnérables nitrates');
     await expect(layerControl).toContainText("Zones d'action renforcée (ZAR)");
   });
@@ -64,35 +65,39 @@ test.describe('Nitrates map — fonds, overlays, contrôles', () => {
       .toBeGreaterThan(0);
   });
 
-  test('activating the Cadastre overlay loads tile images', async ({ page }) => {
+  test('Communes (#583) : limites sans parcelles cadastrales, noms des communes, encart zoomé', async ({
+    page,
+  }) => {
+    const tuilesPci: string[] = [];
+    page.on('request', (r) => {
+      const m = r.url().match(/\/tms\/1\.0\.0\/PCI\/(\d+)\//);
+      if (m) tuilesPci.push(m[1]);
+    });
     await page.goto('/');
     await expect(page.locator('#nitrates-map')).toHaveClass(/leaflet-container/);
+    const communes = page.locator('.leaflet-control-layers').getByLabel('Communes');
+    // Cochee par defaut.
+    await expect(communes).toBeChecked();
 
-    // Le RPG (PAC) est désactivé en MVP ; l'overlay parcellaire est désormais
-    // le Cadastre IGN (CADASTRALPARCELS.PARCELLAIRE_EXPRESS).
-    const cadastreCheckbox = page
-      .locator('.leaflet-control-layers-overlays label')
-      .filter({ hasText: 'Cadastre' })
-      .locator('input[type="checkbox"]');
+    // Echelle ~1 km : limites (tuiles PCI) et noms des communes.
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.75, 4.55], 12, { animate: false }));
+    await expect.poll(() => tuilesPci.length, { timeout: 10000 }).toBeGreaterThan(0);
+    const noms = page.locator('.nitrates-commune-nom span');
+    await expect.poll(() => noms.count(), { timeout: 10000 }).toBeGreaterThan(5);
+    await expect(noms.filter({ hasText: 'Loisy-sur-Marne' })).toHaveCount(1);
 
-    await cadastreCheckbox.check();
+    // Zoome pres (100 m) : jamais de tuile PCI au-dela du 14 (les parcelles
+    // cadastrales y arrivent) ; chef-lieu hors champ -> encart du nom.
+    await page.evaluate(() => (window as any).nitratesMap.setView([48.7508, 4.5527], 16, { animate: false }));
+    await expect(page.locator('.nitrates-commune-courante')).toHaveText('Commune : Loisy-sur-Marne', {
+      timeout: 10000,
+    });
+    expect(tuilesPci.every((z) => Number(z) <= 14)).toBe(true);
 
-    // Les tuiles WMTS cadastre arrivent depuis data.geopf.fr ; on vérifie qu'au
-    // moins une est présente dans le DOM Leaflet après quelques secondes.
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(() => {
-            const imgs = document.querySelectorAll(
-              '.leaflet-tile-pane img.leaflet-tile'
-            );
-            return Array.from(imgs).filter((i) =>
-              (i as HTMLImageElement).src.includes('CADASTRALPARCELS')
-            ).length;
-          }),
-        { timeout: 8000 }
-      )
-      .toBeGreaterThan(0);
+    // Decochee : plus de noms ni d'encart.
+    await communes.uncheck();
+    await expect(noms).toHaveCount(0);
+    await expect(page.locator('.nitrates-commune-courante')).toHaveCount(0);
   });
 
   test('ZV overlay covers every metropolitan bassin with distinct colors', async ({
