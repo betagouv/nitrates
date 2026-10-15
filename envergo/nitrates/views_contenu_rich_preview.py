@@ -10,17 +10,25 @@ from django.http import Http404
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from envergo.nitrates.connexion import staff_member_required
 from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
 
 
 @method_decorator(staff_member_required, name="dispatch")
+# Intégrable en cadre par l'admin du même site (page d'historique) ; le reste
+# du site garde X-Frame-Options: DENY.
+@method_decorator(xframe_options_sameorigin, name="dispatch")
 class ContenuRichPreviewView(View):
     """`/admin/nitrates/contenu-rich/preview/?type=pc&id=...` ou `?type=rich&id=...`.
 
-    type=pc   -> CodePrescription.blocs (id = pk ou identifiant)
-    type=rich -> ContenuRichDSFR.blocs (id = pk ou cle)
+    type=pc       -> CodePrescription.blocs (id = pk ou identifiant)
+    type=rich     -> ContenuRichDSFR.blocs (id = pk ou cle)
+    type=revision -> blocs d'une révision d'historique (id = pk de RevisionContenu)
+
+    `nu=1` : page sans en-tête ni pied de page, pour l'intégrer dans un cadre
+    (page d'historique), avec le même CSS que le site public.
     """
 
     def get(self, request):
@@ -51,12 +59,25 @@ class ContenuRichPreviewView(View):
                 raise Http404("Contenu introuvable")
             blocs = obj.blocs
             titre = f"{obj.cle} — {obj.libelle_admin}"
+        elif type_ == "revision" and ident.isdigit():
+            from envergo.nitrates.models import RevisionContenu
+
+            revision = RevisionContenu.objects.filter(pk=ident).first()
+            if revision is None:
+                raise Http404("Révision introuvable")
+            blocs = revision.instantane.get("blocs")
+            titre = str(revision)
         else:
-            raise Http404("type invalide (pc|rich)")
+            raise Http404("type invalide (pc|rich|revision)")
 
         html = compile_dsfr(blocs or [])
+        gabarit = (
+            "nitrates/admin/contenu_rich_preview_nu.html"
+            if request.GET.get("nu")
+            else "nitrates/admin/contenu_rich_preview.html"
+        )
         return render(
             request,
-            "nitrates/admin/contenu_rich_preview.html",
+            gabarit,
             {"contenu_html": html, "titre_preview": titre},
         )

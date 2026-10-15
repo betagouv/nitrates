@@ -27,14 +27,10 @@ def _url(identifiant):
     return f"/prescription/{identifiant}/"
 
 
-def test_pc_de_base_rendu_texte_court(client):
-    # pc5 n'a pas de contenu riche dans la fixture : fallback texte_court.
-    r = client.get(_url("pc5"))
-    assert r.status_code == 200
-    html = r.content.decode()
-    assert "PC5" in html
-    # Fragment sans apostrophe (échappée en &#x27; dans le HTML).
-    assert "engrais min" in html
+def test_pc_supprimee_404(client):
+    # pc5 a été supprimée à la demande des juristes (staging, 11/09) et
+    # retirée de la fixture : sa page n'existe plus.
+    assert client.get(_url("pc5")).status_code == 404
 
 
 def test_declinaison_geographique_servie(client):
@@ -49,14 +45,16 @@ def test_pc_inconnu_404(client):
 
 
 def test_contenu_riche_prioritaire(client):
-    """pc1 a des blocs seedés (#136) : le rendu riche prime sur texte_court."""
+    """pc1 a des blocs seedés (#136) : rendu riche, et sa meta description
+    est tirée du contenu riche."""
     r = client.get(_url("pc1"))
     assert r.status_code == 200
     html = r.content.decode()
     assert 'class="contenu-rich"' in html
     pc1 = CodePrescription.objects.get(identifiant="pc1")
-    # Le fallback texte brut ne doit PAS être rendu en parallèle.
-    assert pc1.texte_court.splitlines()[0] not in html
+    from envergo.nitrates.contenu_rich.compilateur import resume_texte
+
+    assert resume_texte(pc1.blocs, max_car=40)[:30] in html
 
 
 def test_exempt_du_lockdown_root_public(client, settings):

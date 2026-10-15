@@ -4,8 +4,10 @@ quand la regle porte un `message` narratif.
 Cas signale (CIE courte types 0/I/II) : regle type=libre avec message +
 code_prescription pc15. Avant le fix, la condition `not ev.regle.message`
 sautait TOUT le bloc PC -> la fiche PC15 (detail du plafond 70 kg N/ha) ne
-s'affichait pas. Le fix affiche toujours les blocs riches ; seul le fallback
-`texte_court` lapidaire (ex pc5) reste masque en presence d'un message.
+s'affichait pas. Le fix affiche toujours les blocs riches.
+
+Depuis le retrait de texte_court / texte_redaction_initiale (migration 0042),
+une PC sans contenu riche n'affiche plus que son titre (mots-clés).
 """
 
 from types import SimpleNamespace
@@ -55,17 +57,15 @@ def _regle(**kw):
 PC_RICHE = SimpleNamespace(
     identifiant="pc15",
     mots_cles="Plafond CIE courte",
-    texte_court="Cumul de 70 kg d'azote par hectare.",
-    texte_redaction_initiale="Detail...",
     blocs={
         "blocs": [{"type": "titre_principal", "data": {"texte": "MARQUEUR_BLOC_RICHE"}}]
     },
 )
-PC_LAPIDAIRE = SimpleNamespace(
+# Un objet qui porterait encore un ancien texte (donnée résiduelle) : il ne
+# doit plus jamais être affiché.
+PC_SANS_BLOCS = SimpleNamespace(
     identifiant="pc5",
     mots_cles="Engrais mineraux",
-    texte_court="MARQUEUR_TEXTE_COURT_LAPIDAIRE",
-    texte_redaction_initiale=None,
     blocs=None,
 )
 
@@ -84,29 +84,14 @@ def test_blocs_riches_affiches_meme_avec_message():
     ), "les blocs riches de la PC doivent s'afficher malgre le message de la regle"
 
 
-def test_texte_court_lapidaire_masque_si_message():
-    """Regle avec message + PC SANS blocs (pc5) -> le texte_court lapidaire
-    reste masque (anti-doublon preserve)."""
-    regle = _regle(
-        type="libre",
-        message="Apport d'engrais mineraux autorise (message narratif).",
-        codes_prescription=["pc5"],
-    )
+@pytest.mark.parametrize("message", [None, "Apport d'engrais mineraux autorise."])
+def test_anciens_textes_jamais_affiches(message):
+    """Une PC sans contenu riche n'affiche que son titre : ni texte court ni
+    rédaction initiale (champs retirés, migration 0042)."""
+    regle = _regle(type="libre", message=message, codes_prescription=["pc5"])
     html = render_to_string(
         "nitrates/fragments/_panneau_resultat.html",
-        _contexte(regle, {"pc5": PC_LAPIDAIRE}),
+        _contexte(regle, {"pc5": PC_SANS_BLOCS}),
     )
-    assert (
-        "MARQUEUR_TEXTE_COURT_LAPIDAIRE" not in html
-    ), "le texte_court lapidaire ne doit pas doublonner le message de la regle"
-
-
-def test_texte_court_affiche_si_pas_de_message():
-    """Sans message, le texte_court d'une PC sans blocs s'affiche (comportement
-    historique inchange)."""
-    regle = _regle(type="libre", message=None, codes_prescription=["pc5"])
-    html = render_to_string(
-        "nitrates/fragments/_panneau_resultat.html",
-        _contexte(regle, {"pc5": PC_LAPIDAIRE}),
-    )
-    assert "MARQUEUR_TEXTE_COURT_LAPIDAIRE" in html
+    assert "MARQUEUR_TEXTE_COURT_RESIDUEL" not in html
+    assert "MARQUEUR_REDACTION_INITIALE_RESIDUELLE" not in html

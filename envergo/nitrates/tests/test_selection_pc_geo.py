@@ -169,8 +169,12 @@ def setup_geo(db):
     attachent déclinaisons/fusions sans dépendre des variantes seedées
     par la fixture (pc1_ge, pc4_ge... existent depuis #147).
     """
-    CodePrescription.objects.create(identifiant="pc91", texte_court="base 91")
-    CodePrescription.objects.create(identifiant="pc92", texte_court="base 92")
+    CodePrescription.objects.create(
+        identifiant="pc91",
+    )
+    CodePrescription.objects.create(
+        identifiant="pc92",
+    )
     Department.objects.create(
         department="51",
         geometry=MultiPolygon(Polygon.from_bbox((3.5, 48.7, 5.0, 49.7))),
@@ -223,7 +227,6 @@ def test_feuille_pan_declinee_pour_parcelle_grand_est(setup_geo, make_active_tre
     make_active_tree(ARBRE_MINI)
     CodePrescription.objects.create(
         identifiant="pc92_ge",
-        texte_court="version GE",
         scope="region",
         region_code="44",
         variante_de=CodePrescription.objects.get(identifiant="pc92"),
@@ -250,14 +253,12 @@ def test_feuille_pan_declinee_zar(setup_geo, make_active_tree):
     base = CodePrescription.objects.get(identifiant="pc92")
     CodePrescription.objects.create(
         identifiant="pc92_ge",
-        texte_court="version GE",
         scope="region",
         region_code="44",
         variante_de=base,
     )
     CodePrescription.objects.create(
         identifiant="pc92_zar_ge",
-        texte_court="version ZAR GE",
         scope="zar",
         region_code="44",
         variante_de=base,
@@ -272,7 +273,7 @@ def test_fusion_bout_en_bout(setup_geo, make_active_tree):
     remplace, sans toucher à l'arbre."""
     make_active_tree(ARBRE_MINI)
     fusion = CodePrescription.objects.create(
-        identifiant="pc91_pc92", texte_court="rédaction fusionnée"
+        identifiant="pc91_pc92",
     )
     fusion.composants_fusion.set(
         CodePrescription.objects.filter(identifiant__in=["pc91", "pc92"])
@@ -294,31 +295,29 @@ def test_sans_variante_ni_fusion_identite(setup_geo, make_active_tree):
 
 
 def test_clean_region_requise_hors_national():
-    pc = CodePrescription(identifiant="pc_x", texte_court="t", scope="region")
+    pc = CodePrescription(identifiant="pc_x", scope="region")
     with pytest.raises(DjangoValidationError, match="code région"):
         pc.full_clean()
 
 
 def test_clean_pas_de_region_sur_national():
-    pc = CodePrescription(
-        identifiant="pc_x", texte_court="t", scope="national", region_code="44"
-    )
+    pc = CodePrescription(identifiant="pc_x", scope="national", region_code="44")
     with pytest.raises(DjangoValidationError, match="pas porter de code région"):
         pc.full_clean()
 
 
 def test_clean_pas_de_chaine_de_declinaisons():
-    base = CodePrescription.objects.create(identifiant="pc93", texte_court="t")
+    base = CodePrescription.objects.create(
+        identifiant="pc93",
+    )
     v1 = CodePrescription.objects.create(
         identifiant="pc93_ge",
-        texte_court="t",
         scope="region",
         region_code="44",
         variante_de=base,
     )
     v2 = CodePrescription(
         identifiant="pc93_zar_ge",
-        texte_court="t",
         scope="zar",
         region_code="44",
         variante_de=v1,
@@ -330,10 +329,11 @@ def test_clean_pas_de_chaine_de_declinaisons():
 def test_unicite_declinaison_par_zone():
     from django.db import IntegrityError
 
-    base = CodePrescription.objects.create(identifiant="pc93", texte_court="t")
+    base = CodePrescription.objects.create(
+        identifiant="pc93",
+    )
     CodePrescription.objects.create(
         identifiant="pc93_ge",
-        texte_court="t",
         scope="region",
         region_code="44",
         variante_de=base,
@@ -341,7 +341,6 @@ def test_unicite_declinaison_par_zone():
     with pytest.raises(IntegrityError):
         CodePrescription.objects.create(
             identifiant="pc93_ge_bis",
-            texte_court="t",
             scope="region",
             region_code="44",
             variante_de=base,
@@ -368,10 +367,11 @@ arbre:
 def test_validator_refuse_declinaison_dans_feuille():
     import yaml as pyyaml
 
-    CodePrescription.objects.create(identifiant="pc93", texte_court="t")
+    CodePrescription.objects.create(
+        identifiant="pc93",
+    )
     CodePrescription.objects.create(
         identifiant="pc93_ge",
-        texte_court="t",
         scope="region",
         region_code="44",
         variante_de=CodePrescription.objects.get(identifiant="pc93"),
@@ -390,16 +390,17 @@ def test_validator_refuse_declinaison_dans_feuille():
 def test_referentiel_expose_zone_application():
     """loader._build_referentiels pousse scope/région/liens vers le dict
     consommé par le résolveur et les templates."""
-    base = CodePrescription.objects.create(identifiant="pc93", texte_court="t")
+    base = CodePrescription.objects.create(
+        identifiant="pc93",
+    )
     CodePrescription.objects.create(
         identifiant="pc93_ge",
-        texte_court="t",
         scope="region",
         region_code="44",
         variante_de=base,
     )
     fusion = CodePrescription.objects.create(
-        identifiant="pc1_pc93", texte_court="fusion"
+        identifiant="pc1_pc93",
     )
     fusion.composants_fusion.set(
         CodePrescription.objects.filter(identifiant__in=["pc1", "pc93"])
@@ -426,14 +427,26 @@ def test_data_migration_parse_identifiants():
         "envergo.nitrates.migrations.0031_codeprescription_remplir_zone_application"
     )
 
-    CodePrescription.objects.create(identifiant="pc77", texte_court="t")
-    CodePrescription.objects.create(identifiant="pc78", texte_court="t")
-    CodePrescription.objects.create(identifiant="PC77_ZAR_GE", texte_court="t")
-    CodePrescription.objects.create(identifiant="PC77_PC78", texte_court="t")
-    CodePrescription.objects.create(identifiant="pc77_pc78_hdf", texte_court="t")
+    CodePrescription.objects.create(
+        identifiant="pc77",
+    )
+    CodePrescription.objects.create(
+        identifiant="pc78",
+    )
+    CodePrescription.objects.create(
+        identifiant="PC77_ZAR_GE",
+    )
+    CodePrescription.objects.create(
+        identifiant="PC77_PC78",
+    )
+    CodePrescription.objects.create(
+        identifiant="pc77_pc78_hdf",
+    )
     # Régionale sans base nationale (motif pc_ge ; "pc_hdf" car pc_ge est
     # déjà seedé par la fixture depuis #147).
-    CodePrescription.objects.create(identifiant="PC_HDF", texte_court="t")
+    CodePrescription.objects.create(
+        identifiant="PC_HDF",
+    )
 
     mig.remplir_zone_application(apps, None)
 

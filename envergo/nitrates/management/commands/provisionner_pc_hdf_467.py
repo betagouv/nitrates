@@ -141,8 +141,6 @@ class Command(BaseCommand):
                 CodePrescription.objects.create(
                     identifiant=variante_ident,
                     mots_cles=base.mots_cles,
-                    texte_court=base.texte_court,
-                    texte_redaction_initiale=base.texte_redaction_initiale,
                     blocs=blocs,
                     toujours_affiche=base.toujours_affiche,
                     plafond=base.plafond,

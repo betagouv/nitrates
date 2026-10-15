@@ -75,10 +75,10 @@ def test_seed_produit_volumes_attendus():
     # 3 liens syndiqués (#467/#254) : annexes 2 et 3 du PAR Grand Est +
     # annexe 1 du PAR Hauts-de-France.
     assert LienReference.objects.count() == 3
-    # 57 depuis #467/#254 : 17 PC de base + déclinaisons géographiques (_ge,
+    # 56 : 16 PC de base (pc5 supprimée à la demande des juristes) + déclinaisons géographiques (_ge,
     # _zar_ge, _hdf dont les 8 déclinaisons HdF « suivi reliquats ») +
     # fusions (pc1_pc12...) rédigées par les juristes.
-    assert CodePrescription.objects.count() == 57
+    assert CodePrescription.objects.count() == 56  # pc5 supprimée (juristes, 11/09)
     assert EvenementPhenologique.objects.count() == 6
 
 
@@ -258,4 +258,4 @@ def test_code_prescription_pc1_seede():
     _seed()
     pc1 = CodePrescription.objects.get(identifiant="pc1")
     assert pc1.mots_cles == "ICPE A"
-    assert pc1.texte_court  # non vide
+    assert pc1.blocs.get("blocs")  # contenu riche seedé

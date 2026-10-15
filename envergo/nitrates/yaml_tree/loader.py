@@ -62,7 +62,7 @@ def _build_referentiels() -> dict:
         "sous_cultures": {sc_id: {libelle_public, description?}},
         "mapping_sous_culture_vers_branche": {sc_id: {occupation_sol, sous_culture, flags?}},
         "statut_icpe": {...},
-        "codes_prescription": {pc_id: {mots_cles, texte_court, ...}},
+        "codes_prescription": {pc_id: {mots_cles, blocs, ...}},
         "notes": {note_id: {libelle_court, condition_declenchement, codes_geographiques?}},
         "regions": {R11: "Île-de-France", ...},
         "evenements_phenologiques": {ev_id: {libelle_public, date_calendrier}},
@@ -146,14 +146,10 @@ def _build_referentiels() -> dict:
     for pc in CodePrescription.objects.select_related(
         "note_reglementaire", "variante_de"
     ).prefetch_related("composants_fusion"):
-        entry = {
-            "mots_cles": pc.mots_cles,
-            "texte_court": pc.texte_court,
-            "texte_redaction_initiale": pc.texte_redaction_initiale,
-        }
+        entry = {"mots_cles": pc.mots_cles}
         # Contenu riche (#136) : exposé au template pour rendu DSFR. On ne met
         # la clé que si non vide -> `pc.blocs` est falsy dans le template tant
-        # qu'aucun contenu riche n'a été saisi (fallback texte_court).
+        # qu'aucun contenu riche n'a été saisi.
         blocs = pc.blocs
         if isinstance(blocs, dict):
             blocs = blocs.get("blocs", []) or []

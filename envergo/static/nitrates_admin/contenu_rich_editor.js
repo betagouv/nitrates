@@ -8,13 +8,16 @@
  *   titre_principal   <-> header (level 2)   vrai titre
  *   titre_paragraphe  <-> header (level 4)   sous-titre
  *   paragraphe        <-> paragraph
- *   liste             <-> list (puces plates)
+ *   liste             <-> list (@editorjs/list 2 : sous-puces = `enfants`,
+ *                         style numéroté / case à cocher gardé dans `style`)
  *   citation          <-> quote
  *   foldable          <-> bloc custom `foldable` (FoldableTool, nested editor)
  *   tableau           <-> table (@editorjs/table, carte #110)
  */
 (function () {
   "use strict";
+
+  const EDITEUR_LISTES_IMBRIQUEES = "listes-imbriquees";
 
   // Outils communs à l'éditeur racine ET aux nested editors des foldables.
   // (le foldable lui-même n'est PAS proposé dans un nested -> pas de foldable
@@ -23,11 +26,11 @@
     return {
       header: { class: window.Header, inlineToolbar: true, tunes: ["indent"] },
       list: {
-        class: window.List,
+        class: window.EditorjsList,
         inlineToolbar: true,
-        // « add > Liste » crée une liste À PUCES par défaut (#136). L'utilisateur
-        // peut basculer en numérotée via les réglages du bloc (icône engrenage).
-        config: { defaultStyle: "unordered" },
+        // « add > Liste » crée une liste À PUCES par défaut (#136). Tab /
+        // Maj+Tab sur un item crée / remonte une sous-puce (3 niveaux max).
+        config: { defaultStyle: "unordered", maxLevel: 3 },
         tunes: ["indent"],
       },
       quote: { class: window.Quote, inlineToolbar: true, tunes: ["indent"] },
@@ -150,6 +153,30 @@
     return Number(lvl) > 0 ? Number(lvl) : 0;
   }
 
+  // ── Listes : items DSFR {texte, enfants} <-> items Editor.js {content, items}
+  // Les sous-puces (`enfants`) font l'aller-retour : l'ancien outil (liste
+  // plate) les supprimait à chaque enregistrement (incident du 14/10/2026).
+  function itemsVersEditeur(items) {
+    return (items || []).map(function (it) {
+      const item = typeof it === "string" ? { texte: it } : it || {};
+      return {
+        content: texteToHtml(item.texte || ""),
+        meta: {},
+        items: itemsVersEditeur(item.enfants),
+      };
+    });
+  }
+
+  function itemsVersDsfr(items) {
+    return (items || []).map(function (it) {
+      if (typeof it === "string") return { texte: htmlToTexte(it) };
+      const item = { texte: htmlToTexte(it.content || it.text || "") };
+      const enfants = itemsVersDsfr(it.items);
+      if (enfants.length) item.enfants = enfants;
+      return item;
+    });
+  }
+
   // ── DSFR -> Editor.js (au chargement) ───────────────────────────────────
   function dsfrToEditor(blocs) {
     return (blocs || []).map(dsfrBlocToEditor).filter(Boolean);
@@ -180,10 +207,9 @@
         return {
           type: "list",
           data: {
-            style: "unordered",
-            items: (d.items || []).map((it) =>
-              texteToHtml(typeof it === "string" ? it : it.texte || "")
-            ),
+            style: d.style || "unordered",
+            meta: {},
+            items: itemsVersEditeur(d.items),
           },
         };
       case "citation":
@@ -240,15 +266,12 @@
         return { type: "titre_paragraphe", data: { texte: d.text || "" } };
       case "paragraph":
         return { type: "paragraphe", data: { texte: htmlToTexte(d.text) } };
-      case "list":
-        return {
-          type: "liste",
-          data: {
-            items: (d.items || []).map((it) => ({
-              texte: htmlToTexte(typeof it === "string" ? it : it.content || ""),
-            })),
-          },
-        };
+      case "list": {
+        const liste = { items: itemsVersDsfr(d.items) };
+        // Puces = défaut implicite ; un autre style est conservé tel quel.
+        if (d.style && d.style !== "unordered") liste.style = d.style;
+        return { type: "liste", data: liste };
+      }
       case "quote":
         return { type: "citation", data: { texte: htmlToTexte(d.text) } };
       case "foldable":
@@ -323,6 +346,9 @@
             textarea.value = JSON.stringify({
               schema: initial.schema || 1,
               blocs: editorToDsfr(data.blocks || []),
+              // Signature : cet éditeur gère les sous-puces. Retirée côté
+              // serveur ; son absence trahit un ancien éditeur en cache.
+              _editeur: EDITEUR_LISTES_IMBRIQUEES,
             });
             form.submit();
           })
@@ -331,6 +357,12 @@
           });
       });
     }
+  }
+
+  // Sous Node (tests) : on n'exporte que les conversions, sans toucher au DOM.
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { dsfrToEditor: dsfrToEditor, editorToDsfr: editorToDsfr };
+    return;
   }
 
   document.addEventListener("DOMContentLoaded", function () {

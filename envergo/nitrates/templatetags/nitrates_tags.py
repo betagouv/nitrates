@@ -986,6 +986,15 @@ def contenu_rich(cle: str, niveau_base: int = 3):
     return compile_dsfr(load_blocs(cle), niveau_base=niveau_base, id_prefix=id_prefix)
 
 
+@register.filter
+def resume_blocs(blocs, max_car=0):
+    """Ligne de texte brut tirée d'un contenu riche (titre, sinon premier
+    paragraphe) : `{{ pc.blocs|resume_blocs:120 }}`."""
+    from envergo.nitrates.contenu_rich.compilateur import resume_texte
+
+    return resume_texte(blocs, int(max_car or 0))
+
+
 @register.simple_tag
 def compile_blocs(blocs, niveau_base: int = 3, id_prefix: str = "contenu-rich"):
     """Compile des blocs DSFR fournis directement (carte #136).

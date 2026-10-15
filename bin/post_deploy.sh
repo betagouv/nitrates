@@ -8,6 +8,10 @@ echo ">>> Starting the post_deploy hook"
 
 python manage.py migrate
 
+# Historique des PC et contenus riches : consigne les écritures passées sans
+# trace depuis le dernier déploiement (update ciblé, SQL direct). Non bloquant.
+python manage.py constater_historique_contenus || echo ">>> constater_historique_contenus en échec (non bloquant)"
+
 if [ "$IS_REVIEW_APP" == "True" ]
 then
   python manage.py deploy_environment $APP.$REGION_NAME.scalingo.io

@@ -67,7 +67,7 @@ def _regle_referentiel_choices() -> dict:
     """Choices fermees pour les champs canoniques d'une regle.
 
     - code_prescription : alimente depuis referentiels.yaml::codes_prescription.
-      Affiche `pcN — mots_cles`, tooltip = texte_court.
+      Affiche `pcN — mots_cles`, tooltip = résumé du contenu riche.
     - note : alimente depuis referentiels.yaml::notes.
       Affiche `note_N — libelle_court`, tooltip = condition_declenchement.
 
@@ -75,6 +75,7 @@ def _regle_referentiel_choices() -> dict:
     un code de prescription ni une note (cas frequent).
     """
     try:
+        from envergo.nitrates.contenu_rich.compilateur import resume_texte
         from envergo.nitrates.yaml_tree.loader import load_referentiels
 
         ref = load_referentiels() or {}
@@ -88,7 +89,7 @@ def _regle_referentiel_choices() -> dict:
             {
                 "value": slug,
                 "libelle": data.get("mots_cles") or slug,
-                "description": (data.get("texte_court") or "").strip(),
+                "description": resume_texte(data.get("blocs"), max_car=160),
             }
         )
 

@@ -33,6 +33,9 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from envergo.nitrates.historique import contexte_revision
+from envergo.nitrates.models_historique import RevisionContenu
+
 # 9 tables suivies par le GitOps (8 référentiel + ContenuRichDSFR standalone,
 # ajouté au dump canonique #50). Ordre de comptage du rapport.
 _MODELS = [
@@ -69,6 +72,11 @@ class Command(BaseCommand):
             "--dry-run",
             action="store_true",
             help="Charge la fixture puis rollback : rien n'est écrit en base.",
+        )
+        parser.add_argument(
+            "--motif",
+            default="",
+            help="Motif consigné dans l'historique des PC (ex « copié depuis dev »).",
         )
 
     def _counts(self):
@@ -109,7 +117,14 @@ class Command(BaseCommand):
 
         # loaddata (clefs naturelles) = upsert idempotent sur `identifiant`. On
         # enveloppe dans une transaction pour pouvoir rollback en dry-run.
-        with transaction.atomic():
+        # Historique : une seule révision par PC, sur l'état final (après
+        # restauration des blocs), au lieu d'une par étape du loaddata.
+        with contexte_revision(
+            origine=RevisionContenu.ORIGINE_COMMANDE,
+            source=f"seed_referentiels {fixture_path.name}",
+            motif=options.get("motif") or "",
+            differer=True,
+        ), transaction.atomic():
             call_command("loaddata", str(fixture_path), verbosity=0)
             # Restauration des blocs édités préexistants.
             for ident, blocs in blocs_a_preserver.items():

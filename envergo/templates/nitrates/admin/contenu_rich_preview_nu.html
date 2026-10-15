@@ -1,0 +1,31 @@
+{% load static nitrates_tags %}
+
+<!DOCTYPE html>
+<html lang="fr" data-fr-scheme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="Aperçu staff du rendu d'un contenu riche">
+    <meta name="keywords" content="aperçu, contenu riche">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Aperçu : {{ titre_preview }}</title>
+    {% comment %}
+    Rendu d'un contenu riche sans en-tête ni pied de page, pour un cadre de la
+    page d'historique. Mêmes feuilles que le site public (DSFR + calendrier.css)
+    et JS DSFR pour que les dépliants fonctionnent.
+    {% endcomment %}
+    <link href="{% static '@gouvfr/dsfr/dist/dsfr.css' %}" rel="stylesheet">
+    <link href="{% static '@gouvfr/dsfr/dist/utility/icons/icons.main.css' %}"
+          rel="stylesheet">
+    <link href="{% static 'css/project.min.css' %}" rel="stylesheet">
+    <link href="{% static_v 'nitrates/calendrier.css' %}" rel="stylesheet">
+    <script defer
+            type="module"
+            src="{% static '@gouvfr/dsfr/dist/dsfr.module.min.js' %}"></script>
+    <style>
+      body {
+        padding: 1rem 1.25rem;
+      }
+    </style>
+  </head>
+  <body>{{ contenu_html|safe }}</body>
+</html>

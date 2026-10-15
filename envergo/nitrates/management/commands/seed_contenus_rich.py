@@ -1,13 +1,18 @@
 """Commande de seed idempotente des contenus riches éditables (carte #131).
 
 Importe `envergo/nitrates/specs/contenus_rich.yaml` dans la table
-ContenuRichDSFR. Idempotente : `update_or_create` sur la clé, donc rejouable
-au déploiement / en local / en CI sans créer de doublon (2e passage = 0 créé).
+ContenuRichDSFR. Idempotente : rejouable au déploiement / en local / en CI
+sans créer de doublon (2e passage = 0 créé).
+
+Non destructive par défaut : un contenu déjà en base n'est JAMAIS réécrit, il
+a pu être édité dans l'admin (CGU, glossaire, pages…). Écraser exige
+`--ecraser`, et laisse une révision dans l'historique avec son motif.
 
 Usage :
     python manage.py seed_contenus_rich
     python manage.py seed_contenus_rich --yaml /chemin/vers/autre.yaml
     python manage.py seed_contenus_rich --dry-run    # n'écrit rien
+    python manage.py seed_contenus_rich --ecraser --motif "nouvelle version CGU"
 """
 
 from pathlib import Path
@@ -17,7 +22,9 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from envergo.nitrates.historique import contexte_revision
 from envergo.nitrates.models import ContenuRichDSFR
+from envergo.nitrates.models_historique import RevisionContenu
 
 
 class Command(BaseCommand):
@@ -34,6 +41,19 @@ class Command(BaseCommand):
             "--dry-run",
             action="store_true",
             help="Affiche ce qui serait fait sans écrire en base.",
+        )
+        parser.add_argument(
+            "--ecraser",
+            action="store_true",
+            help=(
+                "Réécrit aussi les contenus déjà en base depuis le YAML (écrase "
+                "les éditions admin). Sans ce drapeau, seuls les absents sont créés."
+            ),
+        )
+        parser.add_argument(
+            "--motif",
+            default="",
+            help="Motif consigné dans l'historique des contenus.",
         )
 
     def handle(self, *args, **options):
@@ -52,18 +72,27 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — aucune écriture."))
 
-        with transaction.atomic():
-            created, updated = self._seed(data)
+        with contexte_revision(
+            origine=RevisionContenu.ORIGINE_COMMANDE,
+            source=f"seed_contenus_rich {yaml_path.name}",
+            motif=options.get("motif") or "",
+            differer=True,
+        ), transaction.atomic():
+            created, updated = self._seed(data, ecraser=options.get("ecraser", False))
             if dry_run:
                 transaction.set_rollback(True)
 
-        self.stdout.write(f"ContenuRichDSFR: {created} créé(s), {updated} mis à jour")
+        verbe = "mis à jour" if options.get("ecraser") else "préservé(s) (déjà en base)"
+        self.stdout.write(f"ContenuRichDSFR: {created} créé(s), {updated} {verbe}")
         self.stdout.write(self.style.SUCCESS("Seed terminé."))
 
-    def _seed(self, data: dict) -> tuple[int, int]:
+    def _seed(self, data: dict, ecraser: bool = False) -> tuple[int, int]:
         created = updated = 0
         for entree in data.get("contenus", []) or []:
             cle = entree["cle"]
+            if not ecraser and ContenuRichDSFR.objects.filter(cle=cle).exists():
+                updated += 1
+                continue
             # On stocke l'enveloppe {schema, blocs} : la version du schéma
             # permet de migrer le JSON plus tard sans casser l'existant.
             blocs_payload = {

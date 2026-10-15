@@ -460,8 +460,6 @@ def test_seed_cree_les_pc_par_cle_convention():
     for ident in ("pc1", "pc2", "pc16"):
         pc = CodePrescription.objects.get(identifiant=ident)
         assert pc.blocs.get("blocs"), ident
-        # texte legacy préservé (fallback, non cassant).
-        assert pc.texte_court
 
 
 @pytest.mark.django_db
@@ -480,13 +478,11 @@ def test_pc_blocs_compile_avec_foldable_suivi():
 
 @pytest.mark.django_db
 def test_pc_sans_blocs_compile_vide():
-    # Un PC sans blocs -> compile_dsfr rend "" : le template retombe alors sur
-    # le texte legacy (fallback, transition 2 temps).
+    # Un PC sans blocs -> compile_dsfr rend "" (le template n'affiche alors
+    # que le titre de la PC).
     from envergo.nitrates.models import CodePrescription
 
-    pc = CodePrescription.objects.create(
-        identifiant="pcZ", texte_court="legacy", blocs={}
-    )
+    pc = CodePrescription.objects.create(identifiant="pcZ", blocs={})
     assert compile_dsfr(pc.blocs) == ""
 
 

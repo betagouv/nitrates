@@ -5,7 +5,6 @@ from django.contrib.gis.geos import Point
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
-from django.utils.text import Truncator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.gzip import gzip_page
 from django.views.generic import View
@@ -15,6 +14,7 @@ from envergo.nitrates.bassins import (
     bassin_code_from_attributes,
     bassin_label_from_attributes,
 )
+from envergo.nitrates.contenu_rich.compilateur import resume_texte
 from envergo.nitrates.form_backfill import backfill_form_fields
 from envergo.nitrates.models import CodePrescription, DecisionTree, MoulinetteNitrates
 from envergo.nitrates.models_ouverture import departement_est_ouvert
@@ -193,8 +193,9 @@ class PrescriptionDetailView(View):
         description = f"Prescription conditionnée {pc.identifiant.upper()}"
         if pc.mots_cles:
             description += f" : {pc.mots_cles}"
-        if pc.texte_court:
-            description += f". {Truncator(pc.texte_court).chars(140)}"
+        resume = resume_texte(blocs, max_car=140)
+        if resume:
+            description += f". {resume}"
         return render(
             request,
             "nitrates/prescription_detail.html",

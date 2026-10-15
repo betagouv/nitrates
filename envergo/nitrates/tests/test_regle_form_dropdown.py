@@ -142,7 +142,7 @@ def test_options_have_title_for_long_text(client, staff_user, draft_with_regle):
     le texte long en attribut title (pour le hover navigateur)."""
     client.force_login(staff_user)
     body = client.get(_edit_url(draft_with_regle, "n_root", "True")).content.decode()
-    # Pour code_prescription : texte_court attendu en title
+    # Pour code_prescription : résumé du contenu riche attendu en title
     select_start = body.find('<select name="code_prescription"')
     select_end = body.find("</select>", select_start)
     pc_html = body[select_start:select_end]

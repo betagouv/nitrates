@@ -389,7 +389,7 @@ def test_calendrier_autorisation_simple_sans_periode_reste_verte():
 _REF_PLAFOND = {
     "pc12": {"plafond": True},
     "pc13": {"plafond": True},
-    "pc1": {"texte_court": "vraie PC conditionnee"},
+    "pc1": {"mots_cles": "vraie PC conditionnee"},
 }
 
 

@@ -237,10 +237,7 @@ def note_reglementaire(db):
 
 
 def _pc(identifiant, **kwargs):
-    defaults = {
-        "texte_court": "texte",
-        "texte_redaction_initiale": "",
-    }
+    defaults = {}
     defaults.update(kwargs)
     return CodePrescription.objects.create(identifiant=identifiant, **defaults)
 
@@ -250,7 +247,6 @@ def test_code_prescription_form_clean_blocs_invalide():
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov1",
-            "texte_court": "texte",
             "blocs": "{json cassé",
             "ordre_affichage": 0,
         },
@@ -265,7 +261,6 @@ def test_code_prescription_form_fusion_ne_peut_pas_se_contenir(db):
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov2",
-            "texte_court": "texte",
             "blocs": "{}",
             "ordre_affichage": 0,
             "composants_fusion": [pc.pk],
@@ -283,7 +278,6 @@ def test_code_prescription_form_composant_declinaison_rejete(db):
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov_fusion",
-            "texte_court": "texte",
             "blocs": "{}",
             "ordre_affichage": 0,
             "composants_fusion": [declinaison.pk],
@@ -303,7 +297,6 @@ def test_code_prescription_form_pas_de_fusion_de_fusions(db):
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov_fusion2",
-            "texte_court": "texte",
             "blocs": "{}",
             "ordre_affichage": 0,
             "composants_fusion": [sous_fusion.pk],
@@ -321,7 +314,6 @@ def test_code_prescription_form_declinaison_avec_composants_rejetee(db):
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov_decl2",
-            "texte_court": "texte",
             "blocs": "{}",
             "ordre_affichage": 0,
             "scope": "region",
@@ -341,11 +333,11 @@ def test_code_prescription_form_fusion_valide(db):
     form = CodePrescriptionForm(
         data={
             "identifiant": "pc_cov_fusion_ok",
-            "texte_court": "texte",
             "blocs": "{}",
             "ordre_affichage": 0,
             "scope": "national",
             "composants_fusion": [composant.pk],
+            "motif_modification": "test",
         },
         instance=fusion,
     )
