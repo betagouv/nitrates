@@ -27,15 +27,10 @@ def _url(identifiant):
     return f"/prescription/{identifiant}/"
 
 
-def test_pc_texte_court_converti_en_contenu_riche(client):
-    # pc5 n'avait qu'un texte court : la migration 0042 / la fixture l'ont
-    # converti en paragraphe de contenu riche.
-    r = client.get(_url("pc5"))
-    assert r.status_code == 200
-    html = r.content.decode()
-    assert "PC5" in html
-    # Fragment sans apostrophe (échappée en &#x27; dans le HTML).
-    assert "engrais min" in html
+def test_pc_supprimee_404(client):
+    # pc5 a été supprimée à la demande des juristes (staging, 11/09) et
+    # retirée de la fixture : sa page n'existe plus.
+    assert client.get(_url("pc5")).status_code == 404
 
 
 def test_declinaison_geographique_servie(client):

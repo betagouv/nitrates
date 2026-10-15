@@ -7341,34 +7341,6 @@
 {
   "model": "nitrates.codeprescription",
   "fields": {
-    "identifiant": "pc5",
-    "mots_cles": "culture irriguée",
-    "blocs": {
-      "schema": 1,
-      "blocs": [
-        {
-          "type": "paragraphe",
-          "data": {
-            "texte": "Apport d'engrais minéraux autorisé."
-          }
-        }
-      ]
-    },
-    "toujours_affiche": false,
-    "plafond": false,
-    "note_reglementaire": [
-      "note_4"
-    ],
-    "scope": "national",
-    "region_code": "",
-    "variante_de": null,
-    "ordre_affichage": 4,
-    "composants_fusion": []
-  }
-},
-{
-  "model": "nitrates.codeprescription",
-  "fields": {
     "identifiant": "pc1_hdf",
     "mots_cles": "ICPE A",
     "blocs": {

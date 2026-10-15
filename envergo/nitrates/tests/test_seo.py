@@ -137,5 +137,5 @@ def test_balises_canonical_opengraph_jsonld(client, settings):
 
 def test_meta_description_prescription(client, settings):
     settings.LOCKDOWN_BEHIND_LOGIN = False
-    html = client.get("/prescription/pc5/").content.decode()
-    assert 'content="Prescription conditionnée PC5' in html
+    html = client.get("/prescription/pc1/").content.decode()
+    assert 'content="Prescription conditionnée PC1' in html
