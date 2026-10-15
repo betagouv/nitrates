@@ -59,16 +59,6 @@ garde que les PC hors-plafond, vraiment spécifiques à la période sous conditi
         <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
       {% elif pc and not ev.regle.message %}
         <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
-        {% if pc.texte_court %}
-          <p>
-            {{ pc.texte_court|linebreaksbr }}
-            {% if pc.texte_redaction_initiale %}
-              <a href="#accordion-texte-init-{{ cp }}"
-                 class="fr-link fr-link--sm nitrates-voir-plus"
-                 data-target="accordion-texte-init-{{ cp }}">voir plus</a>
-            {% endif %}
-          </p>
-        {% endif %}
       {% elif not pc and not ev.regle.message %}
         <p class="fr-text--sm">
           <strong>Code prescription :</strong> {{ cp }}

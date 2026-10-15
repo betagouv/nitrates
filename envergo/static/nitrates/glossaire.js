@@ -428,7 +428,7 @@
     ".fr-hint-text",
     ".contenu-rich",
     // Drawer « Conditions d'épandage » : les textes PC hors contenu riche
-    // (texte_court legacy, notes) contiennent aussi des termes (batch 2).
+    // (titres de PC, notes) contiennent aussi des termes (batch 2).
     ".drawer-conditions__panel",
   ].join(", ");
 

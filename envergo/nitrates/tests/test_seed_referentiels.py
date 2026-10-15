@@ -258,4 +258,4 @@ def test_code_prescription_pc1_seede():
     _seed()
     pc1 = CodePrescription.objects.get(identifiant="pc1")
     assert pc1.mots_cles == "ICPE A"
-    assert pc1.texte_court  # non vide
+    assert pc1.blocs.get("blocs")  # contenu riche seedé

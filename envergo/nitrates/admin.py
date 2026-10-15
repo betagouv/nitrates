@@ -625,7 +625,7 @@ class CodePrescriptionAdmin(
         "ordre_affichage",
     )
     list_filter = ("scope", "region_code", "plafond", "toujours_affiche")
-    search_fields = ("identifiant", "mots_cles", "texte_court")
+    search_fields = ("identifiant", "mots_cles")
     autocomplete_fields = ("note_reglementaire", "variante_de")
     filter_horizontal = ("composants_fusion",)
     ordering = ("ordre_affichage", "identifiant")

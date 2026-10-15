@@ -316,24 +316,16 @@ class CodePrescription(_NaturalKeyByIdentifiant):
 
     identifiant = models.SlugField(max_length=32, unique=True)
     mots_cles = models.CharField(max_length=255, blank=True)
-    texte_court = models.TextField(
-        help_text="Rédaction simplifiée pour affichage utilisateur."
-    )
-    texte_redaction_initiale = models.TextField(
-        blank=True,
-        help_text="Rédaction juridique brute de l'arrêté.",
-    )
-    # Contenu riche éditable (carte #136). Source unique du rendu DSFR du PC
-    # quand non vide : compilé en HTML au rendu (cf. compile_dsfr), édité via
-    # l'éditeur WYSIWYG dans l'admin. Les champs texte ci-dessus restent en
-    # place (fallback tant que `blocs` est vide ; pas de casse pour les autres
-    # consommateurs de la table).
+    # Contenu riche éditable (carte #136) : source unique du rendu DSFR du PC,
+    # compilé en HTML au rendu (cf. compile_dsfr), édité via l'éditeur WYSIWYG
+    # de l'admin. Les anciens champs texte_court / texte_redaction_initiale
+    # ont été retirés (migration 0042) : plus aucun rendu ne les utilisait.
     blocs = models.JSONField(
         default=dict,
         blank=True,
         help_text=(
             "Contenu riche (format {schema, blocs:[...]}). Édité via l'éditeur, "
-            "jamais à la main. Si vide, on retombe sur texte_court."
+            "jamais à la main."
         ),
     )
     toujours_affiche = models.BooleanField(

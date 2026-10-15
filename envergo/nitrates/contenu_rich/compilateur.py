@@ -357,4 +357,36 @@ def compile_dsfr(
     return format_html('<div class="contenu-rich">{0}</div>', mark_safe(contenu))
 
 
-__all__ = ["compile_dsfr", "NIVEAU_TITRE_BASE"]
+def resume_texte(blocs, max_car: int = 0) -> str:
+    """Phrase courte tirée d'un contenu riche, en texte brut : le titre
+    principal, sinon le premier paragraphe ou item. Sert là où il faut une
+    ligne (meta description, infobulle, liste de plafonds)."""
+    if isinstance(blocs, dict):
+        blocs = blocs.get("blocs", [])
+
+    def texte(valeur):
+        if isinstance(valeur, list):
+            return "".join(
+                s if isinstance(s, str) else (s or {}).get("texte", "") for s in valeur
+            )
+        return valeur or ""
+
+    candidats = []
+    for bloc in blocs or []:
+        data = (bloc or {}).get("data") or {}
+        if bloc.get("type") == "titre_principal":
+            candidats.insert(0, texte(data.get("texte")))
+        elif bloc.get("type") in ("paragraphe", "citation"):
+            candidats.append(texte(data.get("texte")))
+        elif bloc.get("type") == "liste" and data.get("items"):
+            item = data["items"][0]
+            candidats.append(
+                texte(item.get("texte") if isinstance(item, dict) else item)
+            )
+    resume = " ".join(next((c for c in candidats if c.strip()), "").split())
+    if max_car and len(resume) > max_car:
+        resume = resume[: max_car - 1].rsplit(" ", 1)[0] + "…"
+    return resume
+
+
+__all__ = ["compile_dsfr", "resume_texte", "NIVEAU_TITRE_BASE"]

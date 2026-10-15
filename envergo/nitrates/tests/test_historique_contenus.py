@@ -54,8 +54,6 @@ def _post_pc(client, pc, **changes):
     data = {
         "identifiant": pc.identifiant,
         "mots_cles": pc.mots_cles,
-        "texte_court": pc.texte_court,
-        "texte_redaction_initiale": pc.texte_redaction_initiale,
         "blocs": json.dumps(pc.blocs),
         "scope": pc.scope,
         "region_code": pc.region_code,
@@ -67,7 +65,9 @@ def _post_pc(client, pc, **changes):
 
 
 def test_creation_puis_modification_orm():
-    pc = CodePrescription.objects.create(identifiant="pc_h1", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h1",
+    )
     pc.blocs = BLOCS
     pc.save()
 
@@ -78,10 +78,8 @@ def test_creation_puis_modification_orm():
     assert revs[1].environnement == "test"
 
 
-def test_texte_court_non_suivi_et_sauvegarde_identique_sans_revision():
-    pc = CodePrescription.objects.create(identifiant="pc_h2", texte_court="t")
-    pc.texte_court = "autre"
-    pc.texte_redaction_initiale = "autre"
+def test_sauvegarde_identique_sans_revision():
+    pc = CodePrescription.objects.create(identifiant="pc_h2")
     pc.save()
     pc.save()
     assert len(_revisions("pc_h2")) == 1
@@ -89,7 +87,9 @@ def test_texte_court_non_suivi_et_sauvegarde_identique_sans_revision():
 
 def test_admin_trace_auteur_motif_et_origine(admin_client):
     client, user = admin_client
-    pc = CodePrescription.objects.create(identifiant="pc_h3", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h3",
+    )
 
     resp = _post_pc(
         client,
@@ -109,7 +109,9 @@ def test_admin_trace_auteur_motif_et_origine(admin_client):
 
 def test_admin_motif_obligatoire(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(identifiant="pc_h4", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h4",
+    )
 
     resp = _post_pc(client, pc, blocs=json.dumps(BLOCS))
 
@@ -122,8 +124,12 @@ def test_admin_motif_obligatoire(admin_client):
 
 def test_admin_une_seule_revision_avec_composants_de_fusion(admin_client):
     client, _ = admin_client
-    pc1 = CodePrescription.objects.create(identifiant="pc_h_a", texte_court="t")
-    fusion = CodePrescription.objects.create(identifiant="pc_h_fusion", texte_court="t")
+    pc1 = CodePrescription.objects.create(
+        identifiant="pc_h_a",
+    )
+    fusion = CodePrescription.objects.create(
+        identifiant="pc_h_fusion",
+    )
 
     _post_pc(
         client,
@@ -140,16 +146,18 @@ def test_admin_une_seule_revision_avec_composants_de_fusion(admin_client):
 
 
 def test_composants_hors_admin_traces():
-    pc1 = CodePrescription.objects.create(identifiant="pc_h_b", texte_court="t")
-    fusion = CodePrescription.objects.create(identifiant="pc_h_f2", texte_court="t")
+    pc1 = CodePrescription.objects.create(
+        identifiant="pc_h_b",
+    )
+    fusion = CodePrescription.objects.create(
+        identifiant="pc_h_f2",
+    )
     fusion.composants_fusion.add(pc1)
     assert _revisions("pc_h_f2")[-1].instantane["composants_fusion"] == ["pc_h_b"]
 
 
 def test_suppression_garde_le_dernier_etat():
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h5", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h5", blocs=BLOCS)
     pc.delete()
     rev = _revisions("pc_h5")[-1]
     assert rev.action == RevisionContenu.ACTION_SUPPRESSION
@@ -160,7 +168,9 @@ def test_contexte_differe_une_revision_sur_etat_final():
     with historique.contexte_revision(
         origine=RevisionContenu.ORIGINE_COMMANDE, motif="propagation", differer=True
     ):
-        pc = CodePrescription.objects.create(identifiant="pc_h6", texte_court="t")
+        pc = CodePrescription.objects.create(
+            identifiant="pc_h6",
+        )
         pc.blocs = BLOCS
         pc.save()
         CodePrescription.objects.filter(pk=pc.pk).update(mots_cles="final")
@@ -173,12 +183,16 @@ def test_contexte_differe_une_revision_sur_etat_final():
 
 def test_motif_par_variable_d_environnement(monkeypatch):
     monkeypatch.setenv("NITRATES_MOTIF_REVISION", "copié depuis dev")
-    CodePrescription.objects.create(identifiant="pc_h7", texte_court="t")
+    CodePrescription.objects.create(
+        identifiant="pc_h7",
+    )
     assert _revisions("pc_h7")[0].motif == "copié depuis dev"
 
 
 def test_constat_detecte_un_update_sans_trace():
-    pc = CodePrescription.objects.create(identifiant="pc_h8", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h8",
+    )
     CodePrescription.objects.filter(pk=pc.pk).update(blocs=BLOCS)
     assert len(_revisions("pc_h8")) == 1
 
@@ -192,7 +206,9 @@ def test_constat_detecte_un_update_sans_trace():
 
 
 def test_constat_pose_l_etat_initial_et_les_suppressions_sans_trace():
-    pc = CodePrescription.objects.create(identifiant="pc_h9", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h9",
+    )
     RevisionContenu.objects.filter(identifiant="pc_h9").delete()
     call_command("constater_historique_contenus", verbosity=0)
     assert _revisions("pc_h9")[0].action == RevisionContenu.ACTION_CREATION
@@ -219,7 +235,9 @@ def test_contenu_rich_trace():
 
 def test_pages_admin_historique(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(identifiant="pc_h10", texte_court="t")
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h10",
+    )
     pc.blocs = BLOCS
     pc.save()
     creation, modif = _revisions("pc_h10")
@@ -258,9 +276,7 @@ def test_pages_admin_historique(admin_client):
 
 def test_historique_d_un_contenu_supprime_reste_consultable(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h12", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h12", blocs=BLOCS)
     pc.delete()
     page = reverse("admin:nitrates_revisioncontenu_historique", args=["pc", "pc_h12"])
     resp = client.get(page)
@@ -317,9 +333,7 @@ def _page_annulation(client, pc, revision):
 
 def test_annuler_une_ligne_cree_une_nouvelle_version(admin_client):
     client, user = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h20", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h20", blocs=BLOCS)
     pc.blocs = SANS_SOUS_PUCE
     pc.save()
     perte = _revisions("pc_h20")[-1]
@@ -354,9 +368,7 @@ def test_annuler_une_ligne_cree_une_nouvelle_version(admin_client):
 
 def test_annulation_refusee_si_le_contenu_a_change_depuis(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h21", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h21", blocs=BLOCS)
     pc.blocs = SANS_SOUS_PUCE
     pc.save()
     perte = _revisions("pc_h21")[-1]
@@ -382,9 +394,7 @@ def test_annulation_refusee_si_le_contenu_a_change_depuis(admin_client):
 
 def test_annuler_une_metadonnee(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h22", texte_court="t", mots_cles="avant"
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h22", mots_cles="avant")
     pc.mots_cles = "après"
     pc.save()
     rev = _revisions("pc_h22")[-1]
@@ -417,9 +427,7 @@ def test_annulation_reservee_a_qui_peut_modifier(db):
     )
     client = Client()
     client.force_login(lecteur)
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h23", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h23", blocs=BLOCS)
     pc.blocs = SANS_SOUS_PUCE
     pc.save()
     perte = _revisions("pc_h23")[-1]
@@ -442,9 +450,7 @@ def test_annulation_reservee_a_qui_peut_modifier(db):
 
 def test_apercu_d_une_revision_au_rendu_du_site(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h13", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h13", blocs=BLOCS)
     rev = _revisions("pc_h13")[-1]
     url = reverse("nitrates_admin_contenu_rich_preview", urlconf="config.urls_nitrates")
     resp = client.get(f"{url}?type=revision&id={rev.pk}&nu=1")
@@ -469,9 +475,7 @@ def _sans_sous_puces(blocs):
 
 def test_admin_refuse_un_enregistrement_qui_perd_des_sous_puces(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h11", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h11", blocs=BLOCS)
 
     resp = _post_pc(
         client,
@@ -541,7 +545,7 @@ def test_seed_contenus_rich_preserve_les_editions_admin():
 
 def test_apercu_integrable_en_cadre_du_meme_site(admin_client):
     client, _ = admin_client
-    CodePrescription.objects.create(identifiant="pc_h14", texte_court="t", blocs=BLOCS)
+    CodePrescription.objects.create(identifiant="pc_h14", blocs=BLOCS)
     rev = _revisions("pc_h14")[-1]
     url = reverse("nitrates_admin_contenu_rich_preview", urlconf="config.urls_nitrates")
     resp = client.get(f"{url}?type=revision&id={rev.pk}&nu=1")
@@ -569,9 +573,7 @@ def test_liste_numerotee_et_sous_puces_au_rendu():
 
 def test_editeur_actuel_peut_supprimer_une_sous_puce_volontairement(admin_client):
     client, _ = admin_client
-    pc = CodePrescription.objects.create(
-        identifiant="pc_h30", texte_court="t", blocs=BLOCS
-    )
+    pc = CodePrescription.objects.create(identifiant="pc_h30", blocs=BLOCS)
     signe = {**SANS_SOUS_PUCE, "_editeur": "listes-imbriquees"}
 
     resp = _post_pc(

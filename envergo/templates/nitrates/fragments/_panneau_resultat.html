@@ -125,7 +125,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
                 <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
               {% elif pc %}
                 <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
-                {% if pc.texte_court %}<p>{{ pc.texte_court|linebreaksbr }}</p>{% endif %}
               {% endif %}
             {% endwith %}
           {% endfor %}
@@ -243,18 +242,12 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% comment %}
           Prescription(s) conditionnee(s) : une regle peut en porter PLUSIEURS
           (#multi-PC) -> on itere sur ev.regle.codes_prescription. Pour chaque
-          PC, contenu riche (#136) si le PC a des `blocs` (compiles en HTML
-          DSFR), sinon fallback sur l'ancien texte_court + lien "voir plus".
+          PC, contenu riche (#136) : les `blocs` compiles en HTML DSFR (source
+          unique depuis le retrait de texte_court / texte_redaction_initiale).
 
           Regle d'anti-doublon (#216) : le contenu riche `blocs` s'affiche
           TOUJOURS -- c'est une vraie fiche (ex PC15 = detail du plafond 70 kg
-          N/ha), jamais redondante avec le message narratif de la regle. Seul le
-          fallback `texte_court` est masque quand la regle a deja un `message` :
-          ce texte_court est volontairement lapidaire (ex pc5 "Apport d'engrais
-          mineraux autorise.") et ferait doublon avec le message.
-          Avant #216, la condition `not message` sautait TOUT le bloc PC, y
-          compris les blocs riches -> la PC15 d'une regle avec message
-          (ex CIE courte types 0/I/II) ne s'affichait pas.
+          N/ha), jamais redondante avec le message narratif de la regle.
           {% endcomment %}
           {% comment %}
           #271 chantier 3 — les prescriptions conditionnées (blocs riches PC) et
@@ -313,10 +306,11 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endcomment %}
           {% if data.prairie_permanente == "True" %}
             {% with pc16=codes_prescription|get_item:"pc16" %}
-              {% if pc16 %}
+              {% if pc16.blocs %}
+                <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc16.blocs id_prefix="pc16-prairie" %}</div>
+              {% elif pc16 %}
                 <div class="fr-callout fr-mt-3w">
                   <h4 class="fr-callout__title">{{ pc16.mots_cles|default:"Plafond prairies" }} (PC16)</h4>
-                  {% if pc16.texte_court %}<p>{{ pc16.texte_court|linebreaksbr }}</p>{% endif %}
                 </div>
               {% endif %}
             {% endwith %}
@@ -329,35 +323,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           juristes dans l'admin, sans toucher au code. Rendu sous les
           prescriptions conditionnees.
           {% endcomment %}
-          <div class="fr-accordions-group fr-mt-3w">
-            {% contenu_rich "resultat.regles_permanentes" %}
-
-            {% comment %}
-              Texte reglementaire initial de chaque PC (cible des liens "voir
-              plus") : un accordeon par PC (#multi-PC). UNIQUEMENT en fallback —
-              si le PC a des blocs (#136), son contenu riche remplace deja cet
-              accordeon (rendu plus haut), on ne le redouble pas ici.
-            {% endcomment %}
-            {% for cp in ev.regle.codes_prescription %}
-              {% with pc=codes_prescription|get_item:cp %}
-                {% if not pc.blocs and pc.texte_redaction_initiale %}
-                  <section class="fr-accordion">
-                    <h3 class="fr-accordion__title">
-                      <button class="fr-accordion__btn"
-                              type="button"
-                              aria-expanded="false"
-                              aria-controls="accordion-texte-init-{{ cp }}">
-                        Texte d'application réglementaire initial ({{ pc.mots_cles|default:cp }})
-                      </button>
-                    </h3>
-                    <div class="fr-collapse" id="accordion-texte-init-{{ cp }}">
-                      <p>{{ pc.texte_redaction_initiale|linebreaksbr }}</p>
-                    </div>
-                  </section>
-                {% endif %}
-              {% endwith %}
-            {% endfor %}
-          </div>
+          <div class="fr-accordions-group fr-mt-3w">{% contenu_rich "resultat.regles_permanentes" %}</div>
 
         {% endif %}
 
@@ -392,20 +358,4 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
        class="fr-btn fr-btn--tertiary fr-btn--icon-left fr-icon-refresh-line">Recommencer</a>
   </div>
 
-  <script>
-    (function () {
-      document.addEventListener("click", function (e) {
-        var a = e.target.closest(".nitrates-voir-plus");
-        if (!a) return;
-        e.preventDefault();
-        var id = a.getAttribute("data-target");
-        var btn = document.querySelector('[aria-controls="' + id + '"]');
-        if (btn && btn.getAttribute("aria-expanded") !== "true") {
-          btn.click();
-        }
-        var panel = document.getElementById(id);
-        if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    })();
-  </script>
 </div>

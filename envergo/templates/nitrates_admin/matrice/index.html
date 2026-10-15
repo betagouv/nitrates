@@ -699,17 +699,11 @@
                             {% if pc.mots_cles %}— <strong>{{ pc.mots_cles }}</strong>{% endif %}
                           </p>
                           {% comment %}
-                          Texte intégral de la PC : contenu riche (blocs DSFR)
-                          quand renseigné, sinon rédaction initiale de
-                          l'arrêté, sinon le texte court.
+                          Texte intégral de la PC : son contenu riche (blocs DSFR).
                           {% endcomment %}
                           <div class="matrice-pc-integral">
                             {% if pc.blocs %}
                               {% compile_blocs pc.blocs id_prefix=pc.code %}
-                            {% elif pc.texte_redaction_initiale %}
-                              {{ pc.texte_redaction_initiale|linebreaks }}
-                            {% elif pc.texte_court %}
-                              {{ pc.texte_court|linebreaks }}
                             {% endif %}
                           </div>
                         </div>
@@ -722,7 +716,7 @@
                       {% for pc in c.plafonds %}
                         <li>
                           <code>{{ pc.code }}</code>
-                          {% if pc.texte_court %}<span class="matrice-pc-texte">: {{ pc.texte_court }}</span>{% endif %}
+                          {% if pc.blocs %}<span class="matrice-pc-texte">: {{ pc.blocs|resume_blocs:120 }}</span>{% endif %}
                         </li>
                       {% endfor %}
                     </ul>

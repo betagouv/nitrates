@@ -5,8 +5,8 @@ commande, fixture, migration) laisse une révision : instantané complet de ce
 qui est rendu (blocs riches + métadonnées), où (environnement), quand, qui,
 par quel canal, et pourquoi (motif libre, ex « copié depuis staging »).
 
-Les champs `texte_court` / `texte_redaction_initiale` des PC ne sont pas
-suivis : seul le bloc riche est rendu, ce sont des reliquats.
+Pour une PC, l'instantané porte le bloc riche (seul contenu rendu) et les
+métadonnées.
 
 La capture est faite par `envergo.nitrates.historique` (signaux + contexte).
 """

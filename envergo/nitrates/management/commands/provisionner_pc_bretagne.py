@@ -48,8 +48,6 @@ CHAMPS = (
     "region_code",
     "plafond",
     "mots_cles",
-    "texte_court",
-    "texte_redaction_initiale",
     "blocs",
 )
 

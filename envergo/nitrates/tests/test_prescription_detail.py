@@ -27,8 +27,9 @@ def _url(identifiant):
     return f"/prescription/{identifiant}/"
 
 
-def test_pc_de_base_rendu_texte_court(client):
-    # pc5 n'a pas de contenu riche dans la fixture : fallback texte_court.
+def test_pc_texte_court_converti_en_contenu_riche(client):
+    # pc5 n'avait qu'un texte court : la migration 0042 / la fixture l'ont
+    # converti en paragraphe de contenu riche.
     r = client.get(_url("pc5"))
     assert r.status_code == 200
     html = r.content.decode()
@@ -49,14 +50,16 @@ def test_pc_inconnu_404(client):
 
 
 def test_contenu_riche_prioritaire(client):
-    """pc1 a des blocs seedés (#136) : le rendu riche prime sur texte_court."""
+    """pc1 a des blocs seedés (#136) : rendu riche, et sa meta description
+    est tirée du contenu riche."""
     r = client.get(_url("pc1"))
     assert r.status_code == 200
     html = r.content.decode()
     assert 'class="contenu-rich"' in html
     pc1 = CodePrescription.objects.get(identifiant="pc1")
-    # Le fallback texte brut ne doit PAS être rendu en parallèle.
-    assert pc1.texte_court.splitlines()[0] not in html
+    from envergo.nitrates.contenu_rich.compilateur import resume_texte
+
+    assert resume_texte(pc1.blocs, max_car=40)[:30] in html
 
 
 def test_exempt_du_lockdown_root_public(client, settings):

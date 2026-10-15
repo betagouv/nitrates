@@ -69,8 +69,8 @@ def identifiant_metier(instance):
 
 
 def instantane(instance):
-    """État suivi d'un objet. `texte_court` et `texte_redaction_initiale`
-    des PC sont volontairement exclus (reliquats, seul le bloc est rendu)."""
+    """État suivi d'un objet : ce qui est rendu (bloc riche) et les
+    métadonnées."""
     CodePrescription, _ = _modeles()
     if isinstance(instance, CodePrescription):
         return {

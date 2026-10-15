@@ -18,7 +18,7 @@ SOURCE = Path(settings.NITRATES_SPECS_DIR) / "pc_bretagne.json"
 def bases():
     for ident in ("pc6", "pc7"):
         CodePrescription.objects.get_or_create(
-            identifiant=ident, defaults={"texte_court": ident}
+            identifiant=ident, defaults={"mots_cles": ident}
         )
 
 
@@ -41,24 +41,20 @@ def test_cree_les_pc_bretagne_en_region_53(bases):
 def test_idempotent_sans_ecraser_une_retouche(bases):
     call_command("provisionner_pc_bretagne")
     CodePrescription.objects.filter(identifiant="pc_bzh_derobees").update(
-        texte_court="retouche juriste"
+        mots_cles="retouche juriste"
     )
     call_command("provisionner_pc_bretagne")
     assert (
-        CodePrescription.objects.get(identifiant="pc_bzh_derobees").texte_court
+        CodePrescription.objects.get(identifiant="pc_bzh_derobees").mots_cles
         == "retouche juriste"
     )
 
 
 def test_maj_ecrase(bases):
     call_command("provisionner_pc_bretagne")
-    CodePrescription.objects.filter(identifiant="pc_bzh_derobees").update(
-        texte_court="x"
-    )
+    CodePrescription.objects.filter(identifiant="pc_bzh_derobees").update(mots_cles="x")
     call_command("provisionner_pc_bretagne", maj=True)
-    assert (
-        CodePrescription.objects.get(identifiant="pc_bzh_derobees").texte_court != "x"
-    )
+    assert CodePrescription.objects.get(identifiant="pc_bzh_derobees").mots_cles != "x"
 
 
 def test_dry_run_ne_cree_rien(bases):

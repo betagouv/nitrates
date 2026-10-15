@@ -213,7 +213,6 @@ def test_code_prescription_note_optionnelle():
     pc = CodePrescription.objects.create(
         identifiant="test_pc_opt",
         mots_cles="test",
-        texte_court="Test sans note.",
     )
     assert pc.note_reglementaire is None
 
@@ -227,7 +226,6 @@ def test_code_prescription_note_set_null_a_suppression_note():
     pc = CodePrescription.objects.create(
         identifiant="test_pc_sn",
         mots_cles="test",
-        texte_court="Test",
         note_reglementaire=note,
     )
     note.delete()

@@ -6,8 +6,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "effluent peu chargé Bretagne",
-    "texte_court": "Épandage des effluents liquides peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé jusqu'au 31 août, dans la limite de 50 kg d'azote efficace par hectare.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (2) : « Les effluents liquides peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) peuvent être épandus sur culture de printemps jusqu'au 31 août dans la limite de 50 kg d'azote efficace par ha. »",
     "blocs": {
       "blocs": [
         {
@@ -86,8 +84,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "effluent peu chargé Bretagne",
-    "texte_court": "Épandage des effluents peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé pendant la période d'interdiction, dans la limite de 20 kg d'azote efficace par hectare et dans le respect des autres règles d'épandage.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (3) : « L'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) est autorisé dans la limite de 20 kg d'azote efficace /ha durant les périodes d'interdiction fixées pour ces types de cultures, et dans le respect des autres règles d'épandage en vigueur. »",
     "blocs": {
       "blocs": [
         {
@@ -166,8 +162,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "CINE culture suivante Bretagne",
-    "texte_court": "Toute fertilisation d'un couvert non exporté (CINE) est interdite, sauf les apports de fertilisants de type I destinés à la culture suivante, autorisés à partir du 15 janvier.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 6.1 : « Toute fertilisation d'un CINE est interdite à l'exception des apports de fertilisants de type I destinés à la culture suivante autorisés à partir du 15 janvier »",
     "blocs": {
       "blocs": [
         {
@@ -223,8 +217,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "dérobées GREN Bretagne",
-    "texte_court": "Fertilisation des dérobées limitée aux seuls mois de juillet (50 kg d'azote par hectare) ou d'août (40 kg d'azote par hectare), sans cumul. Apport interdit en octobre, novembre et décembre. En septembre, seul l'épandage d'effluents peu chargés (moins de 0,5 kg d'azote par m³) est autorisé, dans la limite de 20 kg d'azote efficace par hectare.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (1) : « L'apport de fertilisants sur dérobées (et donc, l'épandage) est interdit en octobre, novembre et décembre conformément à l'arrêté GREN, qui limite les possibilités de fertilisation aux seuls mois de juillet (50 UN/ha) ou août (40 UN/ha), sans possibilité de cumul. En septembre, aucun apport n'est autorisé, sauf effluent peu chargé (issu d'un traitement d'effluent brut avec une teneur < 0.5 uN/m3) dans la limite de 20 uN efficace/ha. »",
     "blocs": {
       "blocs": [
         {
@@ -302,8 +294,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "maïs semis Bretagne",
-    "texte_court": "Les apports de fertilisants de type II avant un semis de maïs doivent être réalisés au plus près de la date prévisionnelle du semis.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1 : « Dans tous les cas, les apports de fertilisants type II avant un semis de maïs doivent être réalisés au plus près de la date prévisionnelle de celui-ci. »",
     "blocs": {
       "blocs": [
         {
@@ -347,8 +337,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "maïs zone 1 Bretagne",
-    "texte_court": "Zone 1 : en cas de situation météorologique favorable, la fin de la période d'interdiction (15 mars) peut être avancée au 1er mars par arrêté du préfet de département, signé entre le 25 février et le 1er mars.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1, zone 1 de l'annexe 7 : « en cas de situation météorologique favorable et dès lors que les services de l'État enregistrent une demande en ce sens émanant d'une structure régionale de type syndicale, consulaire ou économique, les services de l'État examinent la possibilité d'accorder une dérogation pour permettre un épandage plus précoce, à partir du 1er mars, date qui pourra alors être confirmée par arrêté signé par le préfet de département entre le 25 février et le 1er mars. »",
     "blocs": {
       "blocs": [
         {
@@ -433,8 +421,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "maïs zone 2 Bretagne",
-    "texte_court": "Zone 2 : en cas de situation météorologique défavorable, la période d'interdiction peut être prolongée jusqu'au 31 mars par arrêté du préfet de département, signé entre le 10 et le 15 mars.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), art. 4.1, zone 2 de l'annexe 7 : « en cas de situation météorologique défavorable, un arrêté prolongeant la période d'interdiction d'épandage jusqu'au 31 mars pourra être signé par le préfet de département entre le 10 mars et le 15 mars. »",
     "blocs": {
       "blocs": [
         {
@@ -516,8 +502,6 @@
     "region_code": "53",
     "plafond": false,
     "mots_cles": "prairie jeune septembre Bretagne",
-    "texte_court": "Épandage des effluents peu chargés issus d'un traitement d'effluents bruts (moins de 0,5 kg d'azote par m³) autorisé du 1er au 30 septembre, dans la limite de 20 kg d'azote efficace par hectare.",
-    "texte_redaction_initiale": "Arrêté préfectoral régional du 28/08/2026 (PAR Bretagne modifié), annexe 6, note (4) : « L'épandage d'effluents peu chargés issus d'un traitement d'effluents bruts (contenant moins de 0,5 kg d'azote par m3) est autorisé du 1er au 30 septembre dans la limite de 20 kg d'azote efficace /ha »",
     "blocs": {
       "blocs": [
         {
