@@ -2,18 +2,23 @@
 
 - Motif obligatoire à chaque enregistrement d'un PC ou d'un contenu riche.
 - Une page d'historique par PC / contenu (bouton « Historique » de la fiche) :
-  toutes les versions avec un résumé de ce qui a changé ; un clic affiche
-  la différence avec la version précédente (texte rendu, mot à mot, et
-  métadonnées) ; deux versions quelconques se comparent comme dans un
-  historique de wiki ; le rendu de chaque version est celui du site public.
+  les changements du plus récent au plus ancien, avec un résumé ; un clic
+  affiche la différence avec la version précédente (texte rendu, mot à mot,
+  et métadonnées) et le rendu du site avant / après.
+- Annulation ligne à ligne : les lignes choisies d'un changement sont
+  annulées par patch inverse sur la version ACTUELLE, ce qui crée une
+  nouvelle version par-dessus (cf. historique_diff).
 """
 
 import difflib
+import hashlib
 import json
 import re
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -22,7 +27,7 @@ from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.timezone import localtime
 
-from envergo.nitrates import historique
+from envergo.nitrates import historique, historique_diff
 from envergo.nitrates.models import RevisionContenu
 
 NB_REVISIONS_FICHE = 5
@@ -139,58 +144,10 @@ def _qui(revision):
     return f"{qui} · {canal}" if qui else canal
 
 
-# ─── Texte rendu et différences ──────────────────────────────────────────────
-
-
-def _texte(valeur):
-    if isinstance(valeur, list):
-        return "".join(
-            s if isinstance(s, str) else (s or {}).get("texte", "") for s in valeur
-        )
-    return valeur or ""
-
-
-def textes_rendus(blocs, retrait=""):
-    """Lignes de texte telles qu'un usager les lit (pour comparer deux
-    versions sans lire de JSON)."""
-    if isinstance(blocs, dict):
-        blocs = blocs.get("blocs") or []
-    lignes = []
-
-    def items(liste, niveau):
-        for item in liste or []:
-            item = item if isinstance(item, dict) else {"texte": item}
-            puce = "•" if niveau == 0 else "◦"
-            lignes.append(
-                f"{retrait}{'    ' * (niveau + 1)}{puce} {_texte(item.get('texte'))}"
-            )
-            items(item.get("enfants"), niveau + 1)
-
-    for bloc in blocs or []:
-        data = bloc.get("data") or {}
-        t = bloc.get("type")
-        if t == "titre_principal":
-            lignes.append(f"{retrait}# {_texte(data.get('texte'))}")
-        elif t == "titre_paragraphe":
-            lignes.append(f"{retrait}## {_texte(data.get('texte'))}")
-        elif t in ("paragraphe", "citation"):
-            lignes.append(f"{retrait}{_texte(data.get('texte'))}")
-        elif t == "liste":
-            items(data.get("items"), 0)
-        elif t == "foldable":
-            lignes.append(f"{retrait}▸ {_texte(data.get('titre'))}")
-            lignes.extend(textes_rendus(data.get("blocs"), retrait + "    "))
-        elif t == "tableau":
-            for ligne in data.get("lignes") or []:
-                lignes.append(
-                    f"{retrait}| " + " | ".join(_texte(c) for c in ligne) + " |"
-                )
-        else:
-            lignes.append(f"{retrait}[{t}]")
-    return lignes
-
+# ─── Différences affichées ───────────────────────────────────────────────────
 
 _MOTS = re.compile(r"\s+|\w+|[^\w\s]", re.UNICODE)
+_CACHES = ("/liste", "/volet")
 
 
 def _diff_mots(avant, apres):
@@ -208,57 +165,59 @@ def _diff_mots(avant, apres):
     return mark_safe("".join(morceaux))
 
 
-def diff_lignes(avant, apres):
-    """Différence ligne à ligne : liste de (genre, html, loin) avec genre parmi
-    egal / modif / ajout / retrait ; `loin` = ligne inchangée éloignée d'un
-    changement (repliée par défaut)."""
+def _blocs(instantane):
+    return (instantane or {}).get("blocs") or []
+
+
+def lignes_comparaison(avant, apres, actuel=None):
+    """Lignes affichées pour le changement avant -> apres, avec pour chaque
+    ligne changée son identifiant d'annulation et si elle est annulable sur la
+    version actuelle. Les marqueurs de fermeture ne sont pas affichés ; une
+    ouverture de liste inchangée non plus."""
+    actuel = apres if actuel is None else actuel
+    ub, uc, lignes = historique_diff.lignes_annulables(
+        _blocs(avant), _blocs(apres), _blocs(actuel)
+    )
     sortie = []
-    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(
-        None, avant, apres, autojunk=False
-    ).get_opcodes():
-        if op == "equal":
-            sortie += [
-                ["egal", format_html("{}", ligne), False] for ligne in avant[i1:i2]
-            ]
-        elif op == "delete":
-            sortie += [
-                ["retrait", format_html("{}", ligne), False] for ligne in avant[i1:i2]
-            ]
-        elif op == "insert":
-            sortie += [
-                ["ajout", format_html("{}", ligne), False] for ligne in apres[j1:j2]
-            ]
+    for lg in lignes:
+        u = uc[lg["cible"]] if lg["cible"] is not None else ub[lg["base"]]
+        if u["k"] in _CACHES or (lg["genre"] == "egal" and u["k"] == "liste"):
+            continue
+        if lg["genre"] == "modif":
+            html = _diff_mots(
+                historique_diff.libelle(ub[lg["base"]]), historique_diff.libelle(u)
+            )
         else:
-            vieux, neufs = avant[i1:i2], apres[j1:j2]
-            for k in range(max(len(vieux), len(neufs))):
-                v = vieux[k] if k < len(vieux) else None
-                n = neufs[k] if k < len(neufs) else None
-                if v is not None and n is not None:
-                    if difflib.SequenceMatcher(None, v, n).ratio() >= 0.4:
-                        sortie.append(["modif", _diff_mots(v, n), False])
-                        continue
-                    sortie.append(["retrait", format_html("{}", v), False])
-                    sortie.append(["ajout", format_html("{}", n), False])
-                elif v is not None:
-                    sortie.append(["retrait", format_html("{}", v), False])
-                else:
-                    sortie.append(["ajout", format_html("{}", n), False])
-    changes = [i for i, (genre, _, _) in enumerate(sortie) if genre != "egal"]
-    for i, ligne in enumerate(sortie):
-        if ligne[0] == "egal":
-            ligne[2] = not any(abs(i - c) <= CONTEXTE for c in changes)
-    return [tuple(ligne) for ligne in sortie]
+            html = format_html("{}", historique_diff.libelle(u))
+        sortie.append(
+            {
+                "genre": lg["genre"],
+                "signe": {"ajout": "+", "retrait": "−", "modif": "~"}.get(
+                    lg["genre"], ""
+                ),
+                "html": html,
+                "op": lg["op"],
+                "annulable": lg.get("annulable", False),
+                "deja": lg.get("deja", False),
+            }
+        )
+    changes = [i for i, lg in enumerate(sortie) if lg["genre"] != "egal"]
+    for i, lg in enumerate(sortie):
+        lg["loin"] = lg["genre"] == "egal" and not any(
+            abs(i - c) <= CONTEXTE for c in changes
+        )
+    return sortie
 
 
 def grouper(lignes):
     """Regroupe les lignes inchangées éloignées des changements en plis
     dépliables (comme les « lignes masquées » d'un diff GitHub)."""
     groupes = []
-    for genre, html, loin in lignes:
-        if loin and groupes and groupes[-1]["pli"]:
-            groupes[-1]["lignes"].append((genre, html))
+    for lg in lignes:
+        if lg["loin"] and groupes and groupes[-1]["pli"]:
+            groupes[-1]["lignes"].append(lg)
         else:
-            groupes.append({"pli": loin, "lignes": [(genre, html)]})
+            groupes.append({"pli": lg["loin"], "lignes": [lg]})
     return groupes
 
 
@@ -266,29 +225,34 @@ def resume_changement(avant, apres):
     """Résumé lisible d'une version par rapport à la précédente, et un drapeau
     « du texte a disparu » (pour le signaler en rouge)."""
     if avant is None:
-        n = len(textes_rendus(apres.get("blocs")))
+        n = sum(
+            1
+            for u in historique_diff.lineariser(_blocs(apres))
+            if u["k"] not in ("liste",) + _CACHES
+        )
         return f"Version initiale ({n} lignes)", False
-    lignes = diff_lignes(
-        textes_rendus(avant.get("blocs")), textes_rendus(apres.get("blocs"))
-    )
-    retraits = [html for genre, html, _ in lignes if genre == "retrait"]
-    sous_puces = sum(1 for html in retraits if str(html).lstrip().startswith("◦"))
+    ub, uc, lignes = historique_diff.differences(_blocs(avant), _blocs(apres))
+    visibles = [
+        (lg, uc[lg["cible"]] if lg["cible"] is not None else ub[lg["base"]])
+        for lg in lignes
+        if lg["genre"] != "egal"
+    ]
+    visibles = [(lg, u) for lg, u in visibles if u["k"] not in ("liste",) + _CACHES]
+    retraits = [u for lg, u in visibles if lg["genre"] == "retrait"]
+    sous_puces = sum(1 for u in retraits if u["k"] == "item" and u["d"] > 0)
     parties = []
     if sous_puces:
-        parties.append(
-            f"{sous_puces} sous-puce{'s' if sous_puces > 1 else ''} supprimée{'s' if sous_puces > 1 else ''}"
-        )
+        s = "s" if sous_puces > 1 else ""
+        parties.append(f"{sous_puces} sous-puce{s} supprimée{s}")
     autres = len(retraits) - sous_puces
     if autres:
-        parties.append(
-            f"{autres} ligne{'s' if autres > 1 else ''} supprimée{'s' if autres > 1 else ''}"
-        )
-    for genre, libelle in (("modif", "modifiée"), ("ajout", "ajoutée")):
-        n = sum(1 for g, _, _ in lignes if g == genre)
+        s = "s" if autres > 1 else ""
+        parties.append(f"{autres} ligne{s} supprimée{s}")
+    for genre, libelle_genre in (("modif", "modifiée"), ("ajout", "ajoutée")):
+        n = sum(1 for lg, _ in visibles if lg["genre"] == genre)
         if n:
-            parties.append(
-                f"{n} ligne{'s' if n > 1 else ''} {libelle}{'s' if n > 1 else ''}"
-            )
+            s = "s" if n > 1 else ""
+            parties.append(f"{n} ligne{s} {libelle_genre}{s}")
     metas = [k for k in historique.champs_differents(avant, apres) if k != "blocs"]
     if metas:
         parties.append("métadonnées : " + ", ".join(metas))
@@ -307,6 +271,63 @@ def _resumes(revisions):
             None if r.action == RevisionContenu.ACTION_SUPPRESSION else r.instantane
         )
     return resumes
+
+
+def empreinte(instantane):
+    return hashlib.sha1(
+        json.dumps(instantane, sort_keys=True, ensure_ascii=False, default=str).encode()
+    ).hexdigest()
+
+
+# Métadonnées remises à leur valeur d'avant par une annulation.
+_META_SIMPLES = {
+    RevisionContenu.TYPE_PC: (
+        "mots_cles",
+        "toujours_affiche",
+        "plafond",
+        "scope",
+        "region_code",
+        "ordre_affichage",
+    ),
+    RevisionContenu.TYPE_CONTENU_RICH: (
+        "libelle_admin",
+        "type_contenu",
+        "titre_public",
+        "categorie",
+        "termes_declencheurs",
+    ),
+}
+_META_LIENS = ("note_reglementaire", "variante_de", "composants_fusion")
+
+
+def _meta_annulable(type_obj, champ):
+    return champ in _META_SIMPLES.get(type_obj, ()) or (
+        type_obj == RevisionContenu.TYPE_PC and champ in _META_LIENS
+    )
+
+
+def _appliquer_meta(objet, champ, valeur):
+    from envergo.nitrates.models import CodePrescription, NoteReglementaire
+
+    if champ == "note_reglementaire":
+        objet.note_reglementaire = (
+            NoteReglementaire.objects.filter(identifiant=valeur).first()
+            if valeur
+            else None
+        )
+    elif champ == "variante_de":
+        objet.variante_de = (
+            CodePrescription.objects.filter(identifiant=valeur).first()
+            if valeur
+            else None
+        )
+    elif champ == "composants_fusion":
+        return lambda: objet.composants_fusion.set(
+            CodePrescription.objects.filter(identifiant__in=valeur or [])
+        )
+    else:
+        setattr(objet, champ, valeur)
+    return None
 
 
 # ─── Admin des révisions + page d'historique ─────────────────────────────────
@@ -330,6 +351,11 @@ class RevisionContenuAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         return [
+            path(
+                "historique/<str:type_objet>/<str:identifiant>/annuler/",
+                self.admin_site.admin_view(self.annuler_view),
+                name="nitrates_revisioncontenu_annuler",
+            ),
             path(
                 "historique/<str:type_objet>/<str:identifiant>/",
                 self.admin_site.admin_view(self.historique_view),
@@ -376,48 +402,61 @@ class RevisionContenuAdmin(admin.ModelAdmin):
             url_historique(revision.type_objet, revision.identifiant, a=revision.pk)
         )
 
-    def historique_view(self, request, type_objet, identifiant):
-        if not self.has_view_permission(request):
-            raise Http404
-        revisions = list(
+    # ── Page d'historique ──
+
+    @staticmethod
+    def _revisions(type_objet, identifiant):
+        return list(
             RevisionContenu.objects.filter(
                 type_objet=type_objet, identifiant=identifiant
             )
             .select_related("auteur")
             .order_by("created_at", "pk")
         )
+
+    @staticmethod
+    def _peut_annuler(request, type_objet, objet, cible, base):
+        modele = (
+            "codeprescription"
+            if type_objet == RevisionContenu.TYPE_PC
+            else "contenurichdsfr"
+        )
+        return (
+            objet is not None
+            and base is not None
+            and cible.action
+            in (RevisionContenu.ACTION_MODIFICATION, RevisionContenu.ACTION_CONSTAT)
+            and request.user.has_perm(f"nitrates.change_{modele}")
+        )
+
+    def historique_view(self, request, type_objet, identifiant):
+        if not self.has_view_permission(request):
+            raise Http404
+        revisions = self._revisions(type_objet, identifiant)
         if not revisions:
             raise Http404("Aucun historique pour ce contenu.")
         par_pk = {r.pk: r for r in revisions}
-        rang = {r.pk: i for i, r in enumerate(revisions)}
+        valeur = request.GET.get("a", "")
+        cible = par_pk.get(int(valeur)) if valeur.isdigit() else None
+        cible = cible or revisions[-1]
+        base = _version_precedente(revisions, cible)
 
-        def choisie(param):
-            valeur = request.GET.get(param, "")
-            return par_pk.get(int(valeur)) if valeur.isdigit() else None
-
-        cible = choisie("a") or revisions[-1]
-        base = choisie("de")
-        if base is None:
-            i = rang[cible.pk]
-            base = revisions[i - 1] if i > 0 else None
-        elif rang[base.pk] > rang[cible.pk]:
-            base, cible = cible, base
-        if base is not None and base.pk == cible.pk:
-            base = None
-
+        objet = _objet_courant(type_objet, identifiant)
+        actuel = historique.instantane(objet) if objet else cible.instantane
         avant = base.instantane if base else {}
-        apres = cible.instantane
-        lignes = diff_lignes(
-            textes_rendus(avant.get("blocs")), textes_rendus(apres.get("blocs"))
-        )
+        lignes = lignes_comparaison(avant, cible.instantane, actuel)
+        peut_annuler = self._peut_annuler(request, type_objet, objet, cible, base)
         metadonnees = [
-            (
-                k,
-                json.dumps(avant.get(k), ensure_ascii=False),
-                json.dumps(apres.get(k), ensure_ascii=False),
-            )
-            for k in historique.champs_differents(avant, apres)
-            if k != "blocs"
+            {
+                "champ": k,
+                "avant": json.dumps(avant.get(k), ensure_ascii=False),
+                "apres": json.dumps(cible.instantane.get(k), ensure_ascii=False),
+                "annulable": peut_annuler
+                and _meta_annulable(type_objet, k)
+                and actuel.get(k) == cible.instantane.get(k),
+            }
+            for k in historique.champs_differents(avant, cible.instantane)
+            if k != "blocs" and base is not None
         ]
         resumes = _resumes(revisions)
         versions = [
@@ -428,13 +467,15 @@ class RevisionContenuAdmin(admin.ModelAdmin):
                 "resume": resumes[r.pk][0],
                 "perte": resumes[r.pk][1],
                 "lien": url_historique(type_objet, identifiant, a=r.pk),
-                "est_cible": r.pk == cible.pk,
-                "est_base": base is not None and r.pk == base.pk,
+                "selectionnee": r.pk == cible.pk,
+                "actuelle": r.pk == revisions[-1].pk,
             }
             for r in reversed(revisions)
         ]
-        objet = _objet_courant(type_objet, identifiant)
         apercu = reverse("nitrates_admin_contenu_rich_preview")
+        url_public = ""
+        if type_objet == RevisionContenu.TYPE_PC and objet is not None:
+            url_public = reverse("nitrates_prescription_detail", args=[identifiant])
         context = {
             **self.admin_site.each_context(request),
             "opts": self.model._meta,
@@ -443,22 +484,120 @@ class RevisionContenuAdmin(admin.ModelAdmin):
             "type_libelle": dict(RevisionContenu.TYPES).get(type_objet, type_objet),
             "objet": objet,
             "objet_url": _url_objet(objet),
+            "url_public": url_public,
             "versions": versions,
             "cible": cible,
             "cible_quand": _quand(cible),
             "cible_qui": _qui(cible),
             "base": base,
             "base_quand": _quand(base) if base else "",
-            "base_qui": _qui(base) if base else "",
             "groupes": grouper(lignes),
-            "nb_changements": sum(1 for genre, _, _ in lignes if genre != "egal"),
+            "nb_changements": sum(1 for lg in lignes if lg["genre"] != "egal"),
+            "nb_annulables": sum(1 for lg in lignes if lg["annulable"])
+            + sum(1 for m in metadonnees if m["annulable"]),
             "metadonnees": metadonnees,
+            "peut_annuler": peut_annuler,
+            "etat": empreinte(actuel),
+            "url_annuler": reverse(
+                "admin:nitrates_revisioncontenu_annuler", args=[type_objet, identifiant]
+            ),
+            "motif_defaut": f"Annulation de changements de la version du {_quand(cible)} ({_qui(cible)})",
             "apercu_cible": f"{apercu}?type=revision&id={cible.pk}&nu=1",
             "apercu_base": f"{apercu}?type=revision&id={base.pk}&nu=1" if base else "",
         }
         return TemplateResponse(
             request, "admin/nitrates/historique_contenu.html", context
         )
+
+    # ── Annulation : patch inverse appliqué à la version actuelle ──
+
+    def annuler_view(self, request, type_objet, identifiant):
+        if request.method != "POST":
+            return redirect(url_historique(type_objet, identifiant))
+        revisions = self._revisions(type_objet, identifiant)
+        par_pk = {r.pk: r for r in revisions}
+        valeur = request.POST.get("revision", "")
+        cible = par_pk.get(int(valeur)) if valeur.isdigit() else None
+        if cible is None:
+            raise Http404
+        retour = url_historique(type_objet, identifiant, a=cible.pk)
+        base = _version_precedente(revisions, cible)
+        objet = _objet_courant(type_objet, identifiant)
+        if not self._peut_annuler(request, type_objet, objet, cible, base):
+            raise PermissionDenied
+        actuel = historique.instantane(objet)
+        if request.POST.get("etat") != empreinte(actuel):
+            messages.error(
+                request,
+                "Ce contenu a été modifié depuis l'affichage de la page : rien "
+                "n'a été enregistré. Rechargez et recommencez.",
+            )
+            return redirect(retour)
+        ops = [o for o in request.POST.getlist("ops") if o]
+        metas = [
+            m for m in request.POST.getlist("metas") if _meta_annulable(type_objet, m)
+        ]
+        motif = request.POST.get("motif", "").strip()
+        if not (ops or metas):
+            messages.error(
+                request, "Aucune ligne sélectionnée : rien n'a été enregistré."
+            )
+            return redirect(retour)
+        if not motif:
+            messages.error(
+                request, "Le motif est obligatoire : rien n'a été enregistré."
+            )
+            return redirect(retour)
+        try:
+            nouveaux_blocs = (
+                historique_diff.annuler(
+                    base.instantane.get("blocs"),
+                    cible.instantane.get("blocs"),
+                    objet.blocs,
+                    ops,
+                )
+                if ops
+                else objet.blocs
+            )
+        except historique_diff.Conflit as e:
+            messages.error(request, f"{e} Rien n'a été enregistré.")
+            return redirect(retour)
+        apres_m2m = []
+        for champ in metas:
+            if actuel.get(champ) != cible.instantane.get(champ):
+                messages.error(
+                    request,
+                    f"Le champ « {champ} » a changé depuis : rien n'a été enregistré.",
+                )
+                return redirect(retour)
+            differe = _appliquer_meta(objet, champ, base.instantane.get(champ))
+            if differe:
+                apres_m2m.append(differe)
+        with transaction.atomic(), historique.contexte_revision(
+            origine=RevisionContenu.ORIGINE_ADMIN,
+            source="admin (annulation)",
+            motif=motif,
+            auteur=request.user,
+            differer=True,
+        ):
+            objet.blocs = nouveaux_blocs
+            objet.save()
+            for f in apres_m2m:
+                f()
+        n = len(ops) + len(metas)
+        messages.success(
+            request,
+            f"Nouvelle version enregistrée : {n} changement{'s' if n > 1 else ''} annulé{'s' if n > 1 else ''}.",
+        )
+        return redirect(url_historique(type_objet, identifiant))
+
+
+def _version_precedente(revisions, cible):
+    """Version de départ d'un changement ; aucune après une suppression."""
+    i = revisions.index(cible)
+    if i == 0 or revisions[i - 1].action == RevisionContenu.ACTION_SUPPRESSION:
+        return None
+    return revisions[i - 1]
 
 
 def _objet_courant(type_objet, identifiant):

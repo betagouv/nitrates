@@ -7,9 +7,10 @@
   <style>
     .hist {
       display: grid;
-      grid-template-columns: minmax(300px, 420px) 1fr;
+      grid-template-columns: minmax(280px, 380px) 1fr;
       gap: 24px;
       align-items: start;
+      padding-bottom: 120px;
     }
 
     .hist-versions {
@@ -21,51 +22,32 @@
       border-radius: 4px;
     }
 
-    .hist-versions table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .hist-versions th {
-      position: sticky;
-      top: 0;
-      background: var(--darkened-bg, #f8f8f8);
-      font-size: 11px;
-      text-transform: uppercase;
-      padding: 6px;
-      z-index: 1;
-    }
-
-    .hist-versions td {
-      padding: 8px 6px;
+    .hist-version {
+      display: block;
+      padding: 10px 12px;
       border-top: 1px solid var(--hairline-color, #eee);
-      vertical-align: top;
+      color: inherit;
       font-size: 12.5px;
+      text-decoration: none;
     }
 
-    .hist-versions td.radio {
-      width: 22px;
-      text-align: center;
+    .hist-version:first-child {
+      border-top: 0;
     }
 
-    .hist-versions tr.cible td {
-      background: #e8edff;
+    .hist-version:hover {
+      background: rgba(0, 99, 203, 0.08);
+      text-decoration: none;
     }
 
-    .hist-versions tr.base td {
-      background: #f4f4f4;
-    }
-
-    .hist-versions tr.ligne-version {
-      cursor: pointer;
-    }
-
-    .hist-versions tr.ligne-version:hover td {
-      background: #eef3fb;
+    .hist-version.selectionnee {
+      background: rgba(0, 99, 203, 0.16);
+      box-shadow: inset 4px 0 0 #0063cb;
     }
 
     .hist-quand {
       font-weight: 600;
+      color: #0063cb;
     }
 
     .hist-badge {
@@ -83,8 +65,19 @@
       color: #b34000;
     }
 
-    .hist-qui {
+    .hist-badge.actuelle {
+      background: #b8fec9;
+      color: #18753c;
+    }
+
+    .hist-qui,
+    .hist-motif {
       color: var(--body-quiet-color, #666);
+    }
+
+    .hist-motif {
+      font-style: italic;
+      margin-top: 3px;
     }
 
     .hist-resume {
@@ -97,18 +90,11 @@
       font-weight: 600;
     }
 
-    .hist-motif {
-      margin-top: 3px;
-      color: var(--body-quiet-color, #555);
-      font-style: italic;
-    }
-
-    .hist-comparer {
-      position: sticky;
-      bottom: 0;
-      background: var(--body-bg, #fff);
-      padding: 8px;
-      border-top: 1px solid var(--hairline-color, #ddd);
+    .hist-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
     .hist-entete {
@@ -118,8 +104,16 @@
       border-radius: 4px;
     }
 
-    .hist-entete .de {
-      color: var(--body-quiet-color, #666);
+    .hist-barre {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 14px 0 6px;
+    }
+
+    .hist-barre h2 {
+      margin: 0;
     }
 
     .hist-diff {
@@ -132,13 +126,11 @@
 
     .hist-l {
       display: flex;
-      white-space: pre-wrap;
-      word-break: break-word;
+      align-items: flex-start;
       line-height: 1.5;
     }
 
     .hist-l .signe {
-      white-space: normal;
       flex: 0 0 22px;
       text-align: center;
       color: #888;
@@ -148,22 +140,21 @@
     .hist-l .t {
       flex: 1;
       padding-right: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .hist-l .action {
+      flex: 0 0 34px;
+      text-align: center;
     }
 
     .hist-l.ajout {
-      background: #dafbe1;
-    }
-
-    .hist-l.ajout .signe {
-      color: #1a7f37;
+      background: rgba(26, 127, 55, 0.16);
     }
 
     .hist-l.retrait {
-      background: #ffebe9;
-    }
-
-    .hist-l.retrait .signe {
-      color: #c9191e;
+      background: rgba(201, 25, 30, 0.13);
     }
 
     .hist-l.retrait .t {
@@ -171,24 +162,68 @@
     }
 
     .hist-l.modif {
-      background: #fff8c5;
+      background: rgba(214, 160, 0, 0.16);
     }
 
     .hist-l del {
-      background: #ffc1c0;
+      background: rgba(201, 25, 30, 0.3);
       text-decoration: line-through;
     }
 
     .hist-l ins {
-      background: #abf2bc;
+      background: rgba(26, 127, 55, 0.35);
       text-decoration: none;
+    }
+
+    .hist-l.a-annuler {
+      outline: 2px solid #0063cb;
+      outline-offset: -2px;
+      background: rgba(0, 99, 203, 0.14);
+    }
+
+    .hist-marque {
+      display: none;
+      margin-left: 8px;
+      color: #0063cb;
+      font-weight: 600;
+      font-family: system-ui, sans-serif;
+      white-space: nowrap;
+    }
+
+    .a-annuler .hist-marque {
+      display: inline;
+    }
+
+    .hist-annuler {
+      border: 1px solid #0063cb;
+      background: transparent;
+      color: #0063cb;
+      border-radius: 4px;
+      width: 26px;
+      height: 22px;
+      margin: 1px 0;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .hist-annuler:hover,
+    .a-annuler .hist-annuler {
+      background: #0063cb;
+      color: #fff;
+    }
+
+    .hist-conflit {
+      font-size: 11px;
+      color: var(--body-quiet-color, #888);
+      cursor: help;
     }
 
     .hist-pli>button {
       width: 100%;
       text-align: left;
       border: 0;
-      background: #f1f4f8;
+      background: rgba(0, 99, 203, 0.06);
       color: #0063cb;
       padding: 3px 26px;
       cursor: pointer;
@@ -206,6 +241,10 @@
 
     .hist-meta {
       margin-top: 16px;
+    }
+
+    .hist-meta tr.a-annuler td {
+      background: rgba(0, 99, 203, 0.14);
     }
 
     .hist-rendus {
@@ -239,8 +278,54 @@
       background: #fff;
     }
 
-    .hist-section {
-      margin-top: 20px;
+    .hist-panneau {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      display: none;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 24px;
+      background: #000091;
+      color: #fff;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .hist-panneau.visible {
+      display: flex;
+    }
+
+    .hist-panneau strong {
+      white-space: nowrap;
+    }
+
+    .hist-panneau input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px;
+      border-radius: 4px;
+      border: 0;
+    }
+
+    .hist-panneau .enregistrer {
+      background: #fff;
+      color: #000091;
+      font-weight: 700;
+      border: 0;
+      border-radius: 4px;
+      padding: 9px 16px;
+      cursor: pointer;
+    }
+
+    .hist-panneau .vider {
+      background: transparent;
+      color: #fff;
+      border: 1px solid #fff;
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: pointer;
     }
   </style>
 {% endblock %}
@@ -249,7 +334,6 @@
   <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">Accueil</a>
     › <a href="{% url 'admin:app_list' app_label='nitrates' %}">Nitrates</a>
-    › <a href="{% url 'admin:nitrates_revisioncontenu_changelist' %}">Historique des contenus</a>
     ›
     {% if objet_url %}
       <a href="{{ objet_url }}">{{ identifiant }}</a>
@@ -267,156 +351,173 @@
 {% endblock %}
 
 {% block content %}
-
   <div class="hist">
-    <form method="get" class="hist-versions" id="hist-form">
-      <table>
-        <thead>
-          <tr>
-            <th title="Version de départ">De</th>
-            <th title="Version d'arrivée">À</th>
-            <th>Version</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for v in versions %}
-            <tr class="ligne-version{% if v.est_cible %} cible{% endif %}{% if v.est_base %} base{% endif %}"
-                data-lien="{{ v.lien }}">
-              <td class="radio">
-                <input type="radio"
-                       name="de"
-                       value="{{ v.revision.pk }}"
-                       {% if v.est_base %}checked{% endif %}
-                       aria-label="Comparer depuis la version du {{ v.quand }}">
-              </td>
-              <td class="radio">
-                <input type="radio"
-                       name="a"
-                       value="{{ v.revision.pk }}"
-                       {% if v.est_cible %}checked{% endif %}
-                       aria-label="Comparer jusqu'à la version du {{ v.quand }}">
-              </td>
-              <td>
-                <a class="hist-quand" href="{{ v.lien }}">{{ v.quand }}</a>
-                <span class="hist-badge">{{ v.revision.environnement|default:"?" }}</span>
-                {% if v.revision.action == "constat" %}<span class="hist-badge constat">écriture non tracée</span>{% endif %}
-                <div class="hist-qui">{{ v.qui }}</div>
-                <span class="hist-resume{% if v.perte %} perte{% endif %}">{{ v.resume }}</span>
-                {% if v.revision.motif %}<div class="hist-motif">{{ v.revision.motif }}</div>{% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <div class="hist-comparer">
-        <button type="submit" class="button">Comparer les deux versions cochées</button>
-      </div>
-    </form>
+    <nav class="hist-versions"
+         aria-label="Changements, du plus récent au plus ancien">
+      {% for v in versions %}
+        <a class="hist-version{% if v.selectionnee %} selectionnee{% endif %}"
+           href="{{ v.lien }}"
+           {% if v.selectionnee %}aria-current="true"{% endif %}>
+          <span class="hist-quand">{{ v.quand }}</span>
+          <span class="hist-badge">{{ v.revision.environnement|default:"?" }}</span>
+          {% if v.actuelle %}<span class="hist-badge actuelle">version actuelle</span>{% endif %}
+          {% if v.revision.action == "constat" %}<span class="hist-badge constat">écriture non tracée</span>{% endif %}
+          <div class="hist-qui">{{ v.qui }}</div>
+          <span class="hist-resume{% if v.perte %} perte{% endif %}">{{ v.resume }}</span>
+          {% if v.revision.motif %}<div class="hist-motif">{{ v.revision.motif }}</div>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
 
     <section>
+      <div class="hist-nav">
+        {% if objet_url %}<a class="button" href="{{ objet_url }}">← Retour à la fiche {{ identifiant }}</a>{% endif %}
+        {% if url_public %}
+          <a class="button" href="{{ url_public }}" target="_blank" rel="noopener">Voir sur le site ↗</a>
+        {% endif %}
+      </div>
+
       <div class="hist-entete">
-        <div class="de">
-          {% if base %}
-            De la version du <strong>{{ base_quand }}</strong> ({{ base.environnement }}, {{ base_qui }})
-          {% else %}
-            Première version connue
-          {% endif %}
-        </div>
         <div>
-          À la version du <strong>{{ cible_quand }}</strong> ({{ cible.environnement }}, {{ cible_qui }}) : {{ cible.get_action_display|lower }}
+          <strong>{{ cible_quand }}</strong> · {{ cible.environnement }} · {{ cible_qui }} : {{ cible.get_action_display|lower }}
         </div>
         {% if cible.motif %}<div class="hist-motif">Motif : {{ cible.motif }}</div>{% endif %}
-      </div>
-
-      <h2>
-        Texte rendu
-        {% if nb_changements %}
-          ({{ nb_changements }} ligne{{ nb_changements|pluralize }} concernée{{ nb_changements|pluralize }})
+        {% if base %}
+          <div class="hist-qui">Comparé à la version précédente, du {{ base_quand }}.</div>
         {% else %}
-          (aucun changement)
+          <div class="hist-qui">Première version connue.</div>
         {% endif %}
-      </h2>
-      <p>
-        <label>
-          <input type="checkbox" id="hist-tout">
-          Afficher tout le texte
-        </label>
-      </p>
-      <div class="hist-diff">
-        {% for groupe in groupes %}
-          {% if groupe.pli %}
-            <div class="hist-pli">
-              <button type="button">
-                ⋯ {{ groupe.lignes|length }} ligne{{ groupe.lignes|length|pluralize }} inchangée{{ groupe.lignes|length|pluralize }}
-              </button>
-              <div class="hist-pli-lignes">
-                {% for genre, html in groupe.lignes %}
-                  <div class="hist-l {{ genre }}">
-                    <span class="signe"></span><span class="t">{{ html }}</span>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          {% else %}
-            {% for genre, html in groupe.lignes %}
-              <div class="hist-l {{ genre }}">
-                <span class="signe">
-                  {% if genre == "ajout" %}
-                    +
-                  {% elif genre == "retrait" %}
-                    −
-                  {% elif genre == "modif" %}
-                    ~
-                  {% else %}
-
-                  {% endif %}
-                </span><span class="t">{{ html }}</span>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endfor %}
       </div>
 
-      {% if metadonnees %}
-        <div class="hist-meta">
-          <h2>Métadonnées</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Champ</th>
-                <th>Avant</th>
-                <th>Après</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for champ, avant, apres in metadonnees %}
-                <tr>
-                  <td>{{ champ }}</td>
-                  <td>{{ avant }}</td>
-                  <td>{{ apres }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endif %}
+      <form method="post" action="{{ url_annuler }}" id="hist-form">
+        {% csrf_token %}
+        <input type="hidden" name="revision" value="{{ cible.pk }}">
+        <input type="hidden" name="etat" value="{{ etat }}">
 
-      <div class="hist-section">
+        <div class="hist-barre">
+          <h2>
+            Texte rendu
+            {% if nb_changements %}
+              ({{ nb_changements }} ligne{{ nb_changements|pluralize }} changée{{ nb_changements|pluralize }})
+            {% else %}
+              (aucun changement)
+            {% endif %}
+          </h2>
+          <span>
+            <label>
+              <input type="checkbox" id="hist-tout">
+              Afficher tout le texte
+            </label>
+            {% if peut_annuler and nb_annulables %}
+              <button type="button" class="button" id="hist-tout-annuler">↶ Annuler tout ce changement</button>
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="hist-diff">
+          {% for groupe in groupes %}
+            {% if groupe.pli %}
+              <div class="hist-pli">
+                <button type="button">
+                  ⋯ {{ groupe.lignes|length }} ligne{{ groupe.lignes|length|pluralize }} inchangée{{ groupe.lignes|length|pluralize }}
+                </button>
+                <div class="hist-pli-lignes">
+                  {% for ligne in groupe.lignes %}
+                    <div class="hist-l egal">
+                      <span class="signe"></span><span class="t">{{ ligne.html }}</span><span class="action"></span>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% else %}
+              {% for ligne in groupe.lignes %}
+                <div class="hist-l {{ ligne.genre }}"
+                     {% if ligne.op %}data-op="{{ ligne.op }}"{% endif %}>
+                  <span class="signe">{{ ligne.signe }}</span><span class="t">{{ ligne.html }}<span class="hist-marque">← sera annulé</span></span><span class="action">
+                    {% if ligne.op and peut_annuler %}
+                      {% if ligne.annulable %}
+                        <button type="button"
+                                class="hist-annuler"
+                                title="Annuler ce changement de ligne"
+                                aria-label="Annuler ce changement de ligne">↶</button>
+                      {% elif ligne.deja %}
+                        <span class="hist-conflit"
+                              title="Cette ligne a déjà été remise dans la version actuelle.">déjà rétablie</span>
+                      {% else %}
+                        <span class="hist-conflit"
+                              title="Cette ligne a été modifiée depuis : elle ne peut plus être annulée d'ici.">modifiée depuis</span>
+                      {% endif %}
+                    {% endif %}
+                  </span>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% if metadonnees %}
+          <div class="hist-meta">
+            <h2>Métadonnées</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Champ</th>
+                  <th>Avant</th>
+                  <th>Après</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in metadonnees %}
+                  <tr data-meta="{{ m.champ }}">
+                    <td>{{ m.champ }}</td>
+                    <td>{{ m.avant }}</td>
+                    <td>{{ m.apres }}</td>
+                    <td>
+                      {% if m.annulable %}
+                        <button type="button"
+                                class="hist-annuler"
+                                title="Remettre la valeur d'avant"
+                                aria-label="Remettre la valeur d'avant">↶</button>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        <div class="hist-panneau"
+             id="hist-panneau"
+             role="region"
+             aria-label="Enregistrer les annulations">
+          <strong id="hist-compte"></strong>
+          <input type="text"
+                 name="motif"
+                 value="{{ motif_defaut }}"
+                 aria-label="Motif (obligatoire)"
+                 required>
+          <button type="submit" class="enregistrer">Enregistrer une nouvelle version</button>
+          <button type="button" class="vider" id="hist-vider">Tout désélectionner</button>
+        </div>
+        <div id="hist-selection"></div>
+      </form>
+
+      <div class="hist-meta">
         <h2>Rendu sur le site</h2>
         <div class="hist-rendus{% if not apercu_base %} seul{% endif %}">
           {% if apercu_base %}
             <figure>
               <figcaption>Avant ({{ base_quand }})</figcaption>
               <iframe src="{{ apercu_base }}"
-                      title="Rendu de la version du {{ base_quand }}"
-                      loading="lazy"></iframe>
+                      title="Rendu de la version du {{ base_quand }}"></iframe>
             </figure>
           {% endif %}
           <figure>
             <figcaption>Après ({{ cible_quand }})</figcaption>
             <iframe src="{{ apercu_cible }}"
-                    title="Rendu de la version du {{ cible_quand }}"
-                    loading="lazy"></iframe>
+                    title="Rendu de la version du {{ cible_quand }}"></iframe>
           </figure>
         </div>
       </div>
@@ -433,13 +534,46 @@
       tout.addEventListener("change", function () {
         document.querySelectorAll(".hist-pli").forEach(function (p) { p.classList.toggle("ouvert", tout.checked); });
       });
-      // Un clic sur une version (hors cases à cocher) l'affiche, comparée à la précédente.
-      document.querySelectorAll("tr.ligne-version").forEach(function (tr) {
-        tr.addEventListener("click", function (e) {
-          if (e.target.closest("input, a")) return;
-          window.location = tr.dataset.lien;
+
+      // Sélection des lignes à annuler : chaque ↶ bascule sa ligne ; le
+      // panneau du bas affiche le compte et enregistre une nouvelle version.
+      var selection = document.getElementById("hist-selection");
+      var panneau = document.getElementById("hist-panneau");
+      var compte = document.getElementById("hist-compte");
+      function rafraichir() {
+        selection.innerHTML = "";
+        var n = 0;
+        document.querySelectorAll(".a-annuler").forEach(function (el) {
+          var input = document.createElement("input");
+          input.type = "hidden";
+          if (el.dataset.op) { input.name = "ops"; input.value = el.dataset.op; }
+          else { input.name = "metas"; input.value = el.dataset.meta; }
+          selection.appendChild(input);
+          n += 1;
+        });
+        panneau.classList.toggle("visible", n > 0);
+        compte.textContent = n + " changement" + (n > 1 ? "s" : "") + " à annuler";
+      }
+      document.querySelectorAll(".hist-annuler").forEach(function (b) {
+        b.addEventListener("click", function () {
+          b.closest("[data-op], [data-meta]").classList.toggle("a-annuler");
+          rafraichir();
         });
       });
+      var toutAnnuler = document.getElementById("hist-tout-annuler");
+      if (toutAnnuler) {
+        toutAnnuler.addEventListener("click", function () {
+          document.querySelectorAll(".hist-annuler").forEach(function (b) {
+            b.closest("[data-op], [data-meta]").classList.add("a-annuler");
+          });
+          rafraichir();
+        });
+      }
+      document.getElementById("hist-vider").addEventListener("click", function () {
+        document.querySelectorAll(".a-annuler").forEach(function (el) { el.classList.remove("a-annuler"); });
+        rafraichir();
+      });
+
       // Les cadres de rendu prennent la hauteur de leur contenu (dépliants compris).
       function ajuster(f) {
         try { f.style.height = f.contentDocument.documentElement.scrollHeight + "px"; } catch (e) {}

@@ -8,7 +8,6 @@ from django.test import Client
 from django.urls import reverse
 
 from envergo.nitrates import historique
-from envergo.nitrates.admin_historique import textes_rendus
 from envergo.nitrates.models import CodePrescription, ContenuRichDSFR, RevisionContenu
 from envergo.users.models import User
 
@@ -218,14 +217,6 @@ def test_contenu_rich_trace():
     assert [r.champs_modifies for r in revs][-1] == ["blocs"]
 
 
-def test_textes_rendus_inclut_les_sous_puces():
-    assert textes_rendus(BLOCS) == [
-        "# Conditions",
-        "    • les conditions du PAR, notamment sur :",
-        "        ◦ la durée du couvert",
-    ]
-
-
 def test_pages_admin_historique(admin_client):
     client, _ = admin_client
     pc = CodePrescription.objects.create(identifiant="pc_h10", texte_court="t")
@@ -256,9 +247,10 @@ def test_pages_admin_historique(admin_client):
     assert "la durée du couvert" in html
     assert f"type=revision&amp;id={modif.pk}&amp;nu=1" in html
 
-    # Comparaison libre, dans n'importe quel ordre.
-    resp = client.get(f"{page}?de={modif.pk}&a={creation.pk}")
-    assert resp.context["cible"] == modif and resp.context["base"] == creation
+    # Navigation : retour à la fiche, et la version choisie par ?a=.
+    assert reverse("admin:nitrates_codeprescription_change", args=[pc.pk]) in html
+    resp = client.get(f"{page}?a={creation.pk}")
+    assert resp.context["cible"] == creation and resp.context["base"] is None
 
     liste = client.get(reverse("admin:nitrates_revisioncontenu_changelist"))
     assert liste.status_code == 200
@@ -289,24 +281,163 @@ def test_resume_signale_les_sous_puces_supprimees():
 
 
 def test_diff_mot_a_mot_et_lignes_repliees():
-    from envergo.nitrates.admin_historique import diff_lignes, grouper
+    from envergo.nitrates.admin_historique import grouper, lignes_comparaison
 
-    avant = (
-        ["# Titre"]
-        + [f"ligne {i}" for i in range(10)]
-        + ["L'épandage est autorisé, le cas échéant, en période."]
-    )
-    apres = (
-        ["# Titre"]
-        + [f"ligne {i}" for i in range(10)]
-        + ["L'épandage est autorisé en période, sous condition."]
-    )
-    lignes = diff_lignes(avant, apres)
-    genre, html, _ = lignes[-1]
-    assert genre == "modif"
-    assert "<del>" in html and "<ins>" in html and "sous condition" in html
+    def para(t):
+        return {"type": "paragraphe", "data": {"texte": t}}
+
+    corps = [para(f"ligne {i}") for i in range(10)]
+    avant = {
+        "blocs": corps + [para("L'épandage est autorisé, le cas échéant, en période.")]
+    }
+    apres = {
+        "blocs": corps + [para("L'épandage est autorisé en période, sous condition.")]
+    }
+    lignes = lignes_comparaison(avant, apres)
+    derniere = lignes[-1]
+    assert derniere["genre"] == "modif" and derniere["annulable"] is True
+    assert "<del>" in derniere["html"] and "sous condition" in derniere["html"]
     groupes = grouper(lignes)
-    assert groupes[0]["pli"] is True and len(groupes[0]["lignes"]) == 9
+    assert groupes[0]["pli"] is True and len(groupes[0]["lignes"]) == 8
+
+
+# ─── Annulation ligne à ligne : nouvelle version par patch inverse ──────────
+
+
+SANS_SOUS_PUCE = json.loads(json.dumps(BLOCS))
+SANS_SOUS_PUCE["blocs"][1]["data"]["items"][0].pop("enfants")
+
+
+def _page_annulation(client, pc, revision):
+    page = reverse(
+        "admin:nitrates_revisioncontenu_historique", args=["pc", pc.identifiant]
+    )
+    return client.get(f"{page}?a={revision.pk}")
+
+
+def test_annuler_une_ligne_cree_une_nouvelle_version(admin_client):
+    client, user = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h20", texte_court="t", blocs=BLOCS
+    )
+    pc.blocs = SANS_SOUS_PUCE
+    pc.save()
+    perte = _revisions("pc_h20")[-1]
+    resp = _page_annulation(client, pc, perte)
+    ligne = next(
+        lg
+        for g in resp.context["groupes"]
+        for lg in g["lignes"]
+        if lg["genre"] == "retrait"
+    )
+    assert ligne["annulable"]
+
+    url = reverse("admin:nitrates_revisioncontenu_annuler", args=["pc", "pc_h20"])
+    resp = client.post(
+        url,
+        {
+            "revision": perte.pk,
+            "etat": resp.context["etat"],
+            "ops": [ligne["op"]],
+            "motif": "sous-puce remise",
+        },
+    )
+
+    assert resp.status_code == 302
+    pc.refresh_from_db()
+    assert pc.blocs == BLOCS
+    revs = _revisions("pc_h20")
+    assert len(revs) == 3
+    assert revs[-1].motif == "sous-puce remise" and revs[-1].auteur == user
+    assert revs[-1].origine == RevisionContenu.ORIGINE_ADMIN
+
+
+def test_annulation_refusee_si_le_contenu_a_change_depuis(admin_client):
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h21", texte_court="t", blocs=BLOCS
+    )
+    pc.blocs = SANS_SOUS_PUCE
+    pc.save()
+    perte = _revisions("pc_h21")[-1]
+    resp = _page_annulation(client, pc, perte)
+    etat = resp.context["etat"]
+    ligne = next(
+        lg
+        for g in resp.context["groupes"]
+        for lg in g["lignes"]
+        if lg["genre"] == "retrait"
+    )
+    pc.mots_cles = "modifié entre-temps"
+    pc.save()
+
+    url = reverse("admin:nitrates_revisioncontenu_annuler", args=["pc", "pc_h21"])
+    client.post(
+        url, {"revision": perte.pk, "etat": etat, "ops": [ligne["op"]], "motif": "x"}
+    )
+
+    pc.refresh_from_db()
+    assert pc.blocs == SANS_SOUS_PUCE
+
+
+def test_annuler_une_metadonnee(admin_client):
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h22", texte_court="t", mots_cles="avant"
+    )
+    pc.mots_cles = "après"
+    pc.save()
+    rev = _revisions("pc_h22")[-1]
+    resp = _page_annulation(client, pc, rev)
+    assert [m["champ"] for m in resp.context["metadonnees"] if m["annulable"]] == [
+        "mots_cles"
+    ]
+    url = reverse("admin:nitrates_revisioncontenu_annuler", args=["pc", "pc_h22"])
+    client.post(
+        url,
+        {
+            "revision": rev.pk,
+            "etat": resp.context["etat"],
+            "metas": ["mots_cles"],
+            "motif": "retour",
+        },
+    )
+    pc.refresh_from_db()
+    assert pc.mots_cles == "avant"
+
+
+def test_annulation_reservee_a_qui_peut_modifier(db):
+    lecteur = User.objects.create(
+        email="lecture@test.local", is_staff=True, is_active=True
+    )
+    from django.contrib.auth.models import Permission
+
+    lecteur.user_permissions.add(
+        Permission.objects.get(codename="view_codeprescription")
+    )
+    client = Client()
+    client.force_login(lecteur)
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h23", texte_court="t", blocs=BLOCS
+    )
+    pc.blocs = SANS_SOUS_PUCE
+    pc.save()
+    perte = _revisions("pc_h23")[-1]
+    resp = _page_annulation(client, pc, perte)
+    assert resp.status_code == 200 and resp.context["peut_annuler"] is False
+    url = reverse("admin:nitrates_revisioncontenu_annuler", args=["pc", "pc_h23"])
+    resp = client.post(
+        url,
+        {
+            "revision": perte.pk,
+            "etat": resp.context["etat"],
+            "ops": ["r2"],
+            "motif": "x",
+        },
+    )
+    assert resp.status_code == 403
+    pc.refresh_from_db()
+    assert pc.blocs == SANS_SOUS_PUCE
 
 
 def test_apercu_d_une_revision_au_rendu_du_site(admin_client):
@@ -415,3 +546,38 @@ def test_apercu_integrable_en_cadre_du_meme_site(admin_client):
     url = reverse("nitrates_admin_contenu_rich_preview", urlconf="config.urls_nitrates")
     resp = client.get(f"{url}?type=revision&id={rev.pk}&nu=1")
     assert resp["X-Frame-Options"] == "SAMEORIGIN"
+
+
+def test_liste_numerotee_et_sous_puces_au_rendu():
+    from envergo.nitrates.contenu_rich.compilateur import compile_dsfr
+
+    html = compile_dsfr(
+        [
+            {
+                "type": "liste",
+                "data": {
+                    "style": "ordered",
+                    "items": [{"texte": "un", "enfants": [{"texte": "un.a"}]}],
+                },
+            },
+            {"type": "liste", "data": {"items": [{"texte": "puce"}]}},
+        ]
+    )
+    assert '<ol class="fr-mb-0"><li>un<ol><li>un.a</li></ol></li></ol>' in html
+    assert '<ul class="fr-mb-0"><li>puce</li></ul>' in html
+
+
+def test_editeur_actuel_peut_supprimer_une_sous_puce_volontairement(admin_client):
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(
+        identifiant="pc_h30", texte_court="t", blocs=BLOCS
+    )
+    signe = {**SANS_SOUS_PUCE, "_editeur": "listes-imbriquees"}
+
+    resp = _post_pc(
+        client, pc, blocs=json.dumps(signe), motif_modification="sous-puce retirée"
+    )
+
+    assert resp.status_code == 302
+    pc.refresh_from_db()
+    assert pc.blocs == SANS_SOUS_PUCE  # signature retirée avant enregistrement
