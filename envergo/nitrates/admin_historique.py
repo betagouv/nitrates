@@ -16,9 +16,10 @@ import json
 import re
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import connection, transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -273,6 +274,23 @@ def _resumes(revisions):
     return resumes
 
 
+def lieu_courant():
+    """Environnement et base où l'on écrit, ex « dev (base nitrates_de_4422) »."""
+    env = getattr(settings, "ENV_NAME", "") or "?"
+    base = connection.settings_dict.get("NAME") or "?"
+    return f"{env} (base {base})"
+
+
+def motif_annulation_defaut(cible):
+    """Motif proposé pour une annulation : où elle est faite, et quelle version
+    elle annule (avec son environnement d'origine), pour suivre un contenu qui
+    passe d'un environnement à l'autre."""
+    return (
+        f"Sur {lieu_courant()} : annulation de changements de la version du "
+        f"{_quand(cible)} ({cible.environnement or '?'}, {_qui(cible)})"
+    )
+
+
 def empreinte(instantane):
     return hashlib.sha1(
         json.dumps(instantane, sort_keys=True, ensure_ascii=False, default=str).encode()
@@ -501,7 +519,7 @@ class RevisionContenuAdmin(admin.ModelAdmin):
             "url_annuler": reverse(
                 "admin:nitrates_revisioncontenu_annuler", args=[type_objet, identifiant]
             ),
-            "motif_defaut": f"Annulation de changements de la version du {_quand(cible)} ({_qui(cible)})",
+            "motif_defaut": motif_annulation_defaut(cible),
             "apercu_cible": f"{apercu}?type=revision&id={cible.pk}&nu=1",
             "apercu_base": f"{apercu}?type=revision&id={base.pk}&nu=1" if base else "",
         }

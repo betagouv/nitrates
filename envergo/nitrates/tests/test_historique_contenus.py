@@ -581,3 +581,15 @@ def test_editeur_actuel_peut_supprimer_une_sous_puce_volontairement(admin_client
     assert resp.status_code == 302
     pc.refresh_from_db()
     assert pc.blocs == SANS_SOUS_PUCE  # signature retirée avant enregistrement
+
+
+def test_motif_d_annulation_indique_l_environnement_et_la_base(admin_client, settings):
+    settings.ENV_NAME = "dev"
+    client, _ = admin_client
+    pc = CodePrescription.objects.create(identifiant="pc_h31", blocs=BLOCS)
+    pc.blocs = SANS_SOUS_PUCE
+    pc.save()
+    resp = _page_annulation(client, pc, _revisions("pc_h31")[-1])
+    motif = resp.context["motif_defaut"]
+    assert motif.startswith("Sur dev (base test_")
+    assert "(dev, " in motif
