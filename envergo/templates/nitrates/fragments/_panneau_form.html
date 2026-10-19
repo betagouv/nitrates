@@ -17,7 +17,7 @@ login au clic sur "Lancer la simulation". MoulinetteView sert les deux chemins
 (`/` via HomeView et `/simulateur/`), donc resoumettre sur place fonctionne
 dans les deux cas.
 {% endcomment %}
-{% load nitrates_tags %}
+{% load static nitrates_tags %}
 
 {# djlint:off H025 #}
 {% comment %}
@@ -33,7 +33,22 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
   <div class="form-section" id="section-localisation">
-    <h2 class="form-section-title">Localisation</h2>
+    {% comment %}
+    Pictogramme du logo devant le titre (#549, maquette Coralie), decoratif.
+    {% endcomment %}
+    <h2 class="form-section-title nitrates-titre-picto">
+      <img class="nitrates-picto nitrates-logo--clair"
+           src="{% static 'nitrates/logo/nitratinfo-picto.svg' %}"
+           width="32"
+           height="39"
+           alt="">
+      <img class="nitrates-picto nitrates-logo--fonce"
+           src="{% static 'nitrates/logo/nitratinfo-picto-fond-fonce.svg' %}"
+           width="32"
+           height="39"
+           alt="">
+      Localisation
+    </h2>
 
     <div class="map-container">
       <p class="fr-label">

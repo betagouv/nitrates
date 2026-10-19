@@ -75,6 +75,15 @@ def test_form_inclut_carte_et_simulator_js(client, nitrates_site):
     assert b"NITRATES_DEBUG_URL" in response.content
 
 
+def test_charte_logo_carte_et_localisation(client, nitrates_site):
+    """#549 : marqueur de parcelle et picto du titre Localisation."""
+    html = client.get("/simulateur/").content.decode()
+    assert "window.NITRATES_MARQUEUR_URL" in html
+    assert "nitrates/logo/nitratinfo-marqueur.svg" in html
+    assert 'class="form-section-title nitrates-titre-picto"' in html
+    assert "nitrates/logo/nitratinfo-picto.svg" in html
+
+
 def test_resultat_rendu_avec_lat_lng_en_zv(client, nitrates_site, setup_geodata):
     """Point en ZV, sans reponses cascade : on est en attente d'une question
     complementaire. Depuis #112, tant qu'une QC est en attente :
@@ -132,6 +141,24 @@ def test_panel_debug_affiche_code_prescription_et_libelle(
     assert "code(s) prescription" in html
     # Code + libellé court côte à côte (pc11 = "colza" dans le référentiel).
     assert "<code>pc11</code>" in html
+
+
+def test_pc_plafond_couvert_sous_le_rappel_des_periodes(
+    client, nitrates_site, setup_geodata
+):
+    """#591 : le bloc plafond (PC13, CINE type 0) vient APRES le rappel des
+    periodes, pas entre le calendrier et son rappel."""
+    response = client.get(
+        "/simulateur/?lng=4.21806&lat=49.22298"
+        "&occupation_sol=couvert_intercultures&sous_culture=cine_courte"
+        "&type_fertilisant=type_0"
+    )
+    assert response.status_code == 200
+    html = response.content.decode()
+    calendrier = html.index("calendrier-epandage__legende")
+    rappel = html.index('<p class="periodes-section-titre">')
+    plafond = html.index("Plafonnement des apports azotés")
+    assert calendrier < rappel < plafond
 
 
 def test_resultat_rendu_hors_zv(client, nitrates_site, setup_geodata):

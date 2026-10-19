@@ -9,8 +9,23 @@ style natif DSFR de aria-current.
 {% url 'home' as url_home %}
 {% url 'nitrates_simulateur' as url_simulateur %}
 {% url 'nitrates_definitions' as url_definitions %}
+{% comment %}
+Fleche retour (#453) sur la page Aide & definitions, a gauche des onglets :
+meme effet que le retour arriere du navigateur (le formulaire du simulateur
+est restaure), pilote par nav_retour.js (charge par definitions.html). Sans JS ou en arrivee directe, le
+lien mene au simulateur. Pas de nouvel onglet : il faudrait prevenir
+l'utilisateur, et il perd son bouton retour.
+{% endcomment %}
 <div class="nitrates-nav">
-  <div class="fr-container">
+  <div class="fr-container nitrates-nav__inner">
+    {% if request.path == url_definitions %}
+      <a class="nitrates-nav__retour fr-icon-arrow-left-line"
+         href="{{ url_home }}"
+         title="Retour à la page précédente"
+         data-nitrates-retour>
+        <span class="fr-sr-only">Retour à la page précédente</span>
+      </a>
+    {% endif %}
     <nav class="fr-nav" role="navigation" aria-label="Menu principal">
       <ul class="fr-nav__list">
         <li class="fr-nav__item">

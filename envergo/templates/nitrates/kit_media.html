@@ -1,0 +1,127 @@
+{% extends "nitrates/base.html" %}
+
+{% load static nitrates_tags %}
+
+{% comment %}
+Page Kit media du pied de page (#293, maquette Coralie). Textes repris du kit
+valide (LISEZ-MOI du zip) : la liste du contenu decrit le zip servi en
+statique, a mettre a jour avec lui. Carte de telechargement DSFR, taille du
+zip lue sur le fichier par la vue.
+{% endcomment %}
+{% block extra_css %}
+  <link href="{% static_v 'nitrates/kit_media.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}{{ titre }}{% endblock %}
+
+{% block description %}
+  Kit de communication Nitrat'Info : textes de présentation, logo, QR code, bannières, visuels pour les réseaux sociaux et affiche.
+{% endblock %}
+
+{% block article %}
+  <div class="page-riche kit-media">
+    <h1>{{ titre }}</h1>
+
+    <p>
+      Vous accompagnez des agriculteurs dans la région Grand Est ou dans les départements du Nord et du Pas-de-Calais ?
+      Ce kit contient des textes et des visuels pour présenter Nitrat'Info sur vos supports : site web, newsletter, réseaux sociaux, affichage.
+      Vous pouvez les utiliser librement.
+    </p>
+
+    {% comment %}
+    Carte de telechargement DSFR (fr-card--download, horizontale a partir de
+    md) : bordure fine et panneau gris a gauche, comme la maquette. Le
+    pictogramme est en SVG inline pour suivre le theme clair/sombre.
+    {% endcomment %}
+    <div class="fr-card fr-enlarge-link fr-card--download kit-media__carte">
+      <div class="fr-card__body">
+        <div class="fr-card__content">
+          <p class="fr-card__title">
+            <a href="{% static kit_static %}" download="{{ kit_nom_fichier }}">Télécharger le kit média</a>
+          </p>
+          <div class="fr-card__end">
+            <p class="fr-card__detail">
+              ZIP
+              {% if kit_taille %}- {{ kit_taille }}{% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="fr-card__header">
+        <div class="fr-card__img kit-media__picto">
+          <svg aria-hidden="true"
+               class="fr-artwork"
+               viewBox="0 0 80 80"
+               width="80"
+               height="80">
+            <use class="fr-artwork-decorative" href="{% static '@gouvfr/dsfr/dist/artwork/pictograms/document/archive.svg' %}#artwork-decorative"></use>
+            <use class="fr-artwork-minor" href="{% static '@gouvfr/dsfr/dist/artwork/pictograms/document/archive.svg' %}#artwork-minor"></use>
+            <use class="fr-artwork-major" href="{% static '@gouvfr/dsfr/dist/artwork/pictograms/document/archive.svg' %}#artwork-major"></use>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <h2>Ce que contient le kit</h2>
+    <ul>
+      <li>
+        <strong>Textes</strong> : présentation version complète, réduite et courte, présentation pour les agriculteurs, textes prêts à copier pour newsletter, Facebook et site web
+      </li>
+      <li>
+        <strong>Logo et QR code</strong> : logo pour fond clair et fond foncé, bloc marque Gouvernement, QR code vers le service
+      </li>
+      <li>
+        <strong>Sites partenaires</strong> : bannière 1200 x 300 px, vignette 300 x 300 px
+      </li>
+      <li>
+        <strong>Newsletter</strong> : bandeau 600 x 200 px
+      </li>
+      <li>
+        <strong>Réseaux sociaux</strong> : post carré 1080 x 1080 px, story 1080 x 1920 px
+      </li>
+      <li>
+        <strong>Affiche</strong> : PDF prêts à imprimer, en A3 pour un imprimeur, en A3 et A4 pour une imprimante de bureau
+      </li>
+      <li>
+        <strong>LISEZ-MOI</strong> : règles détaillées d'utilisation du logo et des visuels
+      </li>
+    </ul>
+
+    <h2>Utiliser le logo</h2>
+    <p>
+      Le logo Nitrat'Info est composé d'un pictogramme et du nom du service.
+      Utilisez toujours les fichiers fournis dans le kit, sans les retoucher.
+    </p>
+
+    <h3 class="fr-h4 kit-media__consigne">
+      <span class="fr-icon-checkbox-fill kit-media__consigne--ok"
+            aria-hidden="true"></span>
+      À faire
+    </h3>
+    <ul>
+      <li>Reprendre les textes de présentation tels quels : ils sont validés</li>
+      <li>Choisir la version du logo adaptée à votre fond : clair ou foncé</li>
+      <li>Redimensionner le logo en gardant ses proportions, et lui laisser de l'espace autour</li>
+    </ul>
+
+    <h3 class="fr-h4 kit-media__consigne">
+      <span class="fr-icon-close-circle-fill kit-media__consigne--ko"
+            aria-hidden="true"></span>
+      À ne pas faire
+    </h3>
+    <ul>
+      <li>Étirer, déformer ou faire pivoter le logo</li>
+      <li>Séparer le pictogramme du nom</li>
+      <li>Changer les couleurs ou ajouter des effets</li>
+      <li>Modifier le bloc marque Gouvernement ou l'utiliser seul</li>
+    </ul>
+    <p>
+      Tailles minimales, zone de protection et consignes d'impression : toutes les règles détaillées sont dans le fichier LISEZ-MOI du kit.
+    </p>
+
+    <h2>Une question ? Un format manquant ?</h2>
+    <p>
+      Écrivez-nous à : <a href="mailto:nitrates@beta.gouv.fr">nitrates@beta.gouv.fr</a>
+    </p>
+  </div>
+{% endblock %}

@@ -104,6 +104,34 @@ test.describe('Nitrates — onglets + page Aide & définitions (#110/#288)', () 
     await expect(radio).toBeChecked();
   });
 
+  test('fleche retour (#453) : revient au simulateur, ancres du sommaire comprises', async ({ page }) => {
+    const urlSimulateur = `/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`;
+    await page.goto(urlSimulateur);
+    // Pas de fleche sur le simulateur.
+    await expect(page.locator('[data-nitrates-retour]')).toHaveCount(0);
+
+    await page.locator('.nitrates-nav').getByRole('link', { name: 'Aide & définitions' }).click();
+    await expect(page).toHaveURL(/\/definitions\/$/);
+    const retour = page.locator('.nitrates-nav').getByRole('link', { name: 'Retour à la page précédente' });
+    await expect(retour).toBeVisible();
+
+    // Deux ancres du sommaire : deux entrees d'historique de plus.
+    const ancres = page.locator(".fr-sidemenu__link[href^='#']");
+    await ancres.nth(1).click();
+    await ancres.nth(2).click();
+    await expect(page).toHaveURL(/#/);
+
+    // Un seul clic ramene au simulateur, comme le retour du navigateur.
+    await retour.click();
+    await expect(page).toHaveURL(new RegExp(`/simulateur/\\?lng=${REIMS_LNG}&lat=${REIMS_LAT}$`));
+  });
+
+  test('fleche retour (#453) : arrivee directe sur les definitions -> simulateur', async ({ page }) => {
+    await page.goto('/definitions/#interculture-longue');
+    await page.locator('[data-nitrates-retour]').click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test('theme sombre : la page definitions reste lisible', async ({ page }) => {
     await page.goto('/definitions/');
     await page.evaluate(() => {

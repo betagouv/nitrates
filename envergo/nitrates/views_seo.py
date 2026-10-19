@@ -105,6 +105,11 @@ def pages_publiques():
             "Statistiques",
             "nombre de simulations effectuées par semaine et par mois.",
         ),
+        (
+            _nitrates("nitrates_kit_media"),
+            "Kit média",
+            "textes de présentation, logo et visuels pour relayer Nitrat'Info.",
+        ),
     ]
     return pages
 

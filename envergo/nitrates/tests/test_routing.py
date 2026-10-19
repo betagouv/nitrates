@@ -34,8 +34,8 @@ def test_home_served_to_authenticated_user(client, nitrates_site, django_user_mo
     client.force_login(user)
     response = client.get("/")
     assert response.status_code == 200
-    # Le simulateur affiche son h1.
-    assert b"r\xc3\xa8gles d'\xc3\xa9pandage" in response.content
+    # Le simulateur affiche son h1 (la baseline du header a disparu, #549).
+    assert "fertilisants azotés en quelques clics." in response.content.decode()
 
 
 def test_middleware_uses_nitrates_urlconf(client, nitrates_site):

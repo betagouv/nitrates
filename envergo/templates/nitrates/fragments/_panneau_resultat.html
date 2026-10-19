@@ -112,24 +112,6 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
           {% endif %}
 
           {% comment %}
-          CR 2026-08 : les PC « plafond sur couvert » (PC12-15 & fusions/overrides)
-          s'appliquent sur tout le 2nd semestre (automne + hiver), pas seulement
-          sur la période d'autorisation sous condition. Elles restent donc
-          affichées INLINE sous le calendrier (et NON dans le drawer conditions).
-          Les autres PC (spécifiques à la période ASC) vont dans le drawer.
-          {% endcomment %}
-          {% codes_prescription_plafond_couvert ev.regle codes_prescription as pc_plafond %}
-          {% for cp in pc_plafond %}
-            {% with pc=codes_prescription|get_item:cp %}
-              {% if pc.blocs %}
-                <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
-              {% elif pc %}
-                <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
-              {% endif %}
-            {% endwith %}
-          {% endfor %}
-
-          {% comment %}
           Ancien callout "Condition d'autorisation" (texte_condition, #28)
           retire : redondant avec les prescriptions conditionnees riches qui
           portent desormais tout le detail. Le texte_condition reste exploite
@@ -150,7 +132,7 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
             {% periodes_par_section ev.regle codes_prescription as sections_periodes %}
             {% nb_periodes_sous_condition ev.regle as nb_asc %}
             {# Lien drawer affiché seulement s'il reste des PC HORS plafond (les #}
-            {# PC plafond sont inline sous le calendrier) ou une note. #}
+            {# PC plafond sont inline sous ce rappel) ou une note. #}
             {% drawer_conditions_a_du_contenu ev.regle codes_prescription as drawer_a_du_contenu %}
             {% for section in sections_periodes %}
               <p class="periodes-section-titre">{{ section.titre }} :</p>
@@ -211,6 +193,26 @@ Structure inspiree de la maquette site-nitrates-maquette/index.html :
               </ul>
             {% endfor %}
           {% endif %}
+
+          {% comment %}
+          CR 2026-08 : les PC « plafond sur couvert » (PC12-15 & fusions/overrides)
+          s'appliquent sur tout le 2nd semestre (automne + hiver), pas seulement
+          sur la période d'autorisation sous condition. Elles restent donc
+          affichées INLINE (et NON dans le drawer conditions), APRES le rappel
+          des periodes sous le calendrier (#591 : avant, elles coupaient le
+          calendrier de son rappel). Les autres PC (spécifiques à la période
+          ASC) vont dans le drawer.
+          {% endcomment %}
+          {% codes_prescription_plafond_couvert ev.regle codes_prescription as pc_plafond %}
+          {% for cp in pc_plafond %}
+            {% with pc=codes_prescription|get_item:cp %}
+              {% if pc.blocs %}
+                <div class="fr-accordions-group fr-mt-3w">{% compile_blocs pc.blocs id_prefix=cp %}</div>
+              {% elif pc %}
+                <h4 class="fr-h6 fr-mt-3w">{{ pc.mots_cles|default:cp }}</h4>
+              {% endif %}
+            {% endwith %}
+          {% endfor %}
 
           {% comment %}
           Plafond d'azote (si applicable) : presente en encart DSFR plutot

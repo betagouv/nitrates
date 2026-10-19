@@ -21,3 +21,29 @@
     width: auto;
   }
 }
+
+/* Fleche retour (#453), page Aide & definitions : calee a gauche des onglets,
+ * meme hauteur qu'eux. */
+.nitrates-nav__inner {
+  display: flex;
+  align-items: stretch;
+}
+
+.nitrates-nav__retour {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.5rem;
+  margin-left: -0.5rem;
+  color: var(--text-action-high-blue-france);
+  background-image: none;
+}
+
+.nitrates-nav__retour:hover {
+  background-color: var(--background-default-grey-hover);
+}
+
+.nitrates-nav__retour::before {
+  --icon-size: 1.25rem;
+}

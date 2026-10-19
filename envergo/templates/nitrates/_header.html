@@ -16,13 +16,24 @@
             </p>
           </div>
         </div>
-        <div class="fr-header__service">
+        {% comment %}
+        Logo Nitrat'Info en logo operateur DSFR (#549, maquette Coralie) : il
+        porte le nom du service, la baseline est retiree. Version fond clair
+        ou fond fonce du kit selon le theme (bascule CSS dans marque.css).
+        {% endcomment %}
+        <div class="fr-header__operator nitrates-header__operator">
           <a href="/" title="Accueil - Nitrat'Info">
-            <p class="fr-header__service-title">Nitrat'Info</p>
+            <img class="nitrates-logo nitrates-logo--clair"
+                 src="{% static 'nitrates/logo/nitratinfo-logo-fond-clair.svg' %}"
+                 width="144"
+                 height="34"
+                 alt="Nitrat'Info">
+            <img class="nitrates-logo nitrates-logo--fonce"
+                 src="{% static 'nitrates/logo/nitratinfo-logo-fond-fonce.svg' %}"
+                 width="144"
+                 height="34"
+                 alt="Nitrat'Info">
           </a>
-          <p class="fr-header__service-tagline">
-            Les règles d'épandage des fertilisants azotés applicables selon la localisation des parcelles.
-          </p>
         </div>
       </div>
     </div>
