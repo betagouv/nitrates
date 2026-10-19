@@ -50,3 +50,15 @@ def make_active_tree(db):
         )
 
     return _make
+
+
+@pytest.fixture(autouse=True)
+def _caches_preview_vides():
+    """Les caches de preview (#584) sont indexes par point et pk d'arbre :
+    d'un test a l'autre la geodata et les arbres changent, on les vide."""
+    from envergo.nitrates.templatetags import yaml_admin_extras
+    from envergo.nitrates.yaml_admin import preview_points
+
+    preview_points.vider_cache()
+    yaml_admin_extras._CACHE_ARBRES.clear()
+    yield

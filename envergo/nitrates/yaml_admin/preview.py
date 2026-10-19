@@ -297,6 +297,7 @@ def compute_simulator_params(
     path: tuple[str, ...],
     leaf_branch: tuple[str, object] | None = None,
     point_override: dict | None = None,
+    zone_arbre: dict | None = None,
 ) -> dict:
     """Retourne le dict {champ: valeur} a passer en GET au simulateur pour
     atterrir sur ce noeud (au plus pres).
@@ -312,6 +313,11 @@ def compute_simulator_params(
     regle feuille : path s'arrete au parent, mais on veut quand meme
     enregistrer la valeur de branche pour le resolveur SIG / cascade form).
 
+    `zone_arbre` (optionnel) : {scope, region_code, activation_map_id} de
+    l'arbre previsualise. Si fourni, le point est VERIFIE (cf.
+    preview_points) : il doit activer cet arbre et satisfaire les contraintes
+    SIG du chemin, sinon on en cherche un autre (#584).
+
     Cas particuliers :
     - path vide / racine seule : point ZV par defaut, pas de cascade
     - path casse au milieu : on retourne ce qu'on a accumule jusque-la
@@ -326,6 +332,8 @@ def compute_simulator_params(
 
     # On parcourt le chemin en accumulant les params arbre + sig_constraints.
     sig_constraints: dict = {}
+    # (reference catalogue, valeur de branche) pour la verification du point.
+    contraintes_sig: list = []
     # Expressions de branche traversees sous un catalogue_parametre (#128).
     # On les resout en fin de parcours : il faut un sous_fertilisant qui
     # satisfait l'expression pour que la preview tombe sur le bon cas.
@@ -355,6 +363,8 @@ def compute_simulator_params(
                 if champ == "en_zone_vulnerable" and valeur is not None:
                     params[champ] = _stringify_valeur(valeur)
                 sig_constraints[champ] = valeur
+                if current.get("reference"):
+                    contraintes_sig.append((current["reference"], valeur))
             # On descend.
             sub = branche.get("noeud")
             if isinstance(sub, dict):
@@ -372,6 +382,8 @@ def compute_simulator_params(
                 # = "traverse sans choisir" (interprete comme defaut).
                 if leaf_branch and leaf_branch[0] == final_champ:
                     sig_constraints[final_champ] = leaf_branch[1]
+                    if current.get("reference"):
+                        contraintes_sig.append((current["reference"], leaf_branch[1]))
                     if final_champ == "en_zone_vulnerable":
                         params[final_champ] = _stringify_valeur(leaf_branch[1])
                 else:
@@ -412,6 +424,9 @@ def compute_simulator_params(
             if isinstance(branche_choisie, dict) and branche_choisie.get("expression"):
                 expressions_a_satisfaire.append(branche_choisie["expression"])
 
+    # Champs poses par le chemin lui-meme (avant point et cascade form).
+    champs_chemin = set(params)
+
     # Choix d'un point de reference, par ordre de priorite :
     #   1. Le CHEMIN porte une contrainte SIG specifique (ZGE1/2, ZAR, note_5/6/7,
     #      hors_zv) -> ce point prime (il faut tomber dans CETTE zone, avec son
@@ -426,6 +441,11 @@ def compute_simulator_params(
         point = point_override
     else:
         point = point_chemin  # fallback ZV
+    if zone_arbre:
+        from envergo.nitrates.yaml_admin.preview_points import point_verifie
+
+        prefere = [point] + ([point_override] if point_override else [])
+        point = point_verifie(zone_arbre, contraintes_sig, prefere) or point
     for k, v in point.items():
         if v:
             params.setdefault(k, v)
@@ -446,89 +466,122 @@ def compute_simulator_params(
         if v:
             params.setdefault(k, v)
 
-    # Catalogue parametre (#128) : si le chemin a traverse des branches
-    # resolues par expression, le sous_fertilisant derive par defaut ci-dessus
-    # (premier mappant vers le type) ne satisfait probablement PAS l'expression
-    # (ex `'effluent_peu_charge' in sous_fertilisant`). On cherche un
-    # sous_fertilisant qui rend toutes les expressions vraies, et on l'impose
-    # (avec sa categorie) pour que la fleche preview tombe sur le bon cas.
-    if expressions_a_satisfaire:
-        sf = _sous_fertilisant_satisfaisant(
-            expressions_a_satisfaire, params, params.get("type_fertilisant")
-        )
-        if sf:
-            params["sous_fertilisant"] = sf
-            cat = _find_categorie_fertilisant(sf)
-            if cat:
-                params["categorie_fertilisant"] = cat
-
-        # Meme probleme quand un catalogue_parametre discrimine sur
-        # `sous_culture_form` (ex PAR HdF : un noeud intercale entre la culture
-        # et le type_fertilisant, `sous_culture_form == 'cultures_perennes_vignes'`).
-        # La cascade form a pu poser le 1er sous_culture_form du groupe (florales)
-        # qui ne satisfait PAS l'expression -> la fleche preview atterrissait sur
-        # la mauvaise culture (voire ParcoursError). On derive le sous_culture_form
-        # qui satisfait l'expression et on l'impose. N'affecte QUE l'URL de preview
-        # admin (compute_simulator_params n'est pas utilise par le parcours runtime).
-        scf = _sous_culture_form_satisfaisant(expressions_a_satisfaire, params)
-        if scf:
-            params["sous_culture_form"] = scf
+    # Catalogue parametre (#128) et drapeaux de fertilisant : le chemin peut
+    # imposer des expressions (`categorie_fertilisant == 'digestats'`,
+    # `sous_culture_form == '...'`) et des drapeaux (effluent_peu_charge...)
+    # que la cascade form par defaut (1er sous_fertilisant du type, 1re
+    # culture de la branche) ne satisfait pas. On cherche conjointement une
+    # culture et un fertilisant coherents avec la branche deja choisie qui
+    # satisfont tout, sinon on garde le defaut (#584).
+    combo = _cascade_satisfaisante(expressions_a_satisfaire, params, champs_chemin)
+    if combo:
+        params.update(combo)
 
     return params
 
 
-def _sous_culture_form_satisfaisant(expressions: list[str], params: dict) -> str | None:
-    """Retourne un slug `sous_culture_form` qui rend vraies les `expressions`
-    portant sur ce champ (catalogue_parametre discriminant par sous_culture_form,
-    ex PAR HdF vignes/legumes). On teste chaque valeur declaree au referentiel
-    avec le contexte courant. Retourne None si aucune expression ne mentionne
-    sous_culture_form, ou si aucune candidate ne satisfait -> l'appelant garde le
-    defaut de la cascade form. Symetrique de `_sous_fertilisant_satisfaisant`."""
-    pertinentes = [e for e in expressions if e and "sous_culture_form" in e]
-    if not pertinentes:
+def _references_expressions(expressions: list[str]) -> str:
+    return " ".join(e for e in expressions if e)
+
+
+def _cascade_satisfaisante(
+    expressions: list[str], params: dict, champs_chemin: set
+) -> dict | None:
+    """Champs de cascade form (culture et/ou fertilisant) a imposer pour que
+    les expressions du chemin et les drapeaux poses par le chemin soient
+    satisfaits. None si rien a changer ou aucune combinaison ne convient.
+
+    Les candidats restent dans la branche deja choisie : cultures qui mappent
+    vers (occupation_sol, sous_culture) du chemin, fertilisants du
+    type_fertilisant du chemin. Les valeurs par defaut sont essayees en
+    premier pour ne rien changer quand elles conviennent deja."""
+    from envergo.nitrates.yaml_tree.expression import evaluer_expression
+
+    ref = _load_ref()
+    sous_ferts = (ref or {}).get("sous_fertilisants") or {}
+    mapping_sf = (ref or {}).get("mapping_sous_fertilisant_vers_type") or {}
+    mapping_sc = (ref or {}).get("mapping_sous_culture_vers_branche") or {}
+    texte = _references_expressions(expressions)
+
+    drapeaux_sf = {
+        k
+        for v in sous_ferts.values()
+        if isinstance(v, dict)
+        for k in (v.get("flags") or {})
+    }
+    # Seules les valeurs booleennes sont des drapeaux : un catalogue_parametre
+    # peut porter le meme nom de champ avec une etiquette de branche
+    # ('pas_effluent_peu_charge_issus_elevage'), son expression suffit alors.
+    drapeaux_chemin = {
+        k
+        for k in drapeaux_sf & champs_chemin
+        if str(params.get(k, "")).lower() in ("true", "false")
+    }
+    besoin_sf = drapeaux_chemin or any(
+        c in texte for c in ("sous_fertilisant", "categorie_fertilisant")
+    )
+    besoin_sc = any(c in texte for c in ("sous_culture_form", "categorie_culture"))
+    if not expressions and not besoin_sf:
         return None
-    from envergo.nitrates.yaml_tree.expression import evaluer_expression
 
-    ref = _load_ref()
-    candidats: list[str] = []
-    for cat in (ref or {}).get("categories_cultures", {}).values():
-        candidats.extend(cat.get("sous_cultures") or [])
-    for scf in candidats:
-        contexte = dict(params)
-        contexte["sous_culture_form"] = scf
-        if all(evaluer_expression(expr, contexte) for expr in pertinentes):
-            return scf
-    return None
+    def _ordonner(defaut, candidats):
+        return [defaut] + [c for c in candidats if c != defaut] if defaut else candidats
 
+    scs = [params.get("sous_culture_form")]
+    if besoin_sc:
+        scs = _ordonner(
+            params.get("sous_culture_form"),
+            [
+                sc
+                for sc, cible in mapping_sc.items()
+                if isinstance(cible, dict)
+                and cible.get("occupation_sol") == params.get("occupation_sol")
+                and cible.get("sous_culture") == params.get("sous_culture")
+            ],
+        )
+    sfs = [params.get("sous_fertilisant")]
+    if besoin_sf:
+        tf = params.get("type_fertilisant")
+        sfs = _ordonner(
+            params.get("sous_fertilisant"),
+            [sf for sf, t in mapping_sf.items() if tf is None or t == tf],
+        )
 
-def _sous_fertilisant_satisfaisant(
-    expressions: list[str],
-    params: dict,
-    type_fertilisant: str | None,
-) -> str | None:
-    """Retourne un slug sous_fertilisant qui rend TOUTES les `expressions`
-    vraies (catalogue_parametre, preview). On teste chaque sous_fertilisant
-    du referentiel en sandbox (meme evaluateur que le runtime), avec le
-    contexte courant + ce sous_fertilisant. Premier qui matche l'emporte.
-
-    On restreint aux sous_fertilisants mappant vers `type_fertilisant` si
-    fourni (coherence avec la branche type deja choisie), sinon tous.
-    Retourne None si aucun ne satisfait (l'appelant garde le defaut).
-    """
-    from envergo.nitrates.yaml_tree.expression import evaluer_expression
-
-    ref = _load_ref()
-    mapping = (ref or {}).get("mapping_sous_fertilisant_vers_type") or {}
-    candidats = [
-        sf
-        for sf, tf in mapping.items()
-        if type_fertilisant is None or tf == type_fertilisant
-    ]
-    for sf in candidats:
-        contexte = dict(params)
-        contexte["sous_fertilisant"] = sf
-        if all(evaluer_expression(expr, contexte) for expr in expressions):
-            return sf
+    for sc in scs:
+        for sf in sfs:
+            contexte = dict(params)
+            if sc:
+                contexte["sous_culture_form"] = sc
+                cat = _find_categorie_culture(sc)
+                if cat:
+                    contexte["categorie_culture"] = cat
+            if sf:
+                contexte["sous_fertilisant"] = sf
+                cat = _find_categorie_fertilisant(sf)
+                if cat:
+                    contexte["categorie_fertilisant"] = cat
+            drapeaux = ((sous_ferts.get(sf) or {}).get("flags") or {}) if sf else {}
+            if not all(
+                str(drapeaux.get(k, "false")).lower() == str(params.get(k, "")).lower()
+                for k in drapeaux_chemin
+            ):
+                continue
+            if all(evaluer_expression(e, contexte) for e in expressions):
+                out = {
+                    k: contexte[k]
+                    for k in (
+                        "sous_culture_form",
+                        "categorie_culture",
+                        "sous_fertilisant",
+                        "categorie_fertilisant",
+                    )
+                    if contexte.get(k) and contexte.get(k) != params.get(k)
+                }
+                # Drapeaux du fertilisant non poses par le chemin : le front les
+                # pousse au choix du fertilisant, on fait pareil.
+                for k, v in drapeaux.items():
+                    out.setdefault(k, params.get(k) or str(v))
+                return out
     return None
 
 
@@ -587,16 +640,17 @@ def point_for_activation_map(activation_map) -> dict | None:
     """Point reel (lat/lng/code_insee) a l'interieur de la couche SIG d'un
     arbre (ex ZAR), pour que la preview tombe DANS la zone d'activation.
 
-    Prend le centroide d'une zone de la Map. Generique : marche pour toute
-    couche d'activation, pas seulement la ZAR Grand Est. Retourne None si la
-    Map n'a pas de geometrie exploitable (-> on retombe sur le resolveur SIG).
+    Prend un point_on_surface d'une zone de la Map (garanti a l'interieur,
+    contrairement au centroide d'un perimetre non convexe, #584). Generique :
+    marche pour toute couche d'activation. Retourne None si la Map n'a pas de
+    geometrie exploitable (-> on retombe sur le resolveur SIG).
     """
     if activation_map is None:
         return None
     zone = activation_map.zones.exclude(geometry__isnull=True).first()
     if zone is None or zone.geometry is None:
         return None
-    centroid = zone.geometry.centroid
+    centroid = zone.geometry.point_on_surface
     # code_insee laisse vide : les arbres actives par couche SIG (ZAR) ne
     # dependent pas du zonage commune ; le point geographique suffit a resoudre
     # en_zar / region / ZV cote moulinette.

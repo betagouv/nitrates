@@ -444,13 +444,18 @@ class EditNodeView(View):
         if new_data.get("id") and new_data["id"] != path[-1]:
             path = path[:-1] + (new_data["id"],)
         node = editor.get_node_at(tree.contenu, path)
+        from envergo.nitrates.templatetags.yaml_admin_extras import _contexte_arbre
         from envergo.nitrates.yaml_admin.preview import (
             build_preview_url,
             compute_simulator_params,
         )
 
+        point, zone = _contexte_arbre(tree.pk)
         preview_link = build_preview_url(
-            tree.pk, compute_simulator_params(tree.contenu, path)
+            tree.pk,
+            compute_simulator_params(
+                tree.contenu, path, point_override=point, zone_arbre=zone
+            ),
         )
         body = render(
             request,
