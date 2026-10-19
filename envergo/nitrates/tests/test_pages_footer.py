@@ -95,8 +95,23 @@ def test_footer_liste_les_pages(client, nitrates_site):
 
 
 def test_bandeau_nitrat_info(client, nitrates_site):
+    # #549 : le logo du kit remplace titre et baseline, versions clair et foncé
     html = client.get(reverse("nitrates_cgu")).content.decode()
-    assert '<p class="fr-header__service-title">Nitrat\'Info</p>' in html
+    assert 'class="fr-header__operator nitrates-header__operator"' in html
+    assert "nitrates/logo/nitratinfo-logo-fond-clair.svg" in html
+    assert "nitrates/logo/nitratinfo-logo-fond-fonce.svg" in html
+    assert 'alt="Nitrat\'Info"' in html
+    assert "fr-header__service-tagline" not in html
+
+
+def test_footer_logo_et_avertissement(client, nitrates_site):
+    html = client.get(reverse("nitrates_cgu")).content.decode()
+    footer = html.split("<footer", 1)[1]
+    assert "nitratinfo-logo-fond-clair.svg" in footer
+    assert "ne se substituent pas aux textes en vigueur" in footer
+    assert ">DREAL</abbr>" in footer and ">DDT</abbr>" in footer
+    # retour Karine (#549) : pas les chambres d'agriculture
+    assert "chambre d'agriculture" not in footer
 
 
 def test_titres_page_demarrent_en_h2():

@@ -1,0 +1,57 @@
+/* Charte Nitrat'Info dans les pages (#549, maquette Coralie) : logo du kit
+ * dans l'en-tete et le pied de page, pictogramme devant le titre
+ * "Localisation". Logo fond clair ou fond fonce selon data-fr-theme. */
+
+.nitrates-logo {
+  display: block;
+  width: 9rem;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Bascule clair / fonce (logos et pictogramme). Classe doublee : passe
+ * devant ".fr-header__operator img { display: block }" du DSFR. */
+.nitrates-logo--fonce.nitrates-logo--fonce,
+[data-fr-theme="dark"] .nitrates-logo--clair.nitrates-logo--clair {
+  display: none;
+}
+
+[data-fr-theme="dark"] .nitrates-logo--fonce.nitrates-logo--fonce {
+  display: block;
+}
+
+/* Mobile : le ::after DSFR du brand (espaceur flex) passe derriere le logo,
+ * qui reste a cote de la Marianne au lieu d'etre rejete a droite. */
+.fr-header__brand:has(.nitrates-header__operator)::after {
+  order: 3;
+}
+
+/* Pied de page : logo au-dessus de l'accroche, avertissement en petit. */
+.nitrates-footer__logo {
+  margin-bottom: 1rem;
+}
+
+.fr-footer__content-desc.nitrates-footer__accroche {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.fr-footer__content-desc.nitrates-footer__avertissement {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+/* Titre de section precede du pictogramme ("Localisation"). */
+.nitrates-titre-picto {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nitrates-picto {
+  display: block;
+  width: 2rem;
+  height: auto;
+  flex: none;
+}

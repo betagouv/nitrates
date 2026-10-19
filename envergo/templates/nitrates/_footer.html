@@ -10,7 +10,32 @@
       </p>
     </div>
     <div class="fr-footer__content">
-      <p class="fr-footer__content-desc">Conditions d'épandage de fertilisants azotés. Service en expérimentation.</p>
+      {% comment %}
+      Logo double dans le pied de page et avertissement (#549, maquette
+      Coralie, texte revu par Karine : DREAL ou DDT, pas les chambres
+      d'agriculture qui ne produisent pas la reglementation).
+      {% endcomment %}
+      <p class="nitrates-footer__logo">
+        <img class="nitrates-logo nitrates-logo--clair"
+             src="{% static 'nitrates/logo/nitratinfo-logo-fond-clair.svg' %}"
+             width="144"
+             height="34"
+             alt="Nitrat'Info">
+        <img class="nitrates-logo nitrates-logo--fonce"
+             src="{% static 'nitrates/logo/nitratinfo-logo-fond-fonce.svg' %}"
+             width="144"
+             height="34"
+             alt="Nitrat'Info">
+      </p>
+      <p class="fr-footer__content-desc nitrates-footer__accroche">
+        Conditions d'épandage de fertilisants azotés. Service en expérimentation.
+      </p>
+      <p class="fr-footer__content-desc nitrates-footer__avertissement">
+        Les informations fournies par Nitrat'Info ne se substituent pas aux textes en vigueur ni aux arrêtés préfectoraux applicables.
+        Il appartient à chaque exploitant de s'informer de l'ensemble des obligations qui s'appliquent à sa situation, notamment auprès de la
+        <abbr title="direction régionale de l'environnement, de l'aménagement et du logement">DREAL</abbr>
+        ou de la <abbr title="direction départementale des territoires">DDT</abbr>.
+      </p>
 
       {% comment %}
       Bascule de theme clair/sombre (#83). Par defaut le site suit l'OS

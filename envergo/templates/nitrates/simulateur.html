@@ -25,6 +25,8 @@
     // Force le path des marker icons Leaflet : sans ca, Leaflet derive
     // le path a partir du JS courant (hashe par whitenoise) -> 404.
     L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";
+    // Marqueur de parcelle aux couleurs du logo (#549).
+    window.NITRATES_MARQUEUR_URL = "{% static 'nitrates/logo/nitratinfo-marqueur.svg' %}";
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
     window.NITRATES_ZAR_GEOJSON_URL = "{% url 'nitrates_zar_geojson' %}";

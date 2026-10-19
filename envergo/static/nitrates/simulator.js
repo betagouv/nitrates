@@ -1094,6 +1094,16 @@
   });
 
   let marker = null;
+  // #549 : epingle du pictogramme Nitrat'Info (pointe en bas, au centre).
+  // keyboard: false (#531) : marqueur decoratif, hors ordre de tabulation.
+  const markerOptions = { keyboard: false };
+  if (window.NITRATES_MARQUEUR_URL) {
+    markerOptions.icon = L.icon({
+      iconUrl: window.NITRATES_MARQUEUR_URL,
+      iconSize: [32, 37],
+      iconAnchor: [16, 36],
+    });
+  }
 
   // #583 : selection de LA parcelle RPG cliquee, une seule a la fois. En gris :
   // les zones ont deja violet, jaune, bleu ciel, rose, orange, vert clair et
@@ -1361,7 +1371,7 @@
   const initialLng = parseFloat(lngInput.value);
   const initialLat = parseFloat(latInput.value);
   if (!isNaN(initialLng) && !isNaN(initialLat)) {
-    marker = L.marker([initialLat, initialLng], { keyboard: false }).addTo(map);
+    marker = L.marker([initialLat, initialLng], markerOptions).addTo(map);
     map.setView([initialLat, initialLng], 13);
     if (window.NITRATES_CATALOG) {
       Promise.all([
@@ -1499,8 +1509,7 @@
     if (marker) {
       marker.setLatLng(e.latlng);
     } else {
-      // keyboard: false (#531) : marqueur decoratif, hors ordre de tabulation.
-      marker = L.marker(e.latlng, { keyboard: false }).addTo(map);
+      marker = L.marker(e.latlng, markerOptions).addTo(map);
     }
 
     if (debugEl) {
