@@ -249,3 +249,22 @@ def test_champ_parametre_homonyme_d_un_drapeau_n_est_pas_un_drapeau():
         leaf_branch=("resolution_param", "oui"),
     )
     assert params["categorie_fertilisant"] == "digestats"
+
+
+def test_lien_de_noeud_suit_les_noeuds_automatiques_en_dessous():
+    # Lien pose sur un catalogue SIG a une seule branche, suivi d'un
+    # catalogue_parametre : la preview doit deja satisfaire l'expression,
+    # sinon le simulateur ne trouve pas de branche (PAR GE n_autres_cultures).
+    arbre = _arbre_expression("categorie_fertilisant == 'digestats'")
+    q_tf = arbre["arbre"]["noeud"]["branches"][0]["noeud"]["branches"][0]["noeud"]
+    branche_type = q_tf["branches"][0]
+    branche_type["noeud"] = {
+        "type_noeud": "catalogue",
+        "id": "n_zone",
+        "champ": "zone_note_5",
+        "source": "sig",
+        "reference": "zone_note_5",
+        "branches": [{"valeur": True, "noeud": branche_type["noeud"]}],
+    }
+    params = compute_simulator_params(arbre, ("q_occ", "q_sc", "q_tf", "n_zone"))
+    assert params["categorie_fertilisant"] == "digestats"

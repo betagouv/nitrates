@@ -424,6 +424,17 @@ def compute_simulator_params(
             if isinstance(branche_choisie, dict) and branche_choisie.get("expression"):
                 expressions_a_satisfaire.append(branche_choisie["expression"])
 
+        # Lien pose sur un noeud (pas de branche feuille) : sous lui, d'autres
+        # noeuds automatiques (catalogue, catalogue_parametre) peuvent
+        # s'enchainer avant la prochaine question. Le simulateur les traverse
+        # tout seul : on suit leur premiere branche praticable pour que le point
+        # et la cascade form les satisfassent, sinon no-match et bascule sur un
+        # autre arbre (#584).
+        if leaf_branch is None and isinstance(current, dict):
+            _descendre_noeuds_auto(
+                current, sig_constraints, contraintes_sig, expressions_a_satisfaire
+            )
+
     # Champs poses par le chemin lui-meme (avant point et cascade form).
     champs_chemin = set(params)
 
@@ -482,6 +493,56 @@ def compute_simulator_params(
 
 def _references_expressions(expressions: list[str]) -> str:
     return " ".join(e for e in expressions if e)
+
+
+def _branche_praticable(noeud: dict) -> dict | None:
+    """Premiere branche d'un noeud automatique qui ne soit pas une negation
+    explicite (on previsualise le cas ou la condition est remplie)."""
+    branches = [b for b in noeud.get("branches") or [] if isinstance(b, dict)]
+    for b in branches:
+        if b.get("valeur") is not False and str(b.get("valeur")).lower() != "false":
+            return b
+    return branches[0] if branches else None
+
+
+def _descendre_noeuds_auto(
+    noeud: dict, sig_constraints: dict, contraintes_sig: list, expressions: list
+) -> None:
+    """Depuis `noeud` (dernier noeud du chemin), suit la premiere branche
+    praticable a travers les noeuds automatiques jusqu'a la prochaine question
+    (noeud formulaire) ou une feuille, en notant contraintes SIG et
+    expressions. Le noeud de depart a deja ete traite par l'appelant."""
+    courant = noeud
+    for _ in range(20):  # garde-fou
+        type_noeud = courant.get("type_noeud")
+        if type_noeud not in ("catalogue", "catalogue_parametre"):
+            return
+        branche = _branche_praticable(courant)
+        if branche is None:
+            return
+        if type_noeud == "catalogue" and courant is not noeud:
+            champ = courant.get("champ")
+            if champ and champ not in sig_constraints:
+                sig_constraints[champ] = branche.get("valeur")
+                if courant.get("reference"):
+                    contraintes_sig.append(
+                        (courant["reference"], branche.get("valeur"))
+                    )
+        if (
+            type_noeud == "catalogue_parametre"
+            and courant is not noeud
+            and branche.get("expression")
+        ):
+            expressions.append(branche["expression"])
+        if type_noeud == "catalogue" and courant is noeud:
+            # Noeud de depart catalogue « traverse sans choisir » : on retient
+            # la branche praticable pour la verification du point.
+            if courant.get("reference"):
+                contraintes_sig.append((courant["reference"], branche.get("valeur")))
+        suivant = branche.get("noeud")
+        if not isinstance(suivant, dict):
+            return
+        courant = suivant
 
 
 def _cascade_satisfaisante(
