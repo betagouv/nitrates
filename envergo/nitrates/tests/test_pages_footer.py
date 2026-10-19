@@ -108,6 +108,7 @@ def test_footer_logo_et_avertissement(client, nitrates_site):
     html = client.get(reverse("nitrates_cgu")).content.decode()
     footer = html.split("<footer", 1)[1]
     assert "nitratinfo-logo-fond-clair.svg" in footer
+    assert "Conditions d'épandage des fertilisants azotés." in footer  # #568
     assert "ne se substituent pas aux textes en vigueur" in footer
     assert ">DREAL</abbr>" in footer and ">DDT</abbr>" in footer
     # retour Karine (#549) : pas les chambres d'agriculture
