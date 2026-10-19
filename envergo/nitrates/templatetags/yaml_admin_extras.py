@@ -5,6 +5,7 @@ from django.utils.html import escape
 
 from envergo.nitrates.yaml_admin.tags import get_tags
 from envergo.nitrates.yaml_admin.tags import regime_tag as _regime_tag
+from envergo.nitrates.yaml_tree.rappels_dates import rappels_pour_regle, resume_groupes
 
 register = template.Library()
 
@@ -20,6 +21,40 @@ def tags_for(data, kind):
 def regime_tag(regime):
     """Tag visuel pour un `regime` de periode (interdiction, autorisation...)."""
     return _regime_tag(regime)
+
+
+@register.simple_tag
+def rappel_input(arbre, regle, input_id):
+    """Rappel réglementaire (#407) que l'arbre applique à cet input de cette
+    feuille, ou None. Déclaré une fois au niveau de l'arbre (bloc
+    `rappels_dates`), affiché sur chaque feuille concernée."""
+    if not isinstance(regle, dict) or not regle.get("id"):
+        return None
+    return rappels_pour_regle(arbre, regle["id"]).get(input_id)
+
+
+@register.simple_tag
+def rappels_dates_yaml(arbre):
+    """Bloc `rappels_dates` en YAML, pour le champ d'édition de l'éditeur."""
+    from io import StringIO
+
+    from ruamel.yaml import YAML
+
+    bloc = (arbre or {}).get("rappels_dates")
+    if not bloc:
+        return ""
+    yaml = YAML()
+    yaml.width = 4096
+    yaml.default_flow_style = None
+    buf = StringIO()
+    yaml.dump(bloc, buf)
+    return buf.getvalue()
+
+
+@register.simple_tag
+def rappels_dates_arbre(arbre):
+    """Groupes du bloc racine `rappels_dates` avec conditions et phrases."""
+    return resume_groupes(arbre)
 
 
 @register.filter(name="split")

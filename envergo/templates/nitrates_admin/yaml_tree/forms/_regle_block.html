@@ -66,6 +66,15 @@
        voir d'un coup d'oeil le bornage d'une date sans ouvrir le formulaire.
     {% endcomment %}
     {% for inp in regle.inputs_requis %}
+      {% rappel_input arbre regle inp.id as rappel %}
+      {% if rappel %}
+        <span class="yaml-tree__input-borne yaml-tree__input-rappel"
+              title="{{ rappel.texte }} (déclaré une fois pour l'arbre, bloc « Rappels des dates du couvert » en haut de page)">
+          <code>{{ inp.label_court|default:inp.id }}</code>
+          <span class="yaml-tree__input-borne-tag">rappel</span>
+          {% for c in rappel.conditions %}<code>{{ c }}</code>{% endfor %}
+        </span>
+      {% endif %}
       {% if inp.min or inp.max %}
         <span class="yaml-tree__input-borne"
               title="Bornage de l'input « {{ inp.label|default:inp.id }} »">

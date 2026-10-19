@@ -1383,6 +1383,52 @@ details[open] > summary.yaml-tree__row::before {
   font-size: 0.85em;
 }
 
+/* #407 : rappel réglementaire (bloc racine rappels_dates) sur un input. */
+.yaml-tree__input-rappel {
+  color: #5c3b00;
+  background: #fff4e0;
+  border-color: #e0b366;
+  white-space: normal;
+}
+
+.yaml-tree__input-rappel-note {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: #5c3b00;
+}
+
+.yaml-admin__rappels {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #fffaf0;
+  border: 1px solid #e0b366;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.yaml-admin__rappels > summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.yaml-admin__rappels-compte {
+  font-weight: 400;
+  color: #666;
+}
+
+.yaml-admin__rappels-groupe {
+  margin-top: 0.5rem;
+}
+
+.yaml-admin__rappels-groupe p,
+.yaml-admin__rappels-groupe ul {
+  margin: 0 0 0.25rem;
+}
+
+.yaml-admin__rappels-textarea {
+  min-height: 12rem;
+}
+
 .yaml-tree__plafond,
 .yaml-tree__assoc,
 .yaml-tree__calc {

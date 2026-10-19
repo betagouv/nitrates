@@ -99,6 +99,8 @@
         </nav>
       </header>
 
+      {% include "nitrates_admin/yaml_tree/_rappels_dates.html" %}
+
       <div class="yaml-admin__layout yaml-admin__layout--{{ vue }}">
         {% if vue != "brut" %}
           <section class="yaml-admin__tree" aria-label="Arbre de décision">

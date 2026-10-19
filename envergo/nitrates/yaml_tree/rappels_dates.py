@@ -342,3 +342,98 @@ def rappels_dates_couvert(arbres: list[dict], mapping_sous_culture: dict) -> dic
         if retenus:
             out[culture_form] = retenus
     return out
+
+
+# ─── Éditeur admin : où s'applique quoi ──────────────────────────────────
+
+
+def conditions(input_id: str, rappel: dict) -> list[str]:
+    """Conditions explicites d'un rappel, dans la syntaxe des bornes YAML :
+    ["date_destruction_couvert ≥ date_semis_couvert+2mois", "… ≥ 15/10"]."""
+    return [f"{input_id} ≥ {b}" for b in bornes_rappel(rappel.get("rappel_min"))] + [
+        f"{input_id} ≤ {b}" for b in bornes_rappel(rappel.get("rappel_max"))
+    ]
+
+
+def _sous_cultures_par_regle(noeud: dict, courant: frozenset, out: dict) -> None:
+    for b in (noeud or {}).get("branches") or []:
+        sc = courant
+        if noeud.get("champ") == "sous_culture":
+            valeurs = b.get("valeurs")
+            if valeurs is None:
+                valeurs = [b.get("valeur")]
+            sc = frozenset(str(v) for v in valeurs)
+        regle = b.get("regle")
+        if isinstance(regle, dict) and regle.get("id"):
+            out[regle["id"]] = sc
+        if isinstance(b.get("noeud"), dict):
+            _sous_cultures_par_regle(b["noeud"], sc, out)
+
+
+_CACHE_REGLES: dict = {}
+
+
+def rappels_pour_regle(arbre: dict, regle_id: str) -> dict[str, dict]:
+    """Rappels de l'arbre qui valent pour la sous-culture de cette feuille :
+    {input_id: {"rappel_min", "rappel_max", "conditions", "texte"}}.
+
+    Appelé pour chaque feuille affichée dans l'éditeur : l'index
+    feuille -> sous-cultures est calculé une fois par contenu d'arbre."""
+    if not isinstance(arbre, dict) or not arbre.get(CLE_RACINE):
+        return {}
+    cle = id(arbre)
+    cache = _CACHE_REGLES.get(cle)
+    if cache is None or cache[0] is not arbre:
+        index: dict = {}
+        _sous_cultures_par_regle(_racine_noeud(arbre), frozenset(), index)
+        cache = (arbre, index, rappels_par_sous_culture(arbre))
+        _CACHE_REGLES.clear()
+        _CACHE_REGLES[cle] = cache
+    _, index, par_sc = cache
+    out: dict = {}
+    for sc in sorted(index.get(regle_id, ())):
+        for input_id, r in (par_sc.get(sc) or {}).items():
+            out.setdefault(
+                input_id,
+                {
+                    **r,
+                    "conditions": conditions(input_id, r),
+                    "texte": texte_rappel(input_id, r["rappel_min"], r["rappel_max"]),
+                },
+            )
+    return out
+
+
+def _racine_noeud(arbre: dict) -> dict:
+    racine = (arbre or {}).get("arbre", arbre) or {}
+    return racine.get("noeud", racine) if isinstance(racine, dict) else {}
+
+
+def resume_groupes(arbre: dict) -> list[dict]:
+    """Groupes du bloc racine, enrichis des conditions et phrases (panneau de
+    l'éditeur)."""
+    out = []
+    for groupe in (arbre or {}).get(CLE_RACINE) or []:
+        if not isinstance(groupe, dict):
+            continue
+        inputs = []
+        for inp in groupe.get("inputs") or []:
+            if not isinstance(inp, dict) or not isinstance(inp.get("id"), str):
+                continue
+            inputs.append(
+                {
+                    "id": inp["id"],
+                    "conditions": conditions(inp["id"], inp),
+                    "texte": texte_rappel(
+                        inp["id"], inp.get("rappel_min"), inp.get("rappel_max")
+                    ),
+                }
+            )
+        out.append(
+            {
+                "sous_cultures": groupe.get("sous_cultures") or [],
+                "source_juridique": groupe.get("source_juridique") or "",
+                "inputs": inputs,
+            }
+        )
+    return out
