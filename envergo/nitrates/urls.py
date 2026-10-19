@@ -55,6 +55,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     DeleteNodeView,
     EditBrancheView,
     EditNodeView,
+    EditRappelsDatesView,
     EditRawYamlView,
     EditRegleView,
     InsertParentView,
@@ -291,6 +292,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/raw-yaml/",
         EditRawYamlView.as_view(),
         name="nitrates_admin_yaml_edit_raw",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/rappels-dates/",
+        EditRappelsDatesView.as_view(),
+        name="nitrates_admin_yaml_edit_rappels_dates",
     ),
     # Pages du pied de page (#63, #550). Contenu riche editable en admin
     # (ContenuRichDSFR `page.*`, seede par la migration 0035), public meme

@@ -304,6 +304,37 @@ exemple_regle_calculatrice:
     note: "note_1"
 
 
+# ── Bloc racine `rappels_dates` (carte #407) ────────────────────────────────
+# Rappels réglementaires NON bloquants affichés sous les champs date du couvert
+# du formulaire (semis, destruction) : obligations de couverture des sols
+# (mesure 7), « sauf dérogation ». À ne pas confondre avec `min` / `max` d'un
+# input calculatrice (#126) qui BORNENT la saisie.
+#
+# Déclaré à la racine de l'arbre (et non sur les feuilles) : la mesure 7 est
+# une règle de zone indépendante du fertilisant, et le formulaire pose les
+# dates avant que la feuille soit connue. Chaque groupe cible des valeurs de
+# `sous_culture` et reprend la grammaire des inputs date avec deux options :
+#   - rappel_min : date au plus tôt (borne seule ou liste)
+#   - rappel_max : date au plus tard (borne seule ou liste)
+# Borne : date fixe "JJ/MM" ou événement ± offset ("date_semis_couvert+8semaines").
+# Phrase générée selon l'input :
+#   semis       + rappel_max "30/09"   -> « doit être implanté au plus tard le 30 septembre inclus »
+#   destruction + rappel_min event+N   -> « doit être maintenu au moins N après semis »
+#   destruction + rappel_min "15/10"   -> « ne peut pas être détruit avant le 15 octobre »
+# Cascade : pour chaque (sous_culture, input), l'arbre le plus spécifique qui
+# déclare un rappel l'emporte (ZAR > PAR > PAN).
+
+exemple_rappels_dates:
+  rappels_dates:
+    - sous_cultures: [cine_avant_3112, cine_apres_0101, cie_avant_3112, cie_apres_0101]
+      source_juridique: "PAR7 Grand Est, article 10"
+      inputs:
+        - id: "date_semis_couvert"
+          rappel_max: "30/09"
+        - id: "date_destruction_couvert"
+          rappel_min: ["date_semis_couvert+2mois", "15/10"]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # DATES ET ÉVÉNEMENTS PHÉNOLOGIQUES
 # ─────────────────────────────────────────────────────────────────────────────

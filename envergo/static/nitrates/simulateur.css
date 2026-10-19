@@ -249,6 +249,23 @@
    calendrier dynamique, sans dependre de son composant (cf. #272). */
 .couvert-flow__dates .calc-cal__form {
   margin-bottom: 0;
+  align-items: flex-start; /* le rappel #407 n'est que sous un des 2 champs */
+}
+
+/* Colonne champ + rappel reglementaire (#407), prend la place du champ. */
+.couvert-flow__date {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.couvert-flow__date .calc-cal__field {
+  flex: none;
+}
+
+.couvert-flow__rappel {
+  margin-top: 0.5rem;
 }
 
 /* #272 : encadré ROUGE tant qu'une date obligatoire n'est pas saisie. Sans ça

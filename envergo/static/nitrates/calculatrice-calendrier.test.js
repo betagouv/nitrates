@@ -266,7 +266,7 @@ test("BUG borne dynamique ignorée : du=destruction-20j (antérieur au 15/10) au
 // ─── conditionToText : justification métier couvert (#159, retour Emma) ──────
 // La phrase remplace l'entièreté de l'ancien "(annotation) — car ...". Format :
 // "Car interdit jusqu'à / à partir de <N unités> avant/après
-//  l'implantation du couvert | la destruction ou la récolte du couvert".
+//  l'implantation du couvert | la fin du couvert".
 test("conditionToText #159 : semis + offset -> 'après l'implantation'", () => {
   assert.strictEqual(
     cal.conditionToText("15/10 < date_semis_couvert+4semaines"),
@@ -278,18 +278,18 @@ test("conditionToText #159 : semis + offset -> 'après l'implantation'", () => {
   );
 });
 
-test("conditionToText #159 : destruction - offset -> 'avant la destruction ou la récolte'", () => {
+test("conditionToText #159 : destruction - offset -> 'avant la fin du couvert'", () => {
   assert.strictEqual(
     cal.conditionToText("15/10 < date_destruction_couvert-20jours"),
-    "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit jusqu’à 20 jours avant la fin du couvert"
   );
   assert.strictEqual(
     cal.conditionToText("date_destruction_couvert-20jours < 15/01"),
-    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit à partir de 20 jours avant la fin du couvert"
   );
   assert.strictEqual(
     cal.conditionToText("date_destruction_couvert-20jours > 15/11"),
-    "Car interdit jusqu’à 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit jusqu’à 20 jours avant la fin du couvert"
   );
 });
 
@@ -313,7 +313,7 @@ test("#214.1 : interdiction du=destruction-20j (SANS condition) -> (i) 'a partir
   // champ condition, donc l'ancien conditionToText ne produisait AUCUN (i).
   assert.strictEqual(
     justif({ du: "date_destruction_couvert-20jours", au: "15/01", regime: "interdiction" }),
-    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit à partir de 20 jours avant la fin du couvert"
   );
 });
 
@@ -330,7 +330,7 @@ test("#214.4 : wording 'a partir de' quand l'interdiction DEMARRE a la borne dyn
   // condition de l'ASC voisine `destruction-20j > 15/11`).
   assert.strictEqual(
     justif({ du: "date_destruction_couvert-20jours", au: "15/01", regime: "interdiction" }),
-    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit à partir de 20 jours avant la fin du couvert"
   );
 });
 
@@ -360,7 +360,7 @@ test("#214 : interdiction a bornes FIXES -> pas de (i) (rien de dynamique a expl
 test("#214 : deux bornes event -> le DEBUT (du) prime", () => {
   assert.strictEqual(
     justif({ du: "date_destruction_couvert-20jours", au: "date_destruction_couvert", regime: "interdiction" }),
-    "Car interdit à partir de 20 jours avant la destruction ou la récolte du couvert"
+    "Car interdit à partir de 20 jours avant la fin du couvert"
   );
 });
 
@@ -375,7 +375,7 @@ test("#214 : periode nulle / sans borne dyn -> null (robustesse)", () => {
 const annote = cal.annoterBorne;
 const IBID = {
   date_semis_couvert: { id: "date_semis_couvert", label_court: "semis" },
-  date_destruction_couvert: { id: "date_destruction_couvert", label_court: "destruction" },
+  date_destruction_couvert: { id: "date_destruction_couvert", label_court: "fin du couvert" },
 };
 const borne = (eventId, sign, n, unit) => ({
   isEvent: true, eventId, offsetSign: sign, offsetN: n, offsetUnit: unit,
@@ -384,28 +384,28 @@ const borne = (eventId, sign, n, unit) => ({
 test("#215 : au=semis-15j -> 'jusqu'a 15 jours avant semis' (etait 'a partir de')", () => {
   assert.strictEqual(
     annote(borne("date_semis_couvert", "-", 15, "jours"), "au", IBID),
-    "jusqu'à 15 jours avant semis"
+    "jusqu'à 15 jours avant le semis"
   );
 });
 
 test("#215 : du=destruction-20j -> 'a partir de 20 jours avant destruction' (etait 'jusqu'a')", () => {
   assert.strictEqual(
     annote(borne("date_destruction_couvert", "-", 20, "jours"), "du", IBID),
-    "à partir de 20 jours avant destruction"
+    "à partir de 20 jours avant la fin du couvert"
   );
 });
 
 test("#215 non-reg : offset positif inchange (au=semis+4sem -> 'jusqu'a ... apres semis')", () => {
   assert.strictEqual(
     annote(borne("date_semis_couvert", "+", 4, "semaines"), "au", IBID),
-    "jusqu'à 4 semaines après semis"
+    "jusqu'à 4 semaines après le semis"
   );
 });
 
 test("#215 non-reg : offset positif inchange (du=semis+15j -> 'a partir de ... apres semis')", () => {
   assert.strictEqual(
     annote(borne("date_semis_couvert", "+", 15, "jours"), "du", IBID),
-    "à partir de 15 jours après semis"
+    "à partir de 15 jours après le semis"
   );
 });
 

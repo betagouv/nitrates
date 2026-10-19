@@ -113,7 +113,9 @@
   // Defini AVANT l'export Node (sinon TDZ en test unitaire, cf. conditionToText).
   const REF_COUVERT = {
     date_semis_couvert: "l’implantation du couvert",
-    date_destruction_couvert: "la destruction ou la récolte du couvert",
+    // #164 : « fin du couvert » (destruction, récolte, fauche ou pâturage).
+    date_destruction_couvert: "la fin du couvert",
+    date_destruction_prevue: "la fin du couvert",
   };
 
   const UNITES_JOURS = { jours: 1, semaines: 7, mois: 30 };
@@ -169,14 +171,14 @@
     if (inp.id === "date_destruction_couvert") {
       if (inp.max && !inp.min) {
         return (
-          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
-          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+          `Ce type de couvert correspond à une fin du couvert jusqu'au ${d(inp.max)}. ` +
+          `Pour une fin du couvert après le ${d(inp.max)}, recommencez une simulation.`
         );
       }
       if (inp.min && !inp.max) {
         return (
-          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
-          `Pour une destruction avant cette date, recommencez une simulation.`
+          `Ce type de couvert correspond à une fin du couvert à partir du ${d(inp.min)}. ` +
+          `Pour une fin du couvert avant cette date, recommencez une simulation.`
         );
       }
     }
@@ -210,14 +212,14 @@
     if (inp.id === "date_destruction_couvert") {
       if (inp.max && !inp.min) {
         return (
-          `Ce type de couvert correspond à une destruction jusqu'au ${d(inp.max)}. ` +
-          `Pour une destruction après le ${d(inp.max)}, recommencez une simulation.`
+          `Ce type de couvert correspond à une fin du couvert jusqu'au ${d(inp.max)}. ` +
+          `Pour une fin du couvert après le ${d(inp.max)}, recommencez une simulation.`
         );
       }
       if (inp.min && !inp.max) {
         return (
-          `Ce type de couvert correspond à une destruction à partir du ${d(inp.min)}. ` +
-          `Pour une destruction avant cette date, recommencez une simulation.`
+          `Ce type de couvert correspond à une fin du couvert à partir du ${d(inp.min)}. ` +
+          `Pour une fin du couvert avant cette date, recommencez une simulation.`
         );
       }
     }
@@ -271,6 +273,17 @@
     const now = new Date();
     const jjmm = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
     return jjmmToJourAgricole(jjmm);
+  }
+
+  // Article défini du libellé court (#164) : « la fin du couvert », « la
+  // destruction », mais « le semis ». Avant, « le » / « la » était figé et
+  // donnait « avant le destruction ».
+  function avecArticle(nom) {
+    const n = String(nom || "");
+    if (/^(la|le|l['’])\s?/i.test(n)) return n;
+    if (/^[aeéèêiouyh]/i.test(n)) return `l’${n}`;
+    const feminins = /^(fin|destruction|récolte|coupe|date|fauche|implantation)\b/i;
+    return `${feminins.test(n) ? "la" : "le"} ${n}`;
   }
 
   // Heuristique label_court : prendre les mots après "de" dans le label,
@@ -707,9 +720,9 @@
   if (intro) {
     let dates;
     if (aSemis && aDestruction) {
-      dates = "des dates de semis et de destruction du couvert";
+      dates = "des dates de semis et de fin du couvert";
     } else if (aDestruction) {
-      dates = "de la date de destruction du couvert";
+      dates = "de la date de fin du couvert";
     } else if (aSemis) {
       dates = "de la date de semis du couvert";
     } else {
@@ -923,7 +936,7 @@
     const lc = inp ? deduireLabelCourt(inp) : part.eventId;
     const prep = part.offsetSign === "+" ? "après" : "avant";
     const direction = mode === "du" ? "à partir de" : "jusqu'à";
-    return `${direction} ${part.offsetN} ${part.offsetUnit} ${prep} ${lc}`;
+    return `${direction} ${part.offsetN} ${part.offsetUnit} ${prep} ${avecArticle(lc)}`;
   }
 
   // Heuristique : un segment dont l'une des bornes YAML d'origine est un
@@ -1326,13 +1339,13 @@
     const nom = inp ? deduireLabelCourt(inp) : eventId;
     if (!m[2]) {
       // event nu
-      return `la ${nom}`;
+      return avecArticle(nom);
     }
     // event ± offset
     const n = m[3];
     const unit = m[4];
     const prep = m[2] === "+" ? "après" : "avant";
-    return `${n} ${unit} ${prep} le ${nom}`;
+    return `${n} ${unit} ${prep} ${avecArticle(nom)}`;
   }
 
   // Terme "event ± offset" exprime en phrase metier couvert (#159), ex :

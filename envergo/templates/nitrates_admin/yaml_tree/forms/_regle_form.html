@@ -293,6 +293,19 @@
                                style="max-width:10ch">
                       </label>
                     </div>
+                    {% rappel_input arbre regle inp.id as rappel %}
+                    {% if rappel %}
+                      <p class="yaml-tree__input-rappel-note">
+                        Rappel réglementaire (non bloquant), déclaré pour tout l'arbre dans
+                        « Rappels des dates du couvert » en haut de page :
+                        {% for c in rappel.conditions %}
+                          <code>{{ c }}</code>
+                          {% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                        <br>
+                        <em>{{ rappel.texte }}</em>
+                      </p>
+                    {% endif %}
                     {# `type` cache : une seule valeur "date" pour MVP-2 (cf. spec). #}
                     <input type="hidden"
                            name="inputs_requis-{{ forloop.counter0 }}-type"
@@ -773,14 +786,14 @@
         const DEFAULTS = [
           {
             id: 'date_semis_couvert',
-            label: 'Date de semis du couvert',
+            label: 'Date prévue de semis du couvert',
             label_court: 'semis',
             placeholder: '15/08',
           },
           {
             id: 'date_destruction_couvert',
-            label: 'Date de destruction du couvert',
-            label_court: 'destruction',
+            label: 'Date prévue de fin du couvert',
+            label_court: 'fin du couvert',
             placeholder: '01/11',
           },
         ];

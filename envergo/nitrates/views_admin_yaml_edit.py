@@ -15,9 +15,12 @@ probable mais on est safe).
 
 from __future__ import annotations
 
+import copy
+import json
 import re
 
 from django.contrib import messages
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils.decorators import method_decorator
@@ -582,6 +585,7 @@ class EditRegleView(View):
             request,
             "nitrates_admin/yaml_tree/forms/_regle_form.html",
             {
+                "arbre": tree.contenu,
                 "tree": tree,
                 "regle": branche["regle"],
                 # code_prescription du YAML peut etre scalaire OU liste : on
@@ -631,6 +635,7 @@ class EditRegleView(View):
                 request,
                 "nitrates_admin/yaml_tree/forms/_regle_form.html",
                 {
+                    "arbre": tree.contenu,
                     "tree": tree,
                     "regle": regle_display,
                     "parent_path_str": "/".join(parent_path),
@@ -666,6 +671,7 @@ class EditRegleView(View):
                 request,
                 "nitrates_admin/yaml_tree/forms/_regle_form.html",
                 {
+                    "arbre": tree.contenu,
                     "tree": tree,
                     "regle": current,
                     "parent_path_str": "/".join(parent_path),
@@ -2173,6 +2179,99 @@ def _collect_targets_in_node(noeud, crumbs, out):
         # Sous-noeud
         if isinstance(branche.get("noeud"), dict):
             _collect_targets_in_node(branche["noeud"], b_crumbs, out)
+
+
+def _panneau_erreurs(request, tree, messages: list[str]) -> HttpResponse:
+    return render(
+        request,
+        "nitrates_admin/yaml_tree/_validation_panel.html",
+        {
+            "tree": tree,
+            "errors": [
+                {"label": "", "message": m, "raw": m, "kind": "structure"}
+                for m in messages
+            ],
+            "blocked_activation": False,
+        },
+    )
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class EditRappelsDatesView(View):
+    """POST : remplace le bloc racine `rappels_dates` du draft (#407).
+
+    Le bloc est saisi en YAML (liste de groupes {sous_cultures,
+    source_juridique, inputs}), validé avec tout l'arbre, puis enregistré
+    dans `contenu` et dans le YAML brut (round-trip ruamel, commentaires
+    conservés). Bloc vide = suppression des rappels."""
+
+    def post(self, request, tree_pk):
+        from io import StringIO
+
+        from ruamel.yaml import YAML
+        from ruamel.yaml.error import YAMLError
+
+        from envergo.nitrates.yaml_tree.rappels_dates import CLE_RACINE
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        err = _check_editable(tree, request.user)
+        if err:
+            return HttpResponseForbidden(err)
+        yaml = YAML(typ="rt")
+        yaml.preserve_quotes = True
+        yaml.width = 4096
+        raw_bloc = request.POST.get("rappels_dates", "")
+        try:
+            bloc = yaml.load(StringIO(raw_bloc)) if raw_bloc.strip() else None
+        except YAMLError as exc:
+            return _panneau_erreurs(request, tree, [f"Parse YAML : {exc}"])
+        if bloc is not None and not isinstance(bloc, list):
+            return _panneau_erreurs(
+                request, tree, ["Le bloc doit être une liste de groupes."]
+            )
+        bloc_json = json.loads(json.dumps(bloc)) if bloc else None
+        contenu = copy.deepcopy(tree.contenu)
+        if bloc_json:
+            contenu[CLE_RACINE] = bloc_json
+        else:
+            contenu.pop(CLE_RACINE, None)
+        try:
+            validate_arbre(contenu, scope=tree.scope)
+        except ValidationError as exc:
+            return render(
+                request,
+                "nitrates_admin/yaml_tree/_validation_panel.html",
+                {
+                    "tree": tree,
+                    "errors": [_humanize_error(contenu, e) for e in exc.errors],
+                    "blocked_activation": False,
+                },
+            )
+        raw = tree.contenu_yaml_brut or ""
+        if raw.strip():
+            doc = yaml.load(StringIO(raw))
+            if bloc:
+                doc[CLE_RACINE] = bloc
+            else:
+                doc.pop(CLE_RACINE, None)
+            buf = StringIO()
+            yaml.dump(doc, buf)
+            raw = buf.getvalue()
+        else:
+            raw = editor._dump_yaml(contenu)
+        with transaction.atomic():
+            DecisionTreeRevision.record(
+                tree,
+                action=DecisionTreeRevision.ACTION_EDIT,
+                user=request.user,
+                target_path="",
+                description="Rappels des dates du couvert",
+            )
+            tree.contenu = contenu
+            tree.contenu_yaml_brut = raw
+            tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+        return _refresh_response(request, "Rappels des dates du couvert enregistrés.")
 
 
 @method_decorator(staff_member_required, name="dispatch")

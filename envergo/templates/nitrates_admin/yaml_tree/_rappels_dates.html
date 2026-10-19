@@ -1,0 +1,69 @@
+{% load yaml_admin_extras %}
+
+{% comment %}
+Bloc racine `rappels_dates` de l'arbre (#407) : rappels réglementaires non
+bloquants affichés sous les dates du couvert du formulaire. Déclarés UNE fois
+pour l'arbre, ils valent pour toutes les feuilles des sous-cultures listées
+(chaque feuille concernée les affiche à côté de ses inputs).
+{% endcomment %}
+{% rappels_dates_arbre arbre as groupes %}
+<details class="yaml-admin__rappels" {% if groupes %}open{% endif %}>
+  <summary>
+    Rappels des dates du couvert
+    <span class="yaml-admin__rappels-compte">({{ groupes|length }} groupe{{ groupes|length|pluralize }})</span>
+  </summary>
+  {% if groupes %}
+    {% for g in groupes %}
+      <div class="yaml-admin__rappels-groupe">
+        <p>
+          Sous-cultures :
+          {% for sc in g.sous_cultures %}
+            <code>{{ sc }}</code>
+            {% if not forloop.last %},{% endif %}
+          {% endfor %}
+          {% if g.source_juridique %}
+            <br>
+            Source : {{ g.source_juridique }}
+          {% endif %}
+        </p>
+        <ul>
+          {% for inp in g.inputs %}
+            <li>
+              {% for c in inp.conditions %}
+                <code>{{ c }}</code>
+                {% if not forloop.last %}et{% endif %}
+              {% endfor %}
+              <br>
+              <em>{{ inp.texte }}</em>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>Aucun rappel : le formulaire n'affiche rien sous les dates du couvert (ou celui d'un arbre moins spécifique).</p>
+  {% endif %}
+  {% if is_editing %}
+    {% rappels_dates_yaml arbre as bloc_yaml %}
+    <form method="post"
+          action="{% url 'nitrates_admin_yaml_edit_rappels_dates' tree_pk=tree.pk %}"
+          hx-post="{% url 'nitrates_admin_yaml_edit_rappels_dates' tree_pk=tree.pk %}"
+          hx-target="#yaml-admin-validation-zone"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <p class="yaml-admin__raw-hint">
+        Liste de groupes : <code>sous_cultures</code>, <code>source_juridique</code>,
+        <code>inputs</code> (<code>id</code> + <code>rappel_min</code> / <code>rappel_max</code> :
+        date <code>JJ/MM</code> ou <code>date_semis_couvert+8semaines</code>, seule ou en liste).
+        Vide = aucun rappel.
+      </p>
+      <textarea name="rappels_dates"
+                class="yaml-admin__raw-textarea yaml-admin__rappels-textarea"
+                spellcheck="false"
+                rows="12">{{ bloc_yaml }}</textarea>
+      <div class="yaml-admin__raw-actions">
+        <button type="submit" class="yaml-admin__btn yaml-admin__btn--primary">Enregistrer les rappels</button>
+      </div>
+    </form>
+  {% endif %}
+</details>

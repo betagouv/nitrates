@@ -36,7 +36,7 @@ CHAMPS_DATES = [
     {"id": "date_semis_couvert", "label": "Date de semis du couvert"},
     {
         "id": "date_destruction_couvert",
-        "label": "Date de destruction / récolte du couvert",
+        "label": "Date prévue de fin du couvert",
     },
 ]
 

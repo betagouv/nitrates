@@ -21,6 +21,7 @@ from jsonschema import Draft202012Validator
 from envergo.nitrates.yaml_tree.condition import validate_condition
 from envergo.nitrates.yaml_tree.expression import valider_expression
 from envergo.nitrates.yaml_tree.parcours import normaliser_codes_prescription
+from envergo.nitrates.yaml_tree.rappels_dates import valider_rappels_dates
 from envergo.nitrates.yaml_tree.schema import ARBRE_SCHEMA
 
 DATE_FIXE_RE = re.compile(r"^\d{2}/\d{2}$")
@@ -87,6 +88,9 @@ def validate_arbre(
     errors.extend(_check_regime_mixte(arbre))
     errors.extend(_check_calculatrice(arbre))
     errors.extend(_check_catalogue_parametre(arbre))
+    errors.extend(
+        valider_rappels_dates(arbre, _sous_cultures_connues(referentiels or {}))
+    )
     # Exhaustivite booleenne : seulement pour le PAN (couvrant). Les PAR/ZAR
     # sont des overrides partiels -> les trous sont legitimes (fallback cascade).
     if scope == "national":
@@ -152,6 +156,19 @@ def _referentiels_depuis_orm() -> dict:
         "codes_prescription": codes,
         "notes": notes,
         "evenements_phenologiques": evenements,
+    }
+
+
+def _sous_cultures_connues(referentiels: dict) -> set[str] | None:
+    """Valeurs de `sous_culture` (branches d'arbre) connues du referentiel, ou
+    None si le mapping n'est pas fourni (validation ORM minimale)."""
+    mapping = referentiels.get("mapping_sous_culture_vers_branche")
+    if not isinstance(mapping, dict):
+        return None
+    return {
+        b["sous_culture"]
+        for b in mapping.values()
+        if isinstance(b, dict) and b.get("sous_culture")
     }
 
 

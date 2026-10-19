@@ -18,6 +18,8 @@ const {
   destinationMetier,
   premiereReponsePourMetier,
   reponseQ1AuReplay,
+  culturesCandidatesCouvert,
+  texteRappelCommun,
 } = require("./question_couvert_flow.js");
 
 test("chaque reponse Q1 a une valeur UNIQUE", () => {
@@ -132,5 +134,97 @@ test("replay : URL incoherente avec la cascade -> on suit la cascade", () => {
   assert.strictEqual(
     reponseQ1AuReplay("couvert", "sol_non_cultive"),
     "couvert_sur"
+  );
+});
+
+// ─── Rappels sous les dates du couvert (#407) ─────────────────────────────
+
+const RAPPEL_SEMIS = { texte: "implanté au plus tard le 30 septembre" };
+const RAPPEL_DESTR = { texte: "maintenu au moins 2 mois" };
+const RAPPELS = {
+  couvert_non_recolte_plus_en_place_apres_3112: {
+    date_semis_couvert: RAPPEL_SEMIS,
+    date_destruction_couvert: RAPPEL_DESTR,
+  },
+  couvert_non_recolte_toujours_en_place_apres_0101: {
+    date_semis_couvert: RAPPEL_SEMIS,
+    date_destruction_prevue: RAPPEL_DESTR,
+  },
+  couvert_recolte_plus_en_place_apres_3112: {
+    date_semis_couvert: RAPPEL_SEMIS,
+  },
+  couvert_recolte_toujours_en_place_apres_0101: {},
+};
+
+test("candidats : rien tant que Q2/Q3 ne sont pas répondues", () => {
+  assert.deepStrictEqual(culturesCandidatesCouvert("", "recolte", ""), []);
+  assert.deepStrictEqual(
+    culturesCandidatesCouvert("couvert_intercultures_longue", "", ""),
+    []
+  );
+});
+
+test("candidats : interculture courte -> une seule culture", () => {
+  assert.deepStrictEqual(
+    culturesCandidatesCouvert("couvert_intercultures_courte", "non_recolte", ""),
+    ["couvert_courte_non_recolte"]
+  );
+});
+
+test("candidats : longue sans date de destruction -> avant et après 01/01", () => {
+  assert.deepStrictEqual(
+    culturesCandidatesCouvert("couvert_intercultures_longue", "recolte", ""),
+    [
+      "couvert_recolte_plus_en_place_apres_3112",
+      "couvert_recolte_toujours_en_place_apres_0101",
+    ]
+  );
+});
+
+test("candidats : la date de destruction tranche", () => {
+  assert.deepStrictEqual(
+    culturesCandidatesCouvert("couvert_intercultures_longue", "recolte", "15/02"),
+    ["couvert_recolte_toujours_en_place_apres_0101"]
+  );
+  assert.deepStrictEqual(
+    culturesCandidatesCouvert("couvert_intercultures_longue", "recolte", "15/11"),
+    ["couvert_recolte_plus_en_place_apres_3112"]
+  );
+});
+
+test("rappel commun à toutes les candidates, alias date_destruction_prevue", () => {
+  const cands = culturesCandidatesCouvert(
+    "couvert_intercultures_longue",
+    "non_recolte",
+    ""
+  );
+  assert.strictEqual(
+    texteRappelCommun(RAPPELS, cands, "date_semis_couvert"),
+    RAPPEL_SEMIS.texte
+  );
+  assert.strictEqual(
+    texteRappelCommun(RAPPELS, cands, "date_destruction_couvert"),
+    RAPPEL_DESTR.texte
+  );
+});
+
+test("rappels divergents entre candidates -> rien tant que ce n'est pas tranché", () => {
+  const cands = culturesCandidatesCouvert("couvert_intercultures_longue", "recolte", "");
+  assert.strictEqual(texteRappelCommun(RAPPELS, cands, "date_semis_couvert"), "");
+  const avant = culturesCandidatesCouvert(
+    "couvert_intercultures_longue",
+    "recolte",
+    "15/11"
+  );
+  assert.strictEqual(
+    texteRappelCommun(RAPPELS, avant, "date_semis_couvert"),
+    RAPPEL_SEMIS.texte
+  );
+});
+
+test("pas de rappels reçus (clic carte pas encore fait) -> rien", () => {
+  assert.strictEqual(
+    texteRappelCommun(undefined, ["couvert_courte_recolte"], "date_semis_couvert"),
+    ""
   );
 });
