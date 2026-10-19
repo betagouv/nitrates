@@ -140,34 +140,56 @@ def reset_link(querystring_base):
     return "?"
 
 
-def _activation_point(tree_pk):
-    """Point par defaut du SCOPE de l'arbre `tree_pk`, pour que la preview tombe
-    dans une zone ou l'arbre s'active quand le chemin ne porte pas lui-meme de
-    contrainte SIG specifique.
+_CACHE_ARBRES: dict = {}
 
-      - scope ZAR        -> point dans la couche ZAR Grand Est (en_zar)
-      - scope region 44  -> point PAR Grand Est (ZV + region 44, hors ZAR)
-      - sinon (PAN, ...) -> None (la preview retombe sur le resolveur SIG du
-                            chemin : ZV national par defaut)
 
-    Le point retourne porte son code_insee quand la zone se resout par commune
-    (indispensable pour les Zones Est). Cf. compute_simulator_params : ce point
-    n'est applique que si le chemin n'impose pas deja un point specifique."""
+def _contexte_arbre(tree_pk):
+    """(point par defaut du scope, zone de l'arbre) pour `tree_pk`, cache
+    quelques secondes : un rendu d'arbre appelle ces tags des centaines de fois.
+
+    Point par defaut :
+      - scope ZAR        -> point A L'INTERIEUR de sa couche d'activation
+                            (point_on_surface), sinon point ZAR connu
+      - scope region     -> point PAR de la region
+      - sinon (PAN, ...) -> None (resolveur SIG du chemin)
+    Zone : {scope, region_code, activation_map_id}, sert a verifier le point
+    (cf. preview_points, #584). Le point retourne porte son code_insee quand
+    la zone se resout par commune (Zones Est)."""
+    import time
+
     from envergo.nitrates.models import DecisionTree
     from envergo.nitrates.yaml_admin.preview import (
         point_for_activation_map,
         point_par_defaut_scope,
     )
 
+    entree = _CACHE_ARBRES.get(tree_pk)
+    if entree and time.monotonic() - entree[0] < 30:
+        return entree[1]
     try:
         tree = DecisionTree.objects.select_related("activation_map").get(pk=tree_pk)
     except (DecisionTree.DoesNotExist, ValueError, TypeError):
-        return None
-    # Priorite au point par scope (connait les Zones Est avec code_insee) ;
-    # a defaut, centroide de la couche d'activation (generique).
-    return point_par_defaut_scope(
-        tree.scope, tree.region_code
-    ) or point_for_activation_map(tree.activation_map)
+        return None, None
+    if tree.scope == DecisionTree.SCOPE_ZAR:
+        point = point_for_activation_map(tree.activation_map) or point_par_defaut_scope(
+            tree.scope, tree.region_code
+        )
+    else:
+        point = point_par_defaut_scope(
+            tree.scope, tree.region_code
+        ) or point_for_activation_map(tree.activation_map)
+    zone = {
+        "scope": tree.scope,
+        "region_code": tree.region_code or "",
+        "activation_map_id": tree.activation_map_id,
+    }
+    _CACHE_ARBRES[tree_pk] = (time.monotonic(), (point, zone))
+    return point, zone
+
+
+def _activation_point(tree_pk):
+    """Point par defaut du scope de l'arbre (cf. _contexte_arbre)."""
+    return _contexte_arbre(tree_pk)[0]
 
 
 @register.simple_tag
@@ -194,6 +216,7 @@ def preview_url_regle(arbre, parent_path_str, valeur, tree_pk, tree_status="draf
     # en compte par le resolveur SIG / cascade form (typiquement quand la
     # branche feuille est sur un catalogue note_5/montagne).
     parent = editor.get_node_at(arbre, parent_path)
+    point, zone = _contexte_arbre(tree_pk)
     leaf_branch = None
     if isinstance(parent, dict):
         champ = parent.get("champ")
@@ -203,7 +226,8 @@ def preview_url_regle(arbre, parent_path_str, valeur, tree_pk, tree_status="draf
         arbre,
         parent_path,
         leaf_branch=leaf_branch,
-        point_override=_activation_point(tree_pk),
+        point_override=point,
+        zone_arbre=zone,
     )
     use_draft_id = tree_status != "active"
     return build_preview_url(tree_pk if use_draft_id else None, params)
@@ -246,8 +270,9 @@ def preview_url(arbre, path_str, tree_pk, tree_status="draft"):
         path: tuple = ()
     else:
         path = tuple(p for p in path_str.split("/") if p)
+    point, zone = _contexte_arbre(tree_pk)
     params = compute_simulator_params(
-        arbre, path, point_override=_activation_point(tree_pk)
+        arbre, path, point_override=point, zone_arbre=zone
     )
     # Si on previsualise un draft (statut != active), on injecte draft_tree_id.
     # Sur l'arbre actif, l'URL n'a pas besoin de ce param (le simulateur le
