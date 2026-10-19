@@ -1077,6 +1077,14 @@
     return parcel.code_cultu;
   }
 
+  // #407 : rappels réglementaires sous les dates du couvert. Calculés côté
+  // serveur depuis les arbres actifs du point, consommés par
+  // question_couvert_flow.js (formulaire de gauche).
+  function publierRappelsCouvert(data) {
+    window.NITRATES_RAPPELS_COUVERT = data.rappels_dates_couvert || {};
+    document.dispatchEvent(new CustomEvent("nitrates:rappels-couvert"));
+  }
+
   function renderDebug(data, communeInfo, parcelInfo, rpgSel) {
     if (!debugEl) return;
 
@@ -1420,6 +1428,7 @@
         if (clic !== numeroClic) throw PERIME;
         renderDebug(data, communeInfo, parcelInfo, rpgSel);
         updateLocalisationReadonly(data, communeInfo.nom);
+        publierRappelsCouvert(data);
         // Carte #57 : bornage geographique. Le backend renvoie
         // simulateur_ouvert selon le departement de la parcelle. Si ouvert,
         // on devoile le formulaire ; sinon on affiche le message "pas encore
@@ -1700,6 +1709,7 @@
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) scopeReference = scopeDepuisData(data, insee);
+        if (data) publierRappelsCouvert(data);
       })
       .catch(() => {});
   })();

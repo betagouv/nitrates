@@ -346,6 +346,9 @@ ARBRE_SCHEMA = {
                 "properties": {"regle": {"$ref": "#/$defs/regle"}},
             },
         },
+        # Rappels reglementaires sous les dates du couvert (#407), detail
+        # valide par yaml_tree/rappels_dates.valider_rappels_dates.
+        "rappels_dates": {"type": "array", "items": {"type": "object"}},
     },
     "$defs": {
         "noeud": NOEUD_SCHEMA,

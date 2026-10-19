@@ -153,12 +153,58 @@
     return false;
   }
 
+  // ─── Rappels réglementaires sous les dates (#407) ─────────────────────
+  // Le backend (info parcelle) renvoie les rappels par culture du formulaire
+  // (sous_culture_form) et par input date. Les arbres ZAR nomment parfois la
+  // destruction `date_destruction_prevue` : alias du champ de gauche.
+  var ALIAS_INPUT_RAPPEL = {
+    date_semis_couvert: ["date_semis_couvert"],
+    date_destruction_couvert: ["date_destruction_couvert", "date_destruction_prevue"],
+  };
+
+  // Cultures du formulaire encore possibles vu les réponses Q2/Q3 (+ date de
+  // destruction pour l'interculture longue, qui tranche avant/après 01/01).
+  function culturesCandidatesCouvert(type, recolte, dateDestruction) {
+    if (!type || !recolte) return [];
+    if (type === "couvert_intercultures_courte") {
+      return ["couvert_courte_" + recolte];
+    }
+    var apres = destructionApres0101(dateDestruction);
+    var presences =
+      apres === null
+        ? ["plus_en_place_apres_3112", "toujours_en_place_apres_0101"]
+        : [apres ? "toujours_en_place_apres_0101" : "plus_en_place_apres_3112"];
+    return presences.map(function (p) {
+      return "couvert_" + recolte + "_" + p;
+    });
+  }
+
+  // Texte du rappel pour un input, s'il est le MÊME pour toutes les cultures
+  // candidates (sinon on ne sait pas encore lequel afficher : "").
+  function texteRappelCommun(rappels, candidats, inputId) {
+    if (!rappels || !candidats.length) return "";
+    var ids = ALIAS_INPUT_RAPPEL[inputId] || [inputId];
+    var textes = candidats.map(function (c) {
+      var r = rappels[c] || {};
+      for (var i = 0; i < ids.length; i++) {
+        if (r[ids[i]] && r[ids[i]].texte) return r[ids[i]].texte;
+      }
+      return "";
+    });
+    for (var j = 1; j < textes.length; j++) {
+      if (textes[j] !== textes[0]) return "";
+    }
+    return textes[0];
+  }
+
   if (_isNode) {
     module.exports = {
       Q1_OPTIONS: Q1_OPTIONS,
       destinationMetier: destinationMetier,
       premiereReponsePourMetier: premiereReponsePourMetier,
       reponseQ1AuReplay: reponseQ1AuReplay,
+      culturesCandidatesCouvert: culturesCandidatesCouvert,
+      texteRappelCommun: texteRappelCommun,
     };
     return;
   }
@@ -530,7 +576,31 @@
     // Q3 répondue : on révèle Q4 (dates) puis on tente de recomposer.
     montrerDatesGauche();
     appliquerCouvert();
+    majRappels();
     mettreAJourBouton();
+  }
+
+  // #407 : affiche sous chaque date le rappel des arbres du point, quand il
+  // ne dépend plus d'une réponse à venir.
+  function majRappels() {
+    var mount = el("q_dates_couvert");
+    if (!mount) return;
+    var candidats = culturesCandidatesCouvert(
+      valeurFlow("cflow_type_couvert"),
+      valeurFlow("cflow_couvert_recolte"),
+      (el("id_date_destruction_couvert") || {}).value
+    );
+    DATE_INPUTS.forEach(function (inp) {
+      var p = mount.querySelector('[data-rappel-for="' + inp.id + '"]');
+      if (!p) return;
+      var texte = texteRappelCommun(
+        window.NITRATES_RAPPELS_COUVERT,
+        candidats,
+        inp.id
+      );
+      p.textContent = texte;
+      p.hidden = !texte;
+    });
   }
 
   // ─── Q4 : dates de semis + destruction (picker JJ/MM DSFR) ──────────────
@@ -562,6 +632,7 @@
     mount.innerHTML = renderDatesForm();
     bindDates(mount);
     datesMontees = true;
+    majRappels();
   }
 
   var SVG_CAL =
@@ -592,7 +663,10 @@
         // #252 : pas d'encadre rouge (aria-invalid) tant que l'utilisateur n'a
         // pas touche le champ -- afficher une erreur d'emblee est un contresens
         // DSFR. L'etat invalide n'apparait qu'apres interaction (onDateChange).
+        // #407 : rappel réglementaire sous le champ (rempli par majRappels).
+        var idRappel = "rappel-" + inp.id;
         return (
+          '<div class="couvert-flow__date">' +
           '<label class="calc-cal__field">' +
           '<span class="calc-cal__field-label">' +
           escapeHtml(inp.label) +
@@ -606,9 +680,18 @@
           escapeHtml(cur) +
           '" placeholder="jj/mm"' +
           ' pattern="^\\d{2}/\\d{2}$" maxlength="5"' +
+          ' aria-describedby="' +
+          idRappel +
+          '"' +
           ">" +
           SVG_CAL +
-          "</label>"
+          "</label>" +
+          '<p class="fr-message fr-message--info couvert-flow__rappel" id="' +
+          idRappel +
+          '" data-rappel-for="' +
+          escapeHtml(inp.id) +
+          '" hidden></p>' +
+          "</div>"
         );
       }).join("") +
       "</div>"
@@ -685,6 +768,7 @@
     else elmt.setAttribute("aria-invalid", "true");
     // La date de destruction pilote l'axe présence (interculture longue).
     appliquerCouvert();
+    majRappels();
     mettreAJourBouton();
   }
 
@@ -1111,6 +1195,9 @@
   function boot() {
     var q1 = el("q_destination_epandage");
     if (!q1) return;
+    // #407 : les rappels arrivent avec l'info parcelle (clic carte), parfois
+    // après le montage des dates.
+    document.addEventListener("nitrates:rappels-couvert", majRappels);
     fetch(window.NITRATES_REFERENTIELS_URL)
       .then(function (r) {
         return r.json();

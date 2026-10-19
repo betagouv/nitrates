@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -22,6 +23,8 @@ from envergo.nitrates.regions import region_for_department
 from envergo.nitrates.yaml_tree import load_active_tree, load_referentiels
 from envergo.nitrates.zonage_zones_est import est_zone_grand_est_1, est_zone_grand_est_2
 from envergo.nitrates.zonage_zones_mais_bretagne import zone_mais_bretagne
+
+logger = logging.getLogger(__name__)
 
 
 def _cache_in_prod(seconds):
@@ -367,11 +370,16 @@ class DebugView(View):
                 "bassin": bassin_code_from_attributes(attrs),
             }
 
-        en_zar = Zone.objects.filter(
-            map__map_type=MAP_TYPES.zone_action_renforcee,
-            map__is_active=True,
-            geometry__intersects=point,
-        ).exists()
+        zar_zone_id = (
+            Zone.objects.filter(
+                map__map_type=MAP_TYPES.zone_action_renforcee,
+                map__is_active=True,
+                geometry__intersects=point,
+            )
+            .values_list("id", flat=True)
+            .first()
+        )
+        en_zar = zar_zone_id is not None
 
         # Zones Est (resolues par code INSEE) : on les expose pour le panneau
         # debug gauche. code_insee n'est pas connu de cet endpoint (pas de
@@ -418,8 +426,32 @@ class DebugView(View):
                 # affiche un message au lieu du formulaire. Allowlist : fermé
                 # par défaut. Non applique sur `/simulateur` interne (geo!=1).
                 "simulateur_ouvert": simulateur_ouvert,
+                # #407 : rappels reglementaires sous les dates du couvert
+                # (formulaire de gauche), selon les arbres actifs du point.
+                "rappels_dates_couvert": _rappels_dates_couvert(
+                    region_code, zar_zone_id
+                ),
             }
         )
+
+
+def _rappels_dates_couvert(region_code, zar_zone_id) -> dict:
+    """Rappels des dates du couvert pour les arbres actifs du point (#407).
+
+    Best-effort : un arbre manquant ou mal forme ne doit jamais casser l'info
+    parcelle, on renvoie alors {} (pas de rappel affiche)."""
+    from envergo.nitrates.yaml_tree import select_active_trees
+    from envergo.nitrates.yaml_tree.rappels_dates import rappels_dates_couvert
+
+    try:
+        arbres = select_active_trees(
+            {"region_code": region_code or "", "zar_zone_id": zar_zone_id}
+        )
+        mapping = load_referentiels().get("mapping_sous_culture_vers_branche", {})
+        return rappels_dates_couvert([a.contenu for a in arbres], mapping)
+    except Exception:
+        logger.exception("Rappels dates couvert : calcul impossible")
+        return {}
 
 
 class ReferentielsView(View):
