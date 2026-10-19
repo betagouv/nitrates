@@ -1,5 +1,7 @@
 """Tests de la page « Aide & définitions » (cartes #110 / #288)."""
 
+import re
+
 import pytest
 from django.contrib.sites.models import Site
 
@@ -135,6 +137,19 @@ def test_nav_onglets_presente_et_active(client, nitrates_site):
     assert 'aria-current="page">Simulateur</a>' not in html_defs
     # Et inversement sur la home.
     assert 'aria-current="page">Simulateur</a>' in html_home
+
+
+def test_fleche_retour_sur_definitions_seulement(client, nitrates_site):
+    # #453 : retour arriere explicite, pas de nouvel onglet
+    html_defs = client.get("/definitions/").content.decode()
+    assert "data-nitrates-retour" in html_defs
+    assert "nitrates/nav_retour.js" in html_defs
+    assert '<span class="fr-sr-only">Retour à la page précédente</span>' in html_defs
+    # repli sans JS ou arrivee directe : le simulateur
+    assert re.search(r'href="/"\s+title="Retour à la page précédente"', html_defs)
+
+    html_home = client.get("/").content.decode()
+    assert "data-nitrates-retour" not in html_home
 
 
 def test_exemption_lockdown_root_ouvert(client, nitrates_site, settings):
