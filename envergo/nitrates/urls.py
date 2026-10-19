@@ -65,6 +65,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     ValidateTreeView,
 )
 from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
+from envergo.nitrates.views_kit_media import KitMediaView
 from envergo.nitrates.views_retour import RetourUtilisateurCreateView
 from envergo.nitrates.views_seo import llms_txt, robots_txt, sitemap_xml
 from envergo.nitrates.views_stats import StatsView
@@ -322,6 +323,8 @@ urlpatterns = [
     # Page statistiques (#517) : texte `page.stats` + simulations lues dans
     # Matomo. Publique comme les autres pages du pied de page.
     path("stats/", StatsView.as_view(), name="nitrates_stats"),
+    # Kit média (#293) : textes et visuels pour les relais, zip en statique.
+    path("kit-media/", KitMediaView.as_view(), name="nitrates_kit_media"),
     # Validation manuelle des feuilles (issue #28 / sprint MVP-1 fin)
     path(
         "admin/nitrates/validation/",

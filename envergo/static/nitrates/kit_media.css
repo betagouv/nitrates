@@ -1,0 +1,39 @@
+/* Page Kit media (#293). Couleurs = tokens DSFR : suivent le theme clair/sombre. */
+
+.kit-media__carte {
+  max-width: 37rem;
+  margin: 2rem 0 2.5rem;
+}
+
+/* Pictogramme centre dans le panneau gris de la carte de telechargement. */
+.kit-media__picto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 6rem;
+}
+
+@media (width >= 48em) {
+  .kit-media__carte .fr-card__header {
+    width: 25%;
+    flex-basis: 25%;
+  }
+}
+
+.kit-media__consigne {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.kit-media__consigne [class*="fr-icon-"]::before {
+  --icon-size: 1.5rem;
+}
+
+.kit-media__consigne--ok {
+  color: var(--text-default-success);
+}
+
+.kit-media__consigne--ko {
+  color: var(--text-default-error);
+}
