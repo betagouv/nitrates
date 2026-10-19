@@ -137,3 +137,27 @@ def test_lien_mailto_sans_nouvel_onglet():
 def test_titre_onglet_nitrat_info(client, nitrates_site):
     html = client.get(reverse("nitrates_cgu")).content.decode()
     assert "— Nitrat'Info" in html
+
+
+def _tracker(settings, actif):
+    analytics = {k: dict(v) for k, v in settings.ANALYTICS.items()}
+    analytics["NITRATES"]["TRACKER_ENABLED"] = actif
+    settings.ANALYTICS = analytics
+
+
+def test_optout_matomo_sur_donnees_personnelles(client, nitrates_site, settings):
+    # #592 : opt-out exige par l'exemption de consentement CNIL
+    _tracker(settings, True)
+    html = client.get(reverse("nitrates_donnees_personnelles")).content.decode()
+    assert 'id="mesure-audience"' in html
+    assert "data-nitrates-optout" in html
+    assert "nitrates/optout_matomo.js" in html
+
+    autre = client.get(reverse("nitrates_cgu")).content.decode()
+    assert 'id="mesure-audience"' not in autre
+
+
+def test_optout_matomo_absent_sans_tracker(client, nitrates_site, settings):
+    _tracker(settings, False)
+    html = client.get(reverse("nitrates_donnees_personnelles")).content.decode()
+    assert 'id="mesure-audience"' not in html

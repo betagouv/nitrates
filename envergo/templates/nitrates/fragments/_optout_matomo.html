@@ -1,0 +1,34 @@
+{% load static nitrates_tags %}
+
+{% comment %}
+Opt-out de la mesure d'audience (#592), en bas de la page Donnees personnelles.
+Condition de l'exemption de consentement CNIL revendiquee par la page (guide
+CNIL de configuration Matomo, etape 2 : "permettre aux visiteurs de refuser
+d'etre suivis"). Case a cocher cote site via l'API du tracker (optUserOut /
+forgetUserOptOut / isUserOptedOut) : cookie first-party mtm_consent_removed,
+contrairement a l'iframe stats.beta.gouv.fr d'Envergo qui depend des cookies
+tiers. Rendu seulement si le tracker est actif (staging, prod).
+{% endcomment %}
+<section class="fr-mt-6w"
+         id="mesure-audience"
+         aria-labelledby="mesure-audience-titre">
+  <h2 id="mesure-audience-titre">Refuser la mesure d'audience</h2>
+  <p>
+    Nitrat'Info mesure sa fréquentation avec Matomo, sous forme de statistiques anonymes.
+    Vous pouvez refuser d'y être compté en décochant la case ci-dessous.
+    Votre choix est mémorisé dans ce navigateur pendant 13 mois.
+  </p>
+  <div class="fr-checkbox-group">
+    <input type="checkbox"
+           id="matomo-optout"
+           name="matomo-optout"
+           checked
+           disabled
+           data-nitrates-optout>
+    <label class="fr-label" for="matomo-optout">Compter mes visites dans les statistiques de fréquentation</label>
+  </div>
+  <p class="fr-text--sm fr-mt-1w"
+     id="matomo-optout-etat"
+     aria-live="polite"></p>
+</section>
+<script src="{% static_v 'nitrates/optout_matomo.js' %}" defer></script>
