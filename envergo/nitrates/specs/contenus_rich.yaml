@@ -166,6 +166,21 @@ contenus:
       texte: "Peuplement végétal semé présent sur une parcelle pendant l'interculture,\
         \ qui n'est pas issu des repousses de la culture précédente."
 
+- cle: definition.date-fin-couvert
+  libelle_admin: Définition — Date de fin du couvert
+  type_contenu: definition
+  titre_public: Date de fin du couvert
+  categorie: pratique-documents
+  termes_declencheurs:
+  - fin du couvert
+  schema: 1
+  blocs:
+  - type: paragraphe
+    data:
+      texte: "Date à laquelle le couvert végétal d'interculture prend fin : sa destruction\
+        \ pour un couvert non exporté (CINE), sa récolte, sa fauche ou son pâturage pour\
+        \ un couvert exporté (CIE)."
+
 - cle: definition.effluents-peu-charges
   libelle_admin: Définition — Effluents peu chargés
   type_contenu: definition

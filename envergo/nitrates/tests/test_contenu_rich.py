@@ -408,10 +408,14 @@ def test_seed_idempotent():
 
 @pytest.mark.django_db
 def test_seed_definitions_glossaire():
-    # Carte #110 : les 17 définitions juristes arrivent typées et catégorisées.
+    # Carte #110 : les 17 définitions juristes arrivent typées et catégorisées,
+    # + « Date de fin du couvert » (#164).
     call_command("seed_contenus_rich")
     defs = ContenuRichDSFR.objects.filter(type_contenu="definition")
-    assert defs.count() == 17
+    assert defs.count() == 18
+    assert defs.get(cle="definition.date-fin-couvert").liste_termes == [
+        "fin du couvert"
+    ]
     ic = defs.get(cle="definition.interculture-longue")
     assert ic.titre_public == "Interculture longue"
     assert ic.categorie == "pratique-documents"

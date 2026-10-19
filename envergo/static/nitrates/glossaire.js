@@ -426,6 +426,10 @@
     ".form-question-text",
     ".fr-label",
     ".fr-hint-text",
+    // #164 : libellés des dates du couvert du formulaire de gauche (« fin du
+    // couvert » est défini). PAS ceux du calendrier de droite, pour ne pas
+    // répéter la définition sur la page résultat.
+    ".couvert-flow__dates .calc-cal__field-label",
     ".contenu-rich",
     // Drawer « Conditions d'épandage » : les textes PC hors contenu riche
     // (titres de PC, notes) contiennent aussi des termes (batch 2).

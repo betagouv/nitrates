@@ -226,8 +226,12 @@ test('#272 page résultat : dates dégagées du form gauche, bandeau + titre + l
     'Jouer avec les dates du couvert',
   );
   const labels = await highlight.locator('.calc-cal__field-label').allTextContents();
-  expect(labels).toContain('Date de semis du couvert');
-  expect(labels).toContain('Date de destruction du couvert');
+  // #164 : libellés portés par les arbres, anciens ou nouveaux selon la
+  // version publiée (« Date prévue de fin du couvert »).
+  expect(labels.some((l) => /^Date (prévue )?de semis du couvert$/.test(l))).toBe(true);
+  expect(
+    labels.some((l) => /^Date (prévue )?de (destruction|fin) du couvert$/.test(l)),
+  ).toBe(true);
 });
 
 test('#335 sol non cultivé : réponse Q1 directe, pas de Q2 ni Q3, occupation_sol résolu', async ({ page }) => {

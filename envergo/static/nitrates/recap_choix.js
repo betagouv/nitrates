@@ -85,7 +85,7 @@
     if (semis || destruction) {
       var d = [];
       if (semis) d.push("semis " + semis);
-      if (destruction) d.push("destruction " + destruction);
+      if (destruction) d.push("fin " + destruction);
       lignes.push(ligne("Dates du couvert", d.join(" · ")));
     }
 

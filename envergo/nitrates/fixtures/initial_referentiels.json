@@ -9481,5 +9481,30 @@
       "sols non cultivés"
     ]
   }
+},
+{
+  "model": "nitrates.contenurichdsfr",
+  "fields": {
+    "cle": "definition.date-fin-couvert",
+    "libelle_admin": "Définition — Date de fin du couvert",
+    "blocs": {
+      "blocs": [
+        {
+          "data": {
+            "texte": "Date à laquelle le couvert végétal d'interculture prend fin : sa destruction pour un couvert non exporté (CINE), sa récolte, sa fauche ou son pâturage pour un couvert exporté (CIE)."
+          },
+          "type": "paragraphe"
+        }
+      ],
+      "schema": 1
+    },
+    "updated_at": "2026-10-19T08:00:00Z",
+    "type_contenu": "definition",
+    "titre_public": "Date de fin du couvert",
+    "categorie": "pratique-documents",
+    "termes_declencheurs": [
+      "fin du couvert"
+    ]
+  }
 }
 ]

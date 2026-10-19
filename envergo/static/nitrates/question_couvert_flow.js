@@ -620,7 +620,7 @@
     {
       id: "date_destruction_couvert",
       hidden: "id_date_destruction_couvert",
-      label: "Date prévue de destruction du couvert",
+      label: "Date prévue de fin du couvert",
       placeholder: "15/12",
     },
   ];
