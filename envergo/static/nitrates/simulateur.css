@@ -1524,3 +1524,33 @@ html.nitrates-plein-ecran-ouvert body {
   font-size: 0.75rem;
   cursor: pointer;
 }
+
+/* #583 : noms des communes sur la carte (couche « Communes »). Le marqueur
+   Leaflet porte deja un transform (position) : on centre le texte via le span. */
+.nitrates-commune-nom {
+  pointer-events: none;
+}
+
+.nitrates-commune-nom span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #4a148c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 2px #fff,
+    0 0 3px #fff;
+}
+
+/* #583 : nom de la commune au centre de la carte, quand aucun nom n'est visible. */
+.nitrates-commune-courante {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  background: rgb(255 255 255 / 85%);
+  color: #4a148c;
+  font-size: 0.75rem;
+  font-weight: 700;
+}

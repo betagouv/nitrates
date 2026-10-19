@@ -7,7 +7,7 @@ const assert = require("node:assert");
 const prefs = require("./carte_preferences.js");
 
 const BASES = ["auto", "plan", "photo"];
-const SURCOUCHES = ["rpg", "cadastre", "zv", "zar"];
+const SURCOUCHES = ["rpg", "communes", "zv", "zar"];
 
 function fakeStorage(initial) {
   const data = Object.assign({}, initial);
@@ -137,30 +137,43 @@ test("mode automatique : ne gere que le fond (photo), plus les parcelles", () =>
   assert.deepStrictEqual(prefs.couchesAuto(18), { fond: "photo" });
 });
 
-test("1re visite : mode automatique, parcelles RPG, ZV et ZAR cochees", () => {
+test("1re visite : mode automatique, parcelles RPG, communes, ZV et ZAR cochees", () => {
   assert.deepStrictEqual(prefs.couchesParDefaut(), {
     base: "auto",
-    surcouches: ["rpg", "zv", "zar"],
+    surcouches: ["rpg", "communes", "zv", "zar"],
   });
   // Copie : la carte peut la modifier sans toucher au defaut.
-  prefs.couchesParDefaut().surcouches.push("cadastre");
-  assert.deepStrictEqual(prefs.couchesParDefaut().surcouches, ["rpg", "zv", "zar"]);
+  prefs.couchesParDefaut().surcouches.push("autre");
+  assert.deepStrictEqual(prefs.couchesParDefaut().surcouches, ["rpg", "communes", "zv", "zar"]);
 });
 
-test("choix memorises avant #583 (v1) : repris, RPG coche en plus", () => {
+const cleVersion = (v) => `nitrates.carte.couches.v${v}`;
+
+test("choix v1 (avant #583) : repris, RPG et communes coches en plus", () => {
   const s = fakeStorage({
-    [prefs.STORAGE_KEY_V1]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
+    [cleVersion(1)]: JSON.stringify({ base: "plan", surcouches: ["zv", "cadastre"] }),
   });
   assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
     base: "plan",
-    surcouches: ["rpg", "zv"],
+    surcouches: ["rpg", "communes", "zv"],
   });
 });
 
-test("v2 present : la v1 est ignoree, RPG decoche reste decoche", () => {
+test("choix v2 : repris, cadastre oublie, communes cochees en plus, RPG decoche respecte", () => {
+  const s = fakeStorage({
+    [cleVersion(2)]: JSON.stringify({ base: "photo", surcouches: ["cadastre", "zar"] }),
+    [cleVersion(1)]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
+  });
+  assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
+    base: "photo",
+    surcouches: ["communes", "zar"],
+  });
+});
+
+test("v3 presente : les anciennes versions sont ignorees, communes decochees restent decochees", () => {
   const s = fakeStorage({
     [prefs.STORAGE_KEY]: JSON.stringify({ base: "photo", surcouches: [] }),
-    [prefs.STORAGE_KEY_V1]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
+    [cleVersion(2)]: JSON.stringify({ base: "plan", surcouches: ["zv"] }),
   });
   assert.deepStrictEqual(prefs.lireCouches(s, BASES, SURCOUCHES), {
     base: "photo",

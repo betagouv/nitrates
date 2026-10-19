@@ -1,11 +1,11 @@
 // Preferences de la carte du simulateur (#531, amelioration carto).
 //
 // 1. Couches memorisees : le fond (plan / photo) et les surcouches (RPG,
-//    cadastre, ZV, ZAR) choisis dans la legende sont gardes en localStorage.
+//    communes, ZV, ZAR) choisis dans la legende sont gardes en localStorage.
 //    Quand on revient sur le formulaire (modifier depuis les resultats, retour
 //    arriere, nouvelle recherche), la carte les reaffiche au lieu du reglage
 //    par defaut. Rien de memorise (ou storage indisponible) -> COUCHES_PAR_DEFAUT :
-//    mode « Automatique » (cf. couchesAuto) + parcelles RPG, ZV et ZAR cochees.
+//    mode « Automatique » (cf. couchesAuto) + RPG, communes, ZV et ZAR cochees.
 //
 // 2. Clavier : quand la carte a le focus, fleches (avec ou sans Ctrl) pour se
 //    deplacer, + / - (avec ou sans Ctrl) pour zoomer, Entree pour pointer le
@@ -19,26 +19,34 @@
 (function () {
   "use strict";
 
-  // v2 (#583) : la case « Parcelles agricoles (RPG) » arrive. Les choix v1
-  // sont repris tels quels, RPG coche en plus (cf. lireCouches).
-  const STORAGE_KEY = "nitrates.carte.couches.v2";
-  const STORAGE_KEY_V1 = "nitrates.carte.couches.v1";
+  // Versions des couches memorisees (#583). Les choix d'une version
+  // precedente sont repris, avec les couches arrivees depuis cochees en plus :
+  //  - v2 : case « Parcelles agricoles (RPG) »
+  //  - v3 : case « Communes », qui remplace « Cadastre »
+  const STORAGE_KEY = "nitrates.carte.couches.v3";
+  const ANCIENNES_VERSIONS = [
+    { cle: "nitrates.carte.couches.v2", ajouts: ["communes"] },
+    { cle: "nitrates.carte.couches.v1", ajouts: ["rpg", "communes"] },
+  ];
   const PAN_PX = 100;
 
   // Mode « Automatique » (fond par defaut) : on charge le minimum selon le zoom.
   // Mesure des tuiles data.geopf.fr (09/2026, zooms 6 a 17) : la photo aerienne
   // en JPEG pese 11-23 Ko/tuile, le Plan IGN en PNG 32-71 Ko/tuile, soit 2 a 3x
   // plus. La photo reste donc le fond le plus leger a tous les zooms.
-  // #583 : le mode auto ne gere plus que le fond. Parcelles RPG et cadastre
-  // suivent uniquement leur case dans la legende (RPG cochee par defaut).
+  // #583 : le mode auto ne gere plus que le fond. Parcelles RPG et communes
+  // suivent uniquement leur case dans la legende (cochees par defaut).
   function couchesAuto() {
     return { fond: "photo" };
   }
 
-  // 1re visite (rien de memorise) : parcelles RPG, ZV et ZAR affichees
-  // d'office, c'est ce que l'utilisateur vient chercher. Il peut les decocher,
-  // c'est alors memorise.
-  const COUCHES_PAR_DEFAUT = { base: "auto", surcouches: ["rpg", "zv", "zar"] };
+  // 1re visite (rien de memorise) : parcelles RPG, communes, ZV et ZAR
+  // affichees d'office, c'est ce que l'utilisateur vient chercher. Il peut les
+  // decocher, c'est alors memorise.
+  const COUCHES_PAR_DEFAUT = {
+    base: "auto",
+    surcouches: ["rpg", "communes", "zv", "zar"],
+  };
 
   function couchesParDefaut() {
     return { base: COUCHES_PAR_DEFAUT.base, surcouches: COUCHES_PAR_DEFAUT.surcouches.slice() };
@@ -62,15 +70,24 @@
     try {
       const txt = storage && storage.getItem(STORAGE_KEY);
       if (txt) return normaliserCouches(JSON.parse(txt), basesConnues, surcouchesConnues);
-      // Choix memorises avant #583 : on les garde, RPG en plus (il remplace le
-      // cadastre que le mode auto affichait).
-      const v1 = storage && storage.getItem(STORAGE_KEY_V1);
-      if (!v1) return null;
-      const couches = normaliserCouches(JSON.parse(v1), basesConnues, surcouchesConnues);
-      if (couches && surcouchesConnues.includes("rpg") && !couches.surcouches.includes("rpg")) {
-        couches.surcouches.unshift("rpg");
+      // Choix d'une version precedente : repris, nouvelles couches en plus.
+      for (const ancienne of ANCIENNES_VERSIONS) {
+        const vieux = storage && storage.getItem(ancienne.cle);
+        if (!vieux) continue;
+        const couches = normaliserCouches(JSON.parse(vieux), basesConnues, surcouchesConnues);
+        if (!couches) return null;
+        ancienne.ajouts.forEach((k) => {
+          if (surcouchesConnues.includes(k) && !couches.surcouches.includes(k)) {
+            couches.surcouches.push(k);
+          }
+        });
+        // Ordre de la legende, pas d'ajout.
+        couches.surcouches.sort(
+          (a, b) => surcouchesConnues.indexOf(a) - surcouchesConnues.indexOf(b)
+        );
+        return couches;
       }
-      return couches;
+      return null;
     } catch (e) {
       return null;
     }
@@ -155,7 +172,7 @@
 
   const api = {
     STORAGE_KEY: STORAGE_KEY,
-    STORAGE_KEY_V1: STORAGE_KEY_V1,
+    ANCIENNES_VERSIONS: ANCIENNES_VERSIONS,
     normaliserCouches: normaliserCouches,
     lireCouches: lireCouches,
     ecrireCouches: ecrireCouches,

@@ -347,25 +347,18 @@
   // devient le mode « Automatique » (cf. autoLayer), ajoute plus bas apres
   // lecture des couches memorisees.
 
-  // Cadastre IGN (parcellaire express) : layer principal pour
-  // identifier la parcelle utilisateur. Pattern Envergo (frontend-only) :
-  // tuiles WMTS raster + identification a la demande via l'API
-  // data.geopf.fr/geocodage/reverse au clic.
-  const cadastreOverlay = wmts(
-    "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
-    "png"
-  );
-
   // #583 : parcelles RPG (Registre Parcellaire Graphique, parcelles declarees
-  // a la PAC) en couche principale, le cadastre reste dispo en secours pour les
-  // parcelles hors PAC. Contours en tuiles vectorielles IGN dessinees en canvas
+  // a la PAC) en couche principale. La couche cadastre (parcelles) est
+  // remplacee par « Communes » (limites + noms, cf. plus bas). Contours en tuiles vectorielles IGN dessinees en canvas
   // (cf. rpg_parcelle.js), rien en base chez nous. Pane au-dessus des ZV/ZAR
   // (sinon leur remplissage noie les contours), sans evenements souris : les
   // infobulles ZV/ZAR et le clic carte passent au travers.
   const rpg = window.NitratesRpg;
   [
+    ["nitratesCommunes", 440],
     ["nitratesRpg", 450],
     ["nitratesSelection", 460],
+    ["nitratesCommunesNoms", 470],
   ].forEach(([nom, z]) => {
     const pane = map.createPane(nom);
     pane.style.zIndex = z;
@@ -404,6 +397,147 @@
     return couche;
   }
   const rpgOverlay = coucheRpg();
+
+  // #583 : couche « Communes » = limites des communes en violet (le blanc est
+  // pris par le RPG, l'orange du cadastre IGN par une ZV) + leurs noms, sans
+  // les parcelles cadastrales, redondantes avec le RPG (cf. communes_carte.js).
+  const communesCarte = window.NitratesCommunes;
+  const COULEUR_COMMUNES = "#6a1b9a";
+  // Noms recharges apres chaque deplacement, une fois la carte posee.
+  const DELAI_NOMS_COMMUNES_MS = 250;
+  function coucheCommunes() {
+    if (!communesCarte || !L.vectorGrid) return L.layerGroup();
+    const styles = {
+      [communesCarte.COUCHE_COMMUNE]: {
+        color: COULEUR_COMMUNES,
+        weight: 2,
+        opacity: 0.9,
+        dashArray: "6,4",
+        fill: false,
+      },
+    };
+    communesCarte.COUCHES_MASQUEES.forEach((k) => {
+      styles[k] = [];
+    });
+    const limites = L.vectorGrid.protobuf(communesCarte.URL_TUILES, {
+      pane: "nitratesCommunes",
+      rendererFactory: L.canvas.tile,
+      interactive: false,
+      // Plus pres, on agrandit les tuiles du 14 : celles du 15+ embarquent
+      // toutes les parcelles cadastrales, lourdes et inutiles ici.
+      maxNativeZoom: communesCarte.ZOOM_TUILES_MAX,
+      maxZoom: 22,
+      updateWhenZooming: false,
+      vectorTileLayerStyles: styles,
+    });
+    // Trop dezoome : pas encore de communes dans les tuiles, aucune requete.
+    const tuileIgn = limites._getVectorTilePromise;
+    limites._getVectorTilePromise = function (coords) {
+      if (coords.z < communesCarte.ZOOM_TUILES_MIN) return Promise.resolve({ layers: {} });
+      return tuileIgn.call(this, coords);
+    };
+
+    const noms = L.layerGroup();
+    const groupe = L.layerGroup([limites, noms]);
+    let ctrl = null;
+    let timer = null;
+
+    // Zoome pres, le chef-lieu (qui porte le nom) est souvent hors champ : on
+    // affiche alors en bas a gauche le nom de la commune au centre de la carte.
+    const encart = L.control({ position: "bottomleft" });
+    encart.onAdd = () => {
+      const el = L.DomUtil.create("div", "nitrates-commune-courante");
+      el.hidden = true;
+      return el;
+    };
+    function majEncart(nom) {
+      const el = encart.getContainer();
+      if (!el) return;
+      el.textContent = nom ? "Commune : " + nom : "";
+      el.hidden = !nom;
+    }
+    function nomAuCentre(monCtrl) {
+      const c = map.getCenter();
+      return fetch(
+        `https://geo.api.gouv.fr/communes?lat=${c.lat}&lon=${c.lng}&fields=nom&format=json`,
+        monCtrl ? { signal: monCtrl.signal } : {}
+      )
+        .then((r) => (r.ok ? r.json() : []))
+        .then((arr) => (Array.isArray(arr) && arr.length ? arr[0].nom : null));
+    }
+
+    function chargerNoms() {
+      if (ctrl) ctrl.abort();
+      ctrl = null;
+      if (!map.hasLayer(groupe) || map.getZoom() < communesCarte.ZOOM_NOMS_MIN) {
+        noms.clearLayers();
+        majEncart(null);
+        return;
+      }
+      const b = map.getBounds();
+      const monCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      ctrl = monCtrl;
+      fetch(
+        communesCarte.urlNomsCommunes({
+          sud: b.getSouth(),
+          ouest: b.getWest(),
+          nord: b.getNorth(),
+          est: b.getEast(),
+        }),
+        monCtrl ? { signal: monCtrl.signal } : {}
+      )
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then((data) => {
+          if (ctrl !== monCtrl) return null;
+          noms.clearLayers();
+          const liste = communesCarte.nomsDepuisWfs(data);
+          liste.forEach((c) => {
+            const texte = document.createElement("span");
+            texte.textContent = c.nom;
+            L.marker([c.lat, c.lng], {
+              pane: "nitratesCommunesNoms",
+              interactive: false,
+              keyboard: false,
+              icon: L.divIcon({ className: "nitrates-commune-nom", html: texte, iconSize: null }),
+            }).addTo(noms);
+          });
+          if (liste.length) {
+            majEncart(null);
+            return null;
+          }
+          return nomAuCentre(monCtrl).then((nom) => {
+            if (ctrl === monCtrl) majEncart(nom);
+          });
+        })
+        .catch((err) => {
+          if (err && err.name === "AbortError") return;
+          console.warn("Communes : noms IGN en echec", err);
+        });
+    }
+    function planifierNoms() {
+      clearTimeout(timer);
+      timer = setTimeout(chargerNoms, DELAI_NOMS_COMMUNES_MS);
+    }
+
+    groupe.on("add", () => {
+      encart.addTo(map);
+      map.on("moveend", planifierNoms);
+      chargerNoms();
+    });
+    groupe.on("remove", () => {
+      encart.remove();
+      map.off("moveend", planifierNoms);
+      clearTimeout(timer);
+      if (ctrl) ctrl.abort();
+      ctrl = null;
+      noms.clearLayers();
+    });
+    return groupe;
+  }
+  const communesOverlay = coucheCommunes();
 
   // #531 : chargement des couches ZV / ZAR a la 1re activation, avec une
   // ligne d'etat par couche dans la legende (visible aussi en plein ecran) :
@@ -602,11 +736,11 @@
   });
 
   // #531 : couches memorisees (localStorage) sinon reglage par defaut : mode
-  // automatique + parcelles RPG, ZV et ZAR cochees (#583, avant : aucune).
+  // automatique + RPG, communes, ZV et ZAR cochees (#583, avant : aucune).
   const fonds = { auto: autoLayer, plan: planLayer, photo: photoLayer };
   const surcouches = {
     rpg: rpgOverlay,
-    cadastre: cadastreOverlay,
+    communes: communesOverlay,
     zv: zvLayer,
     zar: zarLayer,
   };
@@ -618,10 +752,13 @@
   }
   const couches = (prefs &&
     prefs.lireCouches(storage, Object.keys(fonds), Object.keys(surcouches))) ||
-    (prefs && prefs.couchesParDefaut()) || { base: "auto", surcouches: ["rpg", "zv", "zar"] };
+    (prefs && prefs.couchesParDefaut()) || {
+      base: "auto",
+      surcouches: ["rpg", "communes", "zv", "zar"],
+    };
   fonds[couches.base].addTo(map);
   majOpaciteZv();
-  // Ordre fixe (rpg, cadastre, zv, zar) : la ZAR reste au-dessus de la ZV.
+  // Ordre fixe (rpg, communes, zv, zar) : la ZAR reste au-dessus de la ZV.
   Object.keys(surcouches).forEach((k) => {
     if (couches.surcouches.includes(k)) surcouches[k].addTo(map);
   });
@@ -647,7 +784,7 @@
       },
       {
         "Parcelles agricoles (RPG)": rpgOverlay,
-        "Cadastre": cadastreOverlay,
+        "Communes": communesOverlay,
         "Zones vulnérables nitrates": zvLayer,
         "Zones d'action renforcée (ZAR)": zarLayer,
       },
