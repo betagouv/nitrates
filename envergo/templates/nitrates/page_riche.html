@@ -23,5 +23,8 @@ calendrier.css porte le style .contenu-rich (cf. prescription_detail).
     {% else %}
       <p>Contenu bientôt disponible.</p>
     {% endif %}
+    {% if cle == "page.donnees_personnelles" and ANALYTICS.TRACKER_ENABLED %}
+      {% include "nitrates/fragments/_optout_matomo.html" %}
+    {% endif %}
   </div>
 {% endblock %}
