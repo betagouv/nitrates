@@ -26,6 +26,18 @@ TERRITOIRES = [
     {"id": "R44", "label": "Grand Est", "region_code": "44", "en_zar": False},
     {"id": "R44_ZAR", "label": "Grand Est — ZAR", "region_code": "44", "en_zar": True},
     {"id": "R53", "label": "Bretagne", "region_code": "53", "en_zar": False},
+    {
+        "id": "R84",
+        "label": "Auvergne-Rhône-Alpes",
+        "region_code": "84",
+        "en_zar": False,
+    },
+    {
+        "id": "R84_ZAR",
+        "label": "Auvergne-Rhône-Alpes (ZAR)",
+        "region_code": "84",
+        "en_zar": True,
+    },
 ]
 
 # Ids d'inputs de dates lus par les feuilles calculatrice des couverts. On

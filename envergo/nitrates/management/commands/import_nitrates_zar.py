@@ -114,6 +114,23 @@ REGIONS = {
         "cle_naturelle": "Commune",
         "departements": None,
     },
+    "auvergne-rhone-alpes": {
+        "map_name": "zar_par7_auvergne_rhone_alpes",
+        "display_name": "Zones d'action renforcée — Auvergne-Rhône-Alpes (PAR 7)",
+        "description": (
+            "Zones d'action renforcée du PAR 7 Auvergne-Rhône-Alpes (arrêté du "
+            "19/07/2024, annexe 1) : aires d'alimentation et périmètres de "
+            "protection des captages, dont les 2 ZAR interrégionales de "
+            "Bourgogne-Franche-Comté ajoutées par l'arrêté modificatif du "
+            "12/09/2024. Source : couche l_zar_s_r84 (open-datara, révision du "
+            "18/12/2024)."
+        ),
+        "version": "2024",
+        "archive": "zar_par7_auvergne-rhone-alpes_20241218.zip",
+        "url": f"{BUCKET}/zar_par7_auvergne-rhone-alpes_20241218.zip",
+        "cle_naturelle": "nom",
+        "departements": None,
+    },
 }
 
 # Clé sous laquelle on stocke la clé naturelle résolue dans `attributes`,
