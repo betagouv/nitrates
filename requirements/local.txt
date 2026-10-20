@@ -169,7 +169,7 @@ django-ratelimit==4.1.0
     # via -r base.txt
 django-redis==6.0.0
     # via -r base.txt
-djlint==1.40.4
+djlint==1.46.1
     # via -r local.in
 editorconfig==0.17.1
     # via
@@ -374,7 +374,7 @@ pytest==9.1.1
     #   -r local.in
     #   pytest-django
     #   pytest-sugar
-pytest-django==4.12.0
+pytest-django==4.14.0
     # via -r local.in
 pytest-sugar==1.1.1
     # via -r local.in
@@ -466,7 +466,7 @@ texttable==1.7.0
     # via
     #   -r base.txt
     #   py7zr
-tqdm==4.68.3
+tqdm==4.70.1
     # via -r base.txt
 traitlets==5.14.3
     # via
@@ -476,6 +476,7 @@ typing-extensions==4.15.0
     # via
     #   -r base.txt
     #   anyio
+    #   djlint
     #   psycopg
     #   referencing
 tzdata==2025.2

@@ -11,6 +11,7 @@ WORKDIR /app
 COPY ./package.json /app
 COPY ./package-lock.json /app
 COPY ./.npmrc /app
+COPY ./.dsfr.yml /app
 
 RUN npm ci && npm cache clean --force \
  && mkdir -p node_modules/optipng-bin/vendor node_modules/gifsicle/vendor node_modules/mozjpeg/vendor \
