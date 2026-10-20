@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Comparaison et transfert des objets éditables nitrates entre local, dev, staging et prod">
+    <meta name="keywords" content="nitrates, ops, comparaison, environnements">
+    <title>Nitrates · pilotage des données</title>
+    <link rel="icon" href="data:,">
+    <style>
+      :root {
+        --bg: #f5f5f2;
+        --surface: #fff;
+        --surface-2: #efefea;
+        --texte: #1d1d1b;
+        --texte-2: #5d5d58;
+        --bord: #dcdcd4;
+        --env-local: #64748b;
+        --env-dev: #2f855a;
+        --env-staging: #c05621;
+        --env-prod: #9b2c2c;
+        --lum-bg: 89%;
+        --lum-fg: 24%;
+        --sat: 58%;
+        --inconnu-bg: #e9e9e4;
+        --inconnu-fg: #55554f;
+        --hachure: #e2e2db;
+        --rouge: #b91c1c;
+        --rouge-bg: #fde7e7;
+        --orange: #a85307;
+        --orange-bg: #fcefd9;
+        --info: #3651c9;
+        --info-bg: #e7ecfd;
+        --ok: #1f7a3a;
+        --ok-bg: #e2f4e7;
+        --add-bg: #e3f6e6;
+        --add-fg: #1f6b30;
+        --del-bg: #fbe6e6;
+        --del-fg: #9b1c1c;
+        --hunk: #3651c9;
+        --cA: #0f766e;
+        --cB: #7c3aed;
+        --cC: #db2777;
+        --cD: #2563eb;
+        --cE: #65a30d;
+        --cF: #92400e;
+        --ombre: 0 10px 40px rgba(0, 0, 0, .18);
+        --dock: 340px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #141619;
+          --surface: #1c1f23;
+          --surface-2: #262a30;
+          --texte: #e7e7e4;
+          --texte-2: #a0a5ac;
+          --bord: #33373e;
+          --env-local: #94a3b8;
+          --env-dev: #4fbf85;
+          --env-staging: #f0904f;
+          --env-prod: #e06c6c;
+          --lum-bg: 23%;
+          --lum-fg: 84%;
+          --sat: 45%;
+          --inconnu-bg: #2a2d32;
+          --inconnu-fg: #b3b7bd;
+          --hachure: #2a2e34;
+          --rouge: #f28b8b;
+          --rouge-bg: #4a1d1d;
+          --orange: #f2b56b;
+          --orange-bg: #47300f;
+          --info: #9fb2f7;
+          --info-bg: #222c52;
+          --ok: #8fd6a2;
+          --ok-bg: #173a22;
+          --add-bg: #173a20;
+          --add-fg: #9bdcaa;
+          --del-bg: #431a1a;
+          --del-fg: #f3a3a3;
+          --hunk: #9fb2f7;
+          --cA: #2dd4bf;
+          --cB: #a78bfa;
+          --cC: #f472b6;
+          --cD: #60a5fa;
+          --cE: #a3e635;
+          --cF: #fbbf24;
+          --ombre: 0 10px 40px rgba(0, 0, 0, .6);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #141619;
+        --surface: #1c1f23;
+        --surface-2: #262a30;
+        --texte: #e7e7e4;
+        --texte-2: #a0a5ac;
+        --bord: #33373e;
+        --env-local: #94a3b8;
+        --env-dev: #4fbf85;
+        --env-staging: #f0904f;
+        --env-prod: #e06c6c;
+        --lum-bg: 23%;
+        --lum-fg: 84%;
+        --sat: 45%;
+        --inconnu-bg: #2a2d32;
+        --inconnu-fg: #b3b7bd;
+        --hachure: #2a2e34;
+        --rouge: #f28b8b;
+        --rouge-bg: #4a1d1d;
+        --orange: #f2b56b;
+        --orange-bg: #47300f;
+        --info: #9fb2f7;
+        --info-bg: #222c52;
+        --ok: #8fd6a2;
+        --ok-bg: #173a22;
+        --add-bg: #173a20;
+        --add-fg: #9bdcaa;
+        --del-bg: #431a1a;
+        --del-fg: #f3a3a3;
+        --hunk: #9fb2f7;
+        --cA: #2dd4bf;
+        --cB: #a78bfa;
+        --cC: #f472b6;
+        --cD: #60a5fa;
+        --cE: #a3e635;
+        --cF: #fbbf24;
+        --ombre: 0 10px 40px rgba(0, 0, 0, .6);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--texte);
+      }
+
+      body {
+        font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      body.servi {
+        padding-right: var(--dock);
+      }
+
+      code,
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      button {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 3px 9px;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--surface-2);
+      }
+
+      button:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+      }
+
+      button.primaire {
+        background: var(--texte);
+        color: var(--bg);
+        border-color: var(--texte);
+      }
+
+      button.primaire:hover:not(:disabled) {
+        opacity: .9;
+        background: var(--texte);
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      td:focus-visible {
+        outline: 2px solid var(--info);
+        outline-offset: 1px;
+      }
+
+      .wrap {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px 80px;
+      }
+
+      header.barre {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        padding: 16px 0 8px;
+        flex-wrap: wrap;
+      }
+
+      header.barre h1 {
+        font-size: 18px;
+        margin: 0;
+        font-weight: 650;
+        letter-spacing: -.01em;
+      }
+
+      header.barre .sous {
+        color: var(--texte-2);
+      }
+
+      header.barre .droite {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: var(--texte-2);
+        margin: 20px 0 8px;
+        font-weight: 600;
+      }
+
+      h2 .fin {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 400;
+      }
+
+      .muet {
+        color: var(--texte-2);
+      }
+
+      /* Environnements */
+      .envs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .env {
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-left: 4px solid var(--c);
+        border-radius: 8px;
+        padding: 8px 10px;
+        min-width: 0;
+      }
+
+      .env h3 {
+        margin: 0 0 3px;
+        font-size: 14px;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .env h3 .age {
+        font-weight: 400;
+        font-size: 12px;
+        color: var(--texte-2);
+      }
+
+      .env h3 .age.vieux {
+        color: var(--orange);
+        font-weight: 600;
+      }
+
+      .env h3 .age.perime {
+        color: var(--rouge);
+        font-weight: 600;
+      }
+
+      .env h3 button {
+        margin-left: auto;
+        font-size: 11px;
+        padding: 1px 7px;
+      }
+
+      .env .ligne {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .env .echec {
+        color: var(--rouge);
+        background: var(--rouge-bg);
+        border-radius: 4px;
+        padding: 3px 6px;
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+      }
+
+      .c-local {
+        --c: var(--env-local);
+      }
+
+      .c-dev {
+        --c: var(--env-dev);
+      }
+
+      .c-staging {
+        --c: var(--env-staging);
+      }
+
+      .c-prod {
+        --c: var(--env-prod);
+      }
+
+      .ecriture {
+        font-size: 11px;
+        border-radius: 10px;
+        padding: 0 7px;
+        white-space: nowrap;
+      }
+
+      .ecriture.reel {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+
+      .ecriture.simulation {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+
+      .ecriture.non {
+        background: var(--surface-2);
+        color: var(--texte-2);
+      }
+
+      .env-tag {
+        font-weight: 600;
+        border-left: 3px solid var(--c);
+        padding-left: 6px;
+      }
+
+      /* Journal des changements */
+      .journal {
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+      }
+
+      .journal ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .journal li {
+        display: grid;
+        grid-template-columns: 96px 70px minmax(140px, 220px) 1fr;
+        gap: 10px;
+        padding: 6px 12px;
+        border-bottom: 1px solid var(--surface-2);
+        align-items: baseline;
+        cursor: pointer;
+      }
+
+      .journal li:hover {
+        background: var(--surface-2);
+      }
+
+      .journal li:last-child {
+        border-bottom: 0;
+      }
+
+      .journal .vide {
+        padding: 10px 12px;
+        cursor: default;
+        display: block;
+      }
+
+      .ia {
+        font-style: italic;
+      }
+
+      .ia::before {
+        content: "✦ ";
+        font-style: normal;
+        color: var(--cB);
+      }
+
+      /* Onglets + outils */
+      .onglets {
+        display: flex;
+        gap: 2px;
+        border-bottom: 1px solid var(--bord);
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .onglets button {
+        border: 0;
+        border-radius: 6px 6px 0 0;
+        background: transparent;
+        padding: 8px 14px;
+        color: var(--texte-2);
+        border-bottom: 2px solid transparent;
+      }
+
+      .onglets button[aria-selected="true"] {
+        color: var(--texte);
+        border-bottom-color: var(--texte);
+        font-weight: 600;
+      }
+
+      .onglets .n {
+        font-size: 11px;
+        background: var(--surface-2);
+        border-radius: 10px;
+        padding: 0 6px;
+        margin-left: 4px;
+      }
+
+      .onglets .n.alerte {
+        background: var(--orange-bg);
+        color: var(--orange);
+      }
+
+      .outils {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        padding: 10px 0;
+        flex-wrap: wrap;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--bg);
+      }
+
+      .outils input[type="search"] {
+        background: var(--surface);
+        color: var(--texte);
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 5px 9px;
+        min-width: 240px;
+        font: inherit;
+      }
+
+      .outils .compteur {
+        color: var(--texte-2);
+        margin-left: auto;
+      }
+
+      .barre-sel {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        background: var(--texte);
+        color: var(--bg);
+        border-radius: 8px;
+        padding: 5px 8px 5px 12px;
+        flex-wrap: wrap;
+      }
+
+      .barre-sel.on {
+        display: flex;
+      }
+
+      .barre-sel button {
+        background: transparent;
+        color: var(--bg);
+        border-color: color-mix(in srgb, var(--bg) 40%, transparent);
+      }
+
+      .barre-sel button:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--bg) 18%, transparent);
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 12px;
+        padding: 1px 8px;
+        font-size: 11.5px;
+        white-space: nowrap;
+      }
+
+      .chip.rouge {
+        background: var(--rouge-bg);
+        color: var(--rouge);
+      }
+
+      .chip.orange {
+        background: var(--orange-bg);
+        color: var(--orange);
+      }
+
+      .chip.info {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+
+      /* Tableau */
+      table.grille {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+      }
+
+      table.grille th {
+        position: sticky;
+        top: 46px;
+        background: var(--surface);
+        z-index: 2;
+        text-align: left;
+        font-weight: 600;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--bord);
+      }
+
+      table.grille th.env-col {
+        border-top: 3px solid var(--c);
+        width: 15.5%;
+      }
+
+      table.grille th.env-col label {
+        font-weight: 400;
+        color: var(--texte-2);
+        font-size: 11px;
+        margin-left: 6px;
+      }
+
+      table.grille th.env-col .rel {
+        font-weight: 400;
+        font-size: 11px;
+        color: var(--info);
+        margin-left: 4px;
+      }
+
+      table.grille td {
+        padding: 4px 5px;
+        border-bottom: 1px solid var(--surface-2);
+        vertical-align: top;
+      }
+
+      table.grille tr.ligne>td.objet {
+        cursor: pointer;
+      }
+
+      table.grille tr.ligne:hover>td.objet {
+        background: var(--surface-2);
+      }
+
+      table.grille tr.identique td {
+        opacity: .6;
+      }
+
+      td.objet {
+        min-width: 170px;
+        max-width: 300px;
+      }
+
+      td.objet .cle {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+
+      td.objet .lib {
+        color: var(--texte-2);
+        font-size: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      td.objet .sousfam {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--texte-2);
+      }
+
+      td.cell {
+        cursor: pointer;
+      }
+
+      .boite {
+        position: relative;
+        border-radius: 6px;
+        padding: 4px 22px 4px 7px;
+        min-height: 42px;
+        background: hsl(var(--h, 170) var(--sat) var(--lum-bg));
+        color: hsl(var(--h, 170) 60% var(--lum-fg));
+      }
+
+      .boite.inconnu {
+        background: var(--inconnu-bg);
+        color: var(--inconnu-fg);
+      }
+
+      .boite.absent {
+        background: repeating-linear-gradient(135deg, var(--hachure) 0 6px, transparent 6px 12px);
+        color: var(--texte-2);
+      }
+
+      .boite.nonreleve {
+        background: none;
+        color: var(--texte-2);
+        font-style: italic;
+      }
+
+      .boite[draggable="true"] {
+        cursor: grab;
+      }
+
+      .boite .sel {
+        position: absolute;
+        top: 5px;
+        right: 4px;
+        margin: 0;
+        opacity: .35;
+        cursor: pointer;
+      }
+
+      .boite:hover .sel,
+      .boite .sel:checked {
+        opacity: 1;
+      }
+
+      .boite.choisie {
+        outline: 2px solid var(--texte);
+        outline-offset: -2px;
+      }
+
+      .boite .l1 {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .boite .l2 {
+        font-size: 11.5px;
+        opacity: .92;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .boite .retard {
+        font-size: 10.5px;
+        font-weight: 600;
+        opacity: .85;
+      }
+
+      .boite .src {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        opacity: .75;
+      }
+
+      .boite .plus {
+        font-size: 10.5px;
+        font-weight: 600;
+      }
+
+      .vchip {
+        display: inline-block;
+        min-width: 16px;
+        text-align: center;
+        border-radius: 4px;
+        padding: 0 4px;
+        font-weight: 700;
+        font-size: 11px;
+        color: #fff;
+        background: var(--cv);
+        font-style: normal;
+      }
+
+      :root[data-theme="dark"] .vchip {
+        color: #111;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .vchip {
+          color: #111;
+        }
+      }
+
+      .vA {
+        --cv: var(--cA);
+      }
+
+      .vB {
+        --cv: var(--cB);
+      }
+
+      .vC {
+        --cv: var(--cC);
+      }
+
+      .vD {
+        --cv: var(--cD);
+      }
+
+      .vE {
+        --cv: var(--cE);
+      }
+
+      .vF {
+        --cv: var(--cF);
+      }
+
+      td.cell.cible-drop .boite,
+      th.env-col.cible-drop {
+        box-shadow: inset 0 0 0 2px var(--info);
+      }
+
+      td.cell.interdit .boite {
+        box-shadow: inset 0 0 0 2px var(--rouge);
+      }
+
+      .tache {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        border-radius: 4px;
+        padding: 0 5px;
+        margin-top: 2px;
+        background: var(--surface);
+        color: var(--texte);
+        border: 1px dashed var(--texte-2);
+      }
+
+      .boite.attente {
+        outline: 2px dashed var(--texte-2);
+        outline-offset: -2px;
+      }
+
+      .boite.encours {
+        animation: pulse 1.1s ease-in-out infinite;
+        outline: 2px solid var(--info);
+        outline-offset: -2px;
+      }
+
+      .boite.encours .tache {
+        border-style: solid;
+        border-color: var(--info);
+        color: var(--info);
+      }
+
+      .boite.flash {
+        animation: flash 2.4s ease-out 1;
+      }
+
+      @keyframes pulse {
+
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 color-mix(in srgb, var(--info) 55%, transparent);
+        }
+
+        50% {
+          box-shadow: 0 0 0 5px color-mix(in srgb, var(--info) 0%, transparent);
+          filter: brightness(1.08);
+        }
+      }
+
+      @keyframes flash {
+        0% {
+          box-shadow: 0 0 0 4px var(--ok);
+        }
+
+        100% {
+          box-shadow: 0 0 0 0 transparent;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+
+        .boite.encours,
+        .boite.flash,
+        .tourne {
+          animation: none !important;
+        }
+      }
+
+      td.signaux {
+        min-width: 180px;
+        max-width: 300px;
+      }
+
+      td.signaux .chip {
+        margin: 1px 2px 1px 0;
+      }
+
+      td.signaux .ia {
+        font-size: 11.5px;
+        color: var(--texte-2);
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-top: 3px;
+      }
+
+      /* Dock droit : paquet + file d'attente */
+      #dock {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: var(--dock);
+        background: var(--surface);
+        border-left: 1px solid var(--bord);
+        display: none;
+        flex-direction: column;
+        z-index: 6;
+      }
+
+      body.servi #dock {
+        display: flex;
+      }
+
+      #dock section {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--bord);
+        overflow-y: auto;
+      }
+
+      #dock section.paquet {
+        flex: 0 1 auto;
+        max-height: 48%;
+      }
+
+      #dock section.file {
+        flex: 1 1 auto;
+      }
+
+      #dock h3 {
+        margin: 0 0 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: var(--texte-2);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #dock h3 .n {
+        background: var(--surface-2);
+        border-radius: 10px;
+        padding: 0 6px;
+        color: var(--texte);
+      }
+
+      #dock .groupe {
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+        margin: 6px 0;
+        overflow: hidden;
+      }
+
+      #dock .groupe .tete {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        background: var(--surface-2);
+        font-weight: 600;
+        flex-wrap: wrap;
+      }
+
+      #dock .groupe .tete button {
+        margin-left: auto;
+      }
+
+      #dock .op {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2px 6px;
+        padding: 4px 8px;
+        border-top: 1px solid var(--surface-2);
+        font-size: 12px;
+      }
+
+      #dock .op .x {
+        border: 0;
+        background: none;
+        padding: 0 4px;
+        color: var(--texte-2);
+      }
+
+      #dock .op .avert {
+        grid-column: 1 / -1;
+        color: var(--orange);
+        font-size: 11px;
+      }
+
+      #dock .vide {
+        color: var(--texte-2);
+        font-size: 12px;
+      }
+
+      #dock .actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+
+      #dock label.auto {
+        font-size: 11.5px;
+        color: var(--texte-2);
+        display: block;
+        margin-top: 6px;
+      }
+
+      .tache-ligne {
+        display: grid;
+        grid-template-columns: 18px 1fr auto;
+        gap: 4px 6px;
+        align-items: start;
+        padding: 6px 4px;
+        border-bottom: 1px solid var(--surface-2);
+        cursor: pointer;
+        border-radius: 6px;
+      }
+
+      .tache-ligne:hover {
+        background: var(--surface-2);
+      }
+
+      .tache-ligne .id {
+        font-weight: 700;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 11.5px;
+      }
+
+      .tache-ligne .lib {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .tache-ligne .t {
+        font-size: 11px;
+        color: var(--texte-2);
+        white-space: nowrap;
+      }
+
+      .tache-ligne .dernier {
+        grid-column: 2 / -1;
+        font-size: 11px;
+        color: var(--texte-2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+
+      .tache-ligne.en_cours {
+        background: color-mix(in srgb, var(--info) 10%, transparent);
+      }
+
+      .tache-ligne.ok .lib,
+      .tache-ligne.echec .lib {
+        opacity: .85;
+      }
+
+      .st {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-top: 2px;
+      }
+
+      .st.en_attente {
+        border: 2px dashed var(--texte-2);
+      }
+
+      .st.en_cours {
+        border: 2px solid var(--info);
+        border-top-color: transparent;
+      }
+
+      .tourne {
+        animation: tourne .8s linear infinite;
+      }
+
+      @keyframes tourne {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .st.ok {
+        background: var(--ok);
+      }
+
+      .st.echec {
+        background: var(--rouge);
+      }
+
+      .st.annulee {
+        background: var(--texte-2);
+      }
+
+      details.historique summary {
+        font-size: 12px;
+        color: var(--texte-2);
+        cursor: pointer;
+        margin-top: 8px;
+      }
+
+      /* Panneau de détail */
+      #voile {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .25);
+        z-index: 10;
+      }
+
+      #panneau {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(1080px, 94vw);
+        background: var(--bg);
+        box-shadow: var(--ombre);
+        z-index: 11;
+        overflow-y: auto;
+        padding: 14px 22px 60px;
+      }
+
+      #panneau .tete {
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+        position: sticky;
+        top: -14px;
+        background: var(--bg);
+        padding: 10px 0;
+        z-index: 2;
+        border-bottom: 1px solid var(--bord);
+      }
+
+      #panneau .tete h2 {
+        margin: 0;
+        font-size: 16px;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--texte);
+      }
+
+      #panneau .tete .fermer {
+        margin-left: auto;
+      }
+
+      #panneau ul.sig {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      #panneau ul.sig li {
+        border-radius: 6px;
+        padding: 5px 9px;
+      }
+
+      #panneau ul.sig li.rouge {
+        background: var(--rouge-bg);
+        color: var(--rouge);
+      }
+
+      #panneau ul.sig li.orange {
+        background: var(--orange-bg);
+        color: var(--orange);
+      }
+
+      #panneau ul.sig li.info {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+
+      #panneau .resumes {
+        list-style: none;
+        padding: 0;
+        margin: 6px 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      #panneau .resumes li {
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 6px 10px;
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .col {
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-top: 3px solid var(--c);
+        border-radius: 8px;
+        padding: 8px 10px;
+        min-width: 0;
+      }
+
+      .col.cible-drop {
+        box-shadow: inset 0 0 0 2px var(--info);
+      }
+
+      .col h4 {
+        margin: 0 0 6px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .col h4[draggable="true"] {
+        cursor: grab;
+      }
+
+      .col .sha {
+        cursor: copy;
+        overflow-wrap: anywhere;
+        font-size: 11px;
+        color: var(--texte-2);
+      }
+
+      .col dl {
+        margin: 6px 0 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 8px;
+        font-size: 12px;
+      }
+
+      .col dt {
+        color: var(--texte-2);
+      }
+
+      .col dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .col .liste {
+        margin: 6px 0 0;
+        padding-left: 16px;
+        font-size: 12px;
+      }
+
+      .col .envoyer {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      .col .envoyer button {
+        font-size: 11px;
+        padding: 1px 6px;
+      }
+
+      .age-chip {
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 0 7px;
+        background: hsl(var(--h, 170) var(--sat) var(--lum-bg));
+        color: hsl(var(--h, 170) 60% var(--lum-fg));
+      }
+
+      .age-chip.inconnu {
+        background: var(--inconnu-bg);
+        color: var(--inconnu-fg);
+        font-weight: 400;
+      }
+
+      table.champs {
+        border-collapse: separate;
+        border-spacing: 2px;
+        margin-top: 4px;
+      }
+
+      table.champs th {
+        text-align: left;
+        font-weight: 600;
+        padding: 2px 8px;
+        color: var(--texte-2);
+        font-size: 12px;
+      }
+
+      table.champs td {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        text-align: center;
+        min-width: 70px;
+      }
+
+      table.champs td.nom {
+        text-align: left;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+
+      table.champs tr.egal td:not(.nom) {
+        opacity: .45;
+      }
+
+      .fa {
+        background: color-mix(in srgb, var(--cA) 22%, transparent);
+      }
+
+      .fb {
+        background: color-mix(in srgb, var(--cB) 22%, transparent);
+      }
+
+      .fc {
+        background: color-mix(in srgb, var(--cC) 22%, transparent);
+      }
+
+      .fd {
+        background: color-mix(in srgb, var(--cD) 22%, transparent);
+      }
+
+      .barre-diff {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 6px 0;
+      }
+
+      .barre-diff select {
+        font: inherit;
+        background: var(--surface);
+        color: var(--texte);
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 3px 6px;
+      }
+
+      pre.diff,
+      pre.texte {
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+        padding: 8px 0;
+        margin: 0;
+        overflow: auto;
+        max-height: 64vh;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      pre.diff span,
+      pre.texte span {
+        display: block;
+        padding: 0 12px;
+        white-space: pre;
+      }
+
+      pre.diff .add {
+        background: var(--add-bg);
+        color: var(--add-fg);
+      }
+
+      pre.diff .del {
+        background: var(--del-bg);
+        color: var(--del-fg);
+      }
+
+      pre.diff .hunk {
+        color: var(--hunk);
+        font-weight: 600;
+        margin-top: 6px;
+      }
+
+      pre.diff .fic {
+        font-weight: 700;
+      }
+
+      details>summary {
+        cursor: pointer;
+        color: var(--texte-2);
+        margin: 8px 0;
+      }
+
+      /* Fenêtre de logs */
+      #logs {
+        position: fixed;
+        inset: 6vh 8vw;
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 10px;
+        box-shadow: var(--ombre);
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #logs[hidden] {
+        display: none;
+      }
+
+      #logs .tete {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--bord);
+        flex-wrap: wrap;
+      }
+
+      #logs .tete h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      #logs .tete button {
+        margin-left: auto;
+      }
+
+      #logs .ops {
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--bord);
+        font-size: 12px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      #logs pre {
+        flex: 1;
+        margin: 0;
+        overflow: auto;
+        padding: 10px 16px;
+        font-size: 12px;
+        line-height: 1.5;
+        background: var(--bg);
+        white-space: pre-wrap;
+      }
+
+      #voile-logs {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .3);
+        z-index: 29;
+      }
+
+      /* Légende */
+      #legende {
+        position: fixed;
+        top: 56px;
+        right: 16px;
+        width: min(580px, 92vw);
+        max-height: 80vh;
+        overflow: auto;
+        background: var(--surface);
+        border: 1px solid var(--bord);
+        border-radius: 10px;
+        box-shadow: var(--ombre);
+        padding: 14px 18px;
+        z-index: 20;
+      }
+
+      body.servi #legende {
+        right: calc(var(--dock) + 16px);
+      }
+
+      #legende h3 {
+        margin: 12px 0 4px;
+        font-size: 13px;
+      }
+
+      #legende p,
+      #legende li {
+        margin: 3px 0;
+      }
+
+      .degrade {
+        height: 14px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, hsl(170 var(--sat) var(--lum-bg)), hsl(147 var(--sat) var(--lum-bg)), hsl(100 var(--sat) var(--lum-bg)), hsl(55 var(--sat) var(--lum-bg)), hsl(19 var(--sat) var(--lum-bg)), hsl(10 var(--sat) var(--lum-bg)));
+        border: 1px solid var(--bord);
+      }
+
+      .graduations {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--texte-2);
+      }
+
+      @media (max-width: 1100px) {
+        body.servi {
+          padding-right: 0;
+          padding-bottom: 42vh;
+        }
+
+        #dock {
+          top: auto;
+          left: 0;
+          width: auto;
+          height: 40vh;
+          border-left: 0;
+          border-top: 1px solid var(--bord);
+          flex-direction: row;
+        }
+
+        #dock section {
+          flex: 1 1 50% !important;
+          max-height: none !important;
+          border-bottom: 0;
+          border-right: 1px solid var(--bord);
+        }
+
+        .envs,
+        .cols {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        body.servi #legende {
+          right: 16px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          padding: 0 12px 40px;
+        }
+
+        .journal li {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
+      }
+
+      h3.sous-titre {
+        font-size: 12.5px;
+        margin: 14px 0 6px;
+        font-weight: 600;
+      }
+
+      .st.interrompue {
+        background: var(--orange);
+      }
+
+      /* Pas de saut de mise en page quand un résumé arrive */
+      td.signaux .ia {
+        -webkit-line-clamp: 2;
+        min-height: 2.9em;
+      }
+
+      .journal li {
+        grid-template-rows: auto;
+      }
+
+      .journal .resume {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.9em;
+      }
+
+      /* Liens directs, ordre des versions, rendu riche */
+      .boite .ouvrir {
+        position: absolute;
+        right: 5px;
+        bottom: 3px;
+        font-size: 12px;
+        text-decoration: none;
+        color: inherit;
+        opacity: .45;
+        padding: 0 2px;
+      }
+
+      .boite .ouvrir:hover,
+      .boite .ouvrir:focus-visible {
+        opacity: 1;
+      }
+
+      .liens-env {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+
+      .liens-env a {
+        font-size: 11.5px;
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 1px 7px;
+        color: var(--texte);
+        text-decoration: none;
+        background: var(--surface);
+      }
+
+      .liens-env a:hover {
+        background: var(--surface-2);
+      }
+
+      .ordre {
+        list-style: none;
+        padding: 0;
+        margin: 6px 0;
+        display: grid;
+        gap: 3px;
+        font-size: 12.5px;
+      }
+
+      .ordre li {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        flex-wrap: wrap;
+      }
+
+      .copie-note {
+        font-size: 11.5px;
+        color: var(--texte-2);
+      }
+
+      .rendus {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .rendu-col {
+        min-width: 0;
+      }
+
+      .rendu-tete {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+
+      .rendu-tete select {
+        font: inherit;
+        background: var(--surface);
+        color: var(--texte);
+        border: 1px solid var(--bord);
+        border-radius: 6px;
+        padding: 3px 6px;
+      }
+
+      .rendus iframe {
+        width: 100%;
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+        background: #fff;
+        min-height: 120px;
+      }
+
+      .legende-rendu {
+        font-size: 12px;
+        color: var(--texte-2);
+        margin: 4px 0 8px;
+      }
+
+      .legende-rendu .g {
+        border-left: 4px solid #e1000f;
+        padding-left: 4px;
+      }
+
+      .legende-rendu .d {
+        border-left: 4px solid #18753c;
+        padding-left: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="barre">
+        <h1>Nitrates · pilotage des données</h1>
+        <span class="sous" id="genere"></span>
+        <span class="droite">
+          <button id="btn-releve" type="button" hidden>Tout relever</button>
+          <button id="btn-theme" type="button" title="Basculer clair / sombre">Thème</button>
+          <button id="btn-legende" type="button" aria-expanded="false">Légende</button>
+        </span>
+      </header>
+
+      <section class="envs" id="envs" aria-label="Environnements">
+      </section>
+
+      <h2>
+        Derniers changements <span class="fin muet">(ce qui a bougé entre deux relevés, avec un résumé automatique)</span>
+      </h2>
+      <section class="journal" id="journal">
+      </section>
+
+      <nav class="onglets" id="onglets" role="tablist">
+      </nav>
+      <section class="outils">
+        <input type="search"
+               id="recherche"
+               placeholder="Filtrer par clé ou libellé"
+               aria-label="Filtrer">
+        <label>
+          <input type="checkbox" id="ecarts" checked>
+          Écarts seulement
+        </label>
+        <div class="barre-sel" id="barre-sel" role="region" aria-label="Sélection"></div>
+        <span class="compteur" id="compteur"></span>
+      </section>
+      <main id="contenu">
+      </main>
+    </div>
+
+    <aside id="dock" aria-label="Paquet et file d'attente">
+      <section class="paquet" id="paquet">
+      </section>
+      <section class="file" id="file">
+      </section>
+    </aside>
+
+    <div id="voile" hidden></div>
+    <aside id="panneau" hidden aria-modal="true" role="dialog">
+    </aside>
+    <div id="voile-logs" hidden></div>
+    <div id="logs" hidden role="dialog" aria-modal="true"></div>
+
+    <div id="legende" hidden>
+      <strong>Comment lire ce tableau</strong>
+      <h3>Lettre = identité du contenu</h3>
+      <p>
+        Chaque contenu distinct d'un objet reçoit une lettre (<span class="vchip vA">A</span> <span class="vchip vB">B</span> <span class="vchip vC">C</span>…). <b>Même lettre = même contenu, octet pour octet</b> (SHA-256 des champs stockés, clés étrangères remplacées par leur clé naturelle, id et horodatages exclus). A est la version modifiée le plus récemment.
+      </p>
+      <h3>Couleur = retard sur la version la plus récente</h3>
+      <div class="degrade"></div>
+      <div class="graduations">
+        <span>à jour</span><span>1 j</span><span>1 sem.</span><span>1 mois</span><span>3 mois et plus</span>
+      </div>
+      <p>
+        Gris : date inconnue. Hachures : absent de cet environnement. Le « −34 j » d'une case est son retard sur la version A.
+      </p>
+      <h3>Dates</h3>
+      <ul>
+        <li>Arbres : la plus récente entre l'activation, la dernière révision d'édition et la création.</li>
+        <li>
+          PC : dernière édition dans l'admin (marquée <b>ADMIN</b>) tant que la colonne « modifié le » n'existe pas. <b>Une écriture par commande ou SQL ne laisse aucune trace</b> : le contenu peut être plus récent que la date affichée.
+        </li>
+        <li>
+          Contenus éditoriaux : champ <code>updated_at</code> (marqué <b>MAJ</b>) et journal de l'admin.
+        </li>
+      </ul>
+      <h3>Agir</h3>
+      <ul>
+        <li>Glisser une case sur une autre colonne de la même ligne : copie de cet objet vers cet environnement.</li>
+        <li>
+          Cocher plusieurs cases (ou toute une colonne depuis son en-tête), puis « copier vers » dans la barre de sélection, ou glisser l'une d'elles sur un en-tête de colonne.
+        </li>
+        <li>
+          Les opérations s'ajoutent au <b>paquet</b> (dock à droite), puis « Lancer » les envoie dans la <b>file d'attente</b> : une tâche par couple source → cible, exécutées une par une, dans l'ordre d'arrivée.
+        </li>
+        <li>
+          Pendant l'exécution, les cases visées clignotent avec la référence de la tâche ; à la fin, l'environnement est relu et les cases changées s'allument brièvement.
+        </li>
+        <li>
+          Chaque tâche refuse si la cible a changé depuis l'affichage, et vérifie après écriture que la cible est identique à la source ; sinon tout le lot est annulé.
+        </li>
+      </ul>
+      <h3>Signaux</h3>
+      <ul>
+        <li>
+          <span class="chip rouge">prod ≠ staging</span> ce qui est en prod devrait être passé par staging.
+        </li>
+        <li>
+          <span class="chip orange">aval plus récent</span> un environnement aval a été modifié après l'amont : une copie amont → aval écraserait ce travail.
+        </li>
+        <li>
+          <span class="chip orange">version remplacée</span> (arbres) sert une version qu'un autre env a déjà archivée.
+        </li>
+        <li>
+          <span class="chip info">en attente</span> présent en amont, pas encore propagé.
+        </li>
+      </ul>
+    </div>
+
+    <script>const DONNEES_INITIALES = /*__DONNEES__*/null; const META = /*__META__*/null;</script>
+    <script>
+"use strict";
+const ENVS = ["local", "dev", "staging", "prod"];
+const SERVI = !!(META && META.servi);
+const ONGLETS = [
+  { id: "arbre", titre: "Arbres", familles: ["arbre"] },
+  { id: "pc", titre: "PC", familles: ["pc"] },
+  { id: "contenu", titre: "Contenus", familles: ["contenu"] },
+  { id: "ref", titre: "Autres référentiels", familles: null },
+];
+const COURT = {
+  divergent: (s) => "≠ " + (s.texte.match(/^(\d+)/) || ["", "?"])[1] + " versions",
+  prod_staging: () => "prod ≠ staging", aval_plus_recent: () => "aval plus récent", cree_en_aval: () => "créé en aval",
+  en_attente: () => "en attente", retard: () => "version remplacée", verrou: () => "en édition", yaml_seul: () => "YAML seul",
+  sans_date: () => "sans date", plusieurs_actifs: () => "plusieurs actifs", brouillon_seul: () => "brouillon seul",
+  table_absente: () => "table absente", yaml_vide: () => "YAML vide",
+};
+const NIV = { rouge: 0, orange: 1, info: 2 };
+const SOURCE = { copie: "copie", "journal admin": "admin", updated_at: "maj", modifie_le: "maj", date_modification: "maj", "historique contenus": "hist." };
+// Modèle Django de chaque famille, pour l'URL de l'admin.
+const MODELES = { pc: "codeprescription", contenu: "contenurichdsfr", culture: "culture", brancheculturale: "brancheculturale", groupecultureui: "groupecultureui", fertilisant: "fertilisant", notereglementaire: "notereglementaire", evenementphenologique: "evenementphenologique", lienreference: "lienreference", ouverture: "departementouverture", couleurzone: "couleurzone" };
+function liensObjet(famille, env, c) {
+  const e = (D.envs || []).find((x) => x.id === env);
+  const L = e && e.liens;
+  if (!L || !c || c.absent || c.pk == null) return [];
+  const base = L.base.replace(/\/$/, "");
+  if (famille === "arbre") return [
+    { t: "Voir l'arbre", u: `${base}/admin/nitrates/arbre-decision/?tree_id=${c.pk}` },
+    { t: "Éditer", u: `${base}/admin/nitrates/arbre-decision/editer-actif/?tree_id=${c.pk}` },
+  ];
+  const out = [{ t: "Admin", u: `${base}/${L.admin}nitrates/${MODELES[famille]}/${c.pk}/change/` }];
+  if (famille === "pc" || famille === "contenu") out.push({ t: "Aperçu", u: `${base}/admin/nitrates/contenu-rich/preview/?type=${famille === "pc" ? "pc" : "rich"}&id=${c.pk}` });
+  return out;
+}
+const NATURES = { arbre: [["yaml", "YAML brut"], ["logique", "Logique (JSON)"]], _: [["contenu", "Contenu"]] };
+
+let D = DONNEES_INITIALES;
+let famillesParId = {};
+let envsReleves = [];
+const etat = {
+  onglet: lire("onglet") || "arbre", ecarts: lire("ecarts") !== "0", recherche: "",
+  selection: new Set(), paquet: chargerPaquet(), taches: [], versions: {}, auto: lire("auto") === "1",
+  glisse: null, logsOuverts: null, detail: null, journalTout: false,
+  paire: (() => { try { return JSON.parse(lire("paire") || "null"); } catch (e) { return null; } })(), cacheRendus: {},
+};
+function lire(k) { try { return localStorage.getItem("nitrates-ops." + k); } catch (e) { return null; } }
+function ecrire(k, v) { try { localStorage.setItem("nitrates-ops." + k, v); } catch (e) { /* stockage indisponible */ } }
+function chargerPaquet() { try { return JSON.parse(lire("paquet") || "[]"); } catch (e) { return []; } }
+function sauverPaquet() { ecrire("paquet", JSON.stringify(etat.paquet)); }
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function depuis(iso) {
+  if (!iso) return "";
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 90) return "à l'instant";
+  if (s < 3600) return "il y a " + Math.round(s / 60) + " min";
+  if (s < 86400) return "il y a " + Math.round(s / 3600) + " h";
+  const j = Math.round(s / 86400);
+  return j < 60 ? "il y a " + j + " j" : "il y a " + Math.round(j / 30) + " mois";
+}
+function jour(iso) { return iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "?"; }
+function abs(iso) { return iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "?"; }
+function quand(iso) { return iso ? `<span title="${esc(abs(iso))}">${esc(depuis(iso))}</span>` : '<span class="muet">date inconnue</span>'; }
+function duree(j) {
+  if (j == null) return "";
+  if (j < 1 / 24) return Math.max(1, Math.round(j * 1440)) + " min";
+  if (j < 1) return Math.round(j * 24) + " h";
+  if (j < 60) return Math.round(j) + " j";
+  return Math.round(j / 30) + " mois";
+}
+// Retard (jours) -> teinte : 0 j sarcelle, 1 sem. vert-jaune, 1 mois ambre, 3 mois et plus rouge.
+function teinte(j) {
+  if (j == null) return null;
+  const t = Math.min(1, Math.log1p(Math.max(0, j)) / Math.log1p(120));
+  return Math.round(170 - t * 160);
+}
+function natures(l) { return NATURES[l.famille] || NATURES._; }
+function presents(l) { return ENVS.filter((e) => l.cellules[e] && !l.cellules[e].absent); }
+function cleCase(f, k, e) { return f + "|" + k + "|" + e; }
+function caseDom(f, k, e) { return document.querySelector(`td.cell[data-f="${CSS.escape(f)}"][data-k="${CSS.escape(k)}"][data-env="${e}"] .boite`); }
+
+function indexer() {
+  famillesParId = Object.fromEntries(D.familles.map((f) => [f.id, f]));
+  envsReleves = D.envs.filter((e) => e.releve).map((e) => e.id);
+}
+function ligneDe(f, k) { return (famillesParId[f] || { lignes: [] }).lignes.find((x) => x.cle === k); }
+function aEcart(l) {
+  if ((l.versions || []).length > 1) return true;
+  if (l.signaux.some((s) => s.niveau !== "info")) return true;
+  return envsReleves.some((e) => l.cellules[e] && l.cellules[e].absent);
+}
+function famillesDeOnglet(id) {
+  const o = ONGLETS.find((x) => x.id === id);
+  return o.familles || D.familles.filter((f) => f.groupe === "referentiel").map((f) => f.id);
+}
+function ecriture(env) { return SERVI ? (D.politique || {})[env] || null : null; }
+
+/* ─── Environnements ─── */
+function rendreEnvs() {
+  document.getElementById("genere").textContent = SERVI ? "serveur local" : "page statique générée " + depuis(D.genere_le);
+  const rel = relevesEnCours();
+  document.getElementById("envs").innerHTML = D.envs.map((e) => {
+    const btn = SERVI ? `<button type="button" data-releve="${e.id}" ${rel.has(e.id) ? "disabled" : ""}>${rel.has(e.id) ? "relevé…" : "Relever"}</button>` : "";
+    const m = ecriture(e.id);
+    const ecr = SERVI ? `<span class="ecriture ${m || "non"}">${m === "reel" ? "écriture réelle" : m === "simulation" ? "simulation" : "écriture interdite"}</span>` : "";
+    if (!e.releve) return `<div class="env c-${e.id}"><h3>${e.id} ${btn}</h3><div class="ligne muet">aucun relevé ${ecr}</div>${e.echec ? `<div class="echec">${esc(e.echec)}</div>` : ""}</div>`;
+    const h = (Date.now() - new Date(e.releve_le).getTime()) / 3600000;
+    const cls = h > 48 ? "perime" : h > 6 ? "vieux" : "";
+    const c = e.code || {};
+    const code = c.deploye_le ? `${c.ref ? `<code>${esc(c.ref)}</code> ` : ""}<code>${esc(c.commit)}</code>` : c.commit ? `<code>${esc(c.ref)}</code> @ <code>${esc(c.commit)}</code>${c.modifs_non_commitees ? " (modifs locales)" : ""}` : "?";
+    return `<div class="env c-${e.id}">
+      <h3>${e.id} <span class="age ${cls}" title="${esc(abs(e.releve_le))}">relevé ${esc(depuis(e.releve_le))}</span>${btn}</h3>
+      <div class="ligne">${code} ${ecr}</div>
+      ${e.erreurs.map((x) => `<div class="echec">${esc(x.famille)} : ${esc(x.erreur)}</div>`).join("")}
+      ${e.echec ? `<div class="echec">dernier relevé en échec : ${esc(e.echec)}</div>` : ""}</div>`;
+  }).join("");
+  document.querySelectorAll("[data-releve]").forEach((b) => b.addEventListener("click", () => relever([b.dataset.releve])));
+}
+
+/* ─── Journal des changements ─── */
+function texteResume(cle) {
+  const r = cle && (D.resumes || {})[cle];
+  if (!r) return null;
+  if (r.en_cours) return { cls: "muet", t: "résumé en cours…" };
+  if (r.erreur) return { cls: "muet", t: "résumé indisponible" };
+  return { cls: "", t: r.texte };
+}
+function rendreJournal() {
+  const j = (D.journal || []).slice().reverse();
+  const el = document.getElementById("journal");
+  if (!j.length) {
+    el.innerHTML = `<ul><li class="vide muet">${SERVI ? "Rien n'a changé depuis le premier relevé de ce poste. Les changements apparaîtront ici après chaque relevé ou transfert." : "Disponible avec le serveur local."}</li></ul>`;
+    return;
+  }
+  const max = etat.journalTout ? 80 : 8;
+  el.innerHTML = `<ul>${j.slice(0, max).map((e, i) => {
+    const r = texteResume(e.resume);
+    const titre = (famillesParId[e.famille] || { titre: e.famille }).titre;
+    return `<li data-i="${i}" title="Ouvrir le détail"><span class="muet" title="${esc(abs(e.quand))}">${esc(depuis(e.quand))}</span>
+      <span class="env-tag c-${e.env}">${esc(e.env)}</span>
+      <span><b>${esc(e.cle)}</b> <span class="muet">${esc(e.type)}${e.par ? " · " + esc(e.par) : ""}${e.tache ? " · " + esc(e.tache) : ""}</span><br><span class="muet" style="font-size:11.5px">${esc(titre)}</span></span>
+      <span class="resume ${r ? "ia " + r.cls : "muet"}" data-resume-journal="${esc(e.resume || "")}">${r ? esc(r.t) : esc(e.libelle || "")}</span></li>`;
+  }).join("")}${j.length > 8 ? `<li class="vide"><button type="button" id="journal-tout">${etat.journalTout ? "Réduire" : `Voir les ${Math.min(j.length, 80)} derniers`}</button></li>` : ""}</ul>`;
+  el.querySelectorAll("li[data-i]").forEach((li) => li.addEventListener("click", () => { const e = j[+li.dataset.i]; if (ligneDe(e.famille, e.cle)) ouvrirDetail(e.famille, e.cle); }));
+  const b = document.getElementById("journal-tout");
+  if (b) b.addEventListener("click", (ev) => { ev.stopPropagation(); etat.journalTout = !etat.journalTout; rendreJournal(); });
+}
+
+/* ─── Onglets ─── */
+function rendreOnglets() {
+  const nav = document.getElementById("onglets");
+  nav.innerHTML = ONGLETS.map((o) => {
+    const n = famillesDeOnglet(o.id).flatMap((f) => (famillesParId[f] || { lignes: [] }).lignes).filter(aEcart).length;
+    return `<button role="tab" aria-selected="${o.id === etat.onglet}" data-o="${o.id}">${esc(o.titre)}<span class="n ${n ? "alerte" : ""}">${n}</span></button>`;
+  }).join("");
+  nav.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { etat.onglet = b.dataset.o; ecrire("onglet", etat.onglet); rendreOnglets(); rendreTable(); }));
+}
+
+/* ─── Tableau ─── */
+function boite(l, env, toutPareil) {
+  const c = l.cellules[env];
+  const attrs = `data-f="${esc(l.famille)}" data-k="${esc(l.cle)}" data-env="${env}"`;
+  if (c === null || c === undefined) return `<td class="cell" ${attrs}><div class="boite nonreleve">non relevé</div></td>`;
+  const nb = (c.brouillons || []).length;
+  const plusB = nb ? `<div class="plus">+${nb} brouillon${nb > 1 ? "s" : ""}</div>` : "";
+  if (c.absent) return `<td class="cell" ${attrs}><div class="boite absent">${c.table_absente ? "table absente" : "absent"}${plusB}<div class="zone-tache"></div></div></td>`;
+  const h = teinte(toutPareil ? 0 : c.retard_j);
+  const choisie = etat.selection.has(cleCase(l.famille, l.cle, env));
+  const tip = [c.nom, c.copie ? `copié depuis ${c.copie.source} (${c.copie.tache}) le ${abs(c.copie.le)}` : c.par && "par " + c.par, c.detail, c.date && "écrit le " + abs(c.date), SERVI && "glisser sur une autre colonne pour copier"].filter(Boolean).join(" · ");
+  const retard = !toutPareil && c.retard_j > 0 ? `<span class="retard">−${esc(duree(c.retard_j))}</span>` : "";
+  const src = SOURCE[c.date_source] ? `<span class="src">${SOURCE[c.date_source]}</span> ` : "";
+  return `<td class="cell" ${attrs}><div class="boite ${h == null ? "inconnu" : ""} ${choisie ? "choisie" : ""}" ${h == null ? "" : `style="--h:${h}"`} ${SERVI ? 'draggable="true"' : ""} title="${esc(tip)}">
+    ${SERVI ? `<input type="checkbox" class="sel" aria-label="Sélectionner ${esc(l.cle)} en ${env}" ${choisie ? "checked" : ""}>` : ""}
+    <div class="l1">${toutPareil ? "" : `<span class="vchip v${esc(c.version)}">${esc(c.version)}</span>`}<code>${esc(c.sha.slice(0, 7))}</code>${retard}</div>
+    <div class="l2">${c.copie ? `<span class="src">copie</span> ← ${esc(c.copie.source)} · ${c.date ? "écrit " + quand(c.date) : "écriture non datée"}` : `${src}${c.date ? quand(c.date) : c.connu_depuis ? `<span title="instantané pris à l'ouverture de l'historique des contenus">existait le ${esc(jour(c.connu_depuis))}</span>` : '<span class="muet">date inconnue</span>'}${c.par ? " · " + esc(c.par) : ""}`}</div>${plusB}<div class="zone-tache"></div>${(() => { const lien = liensObjet(l.famille, env, c)[0]; return lien ? `<a class="ouvrir" href="${esc(lien.u)}" target="_blank" rel="noopener" title="${esc(lien.t)} dans ${env}" aria-label="${esc(lien.t)} ${esc(l.cle)} dans ${env}">↗</a>` : ""; })()}</div></td>`;
+}
+function lignesAffichees() {
+  const fams = famillesDeOnglet(etat.onglet);
+  const q = etat.recherche.trim().toLowerCase();
+  let lignes = [];
+  fams.forEach((fid) => (famillesParId[fid] || { lignes: [] }).lignes.forEach((l) => lignes.push(l)));
+  const total = lignes.length;
+  if (etat.ecarts) lignes = lignes.filter((l) => aEcart(l) || ENVS.some((e) => etat.selection.has(cleCase(l.famille, l.cle, e))));
+  if (q) lignes = lignes.filter((l) => (l.cle + " " + l.libelle).toLowerCase().includes(q));
+  if (fams.length > 1) lignes.sort((a, b) => b.score - a.score || a.famille.localeCompare(b.famille) || a.cle.localeCompare(b.cle));
+  return { lignes, total, multi: fams.length > 1 };
+}
+function rendreTable() {
+  const { lignes, total, multi } = lignesAffichees();
+  document.getElementById("compteur").textContent = `${lignes.length} affiché(s) sur ${total}`;
+  if (!lignes.length) {
+    document.getElementById("contenu").innerHTML = `<p class="muet" style="padding:20px 4px">${total ? "Aucun écart sur cet onglet : tout est identique là où c'est relevé." : "Aucun objet."}</p>`;
+    return;
+  }
+  const corps = lignes.map((l) => {
+    const toutPareil = (l.versions || []).length <= 1 && !ENVS.some((e) => l.cellules[e] && l.cellules[e].absent);
+    const sig = [...l.signaux].sort((a, b) => NIV[a.niveau] - NIV[b.niveau]).slice(0, 4)
+      .map((s) => `<span class="chip ${s.niveau}" title="${esc(s.texte)}">${esc((COURT[s.code] || (() => s.code))(s))}</span>`).join("");
+    const r0 = (l.resumes || [])[0];
+    const tr = r0 && texteResume(r0.cle);
+    const ia = tr ? `<div class="ia ${tr.cls}" data-resume="${esc(r0.cle)}" data-prefixe="${esc(r0.de)} → ${esc(r0.vers)}" title="${esc(tr.t)}">${esc(r0.de)} → ${esc(r0.vers)} : ${esc(tr.t)}</div>` : "";
+    return `<tr class="ligne ${toutPareil ? "identique" : ""}" data-f="${esc(l.famille)}" data-k="${esc(l.cle)}">
+      <td class="objet" tabindex="0">${multi ? `<div class="sousfam">${esc(famillesParId[l.famille].titre)}</div>` : ""}<div class="cle">${esc(l.cle)}</div><div class="lib">${esc(l.libelle)}</div></td>
+      ${ENVS.map((e) => boite(l, e, toutPareil)).join("")}
+      <td class="signaux">${sig || (toutPareil ? '<span class="muet">identique</span>' : "")}${ia}</td></tr>`;
+  }).join("");
+  const entetes = ENVS.map((e) => {
+    const tout = SERVI ? `<label title="Sélectionner toutes les cases présentes de cette colonne (lignes affichées)"><input type="checkbox" data-col="${e}"> tout</label>` : "";
+    return `<th class="env-col c-${e}" data-env="${e}">${e}${tout}${SERVI && !ecriture(e) ? ' <span class="muet" style="font-weight:400;font-size:11px">(lecture)</span>' : ""}<span class="rel"></span></th>`;
+  }).join("");
+  document.getElementById("contenu").innerHTML = `<table class="grille"><thead><tr><th>Objet</th>${entetes}<th>Signaux et résumé</th></tr></thead><tbody>${corps}</tbody></table>`;
+  brancherTable();
+  majOverlays();
+  majColonnesCochees();
+}
+function brancherTable() {
+  const tab = document.querySelector("table.grille");
+  tab.querySelectorAll("td.objet").forEach((td) => {
+    const tr = td.parentElement;
+    const ouvrir = () => ouvrirDetail(tr.dataset.f, tr.dataset.k);
+    td.addEventListener("click", ouvrir);
+    td.addEventListener("keydown", (ev) => { if (ev.key === "Enter") ouvrir(); });
+  });
+  tab.querySelectorAll("td.cell").forEach((td) => td.addEventListener("click", (ev) => {
+    if (ev.target.closest("a.ouvrir")) return;
+    if (ev.target.classList.contains("sel")) return basculer(td.dataset.f, td.dataset.k, td.dataset.env, ev.target.checked);
+    if (SERVI && (ev.metaKey || ev.ctrlKey || ev.shiftKey) && td.querySelector(".boite[draggable]")) return basculer(td.dataset.f, td.dataset.k, td.dataset.env);
+    ouvrirDetail(td.dataset.f, td.dataset.k);
+  }));
+  if (!SERVI) return;
+  tab.querySelectorAll("input[data-col]").forEach((cb) => cb.addEventListener("change", () => {
+    const e = cb.dataset.col;
+    lignesAffichees().lignes.forEach((l) => { const c = l.cellules[e]; if (c && !c.absent) { const k = cleCase(l.famille, l.cle, e); if (cb.checked) etat.selection.add(k); else etat.selection.delete(k); } });
+    rendreTable(); rendreSelection();
+  }));
+  tab.querySelectorAll(".boite[draggable]").forEach((b) => {
+    b.addEventListener("dragstart", (ev) => {
+      const td = b.parentElement;
+      const k = cleCase(td.dataset.f, td.dataset.k, td.dataset.env);
+      const items = etat.selection.has(k) ? [...etat.selection] : [k];
+      etat.glisse = items.map((x) => { const [f, c, e] = x.split("|"); return { famille: f, cle: c, source: e }; });
+      ev.dataTransfer.setData("text/plain", items.join("\n"));
+      ev.dataTransfer.effectAllowed = "copy";
+    });
+    b.addEventListener("dragend", () => { etat.glisse = null; nettoyerDrop(); if (etat.rendreApresGlisse) { etat.rendreApresGlisse = false; toutRendre(); } });
+  });
+  [...tab.querySelectorAll("td.cell"), ...tab.querySelectorAll("th.env-col")].forEach((el) => {
+    el.addEventListener("dragover", (ev) => {
+      if (!etat.glisse) return;
+      const ok = dropPossible(el);
+      nettoyerDrop();
+      el.classList.add(ok ? "cible-drop" : "interdit");
+      if (ok) { ev.preventDefault(); ev.dataTransfer.dropEffect = "copy"; }
+    });
+    el.addEventListener("dragleave", () => el.classList.remove("cible-drop", "interdit"));
+    el.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      if (!etat.glisse) return;
+      const cible = el.dataset.env;
+      const ops = etat.glisse.filter((g) => g.source !== cible).map((g) => ({ ...g, cible }));
+      etat.glisse = null; nettoyerDrop();
+      ajouterAuPaquet(ops);
+    });
+  });
+}
+function dropPossible(el) {
+  const cible = el.dataset.env;
+  if (!ecriture(cible)) return false;
+  const g = etat.glisse || [];
+  if (el.tagName === "TH") return g.some((x) => x.source !== cible);
+  // Sur une case : même objet pour un glisser simple ; n'importe quelle ligne pour un glisser multiple.
+  if (g.length === 1) return g[0].famille === el.dataset.f && g[0].cle === el.dataset.k && g[0].source !== cible;
+  return g.some((x) => x.source !== cible);
+}
+function nettoyerDrop() { document.querySelectorAll(".cible-drop, .interdit").forEach((x) => x.classList.remove("cible-drop", "interdit")); }
+function majColonnesCochees() {
+  const affichees = lignesAffichees().lignes;
+  document.querySelectorAll("input[data-col]").forEach((cb) => {
+    const e = cb.dataset.col;
+    const pres = affichees.filter((l) => l.cellules[e] && !l.cellules[e].absent);
+    cb.checked = pres.length > 0 && pres.every((l) => etat.selection.has(cleCase(l.famille, l.cle, e)));
+  });
+}
+
+/* ─── Sélection ─── */
+function basculer(f, k, e, force) {
+  const cle = cleCase(f, k, e);
+  const on = force === undefined ? !etat.selection.has(cle) : force;
+  if (on) etat.selection.add(cle); else etat.selection.delete(cle);
+  const b = caseDom(f, k, e);
+  if (b) { b.classList.toggle("choisie", on); const cb = b.querySelector(".sel"); if (cb) cb.checked = on; }
+  rendreSelection(); majColonnesCochees();
+}
+function rendreSelection() {
+  const b = document.getElementById("barre-sel");
+  const n = etat.selection.size;
+  b.classList.toggle("on", SERVI && n > 0);
+  if (!n) { b.innerHTML = ""; return; }
+  const sources = new Set([...etat.selection].map((x) => x.split("|")[2]));
+  b.innerHTML = `<b>${n} sélectionné${n > 1 ? "s" : ""}</b><span>copier vers</span>${ENVS.map((e) => {
+    const m = ecriture(e);
+    const seul = sources.size === 1 && sources.has(e);
+    return `<button type="button" data-vers="${e}" ${!m || seul ? "disabled" : ""} title="${!m ? "écriture interdite vers " + e : m === "simulation" ? "simulation (transaction annulée)" : "écriture réelle"}">${e}${m === "simulation" ? " (simu)" : ""}</button>`;
+  }).join("")}<button type="button" id="sel-vider">Désélectionner</button>`;
+  b.querySelectorAll("[data-vers]").forEach((x) => x.addEventListener("click", () => {
+    const cible = x.dataset.vers;
+    ajouterAuPaquet([...etat.selection].map((s) => { const [f, c, e] = s.split("|"); return { famille: f, cle: c, source: e, cible }; }).filter((o) => o.source !== cible));
+  }));
+  b.querySelector("#sel-vider").addEventListener("click", () => { etat.selection.clear(); rendreTable(); rendreSelection(); });
+}
+
+/* ─── Paquet ─── */
+function avertissement(op) {
+  const l = ligneDe(op.famille, op.cle);
+  if (!l) return "objet introuvable";
+  const s = l.cellules[op.source], c = l.cellules[op.cible];
+  if (!s || s.absent) return `absent de ${op.source}`;
+  if (c && !c.absent && c.sha === s.sha) return "déjà identique";
+  if (c && !c.absent && c.date && (!s.date || c.date > s.date)) {
+    const qui = `${op.cible} modifié le ${abs(c.date)}${c.par ? " par " + c.par : ""}`;
+    return `${qui}, ${s.date ? "après " + op.source + " (" + abs(s.date) + ")" : op.source + " sans aucune date"} : ce travail sera écrasé`;
+  }
+  if (op.cible === "prod") return "écriture en prod";
+  return null;
+}
+function ajouterAuPaquet(ops) {
+  let ajoutees = 0;
+  const ignores = [];
+  ops.forEach((op) => {
+    if (avertissement(op) === "déjà identique") { ignores.push(op.cle); return; }
+    etat.paquet = etat.paquet.filter((p) => !(p.famille === op.famille && p.cle === op.cle && p.cible === op.cible));
+    etat.paquet.push(op); ajoutees++;
+  });
+  sauverPaquet(); rendrePaquet();
+  if (ignores.length) toast(`${ignores.length} objet(s) déjà identique(s), ignoré(s) : ${ignores.slice(0, 5).join(", ")}`);
+  else if (ajoutees && !etat.auto) toast(`${ajoutees} opération(s) ajoutée(s) au paquet`);
+  if (ajoutees && etat.auto) lancer(etat.paquet.slice());
+}
+function rendrePaquet() {
+  const el = document.getElementById("paquet");
+  if (!SERVI) return;
+  const groupes = {};
+  etat.paquet.forEach((op, i) => { const g = op.source + ">" + op.cible; (groupes[g] = groupes[g] || []).push([op, i]); });
+  const blocs = Object.entries(groupes).map(([g, ops]) => {
+    const [s, c] = g.split(">");
+    const m = ecriture(c);
+    return `<div class="groupe"><div class="tete"><span class="env-tag c-${s}">${s}</span> → <span class="env-tag c-${c}">${c}</span> <span class="ecriture ${m || "non"}">${m === "reel" ? "réel" : m || "interdit"}</span><button type="button" class="primaire" data-lancer="${g}">Lancer</button></div>
+      ${ops.map(([op, i]) => { const a = avertissement(op); return `<div class="op"><span><b>${esc(op.cle)}</b> <span class="muet">${esc((famillesParId[op.famille] || {}).titre || op.famille)}</span></span><button type="button" class="x" data-retirer="${i}" aria-label="Retirer ${esc(op.cle)}">✕</button>${a ? `<span class="avert">⚠ ${esc(a)}</span>` : ""}</div>`; }).join("")}</div>`;
+  }).join("");
+  el.innerHTML = `<h3>Paquet <span class="n">${etat.paquet.length}</span></h3>
+    ${etat.paquet.length ? blocs + `<div class="actions"><button type="button" class="primaire" id="paquet-tout">Tout lancer</button><button type="button" id="paquet-vider">Vider</button></div>`
+      : '<p class="vide">Glisser une case sur une autre colonne, ou cocher des cases puis « copier vers ». Les opérations s\'accumulent ici avant d\'être lancées.</p>'}
+    <label class="auto"><input type="checkbox" id="auto" ${etat.auto ? "checked" : ""}> lancer dès le dépôt</label>`;
+  el.querySelectorAll("[data-retirer]").forEach((b) => b.addEventListener("click", () => { etat.paquet.splice(+b.dataset.retirer, 1); sauverPaquet(); rendrePaquet(); }));
+  el.querySelectorAll("[data-lancer]").forEach((b) => b.addEventListener("click", () => { const [s, c] = b.dataset.lancer.split(">"); lancer(etat.paquet.filter((o) => o.source === s && o.cible === c)); }));
+  const tout = el.querySelector("#paquet-tout"); if (tout) tout.addEventListener("click", () => lancer(etat.paquet.slice()));
+  const vider = el.querySelector("#paquet-vider"); if (vider) vider.addEventListener("click", () => { etat.paquet = []; sauverPaquet(); rendrePaquet(); });
+  el.querySelector("#auto").addEventListener("change", (ev) => { etat.auto = ev.target.checked; ecrire("auto", etat.auto ? "1" : "0"); });
+}
+async function lancer(ops) {
+  if (!ops.length) return;
+  const risque = ops.filter((o) => { const a = avertissement(o); return a && a !== "déjà identique"; });
+  if (risque.length && !confirm(`${risque.length} opération(s) à risque :\n\n${risque.map((o) => `${o.cle} (${o.source} → ${o.cible}) : ${avertissement(o)}`).join("\n")}\n\nLancer quand même ?`)) return;
+  const r = await api("/api/transferts", { operations: ops.map(({ famille, cle, source, cible }) => ({ famille, cle, source, cible })) });
+  if (!r) return;
+  etat.paquet = etat.paquet.filter((p) => !ops.includes(p));
+  sauverPaquet(); rendrePaquet();
+  etat.selection.clear(); rendreSelection(); rendreTable();
+  toast(`${r.taches.length} tâche(s) en file : ${r.taches.join(", ")}`);
+  sonder(true);
+}
+
+/* ─── File d'attente ─── */
+function activiteEnvs() {
+  // env -> libellé de ce qui le touche en ce moment (relevé ou tâche de transfert)
+  const m = new Map();
+  etat.taches.filter((t) => t.type === "releve" && (t.statut === "en_cours" || t.statut === "en_attente")).forEach((t) => t.envs.forEach((e) => m.set(e, `${t.statut === "en_cours" ? "⟳" : "⋯"} relevé ${t.id}`)));
+  etat.taches.filter((t) => ecrit(t) && t.statut === "en_cours").forEach((t) => m.set(t.cible, `⟳ ${t.id}`));
+  return m;
+}
+function relevesEnCours() { return new Set(activiteEnvs().keys()); }
+// Tâches qui écrivent dans un env (et font clignoter ses cases).
+function ecrit(t) { return t.type === "transfert" || t.type === "restauration"; }
+function peutRestaurer(t) { return SERVI && ecrit(t) && t.statut === "ok" && t.avant_archive && t.resultat && t.resultat.statut === "applique" && !!ecriture(t.cible); }
+function ecoule(t) {
+  const d = new Date(t.debut || t.cree).getTime(), f = t.fin ? new Date(t.fin).getTime() : Date.now();
+  return Math.max(0, Math.round((f - d) / 1000)) + " s";
+}
+function rendreFile() {
+  const el = document.getElementById("file");
+  if (!SERVI) return;
+  const actives = etat.taches.filter((t) => t.statut === "en_cours" || t.statut === "en_attente");
+  const now = Date.now();
+  const sortantes = etat.taches.filter((t) => !actives.includes(t) && t.fin && now - new Date(t.fin).getTime() < 9000);
+  const historique = etat.taches.filter((t) => !actives.includes(t) && !sortantes.includes(t)).reverse();
+  const ligne = (t) => `<div class="tache-ligne ${t.statut}" data-t="${t.id}" title="Voir les logs">
+      <span class="st ${t.statut} ${t.statut === "en_cours" ? "tourne" : ""}"></span>
+      <span><span class="id">${t.id}</span> <span class="lib">${esc(t.libelle)}</span>${t.mode === "simulation" ? ' <span class="ecriture simulation">simu</span>' : ""}</span>
+      <span class="t">${t.statut === "en_attente" ? `en attente <button type="button" data-annuler="${t.id}" style="font-size:10.5px;padding:0 5px">annuler</button>` : ecoule(t)}</span>
+      ${t.dernier && t.statut === "en_cours" ? `<span class="dernier">${esc(t.dernier)}</span>` : ""}</div>`;
+  el.innerHTML = `<h3>File d'attente <span class="n">${actives.length}</span></h3>
+    ${actives.length || sortantes.length ? [...actives, ...sortantes].map(ligne).join("") : '<p class="vide">Rien en cours. Les tâches passent une par une, dans l\'ordre d\'arrivée.</p>'}
+    ${historique.length ? `<details class="historique" ${etat.histoOuvert ? "open" : ""}><summary>Terminées (${historique.length}) <span class="muet" style="font-size:11px">archivées dans ~/.local/state/nitrates-ops</span></summary>${historique.slice(0, 30).map(ligne).join("")}</details>` : ""}`;
+  const d = el.querySelector("details.historique"); if (d) d.addEventListener("toggle", () => (etat.histoOuvert = d.open));
+  el.querySelectorAll("[data-t]").forEach((x) => x.addEventListener("click", (ev) => { if (ev.target.dataset.annuler) return; ouvrirLogs(x.dataset.t); }));
+  el.querySelectorAll("[data-annuler]").forEach((b) => b.addEventListener("click", async (ev) => { ev.stopPropagation(); await api(`/api/taches/${b.dataset.annuler}/annuler`, {}); sonder(true); }));
+}
+// Cases visées par une tâche en attente ou en cours : référence de la tâche + animation.
+function majOverlays() {
+  document.querySelectorAll(".boite.attente, .boite.encours").forEach((b) => b.classList.remove("attente", "encours"));
+  document.querySelectorAll(".zone-tache").forEach((z) => (z.innerHTML = ""));
+  etat.taches.filter((t) => ecrit(t) && (t.statut === "en_attente" || t.statut === "en_cours")).forEach((t) => {
+    (t.operations || []).forEach((op) => {
+      const cible = caseDom(op.famille, op.cle, op.cible), source = caseDom(op.famille, op.cle, op.source);
+      if (cible) {
+        cible.classList.add(t.statut === "en_cours" ? "encours" : "attente");
+        const z = cible.querySelector(".zone-tache");
+        if (z) z.innerHTML = `<span class="tache">${t.statut === "en_cours" ? "⟳" : "⋯"} ${t.id} ← ${esc(op.source)}${t.mode === "simulation" ? " (simu)" : ""}</span>`;
+      }
+      if (source) { const z = source.querySelector(".zone-tache"); if (z) z.innerHTML = `<span class="tache">${t.id} → ${esc(op.cible)}</span>`; }
+    });
+  });
+  const act = activiteEnvs();
+  document.querySelectorAll("th.env-col").forEach((th) => { const r = th.querySelector(".rel"); if (r) r.textContent = act.has(th.dataset.env) ? " " + act.get(th.dataset.env) : ""; });
+}
+async function ouvrirLogs(id) {
+  etat.logsOuverts = id;
+  document.getElementById("voile-logs").hidden = false;
+  document.getElementById("logs").hidden = false;
+  await rafraichirLogs(true);
+}
+function fermerLogs() { etat.logsOuverts = null; document.getElementById("voile-logs").hidden = true; document.getElementById("logs").hidden = true; }
+async function rafraichirLogs(premier) {
+  const id = etat.logsOuverts;
+  if (!id) return;
+  const t = await (await fetch(`/api/taches/${id}`, { cache: "no-store" })).json();
+  if (etat.logsOuverts !== id) return;
+  const el = document.getElementById("logs");
+  const pre = el.querySelector("pre");
+  const enBas = !pre || pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+  const res = t.resultat;
+  const ops = (t.operations || []).map((o) => {
+    const r = res && (res.operations || []).find((x) => x.cle === o.cle && x.famille === o.famille);
+    const etatOp = r ? (r.verifie ? `✓ ${r.action}` : `✗ écart ${(r.ecarts || []).join(", ")}`) : t.statut === "en_cours" ? "…" : "";
+    return `<span class="chip ${r ? (r.verifie ? "info" : "rouge") : ""}">${esc(o.cle)} ${esc(etatOp)}</span>`;
+  }).join("");
+  el.innerHTML = `<div class="tete"><span class="st ${t.statut} ${t.statut === "en_cours" ? "tourne" : ""}"></span><h3>${t.id} · ${esc(t.libelle)}</h3>
+    <span class="muet">${esc({ en_attente: "en attente", en_cours: "en cours", ok: "terminée", echec: "en échec", annulee: "annulée", interrompue: "interrompue (serveur arrêté pendant la tâche : vérifier la cible)" }[t.statut])}${t.restaure ? " · restaure l'état d'avant " + esc(t.restaure) : ""}${t.mode ? " · " + (t.mode === "reel" ? "écriture réelle" : "simulation") : ""}${res ? " · résultat : " + esc(res.statut) : ""} · ${ecoule(t)}</span>
+    ${peutRestaurer(t) ? `<button type="button" id="logs-restaurer" title="Remettre dans ${esc(t.cible)} le contenu archivé juste avant cette tâche">↶ Restaurer l'état d'avant</button>` : ""}
+    <button type="button" id="logs-fermer">Fermer</button></div>
+    ${ops ? `<div class="ops">${ops}</div>` : ""}
+    <pre>${t.logs.map(([ts, l]) => `<span class="muet">${new Date(ts * 1000).toLocaleTimeString("fr-FR")}</span>  ${esc(l)}`).join("\n") || '<span class="muet">en attente de démarrage…</span>'}</pre>`;
+  el.querySelector("#logs-fermer").addEventListener("click", fermerLogs);
+  const br = el.querySelector("#logs-restaurer");
+  if (br) br.addEventListener("click", async () => {
+    const objets = (t.operations || []).map((o) => o.cle).join(", ");
+    if (!confirm(`Restaurer dans ${t.cible} l'état d'avant ${t.id} (${objets}) ?\n\nLe contenu archivé juste avant cette tâche sera réécrit, avec la même vérification qu'une copie. Si un objet a été modifié depuis, il faudra d'abord relever ${t.cible}.`)) return;
+    const r = await api(`/api/taches/${t.id}/restaurer`, {});
+    if (r) { toast(`Restauration en file : ${r.taches.join(", ")}`); sonder(true); }
+  });
+  const p2 = el.querySelector("pre");
+  if (premier || enBas) p2.scrollTop = p2.scrollHeight;
+}
+
+/* ─── Détail ─── */
+function ouvrirDetail(fid, cle) {
+  const l = ligneDe(fid, cle);
+  if (!l) return;
+  etat.detail = [fid, cle];
+  const p = document.getElementById("panneau");
+  const versions = l.versions || [];
+  const sig = [...l.signaux].sort((a, b) => NIV[a.niveau] - NIV[b.niveau]);
+  const lettreDeSha = Object.fromEntries(versions.map((v) => [v.sha, v.lettre]));
+  const champs = l.facettes || [];
+  const nbDiff = champs.filter((f) => f.distincts > 1).length;
+  const resumes = (l.resumes || []).map((r) => { const t = texteResume(r.cle) || { cls: "muet", t: "résumé en attente…" }; return `<li><span class="vchip v${esc(r.de)}">${esc(r.de)}</span> → <span class="vchip v${esc(r.vers)}">${esc(r.vers)}</span> <span class="ia ${t.cls}" data-resume-detail="${esc(r.cle)}">${esc(t.t)}</span></li>`; }).join("");
+  etat.empreinteDetail = empreinteLigne(fid, cle);
+  p.innerHTML = `<div class="tete"><h2>${esc(famillesParId[fid].titre)} · <code>${esc(l.cle)}</code></h2><span class="muet">${esc(l.libelle)}</span><button class="fermer" type="button">Fermer</button></div>
+    ${sig.length ? `<ul class="sig">${sig.map((s) => `<li class="${s.niveau}">${esc(s.texte)}</li>`).join("")}</ul>` : '<p class="muet">Aucun signal : identique partout où c\'est relevé.</p>'}
+    ${resumes ? `<h2>Ce qui change</h2><ul class="resumes">${resumes}</ul>` : ""}
+    ${versions.length > 1 ? `<h2>Pourquoi cet ordre <span class="fin muet">(A = contenu écrit le plus récemment ; une copie ne rajeunit pas un contenu)</span></h2><ul class="ordre">${versions.map((v) => `<li><span class="vchip v${esc(v.lettre)}">${esc(v.lettre)}</span><b>${esc(v.envs.join(", "))}</b><span>${v.date ? "écrit le " + esc(abs(v.date)) : "date d'écriture inconnue"}</span>${v.origine ? `<span class="muet">d'après ${esc(v.origine.env)} : ${esc(v.origine.source || "")}${v.origine.par && v.origine.source !== "copie" ? ", " + esc(v.origine.par) : ""}</span>` : ""}</li>`).join("")}</ul>` : ""}
+    <h2>Par environnement ${SERVI ? '<span class="fin muet">(glisser un en-tête de colonne sur une autre, ou « → env »)</span>' : ""}</h2><div class="cols">${ENVS.map((e) => colonneEnv(l, e, lettreDeSha)).join("")}</div>
+    ${champs.length ? `<h2>Champs ${nbDiff ? `<span class="fin muet">(${nbDiff} différent${nbDiff > 1 ? "s" : ""} ; même lettre = même valeur)</span>` : ""}</h2>${tableChamps(l, champs)}` : ""}
+    ${presents(l).length > 1 ? `<h2>Comparer</h2><div id="zone-comparer"></div>` : ""}
+    <h2>Contenu</h2><div id="zone-texte"></div>`;
+  p.hidden = false; document.getElementById("voile").hidden = false;
+  p.querySelector(".fermer").addEventListener("click", fermerDetail);
+  p.querySelectorAll(".sha").forEach((el) => el.addEventListener("click", () => { try { navigator.clipboard.writeText(el.dataset.sha); el.textContent = "copié"; setTimeout(() => (el.textContent = el.dataset.sha), 900); } catch (e) { /* presse-papier indisponible */ } }));
+  p.querySelectorAll("[data-copier]").forEach((b) => b.addEventListener("click", () => { const [s, c] = b.dataset.copier.split(">"); ajouterAuPaquet([{ famille: fid, cle, source: s, cible: c }]); }));
+  if (SERVI) brancherDetailDnD(p, fid, cle);
+  if (presents(l).length > 1) zoneComparer(l);
+  zoneTexte(l);
+}
+function brancherDetailDnD(p, fid, cle) {
+  p.querySelectorAll(".col h4[draggable]").forEach((h) => h.addEventListener("dragstart", (ev) => {
+    etat.glisse = [{ famille: fid, cle, source: h.dataset.env }];
+    ev.dataTransfer.setData("text/plain", cle); ev.dataTransfer.effectAllowed = "copy";
+  }));
+  p.querySelectorAll(".col").forEach((col) => {
+    col.addEventListener("dragover", (ev) => {
+      if (!etat.glisse || etat.glisse[0].source === col.dataset.env || !ecriture(col.dataset.env)) return;
+      ev.preventDefault(); col.classList.add("cible-drop");
+    });
+    col.addEventListener("dragleave", () => col.classList.remove("cible-drop"));
+    col.addEventListener("drop", (ev) => {
+      ev.preventDefault(); col.classList.remove("cible-drop");
+      if (!etat.glisse) return;
+      ajouterAuPaquet([{ ...etat.glisse[0], cible: col.dataset.env }]); etat.glisse = null;
+    });
+  });
+}
+function tableChamps(l, champs) {
+  return `<table class="champs"><tr><th>Champ</th>${ENVS.map((e) => `<th>${e}</th>`).join("")}</tr>${champs.map((f) => `<tr class="${f.distincts > 1 ? "diff" : "egal"}"><td class="nom">${esc(f.champ)}</td>${ENVS.map((e) => {
+    const x = f.envs[e];
+    if (x === undefined) return `<td class="muet">${l.cellules[e] === null ? "" : "absent"}</td>`;
+    if (x === null) return `<td class="muet">champ absent</td>`;
+    return `<td class="f${f.distincts > 1 ? x : "a"}">${f.distincts > 1 ? x : "="}</td>`;
+  }).join("")}</tr>`).join("")}</table>`;
+}
+function colonneEnv(l, e, lettreDeSha) {
+  const c = l.cellules[e];
+  if (c === null || c === undefined) return `<div class="col c-${e}" data-env="${e}"><h4>${e}</h4><div class="muet">non relevé</div></div>`;
+  const brouillons = (c.brouillons || []).map((b) => `<li>#${b.pk} ${esc(b.nom)} ${lettreDeSha[b.sha] ? `<span class="vchip v${lettreDeSha[b.sha]}">= ${lettreDeSha[b.sha]}</span>` : `<code>${esc(b.sha.slice(0, 8))}</code> inédit`} · ${quand(b.maj)}${b.par ? " · " + esc(b.par) : ""}${b.verrou ? ` · <b>verrouillé par ${esc(b.verrou.par || "?")}</b>` : ""}</li>`).join("");
+  const envoyer = SERVI && !c.absent ? `<div class="envoyer">${ENVS.filter((x) => x !== e).map((x) => { const m = ecriture(x); return `<button type="button" data-copier="${e}>${x}" ${m ? "" : "disabled"} title="${m ? "ajouter au paquet" : "écriture interdite"}">→ ${x}${m === "simulation" ? " (simu)" : ""}</button>`; }).join("")}</div>` : "";
+  if (c.absent) return `<div class="col c-${e}" data-env="${e}"><h4>${e}</h4><div class="boite absent" style="min-height:0">${c.table_absente ? "table absente" : "absent"}</div>${brouillons ? `<div class="muet" style="margin-top:6px">Brouillons :</div><ul class="liste">${brouillons}</ul>` : ""}</div>`;
+  let dl = "";
+  if (l.famille === "arbre") {
+    const rev = c.revision;
+    dl += `<dt>arbre</dt><dd>#${c.pk} ${esc(c.nom)}</dd><dt>en service</dt><dd>${quand(c.active_le)}</dd>`;
+    dl += `<dt>édition</dt><dd>${rev ? `${quand(rev.date)}${rev.par ? " · " + esc(rev.par) : ""}<br><span class="muet">${esc(rev.detail)} (${rev.n} révision${rev.n > 1 ? "s" : ""})</span>` : '<span class="muet">aucune révision</span>'}</dd>`;
+    dl += `<dt>créé</dt><dd>${quand(c.cree)}${c.cree_par ? " · " + esc(c.cree_par) : ""}</dd>`;
+    if (c.journal_admin) dl += `<dt>admin</dt><dd>${quand(c.journal_admin.date)} · ${esc(c.journal_admin.par || "?")} <span class="muet">${esc(c.journal_admin.detail)}</span></dd>`;
+    const cf = c.config || {};
+    dl += `<dt>nœuds</dt><dd>${esc(c.noeuds)}</dd><dt>activation</dt><dd>poids ${esc(cf.weight)}${cf.activation_map ? ` · <code>${esc(cf.activation_map)}</code>` : ""}</dd>`;
+  } else {
+    (c.dates || []).forEach((d) => { dl += `<dt>${esc(d.source)}</dt><dd>${quand(d.date)}${d.par ? " · " + esc(d.par) : ""}${d.detail ? `<br><span class="muet">${esc(d.detail)}</span>` : ""}</dd>`; });
+    if (!(c.dates || []).length) dl += `<dt>modifié</dt><dd class="muet">aucune trace d'édition</dd>`;
+    if (c.connu_depuis) dl += `<dt>existait</dt><dd>le ${esc(abs(c.connu_depuis))} <span class="muet">(ouverture de l'historique, ne compte pas pour l'ordre)</span></dd>`;
+  }
+  const fil = (c.filiation || []).map((f) => `<li>${f.statut === "archive" ? "archive" : "brouillon"} #${f.pk} en <b>${esc(f.env)}</b> · ${esc(f.nom)} · ${quand(f.maj)}</li>`).join("");
+  const h = teinte(c.retard_j);
+  return `<div class="col c-${e}" data-env="${e}"><h4 ${SERVI ? 'draggable="true"' : ""} data-env="${e}" title="${SERVI ? "glisser sur une autre colonne pour copier" : ""}">${e} <span class="vchip v${esc(c.version)}">${esc(c.version)}</span> <span class="age-chip ${h == null ? "inconnu" : ""}" ${h == null ? "" : `style="--h:${h}"`}>${c.retard_j > 0 ? "−" + esc(duree(c.retard_j)) : c.retard_j === 0 ? "plus récente" : "date inconnue"}</span></h4>
+    <div class="sha mono" data-sha="${esc(c.sha)}" title="Cliquer pour copier">${esc(c.sha)}</div>
+    ${c.copie ? `<div class="copie-note">copie de <b>${esc(c.copie.source)}</b> (${esc(c.copie.tache)}) le ${esc(abs(c.copie.le))}${c.copie.par ? " par " + esc(c.copie.par) : ""}, contenu écrit ${c.date ? "le " + esc(abs(c.date)) : "à une date inconnue"}</div>` : ""}
+    <dl>${dl}</dl>
+    ${(() => { const ls = liensObjet(l.famille, e, c); return ls.length ? `<div class="liens-env">${ls.map((x) => `<a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)} ↗</a>`).join("")}</div>` : ""; })()}
+    ${fil ? `<div class="muet" style="margin-top:6px">Même contenu ailleurs :</div><ul class="liste">${fil}</ul>` : ""}
+    ${brouillons ? `<div class="muet" style="margin-top:6px">Brouillons :</div><ul class="liste">${brouillons}</ul>` : ""}${envoyer}</div>`;
+}
+function libEnv(l, e) { return `${e} (${l.cellules[e].version})`; }
+function texteDe(l, e, nature) { return ((l.cellules[e] || {}).textes || {})[nature]; }
+function paireDefaut(l, nature) {
+  const p = presents(l);
+  for (const [a, b] of [["staging", "prod"], ["dev", "staging"], ["local", "dev"], ["dev", "prod"], ["local", "staging"], ["local", "prod"]]) {
+    if (p.includes(a) && p.includes(b) && texteDe(l, a, nature) !== texteDe(l, b, nature)) return [a, b];
+  }
+  return [p[0], p[1]];
+}
+function aDesDiffs(l) { return Object.values(l.diffs || {}).some((d) => Object.keys(d).length); }
+function zoneTexte(l) {
+  const z = document.getElementById("zone-texte");
+  const p = presents(l);
+  if (!p.length) { z.innerHTML = '<p class="muet">Présent nulle part.</p>'; return; }
+  const nats = natures(l);
+  z.innerHTML = `<details><summary>Afficher le contenu complet</summary><div class="barre-diff"><select id="tv">${p.map((e) => `<option value="${e}">${esc(libEnv(l, e))}</option>`).join("")}</select>
+    ${nats.length > 1 ? `<select id="tn">${nats.map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>` : ""}</div><pre class="texte" id="tpre"></pre></details>`;
+  const maj = () => {
+    const nature = z.querySelector("#tn") ? z.querySelector("#tn").value : nats[0][0];
+    const sha = texteDe(l, z.querySelector("#tv").value, nature);
+    const t = sha && D.textes[sha];
+    z.querySelector("#tpre").innerHTML = t ? t.split("\n").map((ln) => `<span>${esc(ln) || " "}</span>`).join("") : '<span class="muet">Texte non disponible.</span>';
+  };
+  z.querySelectorAll("select").forEach((s) => s.addEventListener("change", maj));
+  z.querySelector("details").addEventListener("toggle", maj, { once: true });
+}
+// Paire d'environnements comparée : retenue d'un objet à l'autre (et entre deux visites).
+function paireRetenue(l) {
+  const p = presents(l);
+  const m = etat.paire;
+  if (m && m[0] !== m[1] && p.includes(m[0]) && p.includes(m[1])) return m.slice();
+  return paireDefaut(l, natures(l)[0][0]);
+}
+// Un seul panneau : le choix des deux environnements pilote le rendu riche et le diff du texte stocké.
+function zoneComparer(l) {
+  const z = document.getElementById("zone-comparer");
+  const p = presents(l);
+  const riche = l.famille === "pc" || l.famille === "contenu";
+  const nats = natures(l);
+  let [g, d] = paireRetenue(l);
+  let nature = nats[0][0];
+  let natureChoisie = false;
+  const opt = (sel) => p.map((e) => `<option value="${e}" ${e === sel ? "selected" : ""}>${esc(libEnv(l, e))}</option>`).join("");
+  z.innerHTML = `<div class="barre-diff"><label>Comparer <select id="cg">${opt(g)}</select></label>
+      <button type="button" id="cinv" title="Inverser les deux côtés" aria-label="Inverser">⇄</button>
+      <label>avec <select id="cd">${opt(d)}</select></label>
+      ${nats.length > 1 ? `<label>texte <select id="cn">${nats.map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>` : ""}
+      <span class="muet" id="cinfo"></span></div>
+    <div id="cresume" style="margin:4px 0 8px"></div>
+    ${riche ? `<h3 class="sous-titre">Rendu sur le site <span class="muet">(compilé par l'application, accordéons dépliés)</span></h3>
+      <div class="legende-rendu"><span class="g">bloc absent à droite</span> · <span class="d">bloc absent à gauche</span> (bloc modifié = les deux)</div>
+      <div class="rendus">
+        <div class="rendu-col"><div class="rendu-tete"><b id="tg"></b><span id="lg" class="liens-env"></span></div><iframe id="fg" title="Rendu, côté gauche"></iframe></div>
+        <div class="rendu-col"><div class="rendu-tete"><b id="td"></b><span id="ld" class="liens-env"></span></div><iframe id="fd" title="Rendu, côté droit"></iframe></div>
+      </div><p class="muet" id="cattente">Rendu en cours (compilateur de l'application, 2 à 4 s la première fois)…</p>` : ""}
+    <h3 class="sous-titre">Texte stocké</h3><pre class="diff" id="cpre"></pre>`;
+  let rendus = null;
+  const liens = (e) => liensObjet(l.famille, e, l.cellules[e]).map((x) => `<a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)} ↗</a>`).join("");
+  const majRendu = () => {
+    if (!riche || !rendus || !rendus[g] || !rendus[d]) return;
+    const shaG = new Set((rendus[g].blocs || []).map((b) => b.sha)), shaD = new Set((rendus[d].blocs || []).map((b) => b.sha));
+    remplir(z.querySelector("#fg"), rendus[g], shaD, "g");
+    remplir(z.querySelector("#fd"), rendus[d], shaG, "d");
+    z.querySelector("#tg").textContent = libEnv(l, g); z.querySelector("#td").textContent = libEnv(l, d);
+    z.querySelector("#lg").innerHTML = liens(g); z.querySelector("#ld").innerHTML = liens(d);
+  };
+  const majDiff = () => {
+    const pre = z.querySelector("#cpre"), info = z.querySelector("#cinfo"), res = z.querySelector("#cresume");
+    if (!natureChoisie && l.famille === "arbre") nature = texteDe(l, g, "logique") !== texteDe(l, d, "logique") ? "logique" : "yaml";
+    if (z.querySelector("#cn")) z.querySelector("#cn").value = nature;
+    const ta = texteDe(l, g, nature), tb = texteDe(l, d, nature);
+    res.innerHTML = "";
+    if (g === d) { pre.innerHTML = '<span class="muet">Même environnement des deux côtés.</span>'; info.textContent = ""; return; }
+    if (!ta || !tb || ta === tb) { pre.innerHTML = `<span class="muet">${ta && ta === tb ? `${nature === "yaml" ? "YAML brut" : "Contenu"} identique entre ${esc(g)} et ${esc(d)}.` : "Pas de texte à comparer."}</span>`; info.textContent = ta && ta === tb ? "identiques" : ""; return; }
+    const r = texteResume(`${nature}:${ta}:${tb}`) || texteResume(`${nature}:${tb}:${ta}`);
+    if (r) res.innerHTML = `<span class="ia ${r.cls}">${esc(r.t)}</span>`;
+    // Diff stocké de la plus petite empreinte vers la plus grande : inversé au besoin.
+    const inverse = ta > tb;
+    const cle = ((l.diffs || {})[nature] || {})[inverse ? tb + "|" + ta : ta + "|" + tb];
+    const df = cle && D.diffs[cle];
+    if (!df) { pre.innerHTML = '<span class="muet">Diff indisponible.</span>'; info.textContent = ""; return; }
+    info.textContent = `${df.lignes} lignes de diff${df.tronque ? " (tronqué)" : ""}`;
+    pre.innerHTML = `<span class="fic">--- ${esc(libEnv(l, g))}</span><span class="fic">+++ ${esc(libEnv(l, d))}</span>` + df.texte.split("\n").map((ln) => {
+      let c = ln[0];
+      if (c === "@") return `<span class="hunk">${esc(ln)}</span>`;
+      if (inverse && (c === "+" || c === "-")) { c = c === "+" ? "-" : "+"; ln = c + ln.slice(1); }
+      return `<span class="${c === "+" ? "add" : c === "-" ? "del" : ""}">${esc(ln) || " "}</span>`;
+    }).join("");
+  };
+  const maj = () => {
+    g = z.querySelector("#cg").value; d = z.querySelector("#cd").value;
+    etat.paire = [g, d]; ecrire("paire", JSON.stringify(etat.paire));
+    majDiff(); majRendu();
+  };
+  z.querySelector("#cg").addEventListener("change", maj);
+  z.querySelector("#cd").addEventListener("change", maj);
+  z.querySelector("#cinv").addEventListener("click", () => { z.querySelector("#cg").value = d; z.querySelector("#cd").value = g; maj(); });
+  if (z.querySelector("#cn")) z.querySelector("#cn").addEventListener("change", (ev) => { nature = ev.target.value; natureChoisie = true; majDiff(); });
+  maj();
+  if (!riche) return;
+  if (!SERVI) { z.querySelector("#cattente").textContent = "Rendu disponible avec le serveur local."; return; }
+  const cleCache = `${l.famille}|${l.cle}|${etat.versions.donnees}`;
+  const pret = (r) => {
+    const att = z.querySelector("#cattente");
+    if (r.erreur) { if (att) att.textContent = "Rendu impossible : " + r.erreur; return; }
+    rendus = r; if (att) att.remove(); majRendu();
+  };
+  if (etat.cacheRendus[cleCache]) return pret(etat.cacheRendus[cleCache]);
+  fetch(`/api/rendu?famille=${encodeURIComponent(l.famille)}&cle=${encodeURIComponent(l.cle)}`, { cache: "no-store" }).then((r) => r.json())
+    .then((r) => { if (!r.erreur) etat.cacheRendus[cleCache] = r; if (document.getElementById("zone-comparer") === z) pret(r); })
+    .catch((e) => { const att = z.querySelector("#cattente"); if (att) att.textContent = "Rendu impossible : " + e; });
+}
+// Accordéons dépliés pour comparer tout le texte (sans le JS du DSFR, ils resteraient fermés).
+function deplier(html) {
+  return html.replace(/class="([^"]*\bfr-collapse\b[^"]*)"/g, (m, c) => `class="${c} fr-collapse--expanded"`).replace(/aria-expanded="false"/g, 'aria-expanded="true"');
+}
+// Une version rendue dans une iframe, avec le CSS du site ; les blocs absents de l'autre côté sont marqués.
+function remplir(iframe, r, autres, cote) {
+  const corps = r.a_des_blocs
+    ? `<div class="fr-accordions-group"><div class="contenu-rich">${(r.blocs || []).map((b) => `<div class="ops-bloc ${autres.has(b.sha) ? "" : "diff-" + cote}">${deplier(b.html)}</div>`).join("")}</div></div>`
+    : `<p class="ops-note">Pas de blocs riches : le site affiche le texte court.</p><p>${esc(r.texte_court).replace(/\n/g, "<br>")}</p>`;
+  iframe.srcdoc = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+    <link rel="stylesheet" href="/statique/dsfr/dsfr.min.css"><link rel="stylesheet" href="/statique/nitrates/calendrier.css">
+    <style>
+      body {
+        margin: 0;
+        padding: 14px 18px 18px 22px;
+        background: #fff
+      }
+
+      .ops-bloc {
+        border-left: 4px solid transparent;
+        margin-left: -14px;
+        padding-left: 10px
+      }
+
+      .ops-bloc.diff-g {
+        border-color: #e1000f;
+        background: #fff4f3
+      }
+
+      .ops-bloc.diff-d {
+        border-color: #18753c;
+        background: #effaf2
+      }
+
+      .fr-collapse {
+        max-height: none !important;
+        visibility: visible !important;
+        overflow: visible !important;
+        --collapse-max-height: none !important;
+        --collapse: none !important
+      }
+
+      .ops-note {
+        font-size: .8rem;
+        color: #666
+      }
+    </style></head><body>${corps}</body></html>`;
+  iframe.onload = () => { try { iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 4 + "px"; } catch (e) { /* hauteur par défaut */ } };
+}
+function fermerDetail() { etat.detail = null; document.getElementById("panneau").hidden = true; document.getElementById("voile").hidden = true; }
+
+/* ─── Serveur : API et sondage ─── */
+async function api(url, corps) {
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Jeton": META.jeton }, body: JSON.stringify(corps) });
+    const j = await r.json();
+    if (!r.ok) { toast("Refusé : " + (j.erreur || r.status), true); return null; }
+    return j;
+  } catch (e) { toast("Serveur injoignable : " + e, true); return null; }
+}
+function relever(envs) { api("/api/releve", { envs }).then((r) => { if (r) { toast(`Relevé en file : ${r.taches.join(", ")}`); sonder(true); } }); }
+function shaParCase() {
+  const m = new Map();
+  D.familles.forEach((f) => f.lignes.forEach((l) => ENVS.forEach((e) => { const c = l.cellules[e]; if (c && !c.absent) m.set(cleCase(f.id, l.cle, e), c.sha); })));
+  return m;
+}
+function flasher(avant) {
+  if (!avant.size) return;
+  shaParCase().forEach((sha, k) => {
+    if (avant.get(k) === sha) return;
+    const [f, c, e] = k.split("|");
+    const b = caseDom(f, c, e);
+    if (b) { b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
+  });
+}
+let sondageEnCours = false;
+async function sonder(force) {
+  if (!SERVI || (sondageEnCours && !force)) return;
+  sondageEnCours = true;
+  try {
+    const e = await (await fetch("/api/etat", { cache: "no-store" })).json();
+    const anciennes = Object.fromEntries(etat.taches.map((t) => [t.id, t.dernier]));
+    etat.taches = e.taches;
+    etat.taches.forEach((t) => (t.dernier = anciennes[t.id]));
+    if (e.version_taches !== etat.versions.taches) {
+      etat.versions.taches = e.version_taches;
+      // Dernière ligne de log des tâches en cours, affichée dans la file.
+      await Promise.all(etat.taches.filter((t) => t.statut === "en_cours").map(async (t) => {
+        try { const d = await (await fetch(`/api/taches/${t.id}`, { cache: "no-store" })).json(); t.dernier = (d.logs[d.logs.length - 1] || [0, ""])[1]; } catch (err) { /* sans importance */ }
+      }));
+    }
+    rendreFile(); majOverlays(); rendreEnvsSiBesoin();
+    if (e.version !== etat.versions.donnees) {
+      const avant = etat.versions.donnees ? shaParCase() : new Map();
+      etat.versions.donnees = e.version;
+      etat.versions.resumes = e.version_resumes;
+      D = await (await fetch("/api/donnees", { cache: "no-store" })).json();
+      indexer();
+      if (etat.glisse) etat.rendreApresGlisse = true; else { toutRendre(); flasher(avant); }
+    } else if (e.version_resumes !== etat.versions.resumes) {
+      etat.versions.resumes = e.version_resumes;
+      D.resumes = await (await fetch("/api/resumes", { cache: "no-store" })).json();
+      if (!etat.glisse) majResumes();
+    }
+    if (etat.logsOuverts) await rafraichirLogs(false);
+    document.getElementById("genere").textContent = "serveur local";
+  } catch (err) {
+    document.getElementById("genere").textContent = "serveur injoignable (relancer nitrates-ops)";
+  } finally { sondageEnCours = false; }
+}
+let empreinteEnvs = "";
+function rendreEnvsSiBesoin() { const k = [...relevesEnCours()].join(",") + D.genere_le; if (k !== empreinteEnvs) { empreinteEnvs = k; rendreEnvs(); } }
+function majResumes() {
+  document.querySelectorAll("[data-resume]").forEach((el) => {
+    const t = texteResume(el.dataset.resume);
+    if (!t) return;
+    el.className = "ia " + t.cls; el.textContent = `${el.dataset.prefixe} : ${t.t}`; el.title = t.t;
+  });
+  document.querySelectorAll("[data-resume-journal]").forEach((el) => {
+    const t = texteResume(el.dataset.resumeJournal);
+    if (!t) return;
+    el.className = "resume ia " + t.cls; el.textContent = t.t; el.title = t.t;
+  });
+  document.querySelectorAll("#panneau [data-resume-detail]").forEach((el) => {
+    const t = texteResume(el.dataset.resumeDetail);
+    if (!t) return;
+    el.className = "ia " + t.cls; el.textContent = t.t;
+  });
+}
+// Empreinte des cases d'une ligne : la fiche ouverte n'est reconstruite que si elle a changé.
+function empreinteLigne(fid, cle) {
+  const l = ligneDe(fid, cle);
+  return l ? ENVS.map((e) => { const c = l.cellules[e]; return c ? (c.absent ? "-" : c.sha + (c.date || "")) : "?"; }).join("|") : "";
+}
+function toutRendre() {
+  const sy = window.scrollY;
+  rendreEnvs(); rendreJournal(); rendreOnglets(); rendreTable(); rendreSelection(); rendrePaquet(); rendreFile();
+  window.scrollTo(0, sy);
+  const p = document.getElementById("panneau");
+  if (etat.detail && !p.hidden && empreinteLigne(...etat.detail) !== etat.empreinteDetail) {
+    const sc = p.scrollTop; ouvrirDetail(...etat.detail); p.scrollTop = sc;
+  }
+}
+let minuteurToast;
+function toast(msg, erreur) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;left:20px;bottom:20px;z-index:40;max-width:min(560px,80vw);padding:8px 14px;border-radius:8px;box-shadow:var(--ombre);background:${erreur ? "var(--rouge-bg)" : "var(--surface)"};color:${erreur ? "var(--rouge)" : "var(--texte)"};border:1px solid var(--bord)`;
+  clearTimeout(minuteurToast); minuteurToast = setTimeout(() => t.remove(), 6000);
+}
+
+/* ─── Initialisation ─── */
+document.body.classList.toggle("servi", SERVI);
+document.getElementById("voile").addEventListener("click", fermerDetail);
+document.getElementById("voile-logs").addEventListener("click", fermerLogs);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (etat.logsOuverts) fermerLogs(); else fermerDetail(); document.getElementById("legende").hidden = true; } });
+document.getElementById("recherche").addEventListener("input", (e) => { etat.recherche = e.target.value; rendreTable(); });
+const cbEcarts = document.getElementById("ecarts");
+cbEcarts.checked = etat.ecarts;
+cbEcarts.addEventListener("change", () => { etat.ecarts = cbEcarts.checked; ecrire("ecarts", etat.ecarts ? "1" : "0"); rendreTable(); });
+document.getElementById("btn-legende").addEventListener("click", (e) => { const lg = document.getElementById("legende"); lg.hidden = !lg.hidden; e.currentTarget.setAttribute("aria-expanded", String(!lg.hidden)); });
+const btnReleve = document.getElementById("btn-releve");
+btnReleve.hidden = !SERVI;
+btnReleve.addEventListener("click", () => relever(ENVS));
+(function theme() {
+  const t = lire("theme");
+  if (t) document.documentElement.dataset.theme = t;
+  document.getElementById("btn-theme").addEventListener("click", () => {
+    const sombre = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = sombre ? "light" : "dark";
+    ecrire("theme", document.documentElement.dataset.theme);
+  });
+})();
+if (!ONGLETS.some((o) => o.id === etat.onglet)) etat.onglet = "arbre";
+indexer();
+toutRendre();
+if (SERVI) {
+  sonder(true);
+  setInterval(sonder, 1500);
+  setInterval(() => { if (etat.taches.some((t) => t.statut === "en_cours" || (t.fin && Date.now() - new Date(t.fin).getTime() < 10000))) rendreFile(); }, 1000);
+}
+    </script>
+  </body>
+</html>

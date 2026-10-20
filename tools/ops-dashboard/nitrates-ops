@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Tableau de bord ops nitrates. Usage et prérequis : README.md à côté.
+#
+# Réglages propres au poste (conteneur, port, dépôt, auteur...) : facultatifs,
+# dans ~/.config/nitrates-ops/env (lignes `export VAR=valeur`), jamais commités.
+#
+# Le serveur relève les envs Scalingo et peut y écrire : il lui faut
+# SCALINGO_API_TOKEN. Si l'outil `secret` (coffre de secrets du poste de l'ops)
+# est installé, il ouvre le pool beta pour ce seul process ; sinon le jeton
+# doit déjà être dans l'environnement.
+set -euo pipefail
+ICI="$(cd "$(dirname "$0")" && pwd)"
+CONFIG="${NITRATES_OPS_CONFIG:-$HOME/.config/nitrates-ops/env}"
+# shellcheck disable=SC1090
+[ -f "$CONFIG" ] && . "$CONFIG"
+for a in "$@"; do
+  case "$a" in
+    --render-only|-h|--help) exec python3 "$ICI/nitrates_ops.py" "$@" ;;
+  esac
+done
+if command -v secret >/dev/null 2>&1; then
+  exec secret exec beta --why "tableau de bord ops nitrates : relevés et copies d'objets entre local, dev, staging, prod" -- python3 "$ICI/nitrates_ops.py" "$@"
+fi
+if [ -z "${SCALINGO_API_TOKEN:-}" ]; then
+  echo "SCALINGO_API_TOKEN absent : l'exporter (jeton Scalingo personnel) ou installer l'outil secret. Voir README.md." >&2
+  exit 1
+fi
+exec python3 "$ICI/nitrates_ops.py" "$@"
