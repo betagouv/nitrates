@@ -169,7 +169,7 @@ graphql-core==3.2.6
     # via
     #   -r base.txt
     #   gql
-gunicorn==26.0.0
+gunicorn==26.2.0
     # via -r production.in
 hiredis==3.4.1
     # via -r base.txt
@@ -221,7 +221,6 @@ packaging==25.0
     # via
     #   -r base.txt
     #   build
-    #   gunicorn
     #   kombu
     #   wheel
 phonenumbers==9.0.10
