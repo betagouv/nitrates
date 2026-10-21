@@ -42,7 +42,7 @@ env:
 
 jobs:
   e2e-nitrates:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     services:
@@ -231,7 +231,7 @@ jobs:
   # deux configurations sont mutuellement exclusives -> deux serveurs, deux
   # jobs. Ils tournent en parallele, donc pas de cout en temps de pipeline.
   e2e-root-public-lockdown:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     services:

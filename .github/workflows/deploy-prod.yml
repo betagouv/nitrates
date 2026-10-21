@@ -41,7 +41,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.release.prerelease == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       ref: ${{ steps.resolve.outputs.ref }}
       sha: ${{ steps.resolve.outputs.sha }}
@@ -97,7 +97,7 @@ jobs:
 
   deploy-prod:
     needs: [gate-ci, gate-ci-complet, gate-e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # C'est ICI que se joue la protection : l'environment `production` est
     # configure avec un required reviewer -> le run attend l'approbation.
     environment:
