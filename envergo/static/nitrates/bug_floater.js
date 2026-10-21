@@ -1,4 +1,4 @@
-/* #285 — Bouton flottant « Signaler un bug » (présent sur toutes les pages).
+/* #285 / #518 — Signalement de bug (modale ouverte depuis le pied de page).
  *
  * Rôle :
  *   1. Dès le chargement, installer des capteurs LÉGERS qui gardent en mémoire
@@ -6,7 +6,7 @@
  *      requêtes réseau (fetch + XHR) et les erreurs JS non capturées. Objectif :
  *      qu'au moment où l'utilisateur signale un bug, on ait déjà le contexte
  *      technique pour reproduire.
- *   2. Gérer le pop-over (ouverture/fermeture, choix bug/retour, commentaire).
+ *   2. Gérer la modale (envoi du commentaire, remerciement).
  *   3. À l'envoi, POST JSON /api/retour/ (type "bug") avec, dans `contexte`, le
  *      dump technique + les infos page (URL, user-agent, écran).
  *
@@ -195,97 +195,64 @@
     };
   }
 
-  // ── Pop-over UI ───────────────────────────────────────────────────────────
+  // ── Modale « Signaler un bug, une erreur » (#518) ─────────────────────────
+  // Ouverture / fermeture / focus gérés par la modale DSFR (lien du pied de
+  // page, boutons aria-controls). Ici : envoi et bascule vers le remerciement.
   function init() {
-    var root = document.getElementById("nitrates-bug");
-    if (!root) return;
+    var modale = document.getElementById("nitrates-bug-modal");
+    if (!modale) return;
+    var racine = document.getElementById("nitrates-retours");
 
-    var toggle = root.querySelector("[data-bug-open]");
-    var popover = root.querySelector(".nitrates-bug__popover");
-    var voletForm = root.querySelector("[data-bug-volet-form]");
-    var voletMerci = root.querySelector("[data-bug-volet-merci]");
-    var headerTitre = root.querySelector("[data-bug-header-titre]");
-    var commentaire = root.querySelector("#nitrates-bug-commentaire");
-    var submit = root.querySelector("[data-bug-submit]");
-    var erreur = root.querySelector("[data-bug-erreur]");
-    var closes = Array.prototype.slice.call(
-      root.querySelectorAll("[data-bug-close]")
-    );
-
-    var ouvert = false;
+    var commentaire = modale.querySelector("#nitrates-bug-commentaire");
+    var submit = modale.querySelector("[data-bug-submit]");
+    var erreur = modale.querySelector("[data-bug-erreur]");
+    var voletsForm = modale.querySelectorAll("[data-bug-volet-form]");
+    var voletsMerci = modale.querySelectorAll("[data-bug-volet-merci]");
     var envoiEnCours = false;
 
-    function ouvrir() {
-      popover.hidden = false;
-      ouvert = true;
-      toggle.setAttribute("aria-expanded", "true");
-      if (commentaire) commentaire.focus();
-    }
-
-    function fermer() {
-      popover.hidden = true;
-      ouvert = false;
-      toggle.setAttribute("aria-expanded", "false");
-      toggle.focus();
+    function afficher(liste, visible) {
+      Array.prototype.forEach.call(liste, function (el) {
+        el.hidden = !visible;
+      });
     }
 
     function majEtatSubmit() {
-      var vide = !commentaire || !commentaire.value.trim();
-      submit.disabled = vide || envoiEnCours;
+      submit.disabled = !commentaire.value.trim() || envoiEnCours;
     }
 
-    function typeChoisi() {
-      var checked = root.querySelector(
-        "input[name=nitrates-bug-type]:checked"
-      );
-      return checked ? checked.value : "bug";
-    }
-
-    toggle.addEventListener("click", function () {
-      if (ouvert) fermer();
-      else ouvrir();
+    // A chaque fermeture, on remet le formulaire pour un prochain signalement.
+    modale.addEventListener("dsfr.conceal", function () {
+      if (voletsMerci[0] && !voletsMerci[0].hidden) {
+        commentaire.value = "";
+        afficher(voletsMerci, false);
+        afficher(voletsForm, true);
+      }
+      if (erreur) erreur.hidden = true;
+      majEtatSubmit();
+    });
+    modale.addEventListener("dsfr.disclose", function () {
+      window.setTimeout(function () {
+        if (!commentaire.closest("[hidden]")) commentaire.focus();
+      }, 50);
     });
 
-    closes.forEach(function (btn) {
-      btn.addEventListener("click", fermer);
-    });
-
-    // Échap ferme le pop-over.
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && ouvert) fermer();
-    });
-
-    // Clic hors du pop-over (mais pas sur le bouton) ferme.
-    document.addEventListener("click", function (e) {
-      if (ouvert && !root.contains(e.target)) fermer();
-    });
-
-    if (commentaire) {
-      commentaire.addEventListener("input", majEtatSubmit);
-    }
+    commentaire.addEventListener("input", majEtatSubmit);
     majEtatSubmit();
 
     submit.addEventListener("click", function () {
       if (envoiEnCours) return;
-      var texte = commentaire ? commentaire.value.trim() : "";
+      var texte = commentaire.value.trim();
       if (!texte) return;
 
       envoiEnCours = true;
       majEtatSubmit();
       if (erreur) erreur.hidden = true;
 
-      // Le sous-type (bug / retour) est conservé dans le contexte : le modèle
-      // ne connaît qu'un type "bug" côté serveur, mais on distingue les deux
-      // intentions pour le tri en admin.
       var contexte = collecterContexte();
-      contexte.sous_type = typeChoisi();
-
-      var payload = {
-        type: "bug",
-        commentaire: texte,
-        region_code: root.getAttribute("data-region-code") || "",
-        contexte: contexte,
-      };
+      // Le type "bug" cote serveur couvre bug et suggestion : on garde le
+      // sous-type pour le tri en admin. Les suggestions passent desormais par
+      // l'encart d'avis (feedback), ce formulaire est donc toujours un bug.
+      contexte.sous_type = "bug";
 
       fetch("/api/retour/", {
         method: "POST",
@@ -293,18 +260,20 @@
           "Content-Type": "application/json",
           "X-CSRFToken": getCsrfToken(),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          type: "bug",
+          commentaire: texte,
+          region_code: (racine && racine.getAttribute("data-region-code")) || "",
+          contexte: contexte,
+        }),
       })
         .then(function (resp) {
           if (!resp.ok) throw new Error("HTTP " + resp.status);
           return resp.json();
         })
         .then(function () {
-          voletForm.hidden = true;
-          voletMerci.hidden = false;
-          // Sur l'écran de remerciement, on masque le titre « Un souci ? Un
-          // retour ? » pour ne garder que le message de merci (une seule ligne).
-          if (headerTitre) headerTitre.hidden = true;
+          afficher(voletsForm, false);
+          afficher(voletsMerci, true);
         })
         .catch(function () {
           if (erreur) erreur.hidden = false;

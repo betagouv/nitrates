@@ -1,0 +1,222 @@
+{% load nitrates_tags %}
+
+{% comment %}
+#518 — Retours utilisateurs, sur toutes les pages (maquette Coralie du 07/10) :
+  - lien de pied de page « Signaler un bug, une erreur » -> modale DSFR de
+    signalement (bug_floater.js : capteurs console / réseau, POST type "bug") ;
+  - bouton flottant « Une suggestion, un avis ? » -> encart note + commentaire,
+    puis proposition de devenir bêta-testeur (feedback_popup.js, POST type
+    "feedback"). L'encart s'ouvre aussi tout seul UNE fois après la première
+    simulation ; ensuite seulement sur clic du bouton.
+Back-end inchangé (/api/retour/). Le csrf_token ci-dessous fournit le jeton aux
+deux scripts sur toutes les pages (le simulateur était le seul à en porter un).
+{% endcomment %}
+{% csrf_token %}
+
+<div class="nitrates-retours"
+     id="nitrates-retours"
+     data-region-code="{{ moulinette.catalog.region_code|default:'' }}">
+
+  {# ── Bouton flottant « Une suggestion, un avis ? » ───────────────────────── #}
+  <button type="button"
+          class="nitrates-avis__toggle"
+          id="nitrates-avis-toggle"
+          aria-controls="nitrates-feedback"
+          aria-expanded="false"
+          title="Une suggestion, un avis ?">
+    <svg viewBox="0 0 24 24"
+         width="22"
+         height="22"
+         aria-hidden="true"
+         focusable="false">
+      <path fill="currentColor" d="M12 2a10 10 0 1 1-4.37 19L2 22l1.04-5.6A10 10 0 0 1 12 2Zm0 2a8 8 0 0 0-6.88 12.1l.22.37-.6 3.2 3.25-.58.37.2A8 8 0 1 0 12 4Zm-3.7 7.6a.9.9 0 0 1 1.23.33 2.85 2.85 0 0 0 4.94 0 .9.9 0 1 1 1.56.9 4.65 4.65 0 0 1-8.06 0 .9.9 0 0 1 .33-1.23Z" />
+    </svg>
+    <span class="nitrates-avis__toggle-label">Une suggestion, un avis&nbsp;?</span>
+  </button>
+
+  {# ── Encart avis (non modal) ─────────────────────────────────────────────── #}
+  <div class="nitrates-feedback" id="nitrates-feedback" hidden>
+    <div class="nitrates-feedback__dialog"
+         role="complementary"
+         aria-live="polite"
+         aria-labelledby="nitrates-feedback-titre">
+      <button type="button"
+              class="nitrates-feedback__close"
+              aria-label="Fermer"
+              data-feedback-dismiss>✕</button>
+
+      {# Volet 1 : note (étoiles) + commentaire #}
+      <div class="nitrates-feedback__volet" data-feedback-volet-note>
+        <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">Une suggestion, un avis&nbsp;?</p>
+
+        <div class="nitrates-feedback__stars"
+             role="radiogroup"
+             aria-label="Note d'utilité de 1 à 5 étoiles">
+          {% for n in "12345"|make_list %}
+            <button type="button"
+                    class="nitrates-feedback__star"
+                    data-feedback-note="{{ n }}"
+                    role="radio"
+                    aria-checked="false"
+                    aria-label="{{ n }} étoile{% if n != '1' %}s{% endif %}">
+              <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+                <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.6 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z" />
+              </svg>
+            </button>
+          {% endfor %}
+        </div>
+        <div class="nitrates-feedback__stars-legende">
+          <span>Pas utile</span>
+          <span>Très utile</span>
+        </div>
+
+        <label class="fr-label fr-mt-2w" for="nitrates-feedback-commentaire">Un commentaire&nbsp;? (facultatif)</label>
+        <textarea class="fr-input"
+                  id="nitrates-feedback-commentaire"
+                  rows="3"
+                  maxlength="2000"></textarea>
+
+        <div class="nitrates-feedback__actions">
+          <button type="button"
+                  class="fr-btn fr-btn--tertiary-no-outline"
+                  data-feedback-dismiss>Non merci</button>
+          <button type="button" class="fr-btn" data-feedback-submit-note disabled>Envoyer</button>
+        </div>
+        <p class="nitrates-feedback__erreur fr-error-text"
+           data-feedback-erreur-note
+           hidden>Une erreur est survenue. Réessayez plus tard.</p>
+      </div>
+
+      {# Volet 2 : devenir bêta-testeur (email facultatif, une fois par session) #}
+      <div class="nitrates-feedback__volet" data-feedback-volet-email hidden>
+        <p class="nitrates-feedback__merci-note">Merci pour votre avis&nbsp;!</p>
+        <hr class="nitrates-feedback__sep">
+        <p class="nitrates-feedback__titre fr-h6">Envie de devenir bêta-testeur&nbsp;?</p>
+        <p class="fr-text--sm">
+          En testant les nouvelles fonctionnalités avant leur mise en ligne, vous nous aidez à construire un outil adapté à vos besoins sur le terrain.
+        </p>
+        <label class="fr-label" for="nitrates-feedback-email">Laissez votre email (facultatif)</label>
+        <input type="email"
+               class="fr-input"
+               id="nitrates-feedback-email"
+               autocomplete="email"
+               placeholder="prenom.nom@exemple.fr">
+
+        <div class="fr-checkbox-group fr-mt-2w">
+          <input type="checkbox" id="nitrates-feedback-consent">
+          <label class="fr-label" for="nitrates-feedback-consent">
+            J'accepte d'être recontacté à cette adresse. Mon email est conservé
+            seul, sans lien avec mon avis ni ma simulation.
+          </label>
+        </div>
+
+        <p class="nitrates-feedback__rgpd fr-text--xs">
+          Aucune donnée personnelle n'est collectée sur votre simulation&nbsp;:
+          tout est anonymisé. Vos réponses ne sont transmises à aucun organisme
+          régional, externe ni instance de contrôle, quels qu'ils soient.
+        </p>
+
+        <div class="nitrates-feedback__actions">
+          <button type="button"
+                  class="fr-btn fr-btn--tertiary-no-outline"
+                  data-feedback-email-non>Non merci</button>
+          <button type="button" class="fr-btn" data-feedback-submit-email disabled>Envoyer</button>
+        </div>
+        <p class="nitrates-feedback__erreur fr-error-text"
+           data-feedback-erreur-email
+           hidden>Une erreur est survenue. Réessayez plus tard.</p>
+      </div>
+
+      {# Volet final : remerciement #}
+      <div class="nitrates-feedback__volet nitrates-feedback__merci"
+           data-feedback-merci
+           hidden>
+        <span class="nitrates-feedback__check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path fill="currentColor" d="M9.5 16.2 5.3 12l-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7z" />
+          </svg>
+        </span>
+        <p class="nitrates-feedback__titre fr-h5">Merci pour votre participation</p>
+        <p>Vos retours nous aident à améliorer l'outil.</p>
+        <button type="button"
+                class="fr-btn nitrates-feedback__fermer"
+                data-feedback-fermer>Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Modale « Signaler un bug, une erreur » (ouverte depuis le pied de page) ── #}
+<dialog aria-labelledby="nitrates-bug-titre"
+        id="nitrates-bug-modal"
+        class="fr-modal nitrates-bug"
+        role="dialog">
+  <div class="fr-container fr-container--fluid fr-container-md">
+    <div class="fr-grid-row fr-grid-row--center">
+      <div class="fr-col-12 fr-col-md-8 fr-col-lg-6">
+        <div class="fr-modal__body">
+          <div class="fr-modal__header">
+            <button type="button"
+                    class="fr-btn--close fr-btn"
+                    title="Fermer la fenêtre"
+                    aria-controls="nitrates-bug-modal">Fermer</button>
+          </div>
+          <div class="fr-modal__content">
+            <h1 id="nitrates-bug-titre" class="fr-modal__title">
+              <span class="nitrates-bug__icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" focusable="false">
+                  <path fill="currentColor" d="M20 8h-2.81a5.985 5.985 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a5.987 5.987 0 0 0-2.84 0L8.41 3 7 4.41l1.62 1.63A5.985 5.985 0 0 0 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81a6 6 0 0 0 10.38 0H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8Zm-6 8h-4v-2h4v2Zm0-4h-4v-2h4v2Z" />
+                </svg>
+              </span>
+              Signaler un bug, une erreur
+            </h1>
+
+            <div data-bug-volet-form>
+              <label class="fr-label" for="nitrates-bug-commentaire">
+                Décrivez le bug
+                <span class="fr-hint-text">Que faisiez-vous, qu'attendiez-vous&nbsp;?</span>
+              </label>
+              <textarea class="fr-input"
+                        id="nitrates-bug-commentaire"
+                        rows="4"
+                        maxlength="4000"
+                        placeholder="Ex : au clic sur Suivant, la page ne change pas..."></textarea>
+              <p class="nitrates-bug__rgpd fr-text--sm fr-mt-3w">
+                Aucune donnée personnelle n'est transmise, seules des informations
+                techniques de simulation (adresse de la page, journal d'erreurs)
+                peuvent être jointes pour nous aider à reproduire le problème.
+              </p>
+              <p class="nitrates-bug__erreur fr-error-text" data-bug-erreur hidden>Une erreur est survenue. Réessayez plus tard.</p>
+            </div>
+
+            <div data-bug-volet-merci hidden>
+              <p>Merci&nbsp;! Votre signalement nous aide à corriger l'outil.</p>
+            </div>
+          </div>
+          <div class="fr-modal__footer">
+            <ul class="fr-btns-group fr-btns-group--right fr-btns-group--inline-reverse fr-btns-group--inline-lg">
+              <li data-bug-volet-form>
+                <button type="button" class="fr-btn" data-bug-submit disabled>Envoyer</button>
+              </li>
+              <li data-bug-volet-form>
+                <button type="button"
+                        class="fr-btn fr-btn--secondary"
+                        aria-controls="nitrates-bug-modal">Annuler</button>
+              </li>
+              <li data-bug-volet-merci hidden>
+                <button type="button" class="fr-btn" aria-controls="nitrates-bug-modal">Fermer</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+{% comment %}
+Scripts chargés ici (dans le fragment) plutôt que via un bloc extra_js : le
+simulateur redéfinit extra_js sans block.super, ce qui les écraserait.
+{% endcomment %}
+<script defer src="{% static_v 'nitrates/bug_floater.js' %}"></script>
+<script defer src="{% static_v 'nitrates/feedback_popup.js' %}"></script>

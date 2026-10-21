@@ -114,6 +114,13 @@
             <a class="fr-footer__bottom-link" href="{{ url_kit_media }}">Kit média</a>
           </li>
         {% endif %}
+        {# #518 : signalement de bug, modale du fragment _retours.html. #}
+        <li class="fr-footer__bottom-item">
+          <button type="button"
+                  class="fr-footer__bottom-link nitrates-footer__bug"
+                  aria-controls="nitrates-bug-modal"
+                  data-fr-opened="false">Signaler un bug, une erreur</button>
+        </li>
       </ul>
     </div>
   {% endif %}

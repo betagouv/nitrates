@@ -58,6 +58,7 @@ nitrates, pas seulement le simulateur). static_v : cache-busting en dev (cf. nit
   <link href="{% static_v 'nitrates/nav.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/marque.css' %}" rel="stylesheet">
   <link href="{% static_v 'nitrates/bug_floater.css' %}" rel="stylesheet">
+  <link href="{% static_v 'nitrates/feedback_popup.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block footer %}
@@ -66,7 +67,7 @@ nitrates, pas seulement le simulateur). static_v : cache-busting en dev (cf. nit
 
 {% block extra_body %}
   {{ block.super }}
-  {% include 'nitrates/fragments/_bug_floater.html' %}
+  {% include 'nitrates/fragments/_retours.html' %}
   {% if is_building %}
     {% include 'nitrates/_bandeau_construction.html' %}
   {% endif %}

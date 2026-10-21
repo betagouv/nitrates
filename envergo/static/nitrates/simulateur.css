@@ -536,6 +536,27 @@ body {
   display: block;
 }
 
+/* #587 : mention de perimetre (mesures 1 et 6, hors derogations) en encadre
+   info bleu, plus visible que l'ancien petit texte gris. Couleurs DSFR info
+   -> suivent le theme sombre. */
+.nitrates-hero__disclaimer {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  color: var(--text-default-info);
+  background-color: var(--background-contrast-info);
+}
+
+.nitrates-hero__disclaimer::before {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
 .nitrates-badges {
   display: flex;
   flex-wrap: wrap;
