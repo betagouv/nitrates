@@ -1,57 +1,51 @@
-/* #284 / #435 — Encart de feedback fin de simulation.
+/* #284 / #435 / #518 — Encart « Une suggestion, un avis ? ».
  *
- * Déclenchement (retour utilisateur #435 : le modal à 15 s arrivait trop tôt,
- * en pleine lecture du résultat) :
- *   - une seule fois par visiteur (flag localStorage : traité -> plus jamais) ;
- *   - seulement sur la page résultat (le fragment #nitrates-feedback n'y est
- *     rendu que là) ;
- *   - PRIORITÉ 1 : intention de sortie au curseur (desktop). Le curseur sort
- *     du viewport par le HAUT (direction barre d'onglets / croix) -> on ouvre
- *     juste avant le départ. Armé seulement après DELAI_ARMEMENT_MS pour
- *     éviter le faux positif du curseur encore en haut à l'arrivée sur la
- *     page. Nos utilisateurs ferment à la souris, les raccourcis clavier sont
- *     marginaux : cette détection couvre l'essentiel des cas ;
- *   - FALLBACK : inactivité prolongée (couvre le mobile, sans curseur).
- *     « Inaction » = pas de CLIC (le scroll et les mouvements de souris ne
- *     comptent PAS : on peut lire/scroller, ça reste de l'inaction). Seul un
- *     clic recale l'échéance. Le compteur tourne en temps réel : un changement
- *     d'onglet ne le remet pas à zéro ; si l'échéance tombe onglet masqué, on
- *     ouvre au retour (jamais dans le dos de l'utilisateur).
+ * L'encart (note + commentaire, puis proposition bêta-testeur) est présent sur
+ * toutes les pages (fragment _retours.html) :
+ *   - ouverture MANUELLE par le bouton flottant « Une suggestion, un avis ? »,
+ *     à tout moment, autant de fois que voulu (on peut redonner son avis) ;
+ *   - ouverture AUTOMATIQUE une seule fois par visiteur, à la fin de la
+ *     première simulation (page résultat, marqueur [data-nitrates-fin-
+ *     simulation]). S'il la ferme, on ne redemande plus (flag localStorage).
+ *     Déclencheurs repris de #435 : intention de sortie au curseur (desktop),
+ *     sinon inactivité prolongée (pas de clic), jamais onglet masqué.
+ *   - la proposition « devenir bêta-testeur » n'est faite qu'une fois par
+ *     session (sessionStorage), et plus du tout une fois l'email laissé.
  *
- * L'encart est NON MODAL (aria-live sur le fragment) : pas de vol de focus à
- * l'ouverture, l'utilisateur peut continuer à lire/naviguer.
- *
- * Envoi : POST JSON /api/retour/ avec token CSRF. Succès -> écran de
- * remerciement + animation « vers contents » (feedback_vers.js).
+ * L'encart est NON MODAL (aria-live) : pas de vol de focus à l'ouverture auto.
+ * Envoi : POST JSON /api/retour/ avec token CSRF (back-end inchangé).
  */
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "nitrates_feedback_v1"; // présence = déjà traité
-  var DELAI_INACTION_MS = 45000; // fallback : 45 s sans clic sur le résultat
+  var STORAGE_KEY = "nitrates_feedback_v1"; // presence = demande auto deja faite
+  var BETA_SESSION_KEY = "nitrates_beta_propose"; // proposition faite cette session
+  var BETA_INSCRIT_KEY = "nitrates_beta_inscrit"; // email laisse : plus de proposition
+  var DELAI_INACTION_MS = 45000; // fallback : 45 s sans clic sur le resultat
   var DELAI_ARMEMENT_MS = 5000; // temps de lecture mini avant d'armer l'exit intent
 
-  function dejaTraite() {
+  function lire(stockage, cle) {
     try {
-      return !!window.localStorage.getItem(STORAGE_KEY);
+      return window[stockage].getItem(cle);
     } catch (e) {
-      return false; // localStorage indispo -> on tolère (au pire on redemande)
+      return null; // stockage indispo : on tolere
     }
   }
 
-  function marquerTraite(etat) {
+  function ecrire(stockage, cle, valeur) {
     try {
-      window.localStorage.setItem(STORAGE_KEY, etat || "done");
+      window[stockage].setItem(cle, valeur);
     } catch (e) {
       /* ignore */
     }
   }
 
-  // Récupère le token CSRF. Le cookie `csrftoken` est posé en HttpOnly
-  // (durcissement sécurité #265) -> JS ne peut PAS le lire via document.cookie.
-  // On lit donc le token depuis le champ caché rendu par {% csrf_token %} dans
-  // la page (méthode Django recommandée quand CSRF_COOKIE_HTTPONLY=True).
-  // Fallback cookie au cas où (si un jour le HttpOnly saute).
+  function dejaDemande() {
+    return !!lire("localStorage", STORAGE_KEY);
+  }
+
+  // Le cookie `csrftoken` est HttpOnly (#265) : on lit le jeton dans le champ
+  // cache rendu par {% csrf_token %} (fragment _retours.html).
   function getCsrfToken() {
     var input = document.querySelector("input[name=csrfmiddlewaretoken]");
     if (input && input.value) return input.value;
@@ -59,15 +53,29 @@
     return m ? decodeURIComponent(m.pop()) : "";
   }
 
+  function poster(payload) {
+    return fetch("/api/retour/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken(),
+      },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
   function init() {
     var root = document.getElementById("nitrates-feedback");
-    if (!root) return; // pas sur une page résultat
-    if (dejaTraite()) return; // déjà envoyé ou esquivé une fois
+    if (!root) return;
+    var toggle = document.getElementById("nitrates-avis-toggle");
+    var retours = document.getElementById("nitrates-retours");
 
     var voletNote = root.querySelector("[data-feedback-volet-note]");
     var voletEmail = root.querySelector("[data-feedback-volet-email]");
     var voletMerci = root.querySelector("[data-feedback-merci]");
-    var reward = root.querySelector("[data-feedback-reward]");
     var erreurNote = root.querySelector("[data-feedback-erreur-note]");
     var erreurEmail = root.querySelector("[data-feedback-erreur-email]");
     var submitNote = root.querySelector("[data-feedback-submit-note]");
@@ -80,18 +88,16 @@
     );
 
     var noteChoisie = null;
-    var retourId = null; // id de l'entrée feedback créée au volet 1
+    var retourId = null; // id de l'entree feedback creee au volet 1
     var ouvert = false;
-    var traite = false;
 
-    // ── Étoiles : allumer jusqu'à l'indice n (0-based) ──────────────────────
+    // ── Etoiles ────────────────────────────────────────────────────────────
     function allumerJusqua(idx) {
       stars.forEach(function (s, i) {
         s.classList.toggle("is-on", i <= idx);
       });
     }
     function refletSelection() {
-      // Réaffiche l'état sélectionné (après un mouseleave).
       allumerJusqua(noteChoisie === null ? -1 : noteChoisie - 1);
     }
     stars.forEach(function (star, i) {
@@ -104,128 +110,110 @@
           s.setAttribute("aria-checked", j === i ? "true" : "false");
         });
         refletSelection();
-        submitNote.disabled = false; // envoi possible dès qu'une note est mise
+        submitNote.disabled = false; // envoi possible des qu'une note est mise
       });
     });
     root
       .querySelector(".nitrates-feedback__stars")
       .addEventListener("mouseleave", refletSelection);
 
-    // ── Ouverture / fermeture ───────────────────────────────────────────────
-    // ── Anti-collision (#435) : cartes de définition + drawer conditions ────
-    // L'encart partage le bord droit avec la carte de définition (.def-carte)
-    // et le drawer conditions (qui occupe la droite, tout l'écran en mobile).
-    // Règles : on n'OUVRE pas l'encart tant que l'un des deux est affiché, et
-    // s'ils s'ouvrent APRÈS lui, on l'efface temporairement (classe CSS) puis
-    // on le réaffiche à leur fermeture. Surveillance par poll 1 s (même
-    // mécanique que le déclenchement : pas d'API d'événement côté glossaire).
-    function encombrementActif() {
-      return (
-        document.body.classList.contains("drawer-open") ||
-        !!document.querySelector(".def-carte--ouverte")
-      );
+    // ── Etat ───────────────────────────────────────────────────────────────
+    function reinitialiser() {
+      noteChoisie = null;
+      retourId = null;
+      commentaire.value = "";
+      email.value = "";
+      consent.checked = false;
+      stars.forEach(function (s) {
+        s.setAttribute("aria-checked", "false");
+      });
+      refletSelection();
+      submitNote.disabled = true;
+      submitEmail.disabled = true;
+      erreurNote.hidden = true;
+      erreurEmail.hidden = true;
+      voletNote.hidden = false;
+      voletEmail.hidden = true;
+      voletMerci.hidden = true;
     }
 
-    var ouvertureEnAttente = false;
-
-    window.setInterval(function () {
-      if (traite) return;
-      if (ouvert) {
-        root.classList.toggle("nitrates-feedback--efface", encombrementActif());
-      } else if (ouvertureEnAttente && !encombrementActif()) {
-        ouvertureEnAttente = false;
-        ouvrir();
-      }
-    }, 1000);
-
-    // Encart non modal : on ne déplace PAS le focus à l'ouverture (l'utilisateur
-    // est peut-être en train de lire ; aria-live annonce l'encart aux lecteurs
-    // d'écran).
-    function ouvrir() {
-      if (ouvert || traite || dejaTraite()) return;
-      if (encombrementActif()) {
-        // Définition ou drawer à l'écran : on attend leur fermeture.
-        ouvertureEnAttente = true;
-        return;
-      }
+    function montrer() {
       ouvert = true;
       root.hidden = false;
+      if (toggle) toggle.setAttribute("aria-expanded", "true");
     }
 
-    function terminer() {
-      // Fin du parcours (email envoyé ou volets fermés) -> reward + fermeture.
-      traite = true;
-      marquerTraite("done");
-      voletNote.hidden = true;
-      voletEmail.hidden = true;
-      voletMerci.hidden = false;
-      if (window.nitratesVersReward && reward) {
-        window.nitratesVersReward(reward, { nombre: 5 });
-      }
-      window.setTimeout(function () {
-        root.hidden = true;
-      }, 4000);
-    }
-
-    function esquiver() {
-      // Fermeture -> on ne redemande plus jamais. Si une note a été saisie mais
-      // pas encore envoyée, on l'envoie quand même (best-effort, sans bloquer).
-      if (traite) return;
-      traite = true;
-      marquerTraite("dismissed");
+    function fermer() {
+      if (!ouvert) return;
+      // Une note saisie mais pas envoyee part quand meme (best-effort).
       if (noteChoisie !== null && retourId === null) {
-        envoyerNote(true); // fire-and-forget
+        envoyerNote(true);
       }
+      ouvert = false;
       root.hidden = true;
+      root.classList.remove("nitrates-feedback--efface");
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
     }
 
+    // Ouverture manuelle : formulaire vierge, focus sur la premiere etoile.
+    function ouvrirManuel() {
+      reinitialiser();
+      montrer();
+      // Avis donne : plus besoin de le demander automatiquement.
+      ecrire("localStorage", STORAGE_KEY, "manuel");
+      if (stars[0]) stars[0].focus();
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        if (ouvert) fermer();
+        else ouvrirManuel();
+      });
+    }
     root.querySelectorAll("[data-feedback-dismiss]").forEach(function (el) {
-      el.addEventListener("click", esquiver);
+      el.addEventListener("click", fermer);
     });
+    root.querySelector("[data-feedback-email-non]").addEventListener("click", fermer);
+    root.querySelector("[data-feedback-fermer]").addEventListener("click", fermer);
     document.addEventListener("keydown", function (e) {
-      // Pas d'esquive si l'encart est effacé (invisible derrière une carte de
-      // définition ou le drawer) : l'Échap vise alors CES éléments, pas nous.
       if (
         ouvert &&
         e.key === "Escape" &&
         !root.classList.contains("nitrates-feedback--efface")
       ) {
-        esquiver();
+        fermer();
       }
     });
 
-    // ── Volet 1 : envoi de la note + commentaire (SANS email) ───────────────
+    // ── Volet 1 : note + commentaire (SANS email) ──────────────────────────
+    function proposerBeta() {
+      return (
+        !lire("sessionStorage", BETA_SESSION_KEY) &&
+        !lire("localStorage", BETA_INSCRIT_KEY)
+      );
+    }
+
     function envoyerNote(silencieux) {
       if (noteChoisie === null) return Promise.resolve();
       submitNote.disabled = true;
       erreurNote.hidden = true;
-      var payload = {
+      return poster({
         type: "feedback",
         note: noteChoisie,
         commentaire: (commentaire.value || "").trim(),
-        region_code: root.getAttribute("data-region-code") || "",
-        contexte: { source: "popup_resultat" },
-      };
-      return fetch("/api/retour/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCsrfToken(),
-        },
-        body: JSON.stringify(payload),
+        region_code: (retours && retours.getAttribute("data-region-code")) || "",
+        contexte: { source: "encart_avis", page: window.location.pathname },
       })
-        .then(function (r) {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
         .then(function (data) {
           retourId = data.id;
-          if (!silencieux) {
-            // On révèle le volet email (facultatif). L'utilisateur peut fermer
-            // sans le remplir : son avis est déjà enregistré.
-            voletNote.hidden = true;
+          if (silencieux) return;
+          voletNote.hidden = true;
+          if (proposerBeta()) {
+            ecrire("sessionStorage", BETA_SESSION_KEY, "1");
             voletEmail.hidden = false;
             email.focus();
+          } else {
+            voletMerci.hidden = false;
           }
         })
         .catch(function () {
@@ -239,11 +227,9 @@
       envoyerNote(false);
     });
 
-    // ── Volet 2 : email optionnel, attaché à l'entrée du volet 1 ────────────
+    // ── Volet 2 : email bêta-testeur, attache a l'entree du volet 1 ─────────
     function majBoutonEmail() {
-      submitEmail.disabled = !(
-        (email.value || "").trim() && consent.checked
-      );
+      submitEmail.disabled = !((email.value || "").trim() && consent.checked);
     }
     email.addEventListener("input", majBoutonEmail);
     consent.addEventListener("change", majBoutonEmail);
@@ -253,24 +239,11 @@
       if (!emailVal || !consent.checked || retourId === null) return;
       submitEmail.disabled = true;
       erreurEmail.hidden = true;
-      fetch("/api/retour/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCsrfToken(),
-        },
-        body: JSON.stringify({
-          retour_id: retourId,
-          email: emailVal,
-          consentement_email: true,
-        }),
-      })
-        .then(function (r) {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
+      poster({ retour_id: retourId, email: emailVal, consentement_email: true })
         .then(function () {
-          terminer();
+          ecrire("localStorage", BETA_INSCRIT_KEY, "1");
+          voletEmail.hidden = true;
+          voletMerci.hidden = false;
         })
         .catch(function () {
           erreurEmail.hidden = false;
@@ -278,75 +251,89 @@
         });
     });
 
-    // ── Déclenchement 1 : intention de sortie au curseur (desktop) ──────────
-    // `mouseout` sur document avec relatedTarget null = le curseur a quitté le
-    // viewport ; clientY <= 0 = par le HAUT (barre d'onglets, croix, barre
-    // d'URL). Armé après DELAI_ARMEMENT_MS pour laisser le temps d'entrer dans
-    // la lecture (sinon faux positif : curseur encore en haut après le clic
-    // de soumission du formulaire).
+    // ── Ouverture automatique : fin de la premiere simulation, une fois ─────
+    if (!document.querySelector("[data-nitrates-fin-simulation]")) return;
+    if (dejaDemande()) return;
+
+    // Anti-collision (#435) : cartes de definition et drawer conditions
+    // partagent le bord droit. On n'ouvre pas tant qu'ils sont affiches, et
+    // s'ils s'ouvrent apres nous on s'efface le temps qu'ils se referment.
+    function encombrementActif() {
+      return (
+        document.body.classList.contains("drawer-open") ||
+        !!document.querySelector(".def-carte--ouverte")
+      );
+    }
+
+    var autoFaite = false;
+    var ouvertureEnAttente = false;
+
+    function ouvrirAuto() {
+      if (autoFaite || ouvert || dejaDemande()) return;
+      if (encombrementActif()) {
+        ouvertureEnAttente = true;
+        return;
+      }
+      autoFaite = true;
+      ecrire("localStorage", STORAGE_KEY, "auto"); // une fois et une seule
+      reinitialiser();
+      montrer(); // non modal : pas de vol de focus
+    }
+
+    window.setInterval(function () {
+      if (ouvert) {
+        root.classList.toggle("nitrates-feedback--efface", encombrementActif());
+      } else if (ouvertureEnAttente && !encombrementActif()) {
+        ouvertureEnAttente = false;
+        ouvrirAuto();
+      }
+    }, 1000);
+
+    // Declencheur 1 : intention de sortie au curseur (sortie par le haut du
+    // viewport), arme apres un temps de lecture minimal.
     var armementExit = Date.now() + DELAI_ARMEMENT_MS;
     document.addEventListener("mouseout", function (e) {
-      if (traite || ouvert || dejaTraite()) return;
+      if (autoFaite || ouvert) return;
       if (Date.now() < armementExit) return;
-      if (e.relatedTarget !== null) return; // simple passage entre éléments
-      if (e.clientY > 0) return; // sortie par un bord latéral/bas : pas un départ
-      ouvrir();
+      if (e.relatedTarget !== null) return;
+      if (e.clientY > 0) return;
+      ouvrirAuto();
     });
 
-    // ── Déclenchement 2 (fallback) : dernier clic + DELAI_INACTION_MS ───────
-    // « Inaction » = pas de clic. Le scroll et les mouvements de souris ne
-    // comptent PAS (on peut lire/scroller sans réarmer). Seul un CLIC recale
-    // l'échéance. Le compteur tourne en temps réel (horloge) : un changement
-    // d'onglet ne le remet pas à zéro. On poll chaque seconde ; dès l'échéance
-    // atteinte ET onglet visible -> ouverture (sinon au retour sur l'onglet).
+    // Declencheur 2 (fallback, mobile) : DELAI_INACTION_MS sans clic. Le
+    // compteur tourne en temps reel ; onglet masque -> on attend le retour.
     var echeance = Date.now() + DELAI_INACTION_MS;
-    var pollTimer = null;
-
-    // Tout clic RÉARME le compteur (sauf une fois la popup ouverte : les clics
-    // dans la popup ne doivent pas repousser une échéance déjà consommée).
     document.addEventListener(
       "click",
       function () {
-        if (traite || ouvert) return;
+        if (autoFaite || ouvert) return;
         echeance = Date.now() + DELAI_INACTION_MS;
       },
       true
     );
-
-    function tick() {
-      var restant = echeance - Date.now();
-      if (traite || dejaTraite()) {
+    var pollTimer = window.setInterval(function () {
+      if (autoFaite || dejaDemande()) {
         window.clearInterval(pollTimer);
         return;
       }
-      // Échéance atteinte + onglet visible -> ouverture. Onglet masqué : on
-      // attend le retour (cf. visibilitychange ci-dessous).
-      if (restant <= 0 && document.visibilityState === "visible") {
+      if (Date.now() >= echeance && document.visibilityState === "visible") {
         window.clearInterval(pollTimer);
-        ouvrir();
+        ouvrirAuto();
       }
-    }
-
-    // Au retour sur l'onglet, si l'échéance est déjà passée, on ouvre tout de
-    // suite (le compteur a continué de tourner en arrière-plan).
+    }, 1000);
     document.addEventListener("visibilitychange", function () {
       if (
         document.visibilityState === "visible" &&
-        !traite &&
-        !dejaTraite() &&
+        !autoFaite &&
+        !dejaDemande() &&
         Date.now() >= echeance
       ) {
         window.clearInterval(pollTimer);
-        ouvrir();
+        ouvrirAuto();
       }
     });
-
-    pollTimer = window.setInterval(tick, 1000);
-    tick();
   }
 
-  // Robuste au chargement `defer` : si le DOM est déjà prêt (DOMContentLoaded
-  // passé), on initialise tout de suite ; sinon on attend l'event.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {

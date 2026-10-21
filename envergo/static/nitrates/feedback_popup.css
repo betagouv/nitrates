@@ -16,14 +16,15 @@
   display: none !important;
 }
 
-/* Le conteneur racine ne couvre plus l'écran : c'est l'encart lui-même. */
+/* Le conteneur racine ne couvre plus l'écran : c'est l'encart lui-même.
+   #518 : posé au-dessus du bouton « Une suggestion, un avis ? ». */
 .nitrates-feedback {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: 5rem;
   width: 400px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 96px);
+  max-height: calc(100vh - 7rem);
   overflow-y: auto;
 
   /* Sous la carte de définition (2100) et au-dessus du drawer (2000). En
@@ -31,9 +32,8 @@
      (anti-collision #435) : le z-index n'est qu'une ceinture de sécurité. */
   z-index: 2050;
   background: var(--background-default-grey, #fff);
-  border-left: 4px solid var(--border-active-blue-france, #000091);
-  border-radius: 0.25rem;
-  box-shadow: 0 6px 18px rgb(0 0 18 / 16%);
+  border-radius: 0.5rem;
+  box-shadow: 0 6px 24px rgb(0 0 18 / 18%);
   animation: nitrates-feedback-slide 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Transition de l'effacement temporaire (anti-collision, cf. plus bas). */
@@ -150,12 +150,26 @@
   margin-top: 1.25rem;
 }
 
-.nitrates-feedback__volet[data-feedback-merci] {
+/* Volet final (#518) : coche verte, titre, texte et bouton pleine largeur. */
+.nitrates-feedback__merci {
   text-align: center;
 }
 
-.nitrates-feedback__reward {
-  margin-top: 1rem;
+.nitrates-feedback__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--background-flat-success, #18753c);
+}
+
+.nitrates-feedback__fermer {
+  width: 100%;
+  justify-content: center;
 }
 
 /* Effacement temporaire quand une carte de définition ou le drawer conditions
@@ -172,7 +186,7 @@
 @media (width <= 767px) {
   .nitrates-feedback {
     right: 8px;
-    bottom: 8px;
+    bottom: 4.5rem;
     left: 8px;
     width: auto;
     max-width: none;
