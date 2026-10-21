@@ -24,7 +24,7 @@ on:
 
 jobs:
   restart-staging:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Environment DEDIE sans required reviewer : l'environment `staging`
     # (deploiements) exige une approbation manuelle, ce qui laissait ce cron
     # bloque en "waiting" indefiniment (constate le 10/09 : le run du 09/09

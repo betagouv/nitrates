@@ -44,7 +44,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.release.prerelease == true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       ref: ${{ steps.resolve.outputs.ref }}
       sha: ${{ steps.resolve.outputs.sha }}
@@ -109,7 +109,7 @@ jobs:
   # --- 4+5. Deploy + smoke -----------------------------------------------
   deploy-staging:
     needs: [gate-ci, gate-ci-complet, gate-e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # L'environment porte le secret et restreint qui peut le lire.
     environment:
       name: staging
