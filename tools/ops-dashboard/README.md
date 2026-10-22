@@ -71,7 +71,7 @@ poste différent, mettre des `export VAR=valeur` dans
 | `NITRATES_OPS_URL_LOCALE` | `http://localhost:8000` | site local, pour les liens directs |
 | `NITRATES_OPS_DEPOT_LOCAL` | le dépôt qui contient cet outil | dépôt monté dans le conteneur (git du code local, CSS du rendu) |
 | `NITRATES_OPS_AUTEUR` | nom git, puis début de l'e-mail git | comptes Django qui signent les copies, essayés dans l'ordre |
-| `NITRATES_OPS_ECRITURE` | local, dev et staging en réel, prod interdite | ex. `staging=simulation` pour jouer sans écrire |
+| `NITRATES_OPS_ECRITURE` | local, dev et staging en réel, prod interdite | ex. `staging=simulation` pour jouer sans écrire, `prod=reel` pour ouvrir la prod (depuis staging seulement) |
 | `NITRATES_OPS_PORT` | `8765` | port du serveur local |
 | `NITRATES_OPS_CLE_SSH` | `~/.ssh/id_rsa` | clé SSH pour les tunnels |
 | `NITRATES_OPS_CACHE` | `~/.cache/nitrates-ops` | relevés, journal des changements, résumés |
@@ -135,7 +135,13 @@ de sécurité change).
 - **Garde-fous** : tout ou rien (une transaction par lot), refus si la cible a
   changé depuis l'affichage, vérification après écriture que la cible est
   identique à la source, redémarrage du web Scalingo (caches par process).
-  L'écriture vers la prod est interdite.
+  L'écriture vers la prod est interdite par défaut (`NITRATES_OPS_ECRITURE`).
+- **Prod** (si activée sur le poste, `NITRATES_OPS_ECRITURE="prod=reel"`) : elle
+  ne reçoit que depuis staging, copies comme absences propagées ; pas de
+  suppression directe. Quand source et cible ne tournent pas la même version de
+  l'application, la page le signale ; un arbre est de toute façon validé par le
+  code et les référentiels de la cible avant d'être activé, et refusé s'il ne
+  passe pas. Dans un lot, les référentiels passent avant les arbres.
 
 ## Archive et retour arrière
 

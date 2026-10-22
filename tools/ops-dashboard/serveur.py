@@ -729,6 +729,10 @@ def creer_transferts(etat, operations):
             mode = etat.politique.get(cible)
             if not mode:
                 raise ValueError(f"{cle} : écriture vers {cible} désactivée")
+            if cible == "prod" and source != "staging":
+                raise ValueError(
+                    f"{cle} : la prod ne reçoit que depuis staging (source : {source or 'aucune'})"
+                )
             if (famille, cle, cible) in vues:
                 raise ValueError(f"{cle} : deux opérations vers {cible}")
             vues.add((famille, cle, cible))
