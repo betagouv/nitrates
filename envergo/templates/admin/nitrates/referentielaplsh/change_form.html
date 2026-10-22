@@ -137,12 +137,14 @@ Bouton « texte brut » pour voir/éditer le format canonique.
         function celluleControle(col, valeur) {
           if (col.type === 'fertilisant') {
             const sel = document.createElement('select');
-            sel.innerHTML =
-              '<option value=""></option>' +
-              FERTILISANTS.map(
-                (f) =>
-                  `<option value="${f.id}" ${f.id === valeur ? 'selected' : ''}>${f.libelle}</option>`
-              ).join('');
+            sel.append(document.createElement('option'));
+            for (const f of FERTILISANTS) {
+              const o = document.createElement('option');
+              o.value = f.id;
+              o.textContent = f.libelle;
+              if (f.id === valeur) o.selected = true;
+              sel.append(o);
+            }
             return sel;
           }
           if (col.type === 'unite') {
