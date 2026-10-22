@@ -510,3 +510,129 @@ class ArchiveTest(unittest.TestCase):
             (r["type"], r["restaure"], r["source"]),
             ("restauration", t["id"], "archive"),
         )
+
+
+class SuppressionTest(unittest.TestCase):
+    def setUp(self):
+        import executeur
+        import serveur
+
+        self.executeur, self.serveur = executeur, serveur
+        textes = {"tA": json.dumps({"identifiant": "pc17"})}
+        o = {"sha": "A", "facettes": {}, "texte": "tA", "dates": [], "libelle": ""}
+        self.releves = {
+            "staging": {"familles": {"pc": {"objets": {}}}, "contenus": {}},
+            "dev": {"familles": {"pc": {"objets": {"pc17": o}}}, "contenus": textes},
+            "local": {"familles": {"pc": {"objets": {}}}, "contenus": {}},
+        }
+
+    def etat(self):
+        class Faux:
+            pass
+
+        e = Faux()
+        e.verrou = __import__("threading").RLock()
+        e.envs = {"local": {}, "dev": {}, "staging": {}, "prod": {}}
+        e.politique = {"local": "reel", "dev": "reel", "staging": "reel"}
+        e.releves = self.releves
+        e.creees = []
+        e.nouvelle_tache = lambda *a, **k: e.creees.append((a, k)) or {
+            "id": f"T-{len(e.creees):04d}"
+        }
+        return e
+
+    def test_propager_une_absence(self):
+        e = self.etat()
+        self.serveur.creer_transferts(
+            e,
+            [
+                {
+                    "famille": "pc",
+                    "cle": "pc17",
+                    "source": "staging",
+                    "cible": "dev",
+                    "action": "supprimer",
+                }
+            ],
+        )
+        ((args, k),) = e.creees
+        self.assertEqual(k["operations"][0]["action"], "supprimer")
+        self.assertIn("supprimé de dev", args[1])
+
+    def test_refus_si_deja_absent_ou_present_a_la_source(self):
+        e = self.etat()
+        with self.assertRaisesRegex(ValueError, "déjà absent"):
+            self.serveur.creer_transferts(
+                e,
+                [
+                    {
+                        "famille": "pc",
+                        "cle": "pc17",
+                        "source": "staging",
+                        "cible": "local",
+                        "action": "supprimer",
+                    }
+                ],
+            )
+        self.releves["staging"]["familles"]["pc"]["objets"]["pc17"] = {"sha": "A"}
+        with self.assertRaisesRegex(ValueError, "pas une absence"):
+            self.serveur.creer_transferts(
+                e,
+                [
+                    {
+                        "famille": "pc",
+                        "cle": "pc17",
+                        "source": "staging",
+                        "cible": "dev",
+                        "action": "supprimer",
+                    }
+                ],
+            )
+
+    def test_suppression_directe_sans_source_et_prod_interdite(self):
+        e = self.etat()
+        self.serveur.creer_transferts(
+            e,
+            [
+                {
+                    "famille": "pc",
+                    "cle": "pc17",
+                    "source": None,
+                    "cible": "dev",
+                    "action": "supprimer",
+                }
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "désactivée"):
+            self.serveur.creer_transferts(
+                e,
+                [
+                    {
+                        "famille": "pc",
+                        "cle": "pc17",
+                        "source": None,
+                        "cible": "prod",
+                        "action": "supprimer",
+                    }
+                ],
+            )
+
+    def test_lot_de_suppression(self):
+        lot = self.executeur.construire_lot(
+            self.releves,
+            "T-1",
+            "staging",
+            "dev",
+            [{"famille": "pc", "cle": "pc17", "action": "supprimer"}],
+            "reel",
+            "ops",
+        )
+        (op,) = lot["operations"]
+        self.assertEqual(
+            (op["action"], op["sha_cible_attendu"], op["sha_source"]),
+            ("supprimer", "A", None),
+        )
+        avant = self.executeur.etat_avant(self.releves, "dev", lot["operations"])
+        self.assertEqual(
+            avant[0]["etat"]["champs"]["identifiant"], "pc17"
+        )  # restaurable

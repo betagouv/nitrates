@@ -53,12 +53,37 @@ class ErreurLot(Exception):
 
 def construire_lot(releves, ref, source, cible, operations, mode, auteur):
     src, tgt = releves.get(source), releves.get(cible)
-    if not src:
+    copies = [op for op in operations if op.get("action") != "supprimer"]
+    if copies and not src:
         raise ErreurLot(f"pas de relevé pour {source}")
-    textes = src.get("contenus", {})
+    textes = (src or {}).get("contenus", {})
     ops = []
     for op in operations:
         famille, cle = op["famille"], op["cle"]
+        if op.get("action") == "supprimer":
+            # Propager une absence : l'empreinte actuelle de la cible sert de verrou.
+            if famille == "arbre":
+                t = _arbre_actif(tgt, cle) if tgt else None
+            else:
+                t = (
+                    (tgt or {})
+                    .get("familles", {})
+                    .get(famille, {})
+                    .get("objets", {})
+                    .get(cle)
+                )
+            if not t:
+                raise ErreurLot(f"{famille} {cle} : déjà absent de {cible}")
+            ops.append(
+                {
+                    "famille": famille,
+                    "cle": cle,
+                    "action": "supprimer",
+                    "sha_source": None,
+                    "sha_cible_attendu": t["sha"],
+                }
+            )
+            continue
         if famille == "arbre":
             v = _arbre_actif(src, cle)
             if not v:
