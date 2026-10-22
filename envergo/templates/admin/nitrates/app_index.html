@@ -1,6 +1,6 @@
 {% extends "admin/base_site.html" %}
 
-{% load i18n %}
+{% load i18n nitrates_tags %}
 
 {% comment %}
 Layout custom pour la page d'accueil admin nitrates : on sort
@@ -51,6 +51,20 @@ un layout plein-largeur propre.
           <a href="{% url 'nitrates_admin_matrice_index' %}">📅 Matrice des calendriers</a>
           — vue « catalogue » conseillers : cultures × fertilisants par territoire
         </li>
+        {% poc_aplsh_actif as poc_aplsh %}
+        {% if poc_aplsh %}
+          <li>
+            <a href="{% url 'nitrates_admin_aplsh_index' %}">🧪 Calculette APLSH (POC)</a>
+            — dose max d'épandage selon le plafond, le produit et la date
+            (référentiels GREN par région, éditables via
+            <a href="{% url 'admin:nitrates_referentielaplsh_changelist' %}">Référentiels APLSH</a>)
+          </li>
+          <li>
+            <a href="{% url 'nitrates_admin_meteo_index' %}">🌦️ POC Météo — fenêtres d'épandage</a>
+            — scores volatilisation / lixiviation / ruissellement par tranche
+            de 6 h, multi-modèles
+          </li>
+        {% endif %}
       </ul>
     </div>
 

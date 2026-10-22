@@ -1010,6 +1010,9 @@ class BrancheValidationAction(models.Model):
 # pour que Django les enregistre dans l'app nitrates et que les imports
 # `from envergo.nitrates.models import X` fonctionnent.
 
+from envergo.nitrates.models_aplsh import (  # noqa: E402, F401  (POC APLSH)
+    ReferentielAPLSH,
+)
 from envergo.nitrates.models_carto import CouleurZone  # noqa: E402, F401
 from envergo.nitrates.models_contenu_rich import (  # noqa: E402, F401  (carte #131)
     ContenuRichDSFR,

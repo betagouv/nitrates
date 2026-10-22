@@ -8,6 +8,7 @@ pas ici.
 import json
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -934,6 +935,107 @@ class RetourUtilisateurAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # On garde la possibilité de purge RGPD (droit à l'effacement).
         return True
+
+
+# ─── Référentiels APLSH (POC calculette APLSH) ────────────────────────────────
+
+from envergo.nitrates.models import ReferentielAPLSH  # noqa: E402
+
+
+class ReferentielAPLSHForm(forms.ModelForm):
+    class Meta:
+        model = ReferentielAPLSH
+        fields = "__all__"
+        widgets = {
+            "tableau_produits": forms.Textarea(
+                attrs={
+                    "rows": 28,
+                    "style": "font-family: monospace; width: 100%; "
+                    "white-space: pre; overflow-x: auto;",
+                }
+            ),
+            "tableau_generique": forms.Textarea(
+                attrs={
+                    "rows": 16,
+                    "style": "font-family: monospace; width: 100%; "
+                    "white-space: pre; overflow-x: auto;",
+                }
+            ),
+        }
+
+
+@admin.register(ReferentielAPLSH)
+class ReferentielAPLSHAdmin(admin.ModelAdmin):
+    form = ReferentielAPLSHForm
+    change_form_template = "admin/nitrates/referentielaplsh/change_form.html"
+
+    # POC : invisible et inaccessible hors flag NITRATES_POC_APLSH.
+    def has_module_permission(self, request):
+        return settings.NITRATES_POC_APLSH and super().has_module_permission(request)
+
+    def has_view_permission(self, request, obj=None):
+        return settings.NITRATES_POC_APLSH and super().has_view_permission(request, obj)
+
+    def has_add_permission(self, request):
+        return settings.NITRATES_POC_APLSH and super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return settings.NITRATES_POC_APLSH and super().has_change_permission(
+            request, obj
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return settings.NITRATES_POC_APLSH and super().has_delete_permission(
+            request, obj
+        )
+
+    def render_change_form(self, request, context, *args, **kwargs):
+        # Liste des fertilisants pour le select de l'éditeur tableau JS.
+        from envergo.nitrates.models_referentiels import Fertilisant
+
+        context["fertilisants_aplsh"] = [
+            {"id": f.identifiant, "libelle": f.libelle_public}
+            for f in Fertilisant.objects.order_by("libelle_public")
+        ]
+        return super().render_change_form(request, context, *args, **kwargs)
+
+    list_display = (
+        "region_code",
+        "intitule",
+        "actif",
+        "plafond_defaut_kg_n_ha",
+        "nb_produits",
+        "a_grille_generique",
+        "updated_at",
+    )
+    list_filter = ("actif",)
+    readonly_fields = ("updated_at",)
+    fieldsets = (
+        (None, {"fields": ("region_code", "intitule", "source", "actif")}),
+        (
+            "Méta-paramètres",
+            {
+                "fields": (
+                    "plafond_defaut_kg_n_ha",
+                    "fin_apports_ete",
+                    "fin_apports_ete_generique",
+                )
+            },
+        ),
+        (
+            "Tableaux de valeurs (parsés et validés à l'enregistrement)",
+            {"fields": ("tableau_produits", "tableau_generique")},
+        ),
+        ("Divers", {"fields": ("notes", "updated_at")}),
+    )
+
+    @admin.display(description="Produits")
+    def nb_produits(self, obj):
+        return len(obj.tableau_produits_parse)
+
+    @admin.display(description="Grille générique", boolean=True)
+    def a_grille_generique(self, obj):
+        return bool(obj.tableau_generique_parse)
 
 
 from envergo.nitrates import admin_perimetre  # noqa: E402,F401

@@ -511,6 +511,11 @@ NITRATES_FORM_DEBUG_PANELS = env.bool(
 # Pilote par env var pour pouvoir ouvrir/refermer le root sans redeploy.
 NITRATES_ROOT_OUVERT = env.bool("DJANGO_NITRATES_ROOT_OUVERT", default=False)
 
+# POC calculette APLSH + POC Meteo (pages admin exploratoires). Actives sur
+# dev seulement : hors flag, les pages repondent 404, leurs liens et
+# l'admin des referentiels APLSH disparaissent (la table reste en base).
+NITRATES_POC_APLSH = env.bool("DJANGO_NITRATES_POC_APLSH", default=False)
+
 # Id du board Miro juriste (arbre réglementaire). Sert à construire les
 # deeplinks `?moveToWidget=<id>` du dashboard de validation. Snapshot des
 # widget_id dans envergo/nitrates/specs/snapshot_miro/arbre_complet/<date>/.
