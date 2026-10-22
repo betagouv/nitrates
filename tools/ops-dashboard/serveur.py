@@ -455,7 +455,7 @@ class Etat:
         self._archiver_lot(t, lot, avant)
         self.journaliser(
             t,
-            f"lot {t['id']} : {len(lot['operations'])} opération(s) {source} → {cible}, "
+            f"lot {t['id']} : {len(lot['operations'])} opération(s) {source or 'suppression'} → {cible}, "
             f"mode {'réel' if t['mode'] == 'reel' else 'simulation'} ; état d'avant archivé",
         )
         return self._executer_lot(t, lot)
@@ -687,11 +687,24 @@ FAMILLES_CONNUES = {f[0] for f in render.FAMILLES}
 
 
 def creer_transferts(etat, operations):
-    """Valide les opérations et crée une tâche par couple (source, cible)."""
+    """Valide les opérations et crée une tâche par couple (source, cible).
+
+    Une opération est une copie (source -> cible) ou une suppression
+    (`action: "supprimer"`) : propager l'absence d'un objet, la source
+    facultative étant l'env où il a déjà disparu.
+    """
     if not operations:
         raise ValueError("aucune opération")
     groupes = collections.OrderedDict()
     vues = set()
+
+    def present(releve, famille, cle):
+        if not releve:
+            return False
+        if famille == "arbre":
+            return executeur._arbre_actif(releve, cle) is not None
+        return cle in releve["familles"].get(famille, {}).get("objets", {})
+
     with etat.verrou:
         for op in operations:
             famille, cle, source, cible = (
@@ -700,38 +713,56 @@ def creer_transferts(etat, operations):
                 op.get("source"),
                 op.get("cible"),
             )
+            suppression = op.get("action") == "supprimer"
             if famille not in FAMILLES_CONNUES:
                 raise ValueError(f"famille inconnue : {famille}")
-            if source not in etat.envs or cible not in etat.envs or source == cible:
+            if (
+                cible not in etat.envs
+                or (source is not None and source not in etat.envs)
+                or source == cible
+            ):
                 raise ValueError(
                     f"{cle} : couple source/cible invalide ({source} → {cible})"
                 )
+            if source is None and not suppression:
+                raise ValueError(f"{cle} : une copie demande une source")
             mode = etat.politique.get(cible)
             if not mode:
                 raise ValueError(f"{cle} : écriture vers {cible} désactivée")
             if (famille, cle, cible) in vues:
                 raise ValueError(f"{cle} : deux opérations vers {cible}")
             vues.add((famille, cle, cible))
-            src = etat.releves.get(source)
-            if not src:
+            if source is not None and not etat.releves.get(source):
                 raise ValueError(f"pas de relevé pour {source}")
-            if famille == "arbre":
-                present = executeur._arbre_actif(src, cle) is not None
-            else:
-                present = cle in src["familles"].get(famille, {}).get("objets", {})
-            if not present:
+            if suppression:
+                if not present(etat.releves.get(cible), famille, cle):
+                    raise ValueError(f"{cle} : déjà absent de {cible}")
+                if source is not None and present(
+                    etat.releves.get(source), famille, cle
+                ):
+                    raise ValueError(
+                        f"{cle} : présent en {source}, ce n'est pas une absence à propager"
+                    )
+            elif not present(etat.releves.get(source), famille, cle):
                 raise ValueError(f"{cle} absent de {source}")
-            groupes.setdefault((source, cible), []).append(
-                {"famille": famille, "cle": cle}
-            )
+            o = {"famille": famille, "cle": cle}
+            if suppression:
+                o["action"] = "supprimer"
+            groupes.setdefault((source, cible), []).append(o)
     ids = []
     for (source, cible), ops in groupes.items():
-        noms = ", ".join(o["cle"] for o in ops[:4]) + (
-            f" +{len(ops) - 4}" if len(ops) > 4 else ""
-        )
+        noms = ", ".join(
+            ("✕ " if o.get("action") else "") + o["cle"] for o in ops[:4]
+        ) + (f" +{len(ops) - 4}" if len(ops) > 4 else "")
+        if all(o.get("action") == "supprimer" for o in ops):
+            libelle = f"{noms} : supprimé de {cible}" + (
+                f" (absent de {source})" if source else ""
+            )
+        else:
+            libelle = f"{noms} : {source} → {cible}"
         t = etat.nouvelle_tache(
             "transfert",
-            f"{noms} : {source} → {cible}",
+            libelle,
             cible=cible,
             source=source,
             operations=[dict(o, source=source, cible=cible) for o in ops],

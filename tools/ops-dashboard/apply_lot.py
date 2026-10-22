@@ -232,6 +232,123 @@ def _appliquer_arbre(op, auteur, message):
     return "nouvelle version active"
 
 
+def _arbres_citant(identifiant):
+    """Arbres actifs dont la logique cite cet identifiant (ex. "pc17")."""
+    DecisionTree = _apps.get_model("nitrates", "DecisionTree")
+    jeton = _json.dumps(identifiant, ensure_ascii=False)
+    return [
+        t.name
+        for t in DecisionTree.objects.filter(status="active")
+        if jeton in _json.dumps(t.contenu, ensure_ascii=False)
+    ]
+
+
+def _journaliser_suppression(obj, message, auteur):
+    if auteur is None:
+        return
+    from django.contrib.admin.models import DELETION, LogEntry
+    from django.contrib.contenttypes.models import ContentType
+
+    LogEntry.objects.log_action(
+        user_id=auteur.pk,
+        content_type_id=ContentType.objects.get_for_model(obj).pk,
+        object_id=obj.pk,
+        object_repr=str(obj)[:200],
+        action_flag=DELETION,
+        change_message=message,
+    )
+
+
+def _supprimer_referentiel(op, auteur, message):
+    from django.contrib.admin.utils import NestedObjects
+
+    modele = _apps.get_model(*FAMILLES_MODELES[op["famille"]])
+    cles = _spec(op["famille"])["cle"]
+    obj = modele.objects.get(**dict(zip(cles, op["cle"].split("/", len(cles) - 1))))
+    if op["famille"] == "pc":
+        citants = _arbres_citant(obj.identifiant)
+        if citants:
+            raise _Refus(
+                f"{op['cle']} est encore cité par l'arbre actif {', '.join(citants)} : le retirer de l'arbre d'abord"
+            )
+    # Ce que la suppression emporterait ou modifierait, calculé comme la page de
+    # confirmation de suppression de l'admin Django.
+    collecteur = NestedObjects(using=obj._state.db)
+    collecteur.collect([obj])
+    if collecteur.protected:
+        noms = ", ".join(str(o) for o in list(collecteur.protected)[:5])
+        raise _Refus(f"{op['cle']} : suppression bloquée, encore utilisé par {noms}")
+    emportes = []
+    for m, objets in collecteur.data.items():
+        for o in objets:
+            if o == obj:
+                continue
+            # La composition propre d'une PC fusionnée (lignes de la table de liaison
+            # dont elle est la source) part avec elle : ce n'est pas un effet de bord.
+            if m._meta.auto_created and any(
+                f.related_model is modele
+                and f.name.startswith("from_")
+                and getattr(o, f.attname) == obj.pk
+                for f in m._meta.concrete_fields
+            ):
+                continue
+            emportes.append(f"{m._meta.verbose_name} « {o} »")
+    for (champ, _valeur), objets in getattr(collecteur, "field_updates", {}).items():
+        for o in _aplatir(objets):
+            emportes.append(
+                f"{champ.model._meta.verbose_name} « {o} » ({champ.name} remis à vide)"
+            )
+    if emportes:
+        raise _Refus(
+            f"{op['cle']} : la suppression emporterait ou modifierait aussi {', '.join(emportes[:6])}"
+            + (f" (+{len(emportes) - 6})" if len(emportes) > 6 else "")
+            + " : à traiter d'abord"
+        )
+    generique = getattr(obj, "variante_de", None)
+    if generique is not None:
+        _log(
+            f"attention : {op['cle']} est une variante de {generique.identifiant} ; après suppression, "
+            f"c'est {generique.identifiant} qui s'appliquera dans sa zone"
+        )
+    _journaliser_suppression(obj, message, auteur)
+    obj.delete()
+    return "supprimé"
+
+
+def _aplatir(objets):
+    """field_updates contient selon la version de Django des objets ou des QuerySet."""
+    for x in objets if isinstance(objets, (list, tuple, set)) else [objets]:
+        if hasattr(x, "model") and hasattr(x, "iterator"):
+            yield from x
+        else:
+            yield x
+
+
+def _supprimer_arbre(op, auteur, message):
+    """Un arbre n'est jamais effacé : l'actif de cette zone passe en archive."""
+    from django.utils import timezone
+
+    DecisionTree = _apps.get_model("nitrates", "DecisionTree")
+    maintenant = timezone.now()
+    actifs = [
+        t
+        for t in DecisionTree.objects.filter(status="active").select_related(
+            "activation_map"
+        )
+        if cle_arbre(
+            t.scope, t.region_code, t.activation_map.name if t.activation_map else None
+        )
+        == op["cle"]
+    ]
+    for t in actifs:
+        t.status = "archive"
+        t.name = f"{t.name} – archive {maintenant:%Y-%m-%d %H:%M}"
+        t.save(update_fields=["status", "name", "updated_at"])
+        _journaliser(t, False, message, auteur)
+        _log(f"arbre #{t.pk} archivé")
+    return "arbre actif archivé"
+
+
 def _executer():
     releve = Releve(_connection)
     auteur = _auteur()
@@ -242,7 +359,7 @@ def _executer():
     resultats = []
     simulation = LOT["mode"] != "reel"
     print(
-        f"Lot {LOT['ref']} : {len(LOT['operations'])} opération(s), {LOT['source']} → cette base, "
+        f"Lot {LOT['ref']} : {len(LOT['operations'])} opération(s), {LOT['source'] or 'suppression'} → cette base, "
         f"{'SIMULATION (annulée à la fin)' if simulation else 'écriture réelle'}",
         flush=True,
     )
@@ -256,6 +373,50 @@ def _executer():
                     if arbre
                     else _etat_referentiel(releve, op["famille"], op["cle"])
                 )
+                if op.get("action") == "supprimer":
+                    if avant is None:
+                        _log("déjà absent de la cible, rien à faire")
+                        resultats.append(
+                            {
+                                "cle": op["cle"],
+                                "famille": op["famille"],
+                                "action": "déjà absent",
+                                "verifie": True,
+                            }
+                        )
+                        continue
+                    if avant != op.get("sha_cible_attendu"):
+                        raise _Refus(
+                            f"{op['cle']} : la cible a changé depuis l'affichage. Rafraîchir et recommencer."
+                        )
+                    message = f"Suppression nitrates-ops {LOT['ref']}" + (
+                        f" : absent de {LOT['source']}" if LOT.get("source") else ""
+                    )
+                    with _contexte_historique(message, auteur):
+                        action = (
+                            _supprimer_arbre(op, auteur, message)
+                            if arbre
+                            else _supprimer_referentiel(op, auteur, message)
+                        )
+                    apres, _ = (
+                        _etat_arbre(releve, op["cle"])
+                        if arbre
+                        else _etat_referentiel(releve, op["famille"], op["cle"])
+                    )
+                    verifie = apres is None
+                    _log(
+                        f"{action} ; vérification : {'absent de la cible' if verifie else 'ENCORE PRÉSENT'}"
+                    )
+                    resultats.append(
+                        {
+                            "cle": op["cle"],
+                            "famille": op["famille"],
+                            "action": action,
+                            "verifie": verifie,
+                            "ecarts": [],
+                        }
+                    )
+                    continue
                 if avant != op.get("sha_cible_attendu"):
                     raise _Refus(
                         f"{op['cle']} : la cible a changé depuis l'affichage "

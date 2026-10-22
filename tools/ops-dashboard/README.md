@@ -124,6 +124,14 @@ de sécurité change).
   `docker exec` en local, one-off `scalingo run --file` ailleurs. Elle passe
   par l'ORM (cycle brouillon, actif, archive des arbres ; signaux de cache ;
   journal admin ; historique des contenus).
+- **Supprimer** (propager une absence, par exemple une PC décommissionnée en
+  staging) : glisser une case « absent » sur la colonne où l'objet existe
+  encore, ou cocher des cases absentes puis « copier ou propager vers », ou
+  « ✕ supprimer en … » dans la fiche. Une PC encore citée par un arbre actif
+  de l'environnement cible n'est pas supprimée, ni un objet dont la
+  suppression en emporterait ou modifierait d'autres (même calcul que l'admin
+  Django). Un arbre n'est jamais effacé : l'actif passe en archive. L'état
+  d'avant est archivé, la suppression se restaure comme une copie.
 - **Garde-fous** : tout ou rien (une transaction par lot), refus si la cible a
   changé depuis l'affichage, vérification après écriture que la cible est
   identique à la source, redémarrage du web Scalingo (caches par process).
@@ -191,7 +199,6 @@ pas supprimé.
 ## Limites connues
 
 - Pas encore relevés : validation des branches (`BrancheValidation`), couches SIG.
-- Pas de suppression d'objet : création ou mise à jour seulement.
 - Après une écriture en local, le site local garde son cache : redémarrer le
   conteneur Django pour voir le changement dans le simulateur.
 
