@@ -1989,19 +1989,26 @@ function brancherTable() {
       ev.preventDefault();
       if (!etat.glisse) return;
       const cible = el.dataset.env;
-      const ops = etat.glisse.filter((g) => g.source !== cible).map((g) => operation(g.famille, g.cle, g.source, cible));
+      const ops = etat.glisse.filter((g) => g.source !== cible && sourceAutorisee(g.source, cible)).map((g) => operation(g.famille, g.cle, g.source, cible));
       etat.glisse = null; nettoyerDrop();
       ajouterAuPaquet(ops);
     });
   });
 }
+// La prod ne reçoit que depuis staging (copie ou absence propagée).
+function sourceAutorisee(source, cible) { return cible !== "prod" || source === "staging"; }
+function versionCode(env) {
+  const e = (D.envs || []).find((x) => x.id === env);
+  const c = (e && e.code) || {};
+  return c.ref || c.commit || "?";
+}
 function dropPossible(el) {
   const cible = el.dataset.env;
   if (!ecriture(cible)) return false;
-  const g = etat.glisse || [];
+  const g = (etat.glisse || []).filter((x) => sourceAutorisee(x.source, cible));
   if (el.tagName === "TH") return g.some((x) => x.source !== cible);
   // Sur une case : même objet pour un glisser simple ; n'importe quelle ligne pour un glisser multiple.
-  if (g.length === 1) return g[0].famille === el.dataset.f && g[0].cle === el.dataset.k && g[0].source !== cible;
+  if ((etat.glisse || []).length === 1) return g.length === 1 && g[0].famille === el.dataset.f && g[0].cle === el.dataset.k && g[0].source !== cible;
   return g.some((x) => x.source !== cible);
 }
 function nettoyerDrop() { document.querySelectorAll(".cible-drop, .interdit").forEach((x) => x.classList.remove("cible-drop", "interdit")); }
@@ -2032,7 +2039,8 @@ function rendreSelection() {
   b.innerHTML = `<b>${n} sélectionné${n > 1 ? "s" : ""}</b><span>copier ou propager vers</span>${ENVS.map((e) => {
     const m = ecriture(e);
     const seul = sources.size === 1 && sources.has(e);
-    return `<button type="button" data-vers="${e}" ${!m || seul ? "disabled" : ""} title="${!m ? "écriture interdite vers " + e : m === "simulation" ? "simulation (transaction annulée)" : "écriture réelle"}">${e}${m === "simulation" ? " (simu)" : ""}</button>`;
+    const horsStaging = e === "prod" && [...sources].some((x) => x !== "staging");
+    return `<button type="button" data-vers="${e}" ${!m || seul || horsStaging ? "disabled" : ""} title="${!m ? "écriture interdite vers " + e : horsStaging ? "la prod ne reçoit que depuis staging" : m === "simulation" ? "simulation (transaction annulée)" : "écriture réelle"}">${e}${m === "simulation" ? " (simu)" : ""}</button>`;
   }).join("")}<button type="button" id="sel-vider">Désélectionner</button>`;
   b.querySelectorAll("[data-vers]").forEach((x) => x.addEventListener("click", () => {
     const cible = x.dataset.vers;
@@ -2055,17 +2063,24 @@ function avertissement(op) {
   if (op.action === "supprimer") {
     const c = l.cellules[op.cible];
     if (!c || c.absent) return "déjà absent";
-    return `suppression dans ${op.cible}${op.famille === "arbre" ? " (l'arbre actif passe en archive)" : ""}`;
+    return `${op.cible === "prod" ? "écriture en prod · " : ""}suppression dans ${op.cible}${op.famille === "arbre" ? " (l'arbre actif passe en archive)" : ""}`;
   }
   const s = l.cellules[op.source], c = l.cellules[op.cible];
   if (!s || s.absent) return `absent de ${op.source}`;
   if (c && !c.absent && c.sha === s.sha) return "déjà identique";
+  const avert = [];
+  if (op.cible === "prod") avert.push("écriture en prod");
   if (c && !c.absent && c.date && (!s.date || c.date > s.date)) {
     const qui = `${op.cible} modifié le ${abs(c.date)}${c.par ? " par " + c.par : ""}`;
-    return `${qui}, ${s.date ? "après " + op.source + " (" + abs(s.date) + ")" : op.source + " sans aucune date"} : ce travail sera écrasé`;
+    avert.push(`${qui}, ${s.date ? "après " + op.source + " (" + abs(s.date) + ")" : op.source + " sans aucune date"} : ce travail sera écrasé`);
   }
-  if (op.cible === "prod") return "écriture en prod";
-  return null;
+  const vs = versionCode(op.source), vc = versionCode(op.cible);
+  if (vs !== vc) {
+    avert.push(op.famille === "arbre"
+      ? `${op.cible} tourne en ${vc}, ${op.source} en ${vs} : l'arbre sera validé par le code de ${op.cible} avant activation, refusé s'il ne passe pas`
+      : `${op.cible} tourne en ${vc}, ${op.source} en ${vs}`);
+  }
+  return avert.length ? avert.join(" · ") : null;
 }
 function ajouterAuPaquet(ops) {
   let ajoutees = 0;
@@ -2268,9 +2283,9 @@ function colonneEnv(l, e, lettreDeSha) {
   const c = l.cellules[e];
   if (c === null || c === undefined) return `<div class="col c-${e}" data-env="${e}"><h4>${e}</h4><div class="muet">non relevé</div></div>`;
   const brouillons = (c.brouillons || []).map((b) => `<li>#${b.pk} ${esc(b.nom)} ${lettreDeSha[b.sha] ? `<span class="vchip v${lettreDeSha[b.sha]}">= ${lettreDeSha[b.sha]}</span>` : `<code>${esc(b.sha.slice(0, 8))}</code> inédit`} · ${quand(b.maj)}${b.par ? " · " + esc(b.par) : ""}${b.verrou ? ` · <b>verrouillé par ${esc(b.verrou.par || "?")}</b>` : ""}</li>`).join("");
-  const envoyer = SERVI && !c.absent ? `<div class="envoyer">${ENVS.filter((x) => x !== e).map((x) => { const m = ecriture(x); return `<button type="button" data-copier="${e}>${x}" ${m ? "" : "disabled"} title="${m ? "ajouter au paquet" : "écriture interdite"}">→ ${x}${m === "simulation" ? " (simu)" : ""}</button>`; }).join("")}</div>` : "";
+  const envoyer = SERVI && !c.absent ? `<div class="envoyer">${ENVS.filter((x) => x !== e).map((x) => { const m = ecriture(x); const ok = m && sourceAutorisee(e, x); return `<button type="button" data-copier="${e}>${x}" ${ok ? "" : "disabled"} title="${!m ? "écriture interdite" : ok ? "ajouter au paquet" : "la prod ne reçoit que depuis staging"}">→ ${x}${m === "simulation" ? " (simu)" : ""}</button>`; }).join("")}</div>` : "";
   const propager = SERVI && c.absent && !c.table_absente ? ENVS.filter((x) => x !== e && l.cellules[x] && !l.cellules[x].absent) : [];
-  const boutonsAbsence = propager.length ? `<div class="envoyer"><span class="muet" style="font-size:11px">propager l'absence :</span>${propager.map((x) => { const m = ecriture(x); return `<button type="button" class="bouton-suppr" data-propager="${e}>${x}" ${m ? "" : "disabled"} title="${m ? "supprimer l'objet en " + x + " (ajout au paquet)" : "écriture interdite"}">✕ ${x}</button>`; }).join("")}</div>` : "";
+  const boutonsAbsence = propager.length ? `<div class="envoyer"><span class="muet" style="font-size:11px">propager l'absence :</span>${propager.map((x) => { const m = ecriture(x) && sourceAutorisee(e, x); return `<button type="button" class="bouton-suppr" data-propager="${e}>${x}" ${m ? "" : "disabled"} title="${m ? "supprimer l'objet en " + x + " (ajout au paquet)" : x === "prod" && ecriture(x) ? "la prod ne reçoit que depuis staging" : "écriture interdite"}">✕ ${x}</button>`; }).join("")}</div>` : "";
   if (c.absent) return `<div class="col c-${e}" data-env="${e}"><h4>${e}</h4><div class="boite absent" style="min-height:0">${c.table_absente ? "table absente" : "absent"}</div>${brouillons ? `<div class="muet" style="margin-top:6px">Brouillons :</div><ul class="liste">${brouillons}</ul>` : ""}${boutonsAbsence}</div>`;
   let dl = "";
   if (l.famille === "arbre") {
@@ -2294,7 +2309,7 @@ function colonneEnv(l, e, lettreDeSha) {
     <dl>${dl}</dl>
     ${(() => { const ls = liensObjet(l.famille, e, c); return ls.length ? `<div class="liens-env">${ls.map((x) => `<a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)} ↗</a>`).join("")}</div>` : ""; })()}
     ${fil ? `<div class="muet" style="margin-top:6px">Même contenu ailleurs :</div><ul class="liste">${fil}</ul>` : ""}
-    ${brouillons ? `<div class="muet" style="margin-top:6px">Brouillons :</div><ul class="liste">${brouillons}</ul>` : ""}${envoyer}${SERVI ? `<div class="envoyer"><button type="button" class="bouton-suppr" data-supprimer="${e}" ${ecriture(e) ? "" : "disabled"} title="${ecriture(e) ? "supprimer l'objet dans " + e + " (ajout au paquet)" : "écriture interdite"}">✕ supprimer en ${e}</button></div>` : ""}</div>`;
+    ${brouillons ? `<div class="muet" style="margin-top:6px">Brouillons :</div><ul class="liste">${brouillons}</ul>` : ""}${envoyer}${SERVI ? `<div class="envoyer"><button type="button" class="bouton-suppr" data-supprimer="${e}" ${ecriture(e) && e !== "prod" ? "" : "disabled"} title="${!ecriture(e) ? "écriture interdite" : e === "prod" ? "en prod, propager l'absence depuis staging" : "supprimer l'objet dans " + e + " (ajout au paquet)"}">✕ supprimer en ${e}</button></div>` : ""}</div>`;
 }
 function libEnv(l, e) { return `${e} (${l.cellules[e].version})`; }
 function texteDe(l, e, nature) { return ((l.cellules[e] || {}).textes || {})[nature]; }

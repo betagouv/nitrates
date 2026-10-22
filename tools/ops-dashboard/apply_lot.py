@@ -195,6 +195,25 @@ def _appliquer_referentiel(op, auteur, message):
     return "création" if creation else "mise à jour"
 
 
+def _valider_arbre(op, cfg):
+    """Valide l'arbre avec le code et les référentiels de CETTE base (version
+    de l'application, PC présentes) avant de l'activer. Un arbre venu d'un env
+    plus récent peut s'appuyer sur du code ou des PC que la cible n'a pas."""
+    try:
+        from envergo.nitrates.yaml_tree.loader import load_referentiels
+        from envergo.nitrates.yaml_tree.validator import ValidationError, validate_arbre
+    except ImportError:
+        _log("validateur d'arbre absent de cette version : arbre non validé")
+        return
+    try:
+        validate_arbre(op["contenu"], load_referentiels(), scope=cfg["scope"])
+    except ValidationError as e:
+        raise _Refus(
+            f"{op['cle']} : arbre invalide pour le code de cette base : {'; '.join(e.errors)[:500]}"
+        )
+    _log("arbre validé par le code de la cible")
+
+
 def _appliquer_arbre(op, auteur, message):
     DecisionTree = _apps.get_model("nitrates", "DecisionTree")
     Map = _apps.get_model("geodata", "Map")
@@ -222,6 +241,7 @@ def _appliquer_arbre(op, auteur, message):
         parent=actif,
         created_by=auteur,
     )
+    _valider_arbre(op, cfg)
     arbre.save()
     arbre.activate()
     _log(

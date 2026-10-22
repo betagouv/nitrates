@@ -120,6 +120,9 @@ def construire_lot(releves, ref, source, cible, operations, mode, auteur):
                     "date_origine": render.date_auteur(o.get("dates", []))[0],
                 }
             )
+    # Référentiels d'abord : un arbre copié dans le même lot peut citer une PC
+    # copiée avec lui, et il est validé contre les référentiels de la cible.
+    ops.sort(key=lambda o: o["famille"] == "arbre")
     return {
         "ref": ref,
         "source": source,

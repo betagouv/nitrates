@@ -636,3 +636,80 @@ class SuppressionTest(unittest.TestCase):
         self.assertEqual(
             avant[0]["etat"]["champs"]["identifiant"], "pc17"
         )  # restaurable
+
+
+class ProdTest(unittest.TestCase):
+    def etat(self, releves):
+        class Faux:
+            pass
+
+        e = Faux()
+        e.verrou = __import__("threading").RLock()
+        e.envs = {"local": {}, "dev": {}, "staging": {}, "prod": {}}
+        e.politique = {
+            "local": "reel",
+            "dev": "reel",
+            "staging": "reel",
+            "prod": "reel",
+        }
+        e.releves = releves
+        e.creees = []
+        e.nouvelle_tache = lambda *a, **k: e.creees.append(k) or {"id": "T-0001"}
+        return e
+
+    def test_prod_seulement_depuis_staging(self):
+        o = {"sha": "A", "facettes": {}, "texte": "t", "dates": []}
+        rel = {
+            env: {"familles": {"pc": {"objets": {"pc8": o}}}, "contenus": {"t": "{}"}}
+            for env in ("dev", "staging", "prod")
+        }
+        e = self.etat(rel)
+        with self.assertRaisesRegex(ValueError, "que depuis staging"):
+            self.serveur().creer_transferts(
+                e, [{"famille": "pc", "cle": "pc8", "source": "dev", "cible": "prod"}]
+            )
+        with self.assertRaisesRegex(ValueError, "que depuis staging"):
+            self.serveur().creer_transferts(
+                e,
+                [
+                    {
+                        "famille": "pc",
+                        "cle": "pc8",
+                        "source": None,
+                        "cible": "prod",
+                        "action": "supprimer",
+                    }
+                ],
+            )
+        self.serveur().creer_transferts(
+            e, [{"famille": "pc", "cle": "pc8", "source": "staging", "cible": "prod"}]
+        )
+        self.assertEqual(e.creees[0]["mode"], "reel")
+
+    def test_referentiels_avant_arbres_dans_le_lot(self):
+        import executeur
+
+        textes = {
+            "tl": json.dumps({"config": {"weight": 1}, "contenu": {}}),
+            "ty": "",
+            "tp": "{}",
+        }
+        src = {
+            "familles": {
+                "arbre": {"versions": [{"cle": "national", "statut": "active", "sha": "X", "nom": "PAN",
+                                        "texte_logique": "tl", "texte_yaml": "ty"}]},
+                "pc": {"objets": {"pc5": {"sha": "P", "facettes": {}, "texte": "tp", "dates": []}}},
+            },
+            "contenus": textes,
+        }  # fmt: skip
+        lot = executeur.construire_lot(
+            {"staging": src, "prod": {"familles": {}, "contenus": {}}}, "T-1", "staging", "prod",
+            [{"famille": "arbre", "cle": "national"}, {"famille": "pc", "cle": "pc5"}], "reel", "ops",
+        )  # fmt: skip
+        self.assertEqual([o["famille"] for o in lot["operations"]], ["pc", "arbre"])
+
+    @staticmethod
+    def serveur():
+        import serveur
+
+        return serveur
