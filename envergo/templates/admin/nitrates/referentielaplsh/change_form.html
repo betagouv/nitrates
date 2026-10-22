@@ -1,0 +1,237 @@
+{% extends "admin/change_form.html" %}
+
+{% comment %}
+Éditeur visuel des tableaux APLSH (POC). Le format de vérité reste le
+texte pipe-séparé des <textarea> (parsé/validé par le modèle au save) :
+le JS construit par-dessus un tableau éditable (select fertilisant,
+ajout/suppression de lignes) et re-sérialise vers le textarea à chaque
+modification. Les lignes de commentaires (#) en tête sont préservées.
+Bouton « texte brut » pour voir/éditer le format canonique.
+{% endcomment %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+{{ fertilisants_aplsh|json_script:"aplsh-fertilisants" }}
+<style>
+  .aplsh-editeur {
+    margin: 0.4rem 0 0.6rem;
+  }
+
+  .aplsh-editeur table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .aplsh-editeur th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #666;
+    padding: 4px 6px;
+  }
+
+  .aplsh-editeur td {
+    padding: 2px 3px;
+  }
+
+  .aplsh-editeur input,
+  .aplsh-editeur select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border: 1px solid #c3c9d4;
+    border-radius: 4px;
+    font-size: 0.82rem;
+  }
+
+  .aplsh-editeur td.num {
+    width: 6.5rem;
+  }
+
+  .aplsh-editeur td.suppr {
+    width: 2rem;
+    text-align: center;
+  }
+
+  .aplsh-editeur td.suppr button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #c62828;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .aplsh-editeur .barre {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.4rem;
+    align-items: center;
+  }
+
+  .aplsh-editeur .barre button {
+    padding: 4px 10px;
+    border: 1px solid #1f4789;
+    border-radius: 4px;
+    background: #fff;
+    color: #1f4789;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  .aplsh-editeur .barre .toggle-brut {
+    border-color: #999;
+    color: #555;
+  }
+</style>
+<script>
+    (function () {
+      const FERTILISANTS = JSON.parse(
+        document.getElementById('aplsh-fertilisants').textContent
+      );
+
+      // Découpe le texte : {commentaires (lignes # en tête), lignes de données}
+      function parseTexte(texte) {
+        const commentaires = [];
+        const lignes = [];
+        for (const brute of texte.split('\n')) {
+          const l = brute.trim();
+          if (!l) continue;
+          if (l.startsWith('#')) { commentaires.push(brute); continue; }
+          lignes.push(l.split('|').map((c) => c.trim()));
+        }
+        return { commentaires, lignes };
+      }
+
+      function serialise(commentaires, table, nbCols) {
+        const out = [...commentaires];
+        for (const tr of table.querySelectorAll('tbody tr')) {
+          const cellules = [...tr.querySelectorAll('input, select')].map(
+            (el) => el.value.trim()
+          );
+          if (cellules.every((c) => !c)) continue; // ligne vide ignorée
+          out.push(cellules.slice(0, nbCols).join(' | '));
+        }
+        return out.join('\n') + '\n';
+      }
+
+      // colonnes : [{cle, label, type}] — type: 'fertilisant'|'unite'|'text'
+      function monterEditeur(textarea, colonnes) {
+        const { commentaires, lignes } = parseTexte(textarea.value);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'aplsh-editeur';
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        thead.innerHTML =
+          '<tr>' +
+          colonnes.map((c) => `<th>${c.label}</th>`).join('') +
+          '<th></th></tr>';
+        const tbody = document.createElement('tbody');
+        table.append(thead, tbody);
+
+        function sync() {
+          textarea.value = serialise(commentaires, table, colonnes.length);
+        }
+
+        function celluleControle(col, valeur) {
+          if (col.type === 'fertilisant') {
+            const sel = document.createElement('select');
+            sel.append(document.createElement('option'));
+            for (const f of FERTILISANTS) {
+              const o = document.createElement('option');
+              o.value = f.id;
+              o.textContent = f.libelle;
+              if (f.id === valeur) o.selected = true;
+              sel.append(o);
+            }
+            return sel;
+          }
+          if (col.type === 'unite') {
+            const sel = document.createElement('select');
+            for (const [v, lbl] of [['', 't ou m³ ?'], ['t', 't'], ['m3', 'm³']]) {
+              const o = document.createElement('option');
+              o.value = v;
+              o.textContent = lbl;
+              if (v === valeur) o.selected = true;
+              sel.append(o);
+            }
+            return sel;
+          }
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.value = valeur || '';
+          return inp;
+        }
+
+        function ajouterLigne(valeurs) {
+          const tr = document.createElement('tr');
+          colonnes.forEach((col, i) => {
+            const td = document.createElement('td');
+            if (col.num) td.className = 'num';
+            td.append(celluleControle(col, (valeurs || [])[i] || ''));
+            tr.append(td);
+          });
+          const tdSuppr = document.createElement('td');
+          tdSuppr.className = 'suppr';
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = '✕';
+          btn.title = 'Supprimer la ligne';
+          btn.addEventListener('click', () => { tr.remove(); sync(); });
+          tdSuppr.append(btn);
+          tr.append(tdSuppr);
+          tbody.append(tr);
+        }
+
+        lignes.forEach((l) => ajouterLigne(l));
+
+        const barre = document.createElement('div');
+        barre.className = 'barre';
+        const btnAdd = document.createElement('button');
+        btnAdd.type = 'button';
+        btnAdd.textContent = '+ Ajouter une ligne';
+        btnAdd.addEventListener('click', () => { ajouterLigne(); sync(); });
+        const btnBrut = document.createElement('button');
+        btnBrut.type = 'button';
+        btnBrut.className = 'toggle-brut';
+        btnBrut.textContent = 'Voir le texte brut';
+        btnBrut.addEventListener('click', () => {
+          const visible = textarea.style.display !== 'none';
+          textarea.style.display = visible ? 'none' : '';
+          btnBrut.textContent = visible ? 'Voir le texte brut' : 'Masquer le texte brut';
+        });
+        barre.append(btnAdd, btnBrut);
+        wrapper.append(table, barre);
+
+        wrapper.addEventListener('input', sync);
+        wrapper.addEventListener('change', sync);
+
+        textarea.style.display = 'none';
+        textarea.before(wrapper);
+        sync();
+      }
+
+      const taProduits = document.getElementById('id_tableau_produits');
+      if (taProduits) {
+        monterEditeur(taProduits, [
+          { label: 'Fertilisant', type: 'fertilisant' },
+          { label: 'Variante (précision régionale)', type: 'text' },
+          { label: 'Unité', type: 'unite', num: true },
+          { label: 'N total (kg/unité)', type: 'text', num: true },
+          { label: 'p été', type: 'text', num: true },
+          { label: 'p automne', type: 'text', num: true },
+        ]);
+      }
+      const taGenerique = document.getElementById('id_tableau_generique');
+      if (taGenerique) {
+        monterEditeur(taGenerique, [
+          { label: 'C/N max (vide = ∞)', type: 'text', num: true },
+          { label: 'Nmin/Ntot max (vide = ∞)', type: 'text', num: true },
+          { label: 'p été', type: 'text', num: true },
+          { label: 'p automne', type: 'text', num: true },
+        ]);
+      }
+    })();
+</script>
+{% endblock %}

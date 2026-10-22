@@ -1,0 +1,911 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% load static leaflet_tags %}
+
+{% block title %}POC Météo — fenêtres d'épandage{% endblock %}
+
+{% block global_overlay %}{% endblock %}
+
+{% block extra_css %}
+  {% leaflet_css %}
+  {% leaflet_js %}
+  <style>
+    .meteo-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .meteo-page h1 {
+      font-size: 1.4rem;
+    }
+
+    .meteo-intro {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      max-width: 70rem;
+    }
+
+    .meteo-widget {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-left: 4px solid #1f4789;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .meteo-widget h2 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      margin: 0 0 0.2rem;
+    }
+
+    .meteo-widget .volet-note {
+      font-size: 0.78rem;
+      color: #777;
+      margin: 0 0 0.8rem;
+    }
+
+    .meteo-grille {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 0.9rem 1.4rem;
+    }
+
+    .meteo-grille .pleine-largeur {
+      grid-column: 1 / -1;
+    }
+
+    .meteo-champ label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .meteo-champ select {
+      height: 2.2rem;
+      width: 100%;
+      border: 1px solid #c3c9d4;
+      border-radius: 5px;
+      padding: 0 0.5rem;
+      font-size: 0.85rem;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    .meteo-carte-accordeon summary {
+      cursor: pointer;
+      color: #1f4789;
+      font-size: 0.82rem;
+    }
+
+    #meteo-carte {
+      height: 300px;
+      border-radius: 6px;
+      border: 1px solid #c3c9d4;
+      margin-top: 0.4rem;
+    }
+
+    /* ── Tableau compare ── */
+    .meteo-table-wrap {
+      overflow-x: auto;
+    }
+
+    .meteo-table {
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      min-width: 100%;
+      table-layout: fixed;
+    }
+
+    .meteo-table col.entete {
+      width: 13rem;
+    }
+
+    .meteo-table col.tranche {
+      width: 3rem;
+    }
+
+    /* Rangée température : courbe SVG en filigrane, valeurs par-dessus
+       (façon Windy). */
+    .meteo-courbe-cellule {
+      padding: 0 !important;
+      height: 58px;
+    }
+
+    .meteo-courbe {
+      position: relative;
+      height: 58px;
+    }
+
+    .meteo-courbe svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .meteo-courbe .valeurs {
+      position: absolute;
+      inset: 0;
+      display: flex;
+    }
+
+    .meteo-courbe .valeurs span {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #7a3b00;
+      font-size: 0.68rem;
+      text-shadow: 0 1px 2px #fff;
+    }
+
+    .meteo-table th,
+    .meteo-table td {
+      border: 1px solid #e3e8f0;
+      padding: 3px 4px;
+      text-align: center;
+      white-space: nowrap;
+      font-size: 0.72rem;
+    }
+
+    .meteo-table th.ligne {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      background: #fff;
+      z-index: 1;
+      font-size: 0.78rem;
+      min-width: 12rem;
+    }
+
+    .meteo-table .jour th {
+      background: #f0f3f9;
+      font-size: 0.78rem;
+    }
+
+    .meteo-table .jour .soleil {
+      font-weight: 400;
+      color: #777;
+      font-size: 0.68rem;
+    }
+
+    .meteo-table .tranches th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .meteo-table td.gel {
+      outline: 2px solid #6db3f2;
+      outline-offset: -2px;
+    }
+
+    .meteo-table tr.separateur td {
+      border: none;
+      height: 6px;
+      background: #fff;
+    }
+
+    /* Heatmap : 10 = parfait (vert) → 0 (rouge). */
+    .meteo-table td.s8 {
+      background: #c3fad5;
+    }
+
+    .meteo-table td.s6 {
+      background: #e4f6c4;
+    }
+
+    .meteo-table td.s4 {
+      background: #fff3c4;
+    }
+
+    .meteo-table td.s2 {
+      background: #ffe0c2;
+    }
+
+    .meteo-table td.s0 {
+      background: #fddede;
+    }
+
+    .meteo-table tr.total td {
+      font-weight: 700;
+      font-size: 0.8rem;
+      border-top: 2px solid #999;
+    }
+
+    .meteo-table td.meilleur {
+      outline: 2px solid #1f4789;
+      outline-offset: -2px;
+    }
+
+    .meteo-form-modele {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0.2rem 0 0.8rem;
+      font-size: 0.8rem;
+    }
+
+    .meteo-form-modele label {
+      font-weight: 600;
+    }
+
+    .meteo-form-modele select {
+      height: 2rem;
+      border: 1px solid #c3c9d4;
+      border-radius: 5px;
+      padding: 0 0.5rem;
+      font-size: 0.82rem;
+      background: #fff;
+    }
+
+    .meteo-verdict {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin: 0 0 0.9rem;
+      background: #eef4fd;
+      border: 1px solid #cdddf5;
+      color: #1f4789;
+    }
+
+    .meteo-legende {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.2rem;
+      font-size: 0.75rem;
+      color: #555;
+      margin-top: 0.6rem;
+    }
+
+    .meteo-legende .puce {
+      display: inline-block;
+      width: 0.9rem;
+      height: 0.9rem;
+      border-radius: 3px;
+      vertical-align: -2px;
+      margin-right: 0.25rem;
+      border: 1px solid #ccc;
+    }
+
+    .meteo-sol {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+      margin-top: 0.6rem;
+      padding: 0.7rem 0.9rem;
+      background: #fafbf7;
+      border: 1px solid #e3e8e0;
+      border-radius: 6px;
+      flex-wrap: wrap;
+    }
+
+    .meteo-sol .tri-label {
+      font-size: 11px;
+      fill: #666;
+    }
+
+    .meteo-sol-legende {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem 0.8rem;
+      font-size: 0.72rem;
+      color: #666;
+      max-width: 230px;
+    }
+
+    .meteo-sol-legende .active {
+      font-weight: 700;
+      color: #1d1d1d;
+    }
+
+    .meteo-sol-legende .puce {
+      display: inline-block;
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 3px;
+      margin-right: 0.25rem;
+      vertical-align: -2px;
+      border: 1px solid #ccc;
+    }
+
+    .meteo-sol-infos {
+      flex: 1;
+      min-width: 16rem;
+      font-size: 0.83rem;
+    }
+
+    .meteo-sol-infos .titre {
+      margin: 0 0 0.2rem;
+      font-size: 0.9rem;
+    }
+
+    .meteo-sol-infos .valeurs {
+      margin: 0 0 0.5rem;
+      color: #444;
+    }
+
+    .meteo-sol-infos .conseil {
+      margin: 0 0 0.4rem;
+      padding: 0.4rem 0.6rem;
+      background: #eef4fd;
+      border: 1px solid #cdddf5;
+      border-radius: 5px;
+    }
+
+    .meteo-sol-infos .source {
+      margin: 0;
+      font-size: 0.72rem;
+      color: #888;
+    }
+
+    .meteo-erreur {
+      background: #fdeeee;
+      border: 1px solid #f3c3c3;
+      border-radius: 6px;
+      padding: 0.7rem 1rem;
+      color: #8a1f1f;
+      font-size: 0.88rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="meteo-page">
+    <h1>🌦️ POC Météo — fenêtres d'épandage</h1>
+    <p class="meteo-intro">
+      Quand épandre pour perdre le moins d'azote possible ? Prévisions
+      multi-modèles ({{ meteo.modeles|join:", " }}, moyenne équipondérée) scorées
+      sur 10 par phénomène — <strong>10 = aucun risque</strong> : volatilisation
+      ammoniacale (NH₃, grille annexe 17 GREN HdF / COMIFER), lixiviation des
+      nitrates (NO₃⁻), ruissellement / sol gelé et dénitrification partielle
+      (N₂O). Le total est une moyenne pondérée selon le produit (coefficients
+      POC : volatilisation {{ poids.volatilisation }}, lixiviation
+      {{ poids.lixiviation }}, ruissellement {{ poids.ruissellement }},
+      dénitrification {{ poids.denitrification }} — à caler ensemble).
+      Voir aussi la <a href="{% url 'nitrates_admin_aplsh_index' %}">calculette APLSH</a>.
+    </p>
+
+    <form method="get" id="aplsh-contexte-form">
+      <div class="meteo-widget">
+        <h2>🧩 Contexte de la simulation</h2>
+        <p class="volet-note">
+          Repris du formulaire du simulateur (localisation, produit). La
+          sensibilité à la volatilisation est dérivée du produit :
+          <strong>{{ profil_label }}</strong> — {{ profil_source }}.
+        </p>
+        <div class="meteo-grille">
+          <div class="meteo-champ">
+            <label for="referentiel">Région</label>
+            <select name="referentiel" id="referentiel" onchange="this.form.submit()">
+              {% for r in referentiels %}
+                <option value="{{ r.pk }}" {% if r == referentiel %}selected{% endif %}>{{ r.get_region_code_display }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="meteo-champ pleine-largeur">
+            <label for="produit">Produit épandu</label>
+            <select name="produit" id="produit" onchange="this.form.submit()">
+              <option value="">— choisir —</option>
+              {% for p in produits %}
+                <option value="{{ p.index }}"
+                        {% if produit and produit.index == p.index %}selected{% endif %}>{{ p.libelle }}</option>
+              {% endfor %}
+              <option value="{{ PRODUIT_MINERAL }}"
+                      {% if mode_mineral %}selected{% endif %}>
+                Engrais azoté minéral (type III) — ammonitrate, urée, solution azotée…
+              </option>
+            </select>
+          </div>
+          {% if mode_mineral %}
+            <div class="meteo-champ">
+              <label for="forme">Forme de l'engrais minéral</label>
+              <select name="forme" id="forme" onchange="this.form.submit()">
+                {% for f in formes %}
+                  <option value="{{ f.id }}" {% if f.id == forme_id %}selected{% endif %}>{{ f.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+          <div class="pleine-largeur">
+            <details class="meteo-carte-accordeon">
+              <summary>
+                📍 Localisation ({{ lat|floatformat:2 }}, {{ lon|floatformat:2 }})
+                — cliquer sur la carte pour changer
+              </summary>
+              <div id="meteo-carte"></div>
+            </details>
+            <input type="hidden"
+                   name="lat"
+                   id="meteo-lat"
+                   value="{{ lat|stringformat:'g' }}">
+            <input type="hidden"
+                   name="lon"
+                   id="meteo-lon"
+                   value="{{ lon|stringformat:'g' }}">
+            <input type="hidden" name="sol_argile" value="{{ request.GET.sol_argile }}">
+            <input type="hidden" name="sol_sable" value="{{ request.GET.sol_sable }}">
+            <input type="hidden" name="sol_ph" value="{{ request.GET.sol_ph }}">
+            <div class="meteo-sol" id="meteo-sol-bloc">
+              <div class="meteo-sol-triangle">
+                <svg viewBox="0 0 300 268"
+                     width="230"
+                     height="206"
+                     id="meteo-triangle"
+                     style="cursor: crosshair"
+                     aria-label="Triangle des textures — cliquer pour corriger la composition">
+                  {% for z in triangle.zones %}
+                    <polygon points="{{ z.points }}" fill="{{ z.couleur }}" stroke="#fff" stroke-width="1.5"
+                    {% if z.id != triangle.zone_active %}opacity="0.45"{% endif %}
+                    ></polygon>
+                  {% endfor %}
+                  <text x="150" y="10" text-anchor="middle" class="tri-label">argile</text>
+                  <text x="26" y="262" text-anchor="start" class="tri-label">sable</text>
+                  <text x="274" y="262" text-anchor="end" class="tri-label">limon</text>
+                  {% if triangle.point %}
+                    <circle cx="{{ triangle.point.x|stringformat:'g' }}" cy="{{ triangle.point.y|stringformat:'g' }}" r="6" fill="#1f4789" stroke="#fff" stroke-width="2"></circle>
+                  {% endif %}
+                </svg>
+                <div class="meteo-sol-legende">
+                  {% for z in triangle.zones %}
+                    <span {% if z.id == triangle.zone_active %}class="active"{% endif %}>
+                      <span class="puce" style="background: {{ z.couleur }};"></span>{{ z.label }}
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="meteo-sol-infos">
+                {% if sol %}
+                  <p class="titre">
+                    🟫 Votre sol : <strong>{{ triangle.zone_label }}</strong>
+                  </p>
+                  <p class="valeurs">
+                    argile <strong>{{ sol.argile|floatformat:0 }} %</strong> ·
+                    sable <strong>{{ sol.sable|floatformat:0 }} %</strong> ·
+                    limon <strong>{{ triangle.limon }} %</strong> ·
+                    pH <strong>{{ sol.ph|floatformat:1 }}</strong>
+                    {% if sol.carbone %}· C organique <strong>{{ sol.carbone|floatformat:0 }} g/kg</strong>{% endif %}
+                    <label for="sol-ph" style="margin-left: 0.8rem; font-size: 0.75rem;">corriger le pH :</label>
+                    <input type="text"
+                           inputmode="decimal"
+                           id="sol-ph"
+                           value="{{ sol.ph|floatformat:1 }}"
+                           style="width: 3.2rem;
+                                  height: 1.6rem;
+                                  border: 1px solid #c3c9d4;
+                                  border-radius: 4px;
+                                  padding: 0 0.3rem;
+                                  font-size: 0.78rem">
+                  </p>
+                  {% for c in triangle.conseils %}<p class="conseil">{{ c }}</p>{% endfor %}
+                  {% if sol.carbone and sol.carbone > 20 %}
+                    <p class="conseil">
+                      Sol riche en matière organique ({{ sol.carbone|floatformat:0 }} g
+                      de carbone/kg, typique des sols peu travaillés ou en semis
+                      direct) : vie microbienne active, l'azote est mieux tamponné
+                      (immobilisation puis restitution lente). Non intégré au score
+                      pour l'instant — littérature ambivalente (un sol vivant
+                      saturé d'eau dénitrifie aussi davantage).
+                    </p>
+                  {% endif %}
+                  <p class="source">
+                    {% if sol_source == "manuel" %}
+                      Composition saisie à la main (point déplacé sur le triangle) —
+                      c'est vous qui connaissez votre parcelle.
+                    {% else %}
+                      Source : SoilGrids (ISRIC), 0-5 cm, ~250 m — intégré aux
+                      scores (pH → volatilisation, texture → lixiviation).
+                      L'analyse de sol de la parcelle reste plus précise :
+                      <strong>cliquez dans le triangle pour corriger</strong>.
+                    {% endif %}
+                  </p>
+                {% else %}
+                  <p class="titre">🟫 Votre sol</p>
+                  <p class="conseil">
+                    L'API sol (SoilGrids) n'a pas répondu pour ce point — mais
+                    vous connaissez votre parcelle : <strong>cliquez dans le
+                    triangle</strong> pour placer votre composition, elle sera
+                    intégrée aux scores.
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div class="meteo-widget" id="widget-comparaison">
+      <h2>📊 Comparaison des fenêtres (7 jours, créneaux de 3 h)</h2>
+      <form method="get" class="meteo-form-modele">
+        {% for cle, valeur in request.GET.items %}
+          {% if cle != "modele" %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endif %}
+        {% endfor %}
+        <label for="modele">Modèle météo</label>
+        <select name="modele" id="modele">
+          {% for id, label in modeles_choix %}
+            <option value="{{ id }}" {% if id == modele %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% if meteo.erreur %}
+        <div class="meteo-erreur">{{ meteo.erreur }}</div>
+      {% else %}
+        <div class="meteo-verdict">
+          Meilleure fenêtre : <strong>{{ meteo.meilleur.date|slice:"8:10" }}/{{ meteo.meilleur.date|slice:"5:7" }}
+          {{ meteo.meilleur.label }}</strong> (score {{ meteo.meilleur.total }}/10 —
+          pluie à venir 72 h : {{ meteo.meilleur.pluie_72h }} mm,
+          vent {{ meteo.meilleur.vent }} km/h, {{ meteo.meilleur.temp }} °C —
+          créneaux de nuit exclus du verdict).
+        </div>
+
+        <div class="meteo-table-wrap">
+          <table class="meteo-table">
+            <colgroup>
+              <col class="entete">
+              {% for t in courbe.tranches %}<col class="tranche">{% endfor %}
+            </colgroup>
+            <thead>
+              <tr class="jour">
+                <th class="ligne"></th>
+                {% for j in meteo.jours %}
+                  <th colspan="{{ j.tranches|length }}">
+                    {{ j.date|slice:"8:10" }}/{{ j.date|slice:"5:7" }}
+                    {% if j.soleil %}<span class="soleil">☀↑ {{ j.soleil_lever }} · ☀↓ {{ j.soleil_coucher }}</span>{% endif %}
+                  </th>
+                {% endfor %}
+              </tr>
+              <tr class="tranches">
+                <th class="ligne"></th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<th>{{ t.label }}</th>{% endfor %}
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th class="ligne">🌡 Température (°C)</th>
+                <td class="meteo-courbe-cellule" colspan="{{ courbe.n }}">
+                  <div class="meteo-courbe">
+                    <svg viewBox="0 0 {{ courbe.largeur }} 100"
+                         preserveAspectRatio="none"
+                         aria-hidden="true">
+                      <defs>
+                      <linearGradient id="degrade-temp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#fa7a35" stop-opacity="0.35" />
+                      <stop offset="100%" stop-color="#fa7a35" stop-opacity="0.02" />
+                      </linearGradient>
+                      </defs>
+                      <polygon points="{{ courbe.aire }}" fill="url(#degrade-temp)" />
+                      <polyline points="{{ courbe.points }}" fill="none" stroke="#fa7a35" stroke-width="2" vector-effect="non-scaling-stroke" />
+                    </svg>
+                    <div class="valeurs">
+                      {% for t in courbe.tranches %}
+                        <span {% if t.gel %}title="Gel : épandage interdit sur sol gelé (PAN)"{% endif %}>
+                          {{ t.temp }}°
+                          {% if t.gel %}❄️{% endif %}
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <th class="ligne">🌧 Pluie de la tranche (mm)</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td>{{ t.pluie }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr>
+                <th class="ligne">🌧 Cumul 72 h à venir (mm)</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td>{{ t.pluie_72h }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr>
+                <th class="ligne">💨 Vent max (km/h)</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td>{{ t.vent }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr class="separateur">
+                <td colspan="99"></td>
+              </tr>
+              <tr>
+                <th class="ligne">💭 Volatilisation NH₃ /10</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td class="{{ t.classes.volatilisation }}">{{ t.scores.volatilisation }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr>
+                <th class="ligne">💧 Lixiviation NO₃⁻ /10</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td class="{{ t.classes.lixiviation }}">{{ t.scores.lixiviation }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr>
+                <th class="ligne">🌊 Ruissellement / gel /10</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}
+                    <td class="{{ t.classes.ruissellement }}{% if t.gel %} gel{% endif %}">{{ t.scores.ruissellement }}</td>
+                  {% endfor %}
+                {% endfor %}
+              </tr>
+              <tr>
+                <th class="ligne">♨️ Dénitrification (N₂O / N₂) /10</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}<td class="{{ t.classes.denitrification }}">{{ t.scores.denitrification }}</td>{% endfor %}
+                {% endfor %}
+              </tr>
+              <tr class="total">
+                <th class="ligne">Σ Score pondéré /10</th>
+                {% for j in meteo.jours %}
+                  {% for t in j.tranches %}
+                    <td class="{{ t.classe_total }}{% if t == meteo.meilleur %} meilleur{% endif %}">{{ t.total }}</td>
+                  {% endfor %}
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="meteo-carte-accordeon" style="margin: 0.8rem 0 0.4rem;">
+          <summary>🔬 Mode avancé — le calcul chiffré, pas à pas</summary>
+          <div style="font-size: 0.78rem; margin-top: 0.5rem;">
+            <p style="margin: 0 0 0.2rem; font-weight: 700;">Meilleure fenêtre :</p>
+            <pre style="background: #f6f7fb; border: 1px solid #dde1ea; border-radius: 5px; padding: 0.5rem 0.7rem; overflow-x: auto; line-height: 1.7; margin: 0 0 0.6rem;">{% for l in meteo.detail_meilleur %}{{ l }}
+{% endfor %}</pre>
+            <p style="margin: 0 0 0.2rem; font-weight: 700;">Premier créneau du tableau :</p>
+            <pre style="background: #f6f7fb; border: 1px solid #dde1ea; border-radius: 5px; padding: 0.5rem 0.7rem; overflow-x: auto; line-height: 1.7; margin: 0;">{% for l in meteo.detail_maintenant %}{{ l }}
+{% endfor %}</pre>
+          </div>
+        </details>
+        <details class="meteo-carte-accordeon" style="margin: 0.4rem 0 0.4rem;">
+          <summary>💡 Comprendre les scores (comment lire ce tableau)</summary>
+          <div style="font-size: 0.83rem;
+                      color: #444;
+                      max-width: 62rem;
+                      margin-top: 0.5rem">
+            <p style="margin: 0 0 0.5rem;">
+              Chaque score note le créneau de <strong>début d'épandage</strong> :
+              10 = l'azote reste au champ, 0 = il se perd. La subtilité : le bon
+              moment est <strong>juste avant une pluie modérée</strong> (elle fait
+              pénétrer l'azote dans le sol), mais <strong>pas avant une grosse
+              pluie</strong> (elle l'emporte). Sec, chaud et venté = pertes dans l'air.
+            </p>
+            <p style="margin: 0 0 0.4rem;">
+              💭 <strong>Volatilisation NH₃</strong> — l'azote ammoniacal s'évapore
+              en ammoniac tant qu'il reste en surface (jusqu'à 20-30 % pour une
+              urée par temps sec, chaud et venté). Score bas si : peu de pluie
+              dans les 72 h, vent &gt; 19 km/h, températures élevées
+              (grille annexe 17 GREN HdF, source COMIFER).
+            </p>
+            <p style="margin: 0 0 0.4rem;">
+              💧 <strong>Lixiviation NO₃⁻</strong> — une pluie excessive entraîne
+              les nitrates sous les racines, vers les nappes : le cœur de la
+              directive nitrates. Score bas si le cumul des 72 h suivantes
+              approche 40 mm.
+            </p>
+            <p style="margin: 0 0 0.4rem;">
+              🌊 <strong>Ruissellement / gel</strong> — averse intense ou sol gelé :
+              l'effluent part en surface vers les cours d'eau (azote + phosphore,
+              eutrophisation). Sol gelé = épandage <strong>interdit</strong> (PAN).
+            </p>
+            <p style="margin: 0 0 0.4rem;">
+              ♨️ <strong>Dénitrification (N₂O et N₂)</strong> — en sol saturé
+              d'eau, des microbes privés d'oxygène « respirent » le nitrate à sa
+              place et le transforment en gaz. <em>Partielle</em>, elle s'arrête
+              au protoxyde d'azote (N₂O), gaz à effet de serre ~270 fois plus
+              puissant que le CO₂ — environ 42 % des GES agricoles français,
+              second poste derrière le méthane. <em>Complète</em>, elle va
+              jusqu'au N₂ (l'azote de l'air, neutre pour le climat) : perte
+              agronomique pure. La météo pilote la <strong>quantité totale</strong>
+              dénitrifiée (pluie forte sur azote frais + temps doux = score bas,
+              sol froid = mécanisme ralenti) ; la répartition N₂O / N₂ dépend
+              surtout du sol (pH, durée de saturation), qu'un choix de date ne
+              change pas — d'où une seule ligne pour les deux.
+            </p>
+            <details style="margin: 0.2rem 0 0.6rem;">
+              <summary style="cursor: pointer; color: #1f4789; font-size: 0.8rem;">
+                🧮 Les formules exactes du POC (à caler ensemble)
+              </summary>
+              <pre style="font-size: 0.72rem; background: #f6f7fb; border: 1px solid #dde1ea; border-radius: 5px; padding: 0.6rem 0.8rem; overflow-x: auto; line-height: 1.6;">
+note grille   = (pluie 72 h &lt; 10 mm → 4) + (vent &gt; 19 km/h → 2)
+              + (T° 6-13 °C → 3 ; &gt; 13 °C → 6) + (pH 7-7,5 → 2 ; &gt; 7,5 → 3)
+volatilisation = 10 × (1 − note grille / 15)
+lixiviation    = 10 × (1 − min(pluie 72 h × texture, 40) / 40)
+                 texture : sable &gt; 60 % → ×1,25 ; argile &gt; 35 % → ×0,85
+ruissellement  = 10 × (1 − min(intensité max mm/h, 10) / 10) ; sol gelé → 0
+dénitrification = 10 × (1 − min(pluie 72 h, 40)/40 × f(T°))
+                 f : &lt; 5 °C → 0,2 ; 5-10 °C → 0,6 ; &gt; 10 °C → 1
+total = {{ poids.volatilisation }}·volat + {{ poids.lixiviation }}·lixiv + {{ poids.ruissellement }}·ruissel + {{ poids.denitrification }}·dénitr
+        (poids selon la sensibilité du produit : {{ profil_label }})</pre>
+            </details>
+            <p style="margin: 0 0 0.4rem;">
+              ⚠️ À ne pas confondre avec l'<strong>immobilisation
+              microbienne</strong>, recherchée dans beaucoup de pratiques : des
+              microbes <em>aérobies</em> assimilent l'azote dans leur biomasse et
+              le restituent lentement à leur mort — un stockage tampon qui lisse
+              les pics d'azote, réduit lixiviation et dénitrification (c'est un
+              des rôles des couverts d'interculture). Rien à voir avec la
+              dénitrification, qui est une perte.
+            </p>
+            <p style="margin: 0; font-size: 0.78rem; color: #666;">
+              Sources :
+              <a href="https://comifer.asso.fr/wp-content/uploads/COMIFER_APLSH-Rapport_2024-11_VF.pdf"
+                 target="_blank"
+                 rel="noopener">rapport COMIFER APLSH (2024)</a> ·
+              <a href="https://www.hauts-de-france.developpement-durable.gouv.fr/"
+                 target="_blank"
+                 rel="noopener">arrêté GREN Hauts-de-France, annexe 17 (grille volatilisation)</a> ·
+              <a href="https://www.ocl-journal.org/articles/ocl/full_html/2013/02/ocl2013202p108/ocl2013202p108.html"
+                 target="_blank"
+                 rel="noopener">Cellier &amp; al. (INRAE), « Le protoxyde d'azote, puissant GES émis par les sols agricoles », OCL 2013</a> ·
+              <a href="https://indicateurs-snbc.developpement-durable.gouv.fr/emissions-de-gaz-a-effet-de-serre-du-secteur-a34.html"
+                 target="_blank"
+                 rel="noopener">indicateurs SNBC — GES du secteur agricole (min. Écologie)</a> ·
+              <a href="https://www.citepa.org/" target="_blank" rel="noopener">inventaires CITEPA</a> ·
+              <a href="https://hal.inrae.fr/hal-03331191"
+                 target="_blank"
+                 rel="noopener">INRAE — atténuation des émissions de N₂O des sols</a>
+            </p>
+          </div>
+        </details>
+        <div class="meteo-legende">
+          <span><span class="puce" style="background: #c3fad5;"></span>8-10 : idéal</span>
+          <span><span class="puce" style="background: #e4f6c4;"></span>6-8 : bon</span>
+          <span><span class="puce" style="background: #fff3c4;"></span>4-6 : moyen</span>
+          <span><span class="puce" style="background: #ffe0c2;"></span>2-4 : mauvais</span>
+          <span><span class="puce" style="background: #fddede;"></span>0-2 : à éviter</span>
+          <span>❄️ gel = épandage interdit sur sol gelé (PAN)</span>
+          <span><span class="puce" style="background: #fff; border: 2px solid #1f4789;"></span>meilleure fenêtre (créneaux 5 h-20 h)</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // ── Rechargement SANS saut de page : on refait la requête GET en
+      // arrière-plan et on ne remplace que le bloc sol et le panneau de
+      // comparaison. La position de scroll et la carte restent intactes.
+      function parametresCourants() {
+        return new URLSearchParams(window.location.search);
+      }
+
+      function majPage(surcharges) {
+        const params = parametresCourants();
+        for (const [cle, valeur] of Object.entries(surcharges)) {
+          params.set(cle, valeur);
+        }
+        const url = window.location.pathname + '?' + params.toString();
+        document.body.style.cursor = 'progress';
+        fetch(url)
+          .then((r) => r.text())
+          .then((html) => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            for (const id of ['meteo-sol-bloc', 'widget-comparaison']) {
+              const neuf = doc.getElementById(id);
+              const actuel = document.getElementById(id);
+              if (neuf && actuel) actuel.replaceWith(neuf);
+            }
+            history.replaceState(null, '', url);
+          })
+          .finally(() => { document.body.style.cursor = ''; });
+      }
+
+      // ── Changement de modèle météo (délégation : le select est remplacé
+      // à chaque swap, on écoute au niveau document).
+      document.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'modele') {
+          majPage({ modele: e.target.value });
+        }
+        if (e.target && e.target.id === 'sol-ph') {
+          majPage({ sol_ph: e.target.value.replace(',', '.') });
+        }
+      });
+
+      // ── Triangle : vrai drag and drop du point (pointer events délégués).
+      const A = [150, 18], B = [16, 248], C = [284, 248];  // argile, sable, limon
+      let drag = null;
+
+      function baryDepuisEvenement(svg, e) {
+        const r = svg.getBoundingClientRect();
+        const x = (e.clientX - r.left) * 300 / r.width;
+        const y = (e.clientY - r.top) * 268 / r.height;
+        const det = (B[1] - C[1]) * (A[0] - C[0]) + (C[0] - B[0]) * (A[1] - C[1]);
+        let a = ((B[1] - C[1]) * (x - C[0]) + (C[0] - B[0]) * (y - C[1])) / det;
+        let b = ((C[1] - A[1]) * (x - C[0]) + (A[0] - C[0]) * (y - C[1])) / det;
+        let c = 1 - a - b;
+        a = Math.max(a, 0); b = Math.max(b, 0); c = Math.max(c, 0);
+        const somme = (a + b + c) || 1;
+        return { a: a / somme, b: b / somme, c: c / somme };
+      }
+
+      function pixelDepuisBary(bc) {
+        return {
+          x: bc.a * A[0] + bc.b * B[0] + bc.c * C[0],
+          y: bc.a * A[1] + bc.b * B[1] + bc.c * C[1],
+        };
+      }
+
+      function pointDuTriangle(svg) {
+        let point = svg.querySelector('circle');
+        if (!point) {
+          point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          point.setAttribute('r', '6');
+          point.setAttribute('fill', '#1f4789');
+          point.setAttribute('stroke', '#fff');
+          point.setAttribute('stroke-width', '2');
+          svg.append(point);
+        }
+        return point;
+      }
+
+      document.addEventListener('pointerdown', function (e) {
+        const svg = e.target.closest && e.target.closest('#meteo-triangle');
+        if (!svg) return;
+        drag = { svg: svg, point: pointDuTriangle(svg), bary: null };
+        svg.setPointerCapture && svg.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+
+      document.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+        drag.bary = baryDepuisEvenement(drag.svg, e);
+        const px = pixelDepuisBary(drag.bary);
+        drag.point.setAttribute('cx', px.x.toFixed(1));
+        drag.point.setAttribute('cy', px.y.toFixed(1));
+      });
+
+      document.addEventListener('pointerup', function (e) {
+        if (!drag) return;
+        const bary = drag.bary || baryDepuisEvenement(drag.svg, e);
+        drag = null;
+        const ph = document.getElementById('sol-ph');
+        majPage({
+          sol_argile: Math.round(100 * bary.a),
+          sol_sable: Math.round(100 * bary.b),
+          sol_ph: ph ? ph.value.replace(',', '.') : '',
+        });
+      });
+
+      // ── Carte Leaflet (accordéon) : recharge complète au clic carte (la
+      // localisation change les prévisions ET le sol, tout doit suivre).
+      const detail = document.querySelector('.meteo-carte-accordeon');
+      let carte = null;
+      detail.addEventListener('toggle', function () {
+        if (!detail.open || carte) return;
+        carte = L.map('meteo-carte').setView([{{ lat|stringformat:'g' }}, {{ lon|stringformat:'g' }}], 8);
+        L.tileLayer(
+          'https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0' +
+          '&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg' +
+          '&LAYER=ORTHOIMAGERY.ORTHOPHOTOS' +
+          '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+          { maxZoom: 19, tileSize: 256, attribution: '© IGN' }
+        ).addTo(carte);
+        const marqueur = L.marker([{{ lat|stringformat:'g' }}, {{ lon|stringformat:'g' }}]).addTo(carte);
+        carte.on('click', function (e) {
+          marqueur.setLatLng(e.latlng);
+          document.getElementById('meteo-lat').value = e.latlng.lat.toFixed(4);
+          document.getElementById('meteo-lon').value = e.latlng.lng.toFixed(4);
+          majPage({ lat: e.latlng.lat.toFixed(4), lon: e.latlng.lng.toFixed(4) });
+        });
+        setTimeout(function () { carte.invalidateSize(); }, 100);
+      });
+    });
+  </script>
+{% endblock %}

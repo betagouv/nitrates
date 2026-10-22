@@ -13,7 +13,9 @@ from envergo.nitrates.views import (
     ZoneActionRenforceeGeoJSONView,
     ZoneVulnerableGeoJSONView,
 )
+from envergo.nitrates.views_admin_aplsh import aplsh_index
 from envergo.nitrates.views_admin_matrice import matrice_index
+from envergo.nitrates.views_admin_meteo import meteo_index
 from envergo.nitrates.views_admin_nuclei import nuclei_index, nuclei_report
 from envergo.nitrates.views_admin_ouverture import (
     ouverture_index,
@@ -403,6 +405,18 @@ urlpatterns = [
         "admin/nitrates/ouverture-geographique/toggle-region/",
         ouverture_toggle_region,
         name="nitrates_admin_ouverture_toggle_region",
+    ),
+    # Calculette APLSH (POC, page admin exploratoire).
+    path(
+        "admin/nitrates/aplsh/",
+        aplsh_index,
+        name="nitrates_admin_aplsh_index",
+    ),
+    # POC Météo : fenêtres d'épandage scorées (page admin exploratoire).
+    path(
+        "admin/nitrates/meteo/",
+        meteo_index,
+        name="nitrates_admin_meteo_index",
     ),
     # Rapports de scan Nuclei (spike securite #97). LOCAL ONLY.
     path(

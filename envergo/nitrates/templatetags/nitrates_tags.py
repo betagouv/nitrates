@@ -1165,3 +1165,9 @@ def seo_json_ld():
     from envergo.nitrates.views_seo import url_absolue
 
     return {"url_accueil": url_absolue("/")}
+
+
+@register.simple_tag
+def poc_aplsh_actif():
+    """Flag des POC APLSH / Météo (liens de l'accueil admin nitrates)."""
+    return settings.NITRATES_POC_APLSH

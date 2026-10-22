@@ -1,0 +1,687 @@
+{% extends "nitrates_admin/base.html" %}
+
+{% load static %}
+
+{% block title %}Calculette APLSH{% endblock %}
+
+{% comment %}Page sans mutation htmx : on vide l'overlay global du base
+(sinon « Action en cours… » reste affiché en haut de page).{% endcomment %}
+{% block global_overlay %}{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'nitrates/calendrier.css' %}">
+  <style>
+    /* ── Design sobre aligné admin : panneaux blancs, bordures grises,
+       accent bleu #1f4789, palette du calendrier réutilisée. ── */
+    .aplsh-page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .aplsh-page h1 {
+      font-size: 1.4rem;
+    }
+
+    .aplsh-intro {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Saisie (widgets 1-2) sur fond légèrement teinté, résultats sur blanc. */
+    .aplsh-saisie {
+      background: #f4f6fa;
+      border: 1px solid #e3e8f0;
+      border-radius: 8px;
+      padding: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .aplsh-saisie .aplsh-widget {
+      margin-bottom: 0.9rem;
+    }
+
+    .aplsh-saisie .aplsh-widget:last-child {
+      margin-bottom: 0;
+    }
+
+    .aplsh-drawer summary {
+      cursor: pointer;
+      color: #1f4789;
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+    }
+
+    .aplsh-drawer table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      background: #fff;
+    }
+
+    .aplsh-drawer th,
+    .aplsh-drawer td {
+      border: 1px solid #dde1ea;
+      padding: 4px 8px;
+      text-align: left;
+    }
+
+    .aplsh-drawer th {
+      background: #f6f7fb;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #666;
+    }
+
+    .aplsh-drawer td.num,
+    .aplsh-drawer th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .aplsh-widget {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-left: 4px solid #1f4789;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .aplsh-widget h2 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      margin: 0 0 0.2rem;
+    }
+
+    .aplsh-widget h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      background: #1f4789;
+      color: #fff;
+      font-size: 0.8rem;
+      flex: none;
+    }
+
+    .aplsh-widget .volet-note {
+      font-size: 0.78rem;
+      color: #777;
+      margin: 0 0 0.8rem;
+    }
+
+    .aplsh-grille {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 0.9rem 1.4rem;
+    }
+
+    .aplsh-grille .pleine-largeur {
+      grid-column: 1 / -1;
+    }
+
+    .aplsh-champ label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .aplsh-champ select,
+    .aplsh-champ input {
+      height: 2.2rem;
+      width: 100%;
+      border: 1px solid #c3c9d4;
+      border-radius: 5px;
+      padding: 0 0.5rem;
+      font-size: 0.85rem;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    .aplsh-champs-ligne {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem 1.4rem;
+      align-items: flex-end;
+    }
+
+    .aplsh-champs-ligne .aplsh-champ {
+      width: 240px;
+    }
+
+    .aplsh-submit {
+      height: 2.2rem;
+      padding: 0 1.1rem;
+      border: none;
+      border-radius: 5px;
+      background: #1f4789;
+      color: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    /* Fiche produit (abaque) affichée dès la sélection du produit. */
+    .aplsh-fiche {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 2rem;
+      padding: 0.55rem 0.9rem;
+      background: #f6f7fb;
+      border: 1px solid #dde1ea;
+      border-radius: 5px;
+      font-size: 0.82rem;
+    }
+
+    .aplsh-info {
+      background: #eef4fd;
+      border: 1px solid #cdddf5;
+      border-radius: 6px;
+      padding: 0.7rem 1rem;
+      color: #1f4789;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
+
+    .aplsh-erreur {
+      background: #fdeeee;
+      border: 1px solid #f3c3c3;
+      border-radius: 6px;
+      padding: 0.7rem 1rem;
+      color: #8a1f1f;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
+
+    .aplsh-resultat {
+      border-left-color: var(--cal-vert-ink, #4b9f6c);
+    }
+
+    .aplsh-resultat.depasse {
+      border-left-color: var(--cal-rouge-ink, #f95a5c);
+    }
+
+    .aplsh-dose-max {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0.15rem 0 0.3rem;
+    }
+
+    .aplsh-detail {
+      font-size: 0.85rem;
+      color: #444;
+    }
+
+    /* Feu tricolore du verdict : seule la lampe du verdict est allumée. */
+    .aplsh-feu {
+      flex: none;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 4px;
+      border-radius: 6px;
+      background: #3a3f47;
+      align-self: center;
+    }
+
+    .aplsh-feu .lampe {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      background: #565c66;
+    }
+
+    .aplsh-verdict.ko .lampe.rouge {
+      background: #ff5252;
+      box-shadow: 0 0 6px #ff5252;
+    }
+
+    .aplsh-verdict.ok .lampe.verte {
+      background: #4cd964;
+      box-shadow: 0 0 6px #4cd964;
+    }
+
+    .aplsh-saison-badge {
+      display: inline-block;
+      padding: 0.1rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #f0f2f6;
+      border: 1px solid #c3c9d4;
+      color: #444;
+      vertical-align: middle;
+    }
+
+    /* Verdict : sobre, porté par une pastille et le liseré gauche du
+       widget — plus de croix ni d'aplats rouges. */
+    .aplsh-verdict {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+      margin-top: 0.4rem;
+    }
+
+    .aplsh-verdict.ko strong {
+      color: #b23a3c;
+    }
+
+    .aplsh-astuce {
+      margin-top: 0.8rem;
+      padding: 0.6rem 0.9rem;
+      background: #eef4fd;
+      border: 1px solid #cdddf5;
+      border-radius: 6px;
+      font-size: 0.83rem;
+    }
+
+    .aplsh-formule {
+      margin-top: 0.9rem;
+      font-size: 0.8rem;
+      color: #666;
+      font-family: ui-monospace, monospace;
+    }
+
+    /* ── Frise : classes du calendrier d'épandage du simulateur
+       (calendrier.css). Ajouts : étiquettes de dose sur les zones,
+       marqueur « votre apport ». ── */
+    .aplsh-frise .calendrier-epandage {
+      margin: 0.75rem 0 0;
+    }
+
+    .aplsh-zone-dose {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.25;
+      color: #1d5a35;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 2;
+    }
+
+    .aplsh-zone-dose .dose {
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    /* Marqueur apport : trait bleu qui traverse la barre ET descend
+       rejoindre son label sous la rangée des dates (vraie frise). */
+    .aplsh-apport-marqueur {
+      position: absolute;
+      top: 0;
+      bottom: -46px;
+      width: 2px;
+      background: #1f4789;
+      transform: translateX(-50%);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .aplsh-apport-label {
+      position: absolute;
+      transform: translateX(-50%);
+      margin-top: 34px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1f4789;
+      white-space: nowrap;
+      background: #fff;
+      padding: 0 4px;
+    }
+
+    /* Dates de bornes : noir (dates distinctes, pas un code couleur),
+       ticks hérités par currentColor. */
+    .aplsh-frise .calendrier-epandage__period-date {
+      color: #333 !important;
+    }
+
+    /* La barre ne clippe plus le marqueur (il descend vers son label),
+       les zones portent leur propre rayon. */
+    .aplsh-frise .calendrier-epandage__bar {
+      overflow: visible;
+    }
+
+    .aplsh-frise .aplsh-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--cal-vert-fill);
+      box-shadow: inset 0 0 0 1px var(--cal-vert-ink);
+    }
+
+    .aplsh-frise .aplsh-zone.interdite {
+      background: var(--cal-rouge-fill);
+      box-shadow: inset 0 0 0 1px var(--cal-rouge-ink);
+    }
+
+    .aplsh-frise .calendrier-epandage__period {
+      position: relative;
+      height: 3.4rem;
+      margin-top: 8px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="aplsh-page">
+    <h1>🧪 Calculette APLSH</h1>
+    <p class="aplsh-intro">
+      APLSH = azote potentiellement libéré jusqu'en sortie d'hiver (15 janvier).
+      Le 7e PAN plafonne l'APLSH cumulé des apports organiques sur couverts
+      d'interculture et prairies. Cette calculette convertit le plafond
+      réglementaire en <strong>dose maximale d'épandage</strong> pour un produit
+      et une date donnés, selon le référentiel GREN régional.
+    </p>
+
+    {% if erreur %}<div class="aplsh-erreur">{{ erreur }}</div>{% endif %}
+    {% if info %}<div class="aplsh-info">ℹ️ {{ info }}</div>{% endif %}
+
+    <form method="get">
+      <div class="aplsh-saisie">
+        <div class="aplsh-widget">
+          <h2>
+            <span class="num">1</span> Contexte de la simulation
+          </h2>
+          <p class="volet-note">
+            Ces champs seront pré-remplis par le formulaire du simulateur
+            (localisation → région, culture/couvert → plafond, fertilisant choisi).
+          </p>
+          <div class="aplsh-grille">
+            <div class="aplsh-champ">
+              <label for="referentiel">Région (référentiel GREN)</label>
+              <select name="referentiel" id="referentiel" onchange="this.form.submit()">
+                {% for r in referentiels %}
+                  <option value="{{ r.pk }}" {% if r == referentiel %}selected{% endif %}>{{ r.get_region_code_display }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="aplsh-champ">
+              <label for="situation">Situation d'épandage (→ plafond)</label>
+              <select name="situation" id="situation" onchange="this.form.submit()">
+                {% for s in situations %}
+                  <option value="{{ s.id }}" {% if s.id == situation.id %}selected{% endif %}>{{ s.label }} — {{ s.plafond }} kg</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="aplsh-champ pleine-largeur">
+              <label for="produit">Produit épandu</label>
+              <select name="produit" id="produit" onchange="this.form.submit()">
+                <option value="">— choisir —</option>
+                {% for p in produits %}
+                  <option value="{{ p.index }}"
+                          {% if produit and produit.index == p.index %}selected{% endif %}>{{ p.libelle }}</option>
+                {% endfor %}
+                {% if referentiel.tableau_generique_parse %}
+                  <option value="{{ AUTRE_PRODUIT }}" {% if mode_autre %}selected{% endif %}>
+                    Autre produit (analyse C/N et Nmin/Ntot)
+                  </option>
+                {% endif %}
+                <option value="{{ PRODUIT_MINERAL }}"
+                        {% if mode_mineral %}selected{% endif %}>
+                  Engrais azoté minéral (type III) — ammonitrate, urée, solution azotée…
+                </option>
+              </select>
+            </div>
+            {% if produits %}
+              <details class="aplsh-drawer pleine-largeur"
+                       {% if request.GET.drawer %}open{% endif %}>
+                <summary>Voir toutes les valeurs {{ referentiel.get_region_code_display }}</summary>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produit</th>
+                      <th class="num">N total</th>
+                      <th class="num">☀️ p été</th>
+                      <th class="num">❄️ p automne</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for p in produits %}
+                      <tr>
+                        <td>{{ p.libelle }}</td>
+                        <td class="num">
+                          {% if p.n_total is not None %}
+                            {{ p.n_total|floatformat:1 }}
+                            {% if p.unite == "t" %}
+                              kg/t
+                            {% elif p.unite == "m3" %}
+                              kg/m³
+                            {% endif %}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+                        <td class="num">{{ p.p_ete|floatformat:2 }}</td>
+                        <td class="num">{{ p.p_automne|floatformat:2 }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </details>
+            {% endif %}
+            {% if produit %}
+              <div class="aplsh-fiche">
+                <span>📋 Valeurs {{ referentiel.get_region_code_display }} :</span>
+                <span>teneur N
+                  {% if produit.n_total is not None %}
+                    <strong>{{ produit.n_total|floatformat:1 }} {{ unite_n }}</strong>
+                  {% else %}
+                    <strong>non fournie par ce GREN</strong>
+                  {% endif %}
+                </span>
+                <span>coefficient été <strong>{{ produit.p_ete|floatformat:2 }}</strong></span>
+                <span>coefficient automne <strong>{{ produit.p_automne|floatformat:2 }}</strong></span>
+              </div>
+            {% endif %}
+          </div>
+          {% if situation.note %}<p class="volet-note" style="margin: 0.6rem 0 0;">⚠️ {{ situation.note }}</p>{% endif %}
+          {% if mode_mineral %}
+            <p class="volet-note" style="margin: 0.6rem 0 0;">
+              ⚠️ Engrais minéral (type III) : tout l'azote est sous forme minérale,
+              coefficient APLSH = 1. Le PAN n'inclut le type III dans le plafond
+              APLSH que dans certaines situations (couvert récolté tardivement,
+              prairies) — vérifier la prescription de votre simulation.
+            </p>
+          {% endif %}
+        </div>
+
+        <div class="aplsh-widget">
+          <h2>
+            <span class="num">2</span> Questions de la calculette
+          </h2>
+          <p class="volet-note">
+            Informations que le simulateur ne connaît pas : elles resteront à
+            saisir dans le produit final.
+          </p>
+          <div class="aplsh-champs-ligne">
+            <div class="aplsh-champ">
+              <label for="date_apport">Date d'apport envisagée</label>
+              <input type="date"
+                     name="date_apport"
+                     id="date_apport"
+                     value="{{ date_apport|date:'Y-m-d' }}">
+            </div>
+            {% if mode_autre %}
+              <div class="aplsh-champ">
+                <label for="cn">C/N du produit</label>
+                <input type="text"
+                       inputmode="decimal"
+                       name="cn"
+                       id="cn"
+                       value="{{ cn|default_if_none:''|stringformat:'g' }}">
+              </div>
+              <div class="aplsh-champ">
+                <label for="nmin_ntot">Nmin/Ntot (%)</label>
+                <input type="number"
+                       name="nmin_ntot"
+                       id="nmin_ntot"
+                       step="1"
+                       min="0"
+                       max="100"
+                       value="{% if nmin_ntot is not None %}{% widthratio nmin_ntot 1 100 %}{% endif %}">
+              </div>
+            {% endif %}
+            {% if mode_autre or mode_mineral or produit and produit.n_total is None %}
+              <div class="aplsh-champ">
+                <label for="n_total">Teneur N totale ({{ unite_n }})</label>
+                <input type="text"
+                       inputmode="decimal"
+                       name="n_total"
+                       id="n_total"
+                       {% if suggestion_n %}placeholder="{{ suggestion_n.texte_court }}"{% endif %}
+                       value="{{ n_saisi|default_if_none:''|stringformat:'g' }}">
+              </div>
+            {% endif %}
+            <div class="aplsh-champ">
+              <label for="dose">Dose envisagée ({{ unite_dose }}) — optionnel</label>
+              <input type="text"
+                     inputmode="decimal"
+                     name="dose"
+                     id="dose"
+                     value="{{ dose|default_if_none:''|stringformat:'g' }}">
+            </div>
+            <button type="submit" class="aplsh-submit">Calculer</button>
+          </div>
+          {% if suggestion_n %}<p class="volet-note" style="margin: 0.5rem 0 0;">💡 {{ suggestion_n.texte }}</p>{% endif %}
+        </div>
+      </div>
+    </form>
+
+    {% if resultat %}
+      <div class="aplsh-widget aplsh-resultat {% if resultat.conforme is False %}depasse{% endif %}">
+        <div class="aplsh-detail">
+          Saison d'apport :
+          <span class="aplsh-saison-badge">
+            {% if resultat.saison == "ete" %}
+              ☀️ été (jusqu'au {{ borne_ete }})
+            {% else %}
+              ❄️ automne (après le {{ borne_ete }})
+            {% endif %}
+          </span>
+          — coefficient APLSH <strong>{{ resultat.p|floatformat:2 }}</strong>,
+          teneur N <strong>{{ resultat.n_total|floatformat:1 }} {{ unite_n }}</strong>,
+          plafond <strong>{{ resultat.plafond|floatformat:0 }} kg N/ha</strong>.
+        </div>
+        <p class="aplsh-dose-max">Dose maximale : {{ resultat.dose_max_affichee|floatformat:1 }} {{ unite_dose }}</p>
+        {% if resultat.limite == "azote_total" %}
+          <p class="aplsh-detail" style="margin: -0.1rem 0 0.4rem;">
+            ⚖️ Limitée par le plafond de <strong>170 kg d'azote issu des effluents
+            d'élevage par hectare et par an</strong> (directive nitrates) : le seul
+            plafond APLSH permettrait {{ resultat.dose_max_aplsh|floatformat:1 }}
+            {{ unite_dose }}, mais cet apport dépasserait le plafond annuel d'azote
+            total. Attention, les 170 kg s'entendent en moyenne sur la surface de
+            l'exploitation et tous apports de l'année confondus.
+          </p>
+        {% endif %}
+
+        {% if resultat.aplsh is not None %}
+          <div class="aplsh-verdict {% if resultat.conforme %}ok{% else %}ko{% endif %}">
+            <span class="aplsh-feu" aria-hidden="true">
+              <span class="lampe rouge"></span>
+              <span class="lampe orange"></span>
+              <span class="lampe verte"></span>
+            </span>
+            {% if resultat.conforme %}
+              <span>Votre dose de {{ resultat.dose|floatformat:1 }} {{ unite_dose }}
+                respecte le plafond — marge restante :
+              {{ resultat.marge|floatformat:1 }} {{ unite_dose }}.</span>
+            {% else %}
+              <span><strong>Plafond dépassé de {{ resultat.depassement_pct|floatformat:0 }} %</strong>
+              — ramener la dose à {{ resultat.dose_max_affichee|floatformat:1 }} {{ unite_dose }} maximum.</span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <p class="aplsh-formule">
+          {% if resultat.limite == "azote_total" %}
+            dose max = 170 ÷ N total = 170 ÷ {{ resultat.n_total|floatformat:1 }}
+            = {{ resultat.dose_max|floatformat:1 }}
+            (plafond APLSH : {{ resultat.plafond|floatformat:0 }} ÷
+            ({{ resultat.n_total|floatformat:1 }} × {{ resultat.p|floatformat:2 }})
+            = {{ resultat.dose_max_aplsh|floatformat:1 }})
+          {% else %}
+            dose max = plafond ÷ (N total × p) = {{ resultat.plafond|floatformat:0 }}
+            ÷ ({{ resultat.n_total|floatformat:1 }} × {{ resultat.p|floatformat:2 }})
+            = {{ resultat.dose_max|floatformat:1 }}
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+
+    {% if segments %}
+      <div class="aplsh-widget aplsh-frise">
+        <h2>📅 Dose maximale selon la période d'apport</h2>
+        <p class="volet-note">
+          Année agricole (juillet → juin). Vert : votre dose passe sur cette
+          période ; rouge : elle dépasse la dose max de la période. En gris :
+          hors fenêtre APLSH — le calendrier d'interdiction d'épandage reste
+          applicable dans tous les cas. ⚖️ = dose bornée par les 170 kg N
+          d'effluents d'élevage/ha/an, pas par l'APLSH.
+        </p>
+        <div class="calendrier-epandage calendrier-epandage--gris">
+          <div class="calendrier-epandage__months">
+            {% for label, court in mois %}<span data-court="{{ court }}">{{ label }}</span>{% endfor %}
+          </div>
+
+          <div class="calendrier-epandage__bar">
+            {% for z in segments.zones %}
+              <div class="aplsh-zone{% if z.autorisee is False %} interdite{% endif %}"
+                   style="left: {{ z.start_pct|stringformat:'g' }}%;
+                          width: {{ z.width_pct|stringformat:'g' }}%"></div>
+            {% endfor %}
+            {% for z in segments.zones %}
+              <span class="aplsh-zone-dose"
+                    style="left: {{ z.centre_pct|stringformat:'g' }}%">
+                <span class="dose">
+                  {% if z.autorisee is False %}max{% endif %}
+                {{ z.dose_max_affichee|floatformat:1 }} {{ unite_dose }}</span>
+                <br>
+                {% if z.saison == "ete" %}
+                  été
+                {% else %}
+                  automne
+                {% endif %}
+                · p {{ z.p|floatformat:2 }}
+              </span>
+            {% endfor %}
+            <div class="aplsh-apport-marqueur"
+                 style="left: {{ segments.apport_pct|stringformat:'g' }}%"
+                 aria-label="Votre date d'apport"></div>
+          </div>
+
+          <div class="calendrier-epandage__period">
+            {% for b in segments.bornes %}
+              <span class="calendrier-epandage__period-date{% if b.bord_gauche %} calendrier-epandage__period-date--bord-gauche{% endif %}{% if b.bord_droit %} calendrier-epandage__period-date--bord-droit{% endif %}"
+                    style="left: {{ b.pct|stringformat:'g' }}%;
+                           color: var(--cal-vert-ink)">{{ b.label }}</span>
+            {% endfor %}
+            <span class="aplsh-apport-label"
+                  style="left: {{ segments.apport_pct|stringformat:'g' }}%">
+              votre apport ({{ date_apport|date:"d/m" }})
+            </span>
+          </div>
+        </div>
+        {% if segments.hors_fenetre %}
+          <p class="aplsh-detail" style="margin-top: 0.5rem;">
+            ⚠️ Votre date d'apport est hors de la fenêtre APLSH (après le 15/01) :
+            le plafond APLSH ne s'applique pas à cet apport.
+          </p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+{% endblock %}
