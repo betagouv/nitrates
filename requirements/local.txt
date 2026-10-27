@@ -502,7 +502,7 @@ wcwidth==0.2.13
     # via
     #   -r base.txt
     #   prompt-toolkit
-werkzeug==3.1.6
+werkzeug==3.1.9
     # via -r local.in
 wheel==0.46.2
     # via
