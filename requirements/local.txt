@@ -348,7 +348,7 @@ pycryptodomex==3.23.0
     #   py7zr
 pyflakes==3.4.0
     # via flake8
-pygments==2.20.0
+pygments==2.21.0
     # via
     #   -r base.txt
     #   ipython
