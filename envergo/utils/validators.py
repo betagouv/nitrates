@@ -25,12 +25,20 @@ class NoIdnEmailValidator(EmailValidator):
         if not self.user_regex.match(user_part):
             raise ValidationError(self.message, code=self.code, params={"value": value})
 
+        # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : a partir de Django 5.x,
+        # EmailValidator.domain_regex accepte directement les domaines
+        # internationalises (caracteres Unicode non-ASCII, plage ¡-￿), sans
+        # passer par un encodage punycode. Notre regle metier (Brevo ne gere
+        # pas les IDN) s'appuyait sur l'ancien comportement ASCII-only de
+        # Django 4.2 pour rejeter ces domaines via validate_domain_part. On
+        # rejette donc nous-memes tout domaine non-ASCII, independamment du
+        # comportement interne de Django.
+        if not domain_part.isascii():
+            raise ValidationError(self.message, code=self.code, params={"value": value})
+
         if domain_part not in self.domain_allowlist and not self.validate_domain_part(
             domain_part
         ):
-            if self.validate_domain_part(domain_part):
-                return
-
             raise ValidationError(self.message, code=self.code, params={"value": value})
 
 
