@@ -1,5 +1,4 @@
 import re
-import warnings
 from collections.abc import Iterable, Mapping
 from html import unescape as html_unescape
 
@@ -18,10 +17,14 @@ from django.template.base import TemplateSyntaxError
 from django.template.defaultfilters import stringfilter
 from django.template.loader import get_template
 from django.utils.dateparse import parse_datetime
-from django.utils.deprecation import RemovedInDjango51Warning
 from django.utils.html import escape, strip_tags, urlize
 
 from envergo.utils.fields import HedgeChoiceField
+
+# REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : RemovedInDjango51Warning a ete
+# retire du coeur de Django en 5.1+ (il ne sert plus a rien depuis que
+# {% querystring %} existe nativement). On ne peut plus l'importer sous
+# Django 5.2, d'ou sa disparition ci-dessous (cf fonction querystring).
 
 register = template.Library()
 
@@ -264,11 +267,10 @@ def querystring(context, *args, **kwargs):
         {% querystring my_query_dict my_dict foo=3 bar=None %}
     """
 
-    warnings.warn(
-        "This template tag is a copy of querystring template tag implemented in django 5.1."
-        "Remove this when update.",
-        category=RemovedInDjango51Warning,
-    )
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : avertissement de migration
+    # devenu obsolete (RemovedInDjango51Warning n'existe plus sous Django
+    # 5.2+), retire pour ne pas casser l'import. Le TODO "remplacer par le
+    # tag natif" reste valable et est documente dans le spike #647.
     if not args:
         args = [context.request.GET]
     params = QueryDict(mutable=True)
