@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Calendrier d'épandage, questions du simulateur et carte de la parcelle (simulateur nitrates).">
+    <meta name="keywords"
+          content="nitrates, épandage, calendrier, zone vulnérable">
+    <title>Simulateur nitrates</title>
+    <style>
+      /* Vue MCP Apps du simulateur nitrates : rendue par l'assistant (ChatGPT,
+   Claude...) dans un cadre isole, sous la reponse d'un outil. Palette du
+   calendrier du simulateur (calendrier.css). */
+      :root {
+        --fond: #ffffff;
+        --texte: #161616;
+        --discret: #5a5a6e;
+        --trait: #dddde8;
+        --bleu: #000091;
+        --bleu-doux: #e3e3fd;
+        --rouge-fond: #fddede;
+        --rouge: #f95a5c;
+        --orange: #fa7a35;
+        --vert-fond: #c3fad5;
+        --vert: #4b9f6c;
+        font-family: Marianne, "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --fond: #1e1e2a;
+        --texte: #ececf4;
+        --discret: #a9a9c2;
+        --trait: #3a3a50;
+        --bleu: #9a9aff;
+        --bleu-doux: #2b2b5c;
+        --rouge-fond: #4a2326;
+        --vert-fond: #1d3d2a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--fond);
+        color: var(--texte);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      #app {
+        padding: 12px 14px 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .discret {
+        color: var(--discret);
+        font-size: 12.5px;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 8px 14px;
+        border: 1px solid var(--bleu);
+        background: var(--bleu);
+        color: #fff;
+      }
+
+      button.secondaire {
+        background: transparent;
+        color: var(--bleu);
+      }
+
+      button:disabled {
+        opacity: .5;
+        cursor: default;
+      }
+
+      button:focus-visible,
+      input:focus-visible+span {
+        outline: 2px solid var(--bleu);
+        outline-offset: 2px;
+      }
+
+      /* Calendrier */
+      .cal {
+        display: grid;
+        gap: 6px;
+      }
+
+      .mois {
+        position: relative;
+        height: 16px;
+        font-size: 11px;
+        color: var(--discret);
+      }
+
+      .mois span {
+        position: absolute;
+        top: 0;
+      }
+
+      .ligne {
+        display: grid;
+        grid-template-columns: var(--etiquette, 0px) 1fr;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .ligne .nom {
+        font-size: 12.5px;
+      }
+
+      .barre {
+        position: relative;
+        display: flex;
+        height: 26px;
+      }
+
+      .barre div {
+        height: 100%;
+        border-top: 3px solid;
+        border-bottom: 3px solid;
+      }
+
+      .r-interdiction {
+        background: var(--rouge-fond);
+        border-color: var(--rouge) !important;
+      }
+
+      .r-conditions {
+        background: repeating-linear-gradient(45deg, var(--rouge-fond) 0 3px, var(--orange) 3px 5px);
+        border-color: var(--orange) !important;
+      }
+
+      .r-libre {
+        background: var(--vert-fond);
+        border-color: var(--vert) !important;
+      }
+
+      .r-autre {
+        background: var(--trait);
+        border-color: var(--discret) !important;
+      }
+
+      .marque {
+        position: absolute;
+        top: -4px;
+        bottom: -4px;
+        width: 3px;
+        background: var(--bleu);
+      }
+
+      .mois.date span {
+        font-weight: 700;
+        color: var(--bleu);
+        white-space: nowrap;
+      }
+
+      .legende {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 16px;
+        font-size: 12px;
+        color: var(--discret);
+      }
+
+      .legende i {
+        display: inline-block;
+        width: 18px;
+        height: 11px;
+        vertical-align: -1px;
+        margin-right: 5px;
+        border-top: 2px solid;
+        border-bottom: 2px solid;
+      }
+
+      .verdict {
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-weight: 600;
+      }
+
+      .v-interdiction {
+        background: var(--rouge-fond);
+      }
+
+      .v-conditions {
+        background: #ffe9d9;
+        color: #7a3500;
+      }
+
+      :root[data-theme="dark"] .v-conditions {
+        background: #4a3020;
+        color: #ffc9a3;
+      }
+
+      .v-libre {
+        background: var(--vert-fond);
+      }
+
+      ul.liens {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      a {
+        color: var(--bleu);
+      }
+
+      /* Questions */
+      fieldset {
+        border: 1px solid var(--trait);
+        border-radius: 8px;
+        margin: 0;
+        padding: 10px 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      /* Legende flottante = contenu ordinaire du cadre : une question longue
+         reste dedans au lieu de chevaucher la bordure. */
+      legend {
+        float: left;
+        width: 100%;
+        font-weight: 600;
+        padding: 0;
+      }
+
+      .choix {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .choix label {
+        display: inline-flex;
+      }
+
+      .choix input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .choix span {
+        border: 1px solid var(--bleu);
+        color: var(--bleu);
+        border-radius: 18px;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+
+      .choix input:checked+span {
+        background: var(--bleu);
+        color: #fff;
+      }
+
+      /* Carte */
+      #carte {
+        height: 320px;
+        border-radius: 8px;
+        border: 1px solid var(--trait);
+      }
+
+      .numero {
+        background: #fff;
+        border: 3px solid #ce0500;
+        border-radius: 50%;
+        width: 30px !important;
+        height: 30px !important;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: #ce0500;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .envoye {
+        color: var(--vert);
+        font-weight: 600;
+      }
+
+      .r-a-preciser {
+        background: repeating-linear-gradient(45deg, var(--trait) 0 4px, var(--fond) 4px 8px);
+        border-color: var(--discret) !important;
+        font-size: 11.5px;
+        color: var(--texte);
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      input.date {
+        font: inherit;
+        width: 90px;
+        padding: 6px 8px;
+        border: 1px solid var(--bleu);
+        border-radius: 6px;
+        background: var(--fond);
+        color: var(--texte);
+      }
+
+      /* Rien ne doit elargir la vue au-dela du cadre de l'hote. */
+      .ligne {
+        grid-template-columns: var(--etiquette, 0px) minmax(0, 1fr);
+      }
+
+      .barre,
+      .barre>div,
+      .r-a-preciser {
+        min-width: 0;
+      }
+
+      fieldset {
+        min-width: 0;
+      }
+
+      legend {
+        white-space: normal;
+      }
+
+      .choix span {
+        white-space: normal;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <p class="discret">Chargement du simulateur…</p>
+    </div>
+    <script>
+(function () {
+  "use strict";
+  var app = document.getElementById("app");
+
+  // ─── Pont MCP Apps (JSON-RPC sur postMessage, spec 2026-01-26) ─────────
+  var attente = {}, compteur = 0;
+  function envoyer(message) { window.parent.postMessage(message, "*"); }
+  function requete(method, params) {
+    return new Promise(function (ok, ko) {
+      var id = ++compteur;
+      attente[id] = { ok: ok, ko: ko };
+      envoyer({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+    });
+  }
+  function notifier(method, params) { envoyer({ jsonrpc: "2.0", method: method, params: params || {} }); }
+  function dire(texte) {
+    // Message ajoute a la conversation au nom de l'agriculteur : le modele
+    // le lit et continue, comme si l'agriculteur l'avait tape.
+    return requete("ui/message", { role: "user", content: [{ type: "text", text: texte }] });
+  }
+  function appelerOutil(nom, args) { return requete("tools/call", { name: nom, arguments: args }); }
+  function ouvrirLien(url) { requete("ui/open-link", { url: url }).catch(function () { window.open(url, "_blank"); }); }
+
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if (m.id && attente[m.id] && !m.method) {
+      if (m.error) attente[m.id].ko(m.error); else attente[m.id].ok(m.result);
+      delete attente[m.id];
+      return;
+    }
+    if (m.method && m.id !== undefined && m.id !== null) {
+      // Requete de l'hote (ping, ui/resource-teardown...) : toujours repondre,
+      // sinon l'hote peut croire la vue morte et la recharger.
+      var connue = m.method === "ping" || m.method === "ui/resource-teardown";
+      envoyer(connue
+        ? { jsonrpc: "2.0", id: m.id, result: {} }
+        : { jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "Méthode non supportée : " + m.method } });
+      return;
+    }
+    if (m.method === "ui/notifications/tool-result") rendre(m.params || {});
+    if (m.method === "ui/notifications/host-context-changed" && m.params) theme(m.params.theme);
+  });
+
+  function theme(t) { if (t) document.documentElement.setAttribute("data-theme", t); }
+  // Hauteur du contenu seulement, et seulement quand elle change vraiment :
+  // la largeur est celle que l'hote donne, la renvoyer ne sert qu'a risquer
+  // une boucle de redimensionnement.
+  var derniereHauteur = 0;
+  function signalerTaille() {
+    var hauteur = Math.ceil(app.getBoundingClientRect().height);
+    if (Math.abs(hauteur - derniereHauteur) < 2) return;
+    derniereHauteur = hauteur;
+    notifier("ui/notifications/size-changed", { height: hauteur });
+  }
+  if (window.ResizeObserver) new ResizeObserver(signalerTaille).observe(app);
+
+  // Leaflet charge a la demande : une balise <script src> en tete bloquait
+  // le demarrage de la vue tant que le CDN n'avait pas repondu, et l'hote
+  // abandonne si la vue ne se signale pas a temps.
+  var LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min";
+  var leaflet = null;
+  function chargerLeaflet() {
+    if (!leaflet) {
+      leaflet = new Promise(function (ok, ko) {
+        var css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = LEAFLET + ".css";
+        document.head.appendChild(css);
+        var js = document.createElement("script");
+        js.src = LEAFLET + ".js";
+        js.onload = function () { ok(window.L); };
+        js.onerror = ko;
+        document.head.appendChild(js);
+      });
+    }
+    return leaflet;
+  }
+
+  requete("ui/initialize", {
+    appInfo: { name: "nitrates-epandage", version: "0.1.0" },
+    appCapabilities: { availableDisplayModes: ["inline"] },
+    protocolVersion: "2026-01-26"
+  }).then(function (res) {
+    if (res && res.hostContext) theme(res.hostContext.theme);
+    notifier("ui/notifications/initialized", {});
+  }).catch(function () {});
+
+
+  // ─── Rendu ──────────────────────────────────────────────────────────────
+  function el(tag, attrs, enfants) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === "texte") n.textContent = attrs[k];
+      else if (k.indexOf("on") === 0) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (enfants || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+
+  function donnees(resultat) {
+    if (resultat.structuredContent) return resultat.structuredContent;
+    var texte = (resultat.content || []).filter(function (c) { return c.type === "text"; })[0];
+    try { return JSON.parse(texte.text); } catch (e) { return {}; }
+  }
+
+  // Le meme resultat arrive par deux canaux dans ChatGPT (notification MCP
+  // Apps et window.openai), pas toujours avec les memes metadonnees : on ne
+  // redessine que si le resultat change, ou si les metadonnees (carte,
+  // calendrier) arrivent apres coup. Redessiner fait sauter la vue et perdre
+  // les reponses en cours de saisie.
+  var dejaRendu = null, avecMeta = false;
+  function rendre(resultat) {
+    var d = donnees(resultat), meta = resultat._meta || {};
+    var cle = JSON.stringify(d), aMeta = Object.keys(meta).length > 0;
+    if (cle === dejaRendu && (avecMeta || !aMeta)) return;
+    dejaRendu = cle;
+    avecMeta = aMeta;
+    app.innerHTML = "";
+    try {
+      afficher(d, meta);
+    } catch (err) {
+      // Une erreur non rattrapee fait afficher a l'hote « impossible
+      // d'afficher » a la place de toute la vue.
+      if (window.console) console.error(err);
+      app.innerHTML = "";
+      app.appendChild(el("p", { "class": "discret", texte: "Affichage indisponible : voir la réponse de l'assistant." }));
+    }
+  }
+
+  function afficher(d, meta) {
+    var deja = meta["nitrates/reponses"] || {};
+    if (d.statut === "choix_a_faire") return vueChoix(d);
+    if (d.statut === "questions_complementaires") return vueQuestions(d, deja);
+    if (d.statut === "resultat" && d.resultat) return vueResultat(d, deja);
+    if ((d.cultures || d.types) && meta["nitrates/rangees"]) return vueMatrice(d, meta, deja);
+    if (d.localisation && meta["nitrates/carte"]) return vueCarte(d, meta["nitrates/carte"]);
+    app.appendChild(el("p", { "class": "discret", texte: d.explication || d.erreur || "Voir la réponse de l'assistant." }));
+  }
+
+  // Calendrier : jour 0 = 1er juillet, annee culturale de 365 jours.
+  var DEBUT_MOIS = [0, 31, 62, 92, 123, 153, 184, 215, 243, 274, 304, 335];
+  var MOIS = ["juil.", "août", "sept.", "oct.", "nov.", "déc.", "janv.", "févr.", "mars", "avr.", "mai", "juin"];
+  function jour(jjmm) {
+    var p = jjmm.split("/"), j = +p[0], m = +p[1];
+    var idx = (m + 5) % 12;  // juillet -> 0
+    return DEBUT_MOIS[idx] + j - 1;
+  }
+  function classeRegime(r) {
+    if (r === "interdiction") return "r-interdiction";
+    if (r === "autorisation_sous_condition" || r === "plafonnement") return "r-conditions";
+    if (r === "libre") return "r-libre";
+    return "r-autre";
+  }
+  function barre(plages, date, aPreciser) {
+    var b = el("div", { "class": "barre" });
+    if (!plages) {
+      // Culture qui depend d'une precision : dessinee, jamais omise.
+      b.appendChild(el("div", { "class": "r-a-preciser", style: "flex:1", texte: "À préciser : " + (aPreciser || "") }));
+      return b;
+    }
+    plages.forEach(function (p) {
+      var largeur = jour(p.au) - jour(p.du) + 1;
+      b.appendChild(el("div", { "class": classeRegime(p.regime), style: "flex:" + largeur, title: p.du + " → " + p.au + " : " + (p.signification || p.regime) }));
+    });
+    if (date) {
+      var m = el("div", { "class": "marque", style: "left:" + ((jour(date) + 0.5) / 365 * 100) + "%" });
+      b.appendChild(m);
+    }
+    return b;
+  }
+  function calendrier(lignes, date, etiquette) {
+    var cal = el("div", { "class": "cal", style: "--etiquette:" + (etiquette ? "230px" : "0px") });
+    if (date) {
+      // Etiquette de la date sur sa propre ligne, au-dessus des mois.
+      var pct = (jour(date) + 0.5) / 365 * 100;
+      var etiquetteDate = el("div", { "class": "mois date" }, [
+        el("span", { style: "left:" + Math.min(pct, 85) + "%", texte: "Votre date : " + date })
+      ]);
+      cal.appendChild(el("div", { "class": "ligne" }, [el("span"), etiquetteDate]));
+    }
+    var mois = el("div", { "class": "mois" });
+    MOIS.forEach(function (nom, i) { mois.appendChild(el("span", { style: "left:" + (DEBUT_MOIS[i] / 365 * 100) + "%", texte: nom })); });
+    cal.appendChild(el("div", { "class": "ligne" }, [el("span"), mois]));
+    lignes.forEach(function (l) {
+      var nom = l.lien
+        ? el("a", { "class": "nom", href: l.lien, texte: l.libelle, title: "Ouvrir la simulation officielle", onclick: function (e) { e.preventDefault(); ouvrirLien(l.lien); } })
+        : el("span", { "class": "nom", texte: l.libelle || "" });
+      cal.appendChild(el("div", { "class": "ligne" }, [nom, barre(l.plages, date, l.a_preciser)]));
+    });
+    cal.appendChild(el("div", { "class": "legende" }, [
+      el("span", {}, [el("i", { "class": "r-interdiction" }), "Épandage interdit"]),
+      el("span", {}, [el("i", { "class": "r-conditions" }), "Autorisé sous conditions"]),
+      el("span", {}, [el("i", { "class": "r-libre" }), "Pas de période d'interdiction"])
+    ]));
+    return cal;
+  }
+
+  function vueResultat(d, deja) {
+    var r = d.resultat;
+    app.appendChild(el("h2", { texte: d.saisie.culture.libelle + " · " + d.saisie.fertilisant.libelle }));
+    app.appendChild(el("div", { "class": "discret", texte: r.programme + (d.localisation ? " · " + d.localisation.commune : "") }));
+    if (r.a_la_date && r.a_la_date.signification) {
+      var c = { interdiction: "v-interdiction", autorisation_sous_condition: "v-conditions", plafonnement: "v-conditions", libre: "v-libre" }[r.a_la_date.regime] || "";
+      app.appendChild(el("div", { "class": "verdict " + c, texte: "Le " + r.a_la_date.date + " : " + r.a_la_date.signification }));
+    }
+    if (r.calendrier) app.appendChild(calendrier([{ plages: r.calendrier }], r.a_la_date && r.a_la_date.date));
+    if (r.dates_a_preciser) {
+      // Le calendrier depend des dates du couvert : on les fait saisir ici.
+      app.appendChild(el("div", { "class": "verdict v-conditions", texte: "Le calendrier dépend des dates de votre couvert : indiquez-les." }));
+      app.appendChild(formulaire(r.dates_a_preciser, deja));
+    }
+    if (r.prescriptions && r.prescriptions.length) {
+      var ul = el("ul", { "class": "liens" });
+      r.prescriptions.forEach(function (p) {
+        var a = el("a", { href: p.url, texte: p.code.toUpperCase() + (p.resume ? " : " + p.resume : ""), onclick: function (e) { e.preventDefault(); ouvrirLien(p.url); } });
+        ul.appendChild(el("li", {}, [a]));
+      });
+      app.appendChild(el("div", {}, [el("div", { "class": "discret", texte: "Prescriptions à respecter" }), ul]));
+    }
+    if (d.lien_simulation) app.appendChild(el("div", { "class": "actions" }, [el("button", { "class": "secondaire", texte: "Ouvrir la simulation officielle", onclick: function () { ouvrirLien(d.lien_simulation); } })]));
+  }
+
+  function vueMatrice(d, meta, deja) {
+    var questions = meta["nitrates/questions"];
+    app.appendChild(el("h2", { texte: meta["nitrates/titre"] || "Calendrier d'épandage" }));
+    if (d.localisation) app.appendChild(el("div", { "class": "discret", texte: d.localisation.commune }));
+    app.appendChild(calendrier(meta["nitrates/rangees"], d.date, true));
+    if (questions && questions.length) {
+      app.appendChild(el("h2", { texte: d.types ? "Pour trancher les types à préciser" : "Pour trancher les cultures à préciser" }));
+      app.appendChild(formulaire(questions, deja));
+    }
+  }
+
+  function vueQuestions(d, deja) {
+    app.appendChild(el("h2", { texte: "Pour répondre, le simulateur a besoin de précisions" }));
+    app.appendChild(formulaire(d.questions, deja));
+  }
+
+  // Culture ou produit generique (« couvert », « fumier ») : c'est
+  // l'agriculteur qui choisit, jamais l'assistant.
+  function vueChoix(d) {
+    app.appendChild(el("h2", { texte: d.question }));
+    var liste = el("div", { "class": "choix" });
+    var statut = el("span", { "class": "discret" });
+    d.choix.forEach(function (c) {
+      liste.appendChild(el("button", { type: "button", "class": "secondaire", texte: c.libelle, onclick: function () {
+        Array.prototype.forEach.call(liste.querySelectorAll("button"), function (b) { b.setAttribute("disabled", "disabled"); });
+        dire("Mon choix : " + c.libelle + " (" + d.champ + "=" + c.valeur + ")")
+          .then(function () { statut.textContent = "Choix envoyé"; statut.className = "envoye"; })
+          .catch(function () { statut.textContent = "Envoi impossible, répondez dans le chat."; });
+      } }));
+    });
+    app.appendChild(liste);
+    app.appendChild(el("div", { "class": "actions" }, [statut]));
+  }
+
+  // Questions du simulateur : boutons de choix, ou date JJ/MM (dates du
+  // couvert). Pas de <form> soumis : dans un cadre isole sans `allow-forms`,
+  // l'evenement submit n'est pas delivre ; un bouton ordinaire marche partout.
+  function formulaire(questions, deja) {
+    var form = el("div", {});
+    var reponses = {};
+    questions.forEach(function (q) {
+      var fs = el("fieldset", { "data-champ": q.champ }, [el("legend", { texte: q.question })]);
+      if (q.aide) fs.appendChild(el("div", { "class": "discret", texte: q.aide }));
+      if (q.choix && q.choix.length) {
+        var choix = el("div", { "class": "choix" });
+        q.choix.forEach(function (c, i) {
+          var input = el("input", { type: "radio", name: q.champ, value: String(i) });
+          input.addEventListener("change", function () { reponses[q.champ] = c; maj(); });
+          choix.appendChild(el("label", {}, [input, el("span", { texte: c.libelle })]));
+        });
+        fs.appendChild(choix);
+      } else {
+        var saisie = el("input", { type: "text", inputmode: "numeric", placeholder: "JJ/MM", maxlength: "5", "class": "date" });
+        saisie.addEventListener("input", function () {
+          var v = saisie.value.trim();
+          if (/^\d{1,2}\/\d{1,2}$/.test(v)) reponses[q.champ] = { valeur: v, libelle: v }; else delete reponses[q.champ];
+          maj();
+        });
+        fs.appendChild(saisie);
+      }
+      form.appendChild(fs);
+    });
+    var bouton = el("button", { type: "button", texte: "Envoyer mes réponses", disabled: "disabled" });
+    var statut = el("span", { "class": "discret" });
+    form.appendChild(el("div", { "class": "actions" }, [bouton, statut]));
+    function visible(q) {
+      if (!q.seulement_si) return true;
+      return Object.keys(q.seulement_si).every(function (k) {
+        return reponses[k] && String(reponses[k].valeur) === String(q.seulement_si[k]);
+      });
+    }
+    function maj() {
+      var manquantes = 0;
+      questions.forEach(function (q) {
+        var fs = form.querySelector('[data-champ="' + q.champ + '"]');
+        fs.hidden = !visible(q);
+        if (visible(q) && !reponses[q.champ]) manquantes++;
+      });
+      if (manquantes) bouton.setAttribute("disabled", "disabled"); else bouton.removeAttribute("disabled");
+    }
+    bouton.addEventListener("click", function () {
+      // Les reponses deja donnees sont renvoyees avec les nouvelles : l'assistant
+      // n'a qu'a recopier `reponses`.
+      var lisible = [], valeurs = Object.assign({}, deja || {});
+      questions.filter(visible).forEach(function (q) {
+        lisible.push(q.question + " " + reponses[q.champ].libelle);
+        valeurs[q.champ] = reponses[q.champ].valeur;
+      });
+      bouton.setAttribute("disabled", "disabled");
+      dire("Mes réponses : " + lisible.join(" ; ") + " (reponses=" + JSON.stringify(valeurs) + ")")
+        .then(function () { statut.textContent = "Réponses envoyées"; statut.className = "envoye"; })
+        .catch(function () { statut.textContent = "Envoi impossible, répondez dans le chat."; bouton.removeAttribute("disabled"); });
+    });
+    maj();
+    return form;
+  }
+
+  function vueCarte(d, carte) {
+    app.appendChild(el("h2", { texte: d.question || "Où est votre parcelle ? Cliquez sur la carte." }));
+    app.appendChild(el("div", { "class": "discret", texte: [d.localisation.commune, (d.programmes_applicables || []).join(" / ")].filter(Boolean).join(" · ") }));
+    var div = el("div", { id: "carte" });
+    app.appendChild(div);
+    var info = el("div", { "class": "discret", texte: "Les zones rouges numérotées sont des aires de captage, aux règles renforcées." });
+    var valider = el("button", { texte: "C'est ma parcelle", disabled: "disabled" });
+    var statut = el("span", { "class": "discret" });
+    app.appendChild(info);
+    app.appendChild(el("div", { "class": "actions" }, [valider, statut]));
+    // Reponse directe, sans clic sur la carte : « zone 1 » ou « en dehors ».
+    if (d.zones_sur_la_carte && d.zones_sur_la_carte.length) {
+      var raccourcis = el("div", { "class": "actions" }, [el("span", { "class": "discret", texte: "Ou répondez directement :" })]);
+      d.zones_sur_la_carte.forEach(function (z) {
+        raccourcis.appendChild(el("button", { type: "button", "class": "secondaire", texte: "Dans la zone " + z.numero,
+          onclick: function () { dire("Ma parcelle est dans la zone " + z.numero + " (" + z.nom + ") : zone=" + z.numero + "."); } }));
+      });
+      if (d.hors_zones_possible) {
+        raccourcis.appendChild(el("button", { type: "button", "class": "secondaire", texte: "En dehors",
+          onclick: function () { dire("Ma parcelle est en dehors de l'aire de captage : zone=hors."); } }));
+      }
+      app.appendChild(raccourcis);
+    }
+    chargerLeaflet().then(function () {
+      carteLeaflet(d, carte, div, statut, valider);
+    }).catch(function () {
+      info.textContent = "Carte indisponible : décrivez où est la parcelle dans le chat.";
+    });
+  }
+
+  function carteLeaflet(d, carte, div, statut, valider) {
+    var map = L.map(div, { scrollWheelZoom: false });
+    L.tileLayer("https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png",
+      { maxZoom: 18, attribution: "Plan IGN, Géoplateforme" }).addTo(map);
+    var groupe = L.featureGroup().addTo(map);
+    if (carte.contour) L.geoJSON(carte.contour, { style: { color: "#000091", weight: 3, fill: false } }).addTo(groupe);
+    (carte.zones || []).forEach(function (z) {
+      var couche = L.geoJSON(z.geojson, { style: { color: "#ce0500", weight: 2, fillColor: "#ce0500", fillOpacity: 0.2 } }).addTo(groupe);
+      var c = couche.getBounds().getCenter();
+      L.marker(c, { icon: L.divIcon({ className: "numero", html: String(z.numero) }), interactive: false }).addTo(map);
+    });
+    if (carte.parcelle) L.geoJSON(carte.parcelle, { style: { color: "#161616", weight: 2, fillColor: "#ffd200", fillOpacity: 0.6 } }).addTo(groupe);
+    if (carte.point) L.circleMarker([carte.point.lat, carte.point.lng], { radius: 7, color: "#161616", fillColor: "#161616", fillOpacity: 1 }).addTo(groupe);
+    if (groupe.getLayers().length) map.fitBounds(groupe.getBounds(), { padding: [10, 10] });
+    else map.setView([d.localisation.lat, d.localisation.lng], 14);
+
+    var marqueur = null, choisi = null;
+    map.on("click", function (e) {
+      var ll = e.latlng;
+      if (marqueur) marqueur.setLatLng(ll); else marqueur = L.circleMarker(ll, { radius: 8, color: "#161616", fillColor: "#ffd200", fillOpacity: 1 }).addTo(map);
+      valider.setAttribute("disabled", "disabled");
+      statut.textContent = "Vérification du point…";
+      appelerOutil("localiser_parcelle", { lat: ll.lat, lng: ll.lng }).then(function (res) {
+        var r = donnees(res || {});
+        var zone = r.en_zone_action_renforcee ? "dans une aire de captage (zone d'action renforcée)" : "hors aire de captage";
+        choisi = { lat: ll.lat, lng: ll.lng, commune: (r.localisation || {}).commune, zone: zone, programmes: r.programmes_applicables || [] };
+        statut.textContent = (choisi.commune || "") + " : " + zone + ".";
+        valider.removeAttribute("disabled");
+      }).catch(function () {
+        choisi = { lat: ll.lat, lng: ll.lng, zone: "", programmes: [] };
+        statut.textContent = "Point choisi.";
+        valider.removeAttribute("disabled");
+      });
+    });
+    valider.addEventListener("click", function () {
+      if (!choisi) return;
+      valider.setAttribute("disabled", "disabled");
+      dire("Ma parcelle est ici" + (choisi.commune ? ", à " + choisi.commune : "") + (choisi.zone ? ", " + choisi.zone : "") +
+        " (point choisi sur la carte : lat=" + choisi.lat.toFixed(5) + ", lng=" + choisi.lng.toFixed(5) + ").")
+        .then(function () { statut.textContent = "Point envoyé."; statut.className = "envoye"; })
+        .catch(function () { statut.textContent = "Envoi impossible : décrivez le point dans le chat."; valider.removeAttribute("disabled"); });
+    });
+  }
+
+  // ChatGPT donne aussi le resultat directement (window.openai), parfois des
+  // le chargement : rendu ici, une fois tout le script defini.
+  function depuisOpenai() {
+    var o = window.openai;
+    if (o && o.toolOutput) rendre({ structuredContent: o.toolOutput, _meta: o.toolResponseMetadata || {} });
+  }
+  window.addEventListener("openai:set_globals", depuisOpenai);
+  depuisOpenai();
+})();
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ DEBUG = True
 # (override l'env var, qui sert plutot pour staging/prod).
 NITRATES_FORM_DEBUG_PANELS = True
 NITRATES_POC_APLSH = True
+NITRATES_MCP = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",

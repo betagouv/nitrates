@@ -120,6 +120,13 @@ class RequireLoginEverywhere:
         # NITRATES_ROOT_OUVERT, ils doivent repondre meme site ferme.
         if path in CHEMINS_SEO_PUBLICS:
             return True
+        # Serveur MCP (POC) : ses clients sont les serveurs des assistants
+        # conversationnels, qui ne se connectent pas. N'ouvre rien tant que le
+        # flag est eteint (la vue repond alors 404 a tout le monde).
+        if (path == "/mcp" or path.startswith("/mcp/")) and getattr(
+            settings, "NITRATES_MCP", False
+        ):
+            return True
         # Root `/` ouvert aux alpha-testeurs (issue #113) : exempte SEULEMENT
         # la racine exacte, pas /simulateur/ ni l'admin qui restent fermes.
         if getattr(settings, "NITRATES_ROOT_OUVERT", False):
