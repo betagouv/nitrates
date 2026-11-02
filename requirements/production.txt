@@ -335,7 +335,7 @@ ruamel-yaml==0.19.1
     # via -r base.txt
 s3transfer==0.13.1
     # via boto3
-scipy==1.18.0
+scipy==1.18.1
     # via -r base.txt
 sentry-sdk==2.69.1
     # via -r production.in
