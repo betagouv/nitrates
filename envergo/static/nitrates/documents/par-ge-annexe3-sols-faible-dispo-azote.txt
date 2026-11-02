@@ -1,0 +1,205 @@
+Annexe 3 : Sols à faible disponibilité en azote
+Seul le type de sol fait foi, pas la petite région dans lequel il est majoritaire
+• Départements des Ardennes (08), de l’Aube (10), de la Marne (51) et de la Haute-Marne (52) :
+
+Types de sol
+
+G1 - sols argilo-calcaires très
+superficiels avec cailloux
+G2 - sols argilo-calcaires
+superficiels avec cailloux
+G3 - sols argilo-calcaires
+moyennement profonds
+avec cailloux
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+profondeur moyenne
+dans l’horizon de
+d’enracinement pour un
+surface
+blé (cm)
+< 20
+
+oui
+
+20-40
+
+oui
+
+40-60
+
+oui
+
+Petites régions agricoles où le
+type de sol est majoritaire *
+Barrois
+Plateau langrois montagne
+Vignoble du Barrois
+Barrois
+Barrois vallée
+Plateau langrois montagne
+Vignoble du Barrois
+
+Graveluche
+
+60
+
+non
+
+Champagne crayeuse
+Champagne humide
+Pays remois
+Plaine de brienne
+Plaine de Troyes
+Pays d'othe
+
+Craie moyenne
+
+90
+
+non
+
+Champagne crayeuse
+
+Sable-Grève
+
+60
+
+possible
+
+Argonne
+Pays remois
+Plaine de brienne
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.
+
+• Départements du bas-Rhin (67) et de Haut-Rhin (68) :
+
+Types de sol
+
+67 : Sol sableux des rivières
+vosgiennes Nord
+67 : Sol sableux à limonosableux des rivières
+vosgiennes Centre
+67 : Ried brun caillouteux
+68 : Sol superficiel de Hardt
+68 : Ochsenfeld
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+profondeur moyenne
+dans l’horizon de
+d’enracinement pour un
+surface
+blé (cm)
+
+Petites régions agricoles où le
+type de sol est majoritaire *
+
+Superficiel
+
+parfois
+
+67 : Plaine du Rhin
+
+Superficiel
+
+non
+
+67 : Plaine du Rhin
+67 : Région sous-Vosgienne
+
+Superficiel
+Superficiel
+Superficiel
+
+oui
+oui
+oui
+
+67 : Ried
+68 : Hardt
+68 : Oschsenfeld
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.
+
+• Départements de la Meurthe-et-Moselle (54), de la Meuse (55), de la Moselle (57) et des
+Vosges (88) :
+
+Types de sol
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+profondeur moyenne
+dans l’horizon de
+d’enracinement pour un
+surface
+blé (cm)
+
+Sols à cailloux
+
+<40
+
+oui
+
+Sols argilocalcaires
+
+40-80
+
+oui
+
+Sols sur marne peu
+profonde
+
+Sols sableux (sur alluvions)
+
+Sols sableux (sur grèves)
+
+< 60
+
+80
+
+80
+
+Petites régions agricoles où le
+type de sol est majoritaire *
+Argonne
+Barrois
+Chatenois
+Côtes de Meuse
+Pays de Montmédy
+Pays Haut lorrain
+Plateau de Haye
+Plateau Lorrain
+
+non
+
+Argonne
+Barrois
+Chatenois
+Côtes de Meuse
+Montagne Vosgienne
+Pays de Montmédy
+Plateau Lorrain
+Vôge
+Woëvre
+
+possible
+
+Plateau Lorrain
+Vallée de la Moselle
+Vôge
+
+possible
+
+Argonne
+Montagne Vosgienne
+Plateau Lorrain
+Vôge
+Warnd
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.

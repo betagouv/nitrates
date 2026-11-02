@@ -516,6 +516,14 @@ NITRATES_ROOT_OUVERT = env.bool("DJANGO_NITRATES_ROOT_OUVERT", default=False)
 # l'admin des referentiels APLSH disparaissent (la table reste en base).
 NITRATES_POC_APLSH = env.bool("DJANGO_NITRATES_POC_APLSH", default=False)
 
+# POC serveur MCP (/mcp/) : expose le simulateur aux assistants
+# conversationnels (ChatGPT, Le Chat...). Lecture seule, sans authentification.
+# Hors flag, /mcp/ repond 404 et reste sous le lockdown.
+NITRATES_MCP = env.bool("DJANGO_NITRATES_MCP", default=False)
+# Cartes et calendriers aussi en images PNG dans les reponses MCP, en plus de
+# la vue interactive (doublon dans ChatGPT et Claude, utile ailleurs).
+NITRATES_MCP_IMAGES_PNG = env.bool("DJANGO_NITRATES_MCP_IMAGES_PNG", default=False)
+
 # Id du board Miro juriste (arbre réglementaire). Sert à construire les
 # deeplinks `?moveToWidget=<id>` du dashboard de validation. Snapshot des
 # widget_id dans envergo/nitrates/specs/snapshot_miro/arbre_complet/<date>/.

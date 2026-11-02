@@ -1,0 +1,135 @@
+Annexe 1
+Partie I. Définitions, modalités de réalisation et de transmission des reliquats
+azotés
+I.1. Comment réaliser un reliquat ?
+Pour être exploitables, les reliquats doivent être réalisés à la bonne période et selon un
+protocole précis. Les reliquats sont réalisés par des professionnels agréés ou par l’exploitant
+seul s’il suit ce protocole. Un document pédagogique spécifique sur la réalisation des reliquats
+et leur interprétation sera mis à disposition.
+I.2. Combien dois-je réaliser de mesures de reliquats ?
+Concernant les reliquats azotés début drainage : une mesure de RDD est obligatoire pour
+chaque îlot cultural concerné par une demande de non implantation de couvert d’interculture
+prévue à l’article 2 du présent arrêté.
+Le reliquat est à réaliser sur une des parcelles de l’îlot sur laquelle le couvert d’interculture ne
+sera pas implanté. Il y a autant de reliquats à produire que d’îlots concernés par une
+dérogation sauf si plusieurs îlots sont concernés par un même motif de dérogation et un même
+précédent cultural ; dans ce cas un seul RDD sur l‘îlot le plus représentatif est requis. Le
+nombre de RDD à produire est toutefois plafonné à 4 RDD par exploitation et par an.
+Concernant les reliquats azotés avant épandage : une analyse est réalisée pour chaque îlot
+cultural représentatif pour répondre aux cas spécifiques (3) et (12) du calendrier d’épandage du
+PAN (Cf. partie suivante).
+I.3. Comment et à qui transmettre les résultats des reliquats réalisés
+Les résultats d’analyse des reliquats sont à transmettre dès leur réception par l’exploitant. Ils
+doivent être accompagnés des informations suivantes :
+
+
+
+
+
+
+
+
+
+
+date de réalisation du RDD
+géoréférencement des parcelles (coordonnées GPS) et code PAC des parcelles
+nom et code insee de la commune de la parcelle
+culture précédente
+◦ nature de la culture
+◦ date de récolte
+◦ rendement
+fertilisation du précédent
+◦ date(s)
+◦ type (s)
+◦ unités d’azote
+culture suivante (en place ou prévue)
+type de sol
+
+Un formulaire-type sera établi par les services de l’État.
+Ces documents (résultat du reliquat et formulaire) doivent être transmis à la DDT(M) du siège
+de l’exploitation par courrier ou de façon dématérialisée. Ils sont également à garder et tenir à
+disposition en cas de contrôle.
+
+Partie II. Définitions relatives à l’application des notes 1, 2, 3, 12 du
+calendrier d’épandage visées à l’annexe 1.I. du PAN7
+
+II.0. Un îlot cultural représentatif tel que mentionné au 5° du VII de l’annexe 1 du PAN7 est
+défini :
+
+ en nombre, par la surface de l'exploitation concernée par ces épandages, divisée par 20 ;
+ et au moins, par famille de précédent cultural (céréales et pseudo-céréales, oléagineux,
+protéagineux et légumineuses, légumes et fruits, autres) présent sur la surface concernée par
+ces épandages.
+
+II.1. Sol impropre à la réalisation de reliquat : pour la région Hauts-de-France, seuls les sols très
+caillouteux, sont considérés comme sols impropres à la réalisation de reliquat. Une analyse de
+sol devra être tenue à disposition de l’administration en cas de contrôle.
+II.2. Indicateurs de lixiviation : il s’agit du bilan azoté post-récolte si le sol est dit impropre à la
+réalisation de reliquats ; si non, il s’agit d’un reliquat azoté avant épandage. Des informations et
+justificatifs sont à tenir à disposition de l’administration : le type de précédent cultural et selon
+le cas, les justificatifs de calcul du bilan ou les analyses de reliquat.
+II.3. Dispositif de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées :
+il s’agit des mesures prévues dans l’étude d'impact ou d'incidence (par exemple, suivi
+piézométrique), ou à défaut, d’établir un suivi des indicateurs de lixiviation (comme défini cidessus) :
+
+ pour des épandages répondant à la note (1) du tableau du I. de l’annexe 1 du PAN7 :
+
+« (1) L'épandage de fertilisants azotés de type 0, de type I.a et d'effluents peu chargés peut être autorisé
+en période d'interdiction d'épandage, le cas échéant, dans la limite d'une dose maximale pouvant être
+portée à 100 kg d'azote potentiellement libéré jusqu'en sortie d'hiver par hectare depuis la récolte de la
+culture précédente, dans le cadre d'un plan d'épandage soumis à autorisation et à étude d'impact ou
+d'incidence, sous réserve que cette dernière démontre l'innocuité d'une telle pratique et qu'un dispositif
+de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées. Par ailleurs, le couvert
+végétal d'interculture doit être implanté précocement et maintenu au minimum 14 semaines. Les
+épandages ne sont pas possibles avant 4 semaines après implantation du CI et à partir de 20 jours
+avant la récolte ou la destruction du CI. »
+
+ pour des épandages répondant à la note (2) du tableau du I. de l’annexe 1 du PAN7 :
+« (2) Sur les îlots culturaux non concernés par la note (1), l'épandage de fertilisants azotés issus de
+traitement et transformation de matières premières en vue de la fabrication de produits alimentaires ou
+d'aliments pour animaux, de la préparation et du conditionnement de vins, ou de la production par
+distillation d'alcools de bouche d'origine agricole, peut être autorisé en période d'interdiction, le cas
+échéant, dans la limite d'une dose maximale pouvant être portée à 70 kg N d'azote potentiellement
+libéré jusqu'en sortie d'hiver par hectare depuis la récolte du précédent, dans le cadre d'un plan
+d'épandage soumis déclaration ou enregistrement, sous réserve qu'un dispositif de surveillance des
+reliquats azotés sous le couvert installé, et avant épandage, soit mis en place dans le périmètre
+d'épandage, dans les conditions prévues au 5° du VII de la présente annexe. Par ailleurs, le couvert
+végétal d'interculture doit être implanté précocement et maintenu au minimum 14 semaines. Les
+épandages ne sont pas possibles avant 4 semaines après implantation du CI et à partir de 20 jours
+avant la récolte ou la destruction du CI. »
+L’entreprise productrice des matières fertilisantes consulte en amont l’administration sur le
+dispositif prévu de surveillance des teneurs en azote nitrique et ammoniacal des eaux lixiviées.
+Si le dispositif de surveillance est réalisé sur d’autres exploitations, l’entreprise productrice de
+matières fertilisantes communique ce dispositif et les résultats aux exploitations concernées.
+
+II.4. Pour des épandages répondant à la note (3) du tableau du I. de l’annexe 1. du PAN7 :
+« (3) Sur les îlots culturaux non concernés par la note (1), l'épandage d'effluents d'élevage de type I.a, I.b
+et II autre que les effluents peu chargés en période d'interdiction est possible jusqu'à 20 jours avant la
+récolte ou la destruction du CI, et dans des conditions définies par le programme d'actions régional,
+notamment sur la durée et la période de présence du couvert et sur le plafonnement des apports à cette
+période, en vue de limiter les fuites de composés azotés dans l'eau.
+Les conditions pour de tels épandages consistent à mettre en place un dispositif de suivi des
+reliquats azotés avant épandage, dans les conditions prévues au 5° du VII de l’annexe 1 du
+PAN7.
+II.5. Pour des épandages répondant à la note (12) du tableau du I. de l’annexe 1. du PAN7 :
+« (12) L'épandage de fertilisants azotés issus de traitement et transformation des matières premières en
+vue de la fabrication de produits alimentaires ou d'aliments pour animaux peut être autorisé sur luzerne
+après la dernière coupe de l'année, dans le cadre d'un plan d'épandage soumis à autorisation et à étude
+d'impact ou d'incidence, sous réserve que cette dernière démontre l'innocuité d'une telle pratique et
+qu'un dispositif de surveillance des reliquats azotés avant épandage, soit mis en place dans le périmètre
+d'épandage.
+Le dispositif de surveillance des reliquats azotés est précisé par le programme d'actions régional.
+Les îlots culturaux concernés par ces épandages font l'objet d'un suivi d'indicateurs de risque de
+lixiviation des composés azotés. Les résultats des indicateurs sont transmis à l'administration. Le
+programme d'actions régional précise les informations à indiquer par l'agriculteur lors de la
+transmission à l'administration. Le cas échéant, l'agriculteur tient à disposition les justificatifs prévus
+par le programme d'actions régional. Dans le cas de sols impropres à la réalisation de reliquats au début
+de la période de drainage ou post-récolte, l'indicateur de risque de lixiviation est le bilan azoté postrécolte. Les sols impropres à la réalisation de reliquats sont définis par le programme d'actions régional.
+Dans le cas contraire, l'indicateur de risque de lixiviation est le reliquat azoté avant épandage. Le
+programme d'actions régional définit le protocole à respecter pour la réalisation de ces analyses. Une
+analyse est réalisée pour chaque îlot cultural représentatif. Les îlots culturaux sont définis par le
+programme d'actions régional. Les îlots culturaux représentatifs sont définis de sorte que le nombre
+d'analyses à réaliser par exploitation soit au moins supérieur ou égal à la surface de l'exploitation
+concernée par les épandages divisée par 20. »
+Le dispositif de surveillance des reliquats azotés est identique au dispositif de surveillance des
+teneurs en azote nitrique et ammoniacal des eaux lixiviées (défini ci-dessus).
