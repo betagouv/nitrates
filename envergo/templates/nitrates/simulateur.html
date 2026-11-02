@@ -13,12 +13,20 @@
   {% if afficher_resultat and not qc_en_attente %}
     {# #284 : popup de feedback fin de simulation + animation reward. #}
   {% endif %}
+  {% comment %}
+  #273 : htmx ne gere pas l'historique ici (sa restauration par instantane du
+  DOM rendrait une carte Leaflet morte) : soumission_partielle.js pousse l'URL
+  et recharge la page au retour arriere. Pas de feuille de style injectee non plus.
+  {% endcomment %}
+  <meta name="htmx-config"
+        content='{"historyEnabled": false, "includeIndicatorStyles": false}'>
 {% endblock %}
 
 {% block extra_js %}
   {% leaflet_js %}
   {% couleurs_zones "zv_nitrates" as zv_couleurs %}
   {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
+  {% if catalog_js %}{{ catalog_js|json_script:"nitrates-catalog-data" }}{% endif %}
   <script>
     // Force le path des marker icons Leaflet : sans ca, Leaflet derive
     // le path a partir du JS courant (hashe par whitenoise) -> 404.
@@ -40,25 +48,16 @@
       categorie_fertilisant: "{{ data.categorie_fertilisant|default:'' }}",
       sous_fertilisant: "{{ data.sous_fertilisant|default:'' }}",
     };
-    {% if moulinette %}
+    {% if catalog_js %}
     // Catalog deja resolu cote serveur : on l'expose pour repeupler le
     // bandeau localisation + le panneau debug au rechargement de page
     // (apres "Lancer la simulation" ou "Recommencer" avec lat/lng dans
     // l'URL). Sans ca, l'utilisateur perdrait le contexte de la parcelle.
-    window.NITRATES_CATALOG = {
-      department_code: "{{ moulinette.catalog.department_code|default:'' }}",
-      region_code: "{{ moulinette.catalog.region_code|default:'' }}",
-      region_label: "{{ moulinette.catalog.region_label|default:'' }}",
-      en_zone_vulnerable: {% if moulinette.catalog.en_zone_vulnerable %}true{% else %}false{% endif %},
-      bassin: "{{ moulinette.catalog.bassin|default:'' }}",
-      bassin_label: "{{ moulinette.catalog.bassin_label|default:'' }}",
-      en_zar: {% if moulinette.catalog.en_zar %}true{% else %}false{% endif %},
-      en_grand_est: {% if moulinette.catalog.region_code == "44" %}true{% else %}false{% endif %},
-      zone_grand_est_1: {% if moulinette.catalog.zone_grand_est_1 %}true{% else %}false{% endif %},
-      zone_grand_est_2: {% if moulinette.catalog.zone_grand_est_2 %}true{% else %}false{% endif %},
-      en_bretagne: {% if moulinette.catalog.region_code == "53" %}true{% else %}false{% endif %},
-      zone_mais_bretagne: "{{ moulinette.catalog.zone_mais_bretagne|default:'' }}",
-    };
+    // #273 : relu depuis le bloc JSON, que soumission_partielle.js relit aussi
+    // dans la reponse d'une soumission htmx.
+    window.NITRATES_CATALOG = JSON.parse(
+      document.getElementById("nitrates-catalog-data").textContent
+    );
     {% endif %}
   </script>
   {# static_v : ?v=<mtime> en DEBUG pour casser le cache navigateur du JS (sinon #}
@@ -91,16 +90,25 @@
   {# Reformatage cosmetique front-only de questions a rallonge (#192) : swap du #}
   {# texte brut vers une version paragraphee, sans toucher a l'arbre. #}
   <script defer src="{% static_v 'nitrates/question_reformat.js' %}"></script>
-  {% if afficher_resultat %}
-    <script defer src="{% static_v 'nitrates/subsidiaires_cascade.js' %}"></script>
-    {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
-    {# resultat final -> section Localisation/resultat en haut (#112). #}
-    <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
-    {# #271 : encart recap des choix (colonne gauche) + bouton Modifier. #}
-    <script defer src="{% static_v 'nitrates/recap_choix.js' %}"></script>
-    {# #271 : drawer lateral « Conditions d'epandage » (notes PC + dates ASC). #}
-    <script defer src="{% static_v 'nitrates/drawer_conditions.js' %}"></script>
-  {% endif %}
+  {% comment %}
+  Modules des QC et du resultat. #273 : charges sur TOUTES les pages (plus
+  seulement quand afficher_resultat) car une soumission htmx peut faire
+  apparaitre QC et resultat sans recharger la page ; chacun se (re)branche sur
+  l'evenement nitrates:rendu-remplace.
+  {% endcomment %}
+  <script defer src="{% static_v 'nitrates/subsidiaires_cascade.js' %}"></script>
+  {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
+  {# resultat final -> section Localisation/resultat en haut (#112). #}
+  <script defer src="{% static_v 'nitrates/scroll_resultat.js' %}"></script>
+  {# #271 : encart recap des choix (colonne gauche) + bouton Modifier. #}
+  <script defer src="{% static_v 'nitrates/recap_choix.js' %}"></script>
+  {# #271 : drawer lateral « Conditions d'epandage » (notes PC + dates ASC). #}
+  <script defer src="{% static_v 'nitrates/drawer_conditions.js' %}"></script>
+  {# Calendrier dynamique des regles calculatrice (sortait de _calculatrice_calendrier.html). #}
+  <script defer src="{% static_v 'nitrates/calculatrice-calendrier.js' %}"></script>
+  {# #273 : soumission htmx (vendorise, CSP self) + remplacement partiel des zones. #}
+  <script defer src="{% static 'nitrates/vendor/htmx-2.0.4.min.js' %}"></script>
+  <script defer src="{% static_v 'nitrates/soumission_partielle.js' %}"></script>
   {% comment %}
   #110 : glossaire cliquable + carte flottante de definition. EN DERNIER :
   il re-linkifie les textes produits par cascade.js / question_couvert_flow.js
@@ -117,18 +125,19 @@
   pendant la selection (formulaire + QC en attente), PAS sur la page resultat
   final (afficher_resultat sans QC en attente) : la progression n'a plus de sens
   une fois le resultat calcule.
+  #273 : toujours rendue, masquee (hidden) sur le resultat final, pour que
+  soumission_partielle.js puisse la masquer / re-afficher sans rechargement.
   {% endcomment %}
-  {% if not afficher_resultat or qc_en_attente %}
-    <div id="nitrates-progress-bar"
-         class="nitrates-progress"
-         role="progressbar"
-         aria-label="Progression de votre simulation"
-         aria-valuemin="0"
-         aria-valuemax="100"
-         aria-valuenow="0">
-      <div class="nitrates-progress__fill"></div>
-    </div>
-  {% endif %}
+  <div id="nitrates-progress-bar"
+       class="nitrates-progress"
+       role="progressbar"
+       aria-label="Progression de votre simulation"
+       aria-valuemin="0"
+       aria-valuemax="100"
+       aria-valuenow="0"
+       {% if afficher_resultat and not qc_en_attente %}hidden{% endif %}>
+    <div class="nitrates-progress__fill"></div>
+  </div>
 
   <div class="fr-container fr-py-4w">
 
@@ -200,11 +209,12 @@
     </p>
   </div>
 
-  {% if afficher_resultat and not qc_en_attente %}
-    {% comment %}
-    #518 : fin de simulation -> l'encart d'avis (fragment _retours.html, sur
-    toutes les pages) peut s'ouvrir tout seul, une seule fois par visiteur.
-    {% endcomment %}
-    <div data-nitrates-fin-simulation hidden></div>
-  {% endif %}
+  {% comment %}
+  #518 : fin de simulation -> l'encart d'avis (fragment _retours.html, sur
+  toutes les pages) peut s'ouvrir tout seul, une seule fois par visiteur.
+  #273 : dans une zone remplacee par soumission_partielle.js.
+  {% endcomment %}
+  <div class="nitrates-zone" id="zone-fin-simulation">
+    {% if afficher_resultat and not qc_en_attente %}<div data-nitrates-fin-simulation hidden></div>{% endif %}
+  </div>
 {% endblock %}

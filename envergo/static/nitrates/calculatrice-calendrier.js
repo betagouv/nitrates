@@ -9,8 +9,24 @@
  * rend le mini-formulaire avec les placeholder, et recalcule tout
  * localement à chaque change d'input.
  */
-(function () {
+(function demarrer() {
   "use strict";
+
+  // #273 : le resultat (et donc ce calendrier) peut etre remplace sans
+  // rechargement de page (soumission htmx). On se re-demarre alors sur le
+  // nouveau bloc a chaque nitrates:rendu-remplace ; l'instance precedente
+  // libere d'abord ses ecouteurs globaux (resize). Etat porte par la fonction
+  // nommee, pour ne rien exposer en global.
+  if (!demarrer.branche && typeof document !== "undefined") {
+    demarrer.branche = true;
+    document.addEventListener("nitrates:rendu-remplace", function () {
+      demarrer();
+    });
+  }
+  if (demarrer.arret) demarrer.arret.abort();
+  demarrer.arret =
+    typeof AbortController === "undefined" ? null : new AbortController();
+  const signalInstance = demarrer.arret ? demarrer.arret.signal : undefined;
 
   // Hors navigateur (Node, pour les tests de logique pure : cf.
   // feedback_static_js_cache_dev — on valide la logique calendrier en Node
@@ -1652,7 +1668,8 @@
           valeursDepuisUrl.add(inp.id); // une fois saisi, reste dans l'URL
         }
       }
-      window.history.replaceState(null, "", url);
+      // history.state garde l'identifiant de rendu (#273, retour arriere).
+      window.history.replaceState(window.history.state, "", url);
     } catch (e) {
       // URL API indispo / contexte sandbox : on n'echoue pas le rendu pour ca.
     }
@@ -2163,5 +2180,5 @@
     // 2. Re-snap crisp une fois le drag termine.
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(render, 150);
-  });
+  }, { signal: signalInstance });
 })();

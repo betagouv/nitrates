@@ -106,6 +106,9 @@
   // simulation : on relaye les evenements htmx pour re-layouter.
   document.body.addEventListener("htmx:afterSwap", schedule);
   document.body.addEventListener("htmx:afterSettle", schedule);
+  // #273 : dans le simulateur, le remplacement est fait par
+  // soumission_partielle.js (htmx sans swap), qui emet cet evenement.
+  document.addEventListener("nitrates:rendu-remplace", schedule);
 
   // Expose pour un appel manuel eventuel.
   window.nitratesLayoutBornesStatique = layoutAll;

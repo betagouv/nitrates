@@ -502,6 +502,41 @@ class DecisionTreeView(View):
             )
 
 
+def catalog_pour_js(catalog) -> dict:
+    """Catalog de la parcelle expose au JS (window.NITRATES_CATALOG).
+
+    Rendu en json_script plutot qu'en JS inline : apres une soumission htmx
+    (#273), soumission_partielle.js relit ce bloc dans la reponse pour mettre a
+    jour window.NITRATES_CATALOG sans recharger la page.
+
+    Le catalog est un dict paresseux (MoulinetteCatalog.__missing__ calcule la
+    donnee a la demande) : on lit par [] comme le faisait le template, et une
+    donnee indisponible vaut vide, comme le `default:''` du template."""
+
+    def lire(cle):
+        try:
+            valeur = catalog[cle]
+        except KeyError:
+            return None
+        return valeur
+
+    region_code = lire("region_code") or ""
+    return {
+        "department_code": lire("department_code") or "",
+        "region_code": region_code,
+        "region_label": lire("region_label") or "",
+        "en_zone_vulnerable": bool(lire("en_zone_vulnerable")),
+        "bassin": lire("bassin") or "",
+        "bassin_label": lire("bassin_label") or "",
+        "en_zar": bool(lire("en_zar")),
+        "en_grand_est": region_code == "44",
+        "zone_grand_est_1": bool(lire("zone_grand_est_1")),
+        "zone_grand_est_2": bool(lire("zone_grand_est_2")),
+        "en_bretagne": region_code == "53",
+        "zone_mais_bretagne": lire("zone_mais_bretagne") or "",
+    }
+
+
 class MoulinetteView(View):
     """Simulateur nitrates : instancie la moulinette avec les query params
     et rend un template debug brut (resultat ou questions subsidiaires).
@@ -765,6 +800,7 @@ class MoulinetteView(View):
                 # repondues (premier_qc == None). (#112)
                 "qc_en_attente": premier_qc is not None,
                 "moulinette": moulinette,
+                "catalog_js": catalog_pour_js(moulinette.catalog),
                 "regulations_evaluees": regulations_evaluees,
                 "premier_evaluator_avec_questions": premier_qc,
                 "qc_actifs": qc_actifs,

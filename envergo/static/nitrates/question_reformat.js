@@ -219,4 +219,6 @@
   } else {
     apply();
   }
+  // #273 : nouvelles QC inserees sans rechargement (soumission htmx).
+  document.addEventListener("nitrates:rendu-remplace", apply);
 })();
