@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { soumettreSimulation } from './soumission';
 
 /**
  * #430 bug 3 : Q1 pose 4 réponses pour 2 valeurs métier (« sur X » / « juste
@@ -88,8 +89,7 @@ test('#430 bug 3 : « juste avant une culture principale » survit au retour « 
 
   const submit = page.locator('#form-submit-row button[type=submit]');
   await expect(submit).toBeEnabled();
-  await submit.click();
-  await page.waitForLoadState('networkidle');
+  await soumettreSimulation(page, submit);
 
   // Retour en saisie via « modifier » : c'est là que la réponse basculait.
   await ouvrirFormulaireSiReplie(page);

@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { soumettreSimulation } from './soumission';
 
 /**
  * #430 bug 1 (requalifié en feature) : quand une catégorie de fertilisant ne
@@ -102,8 +103,7 @@ test("#430 bug 1 : catégorie de fertilisant à choix unique -> la 2ᵉ question
   await expect(submit).toBeEnabled();
 
   // Et la valeur sautée arrive réellement au serveur : elle est dans l'URL.
-  await submit.click();
-  await page.waitForLoadState('networkidle');
+  await soumettreSimulation(page, submit);
   const url = new URL(page.url());
   expect(url.searchParams.get('sous_fertilisant')).toBe('engrais_azote_mineral');
   expect(url.searchParams.get('categorie_fertilisant')).toBe('engrais_mineral');

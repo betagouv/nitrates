@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { soumettreSimulation } from './soumission';
 
 /**
  * #135 — reset/flush du formulaire au changement d'un champ APRES resultat.
@@ -134,8 +135,7 @@ test.describe('Simulateur #135 : reset au changement de champ apres resultat', (
     await expect(page.locator('#id_type_fertilisant')).toHaveValue('type_II');
 
     // Relance : on doit obtenir le NOUVEAU resultat, pas une fausse QC.
-    await page.locator('#form-simulateur button[type="submit"]').click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(page);
 
     const body = page.locator('body');
     await expect(body).toContainText('r_colza_type_II');
@@ -239,9 +239,7 @@ test.describe('Simulateur #135 : pas de boucle infinie sur QC en attente', () =>
     await expect(page.locator('#qc-bloc')).toHaveCount(1);
 
     // Relance : doit aboutir a un resultat, pas reboucler sur la meme QC.
-    await page
-      .locator('#form-simulateur button[type="submit"]').click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(page);
 
     // On a un resultat (r_printemps_*), et plus de QC EN ATTENTE.
     await expect(page.locator('body')).toContainText(/r_printemps/);
@@ -315,9 +313,7 @@ test.describe('Simulateur #135 : parcours QC complet par clics reels', () => {
       .click();
 
     // Lancer -> le serveur pose la QC fertirrigation.
-    await page
-      .locator('#form-simulateur button[type="submit"]').click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(page);
     await expect(page.locator('#qc-bloc[data-qc-en-attente]')).toHaveCount(1);
 
     // Repondre la QC : elle ne doit PAS disparaitre.
@@ -326,9 +322,7 @@ test.describe('Simulateur #135 : parcours QC complet par clics reels', () => {
     await expect(page.locator('#qc-bloc')).toHaveCount(1);
 
     // Relancer -> resultat final.
-    await page
-      .locator('#form-simulateur button[type="submit"]').click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(page);
     await expect(page.locator('body')).toContainText(/r_printemps/);
     await expect(page.locator('#qc-bloc[data-qc-en-attente]')).toHaveCount(0);
   });
