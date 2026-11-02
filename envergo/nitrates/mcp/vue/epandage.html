@@ -371,12 +371,9 @@
     return requete("ui/message", { role: "user", content: [{ type: "text", text: texte }] });
   }
   function appelerOutil(nom, args) { return requete("tools/call", { name: nom, arguments: args }); }
-  function ouvrirLien(url) {
-    requete("ui/open-link", { url: url }).catch(function () {
-      // Repli si l'hote refuse : liens web seulement
-      if (/^https:\/\/[^/]+\//.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) window.open(url, "_blank", "noopener");
-    });
-  }
+  // Les liens passent par l'hote (ui/open-link), pas de window.open en repli :
+  // s'il refuse, le lien reste affiche.
+  function ouvrirLien(url) { requete("ui/open-link", { url: url }).catch(function () {}); }
 
   window.addEventListener("message", function (e) {
     var m = e.data;
