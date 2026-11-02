@@ -263,7 +263,7 @@ pycryptodomex==3.23.0
     # via
     #   -r base.txt
     #   py7zr
-pygments==2.20.0
+pygments==2.21.0
     # via -r base.txt
 pyjwt==2.13.0
     # via
