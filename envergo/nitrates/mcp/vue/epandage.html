@@ -371,7 +371,12 @@
     return requete("ui/message", { role: "user", content: [{ type: "text", text: texte }] });
   }
   function appelerOutil(nom, args) { return requete("tools/call", { name: nom, arguments: args }); }
-  function ouvrirLien(url) { requete("ui/open-link", { url: url }).catch(function () { window.open(url, "_blank"); }); }
+  function ouvrirLien(url) {
+    requete("ui/open-link", { url: url }).catch(function () {
+      // Repli si l'hote refuse : liens web seulement
+      if (/^https:\/\/[^/]+\//.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) window.open(url, "_blank", "noopener");
+    });
+  }
 
   window.addEventListener("message", function (e) {
     var m = e.data;

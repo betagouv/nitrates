@@ -144,6 +144,10 @@ def _appel(client, outil, **arguments):
     return reponse.json()["result"]
 
 
+# Domaines que la vue a le droit de charger (Leaflet, tuiles du Plan IGN).
+DOMAINES_VUE = ["https://cdnjs.cloudflare.com", "https://data.geopf.fr"]
+
+
 @pytest.fixture
 def mcp_actif(settings):
     settings.NITRATES_MCP = True
@@ -709,7 +713,7 @@ def test_vue_declaree_sur_les_outils(client, mcp_actif):
     ]["contents"][0]
     assert contenu["mimeType"] == "text/html;profile=mcp-app"
     assert "ui/initialize" in contenu["text"]
-    assert "https://data.geopf.fr" in contenu["_meta"]["ui"]["csp"]["resourceDomains"]
+    assert contenu["_meta"]["ui"]["csp"]["resourceDomains"] == DOMAINES_VUE
     erreur = _rpc(client, "resources/read", {"uri": "ui://autre"}).json()["error"]
     assert erreur["code"] == -32602
 
@@ -840,10 +844,8 @@ def test_base_indisponible_erreur_d_outil(client, mcp_actif, monkeypatch):
 def test_csp_au_format_chatgpt(client, mcp_actif):
     contenu = _rpc(client, "resources/read", {"uri": "ui://nitrates/epandage.html"})
     meta = contenu.json()["result"]["contents"][0]["_meta"]
-    assert "https://data.geopf.fr" in meta["openai/widgetCSP"]["resource_domains"]
-    assert meta["ui"]["csp"]["resourceDomains"] == (
-        meta["openai/widgetCSP"]["resource_domains"]
-    )
+    assert meta["openai/widgetCSP"]["resource_domains"] == DOMAINES_VUE
+    assert meta["ui"]["csp"]["resourceDomains"] == DOMAINES_VUE
 
 
 def test_ancienne_uri_de_la_vue_servie(client, mcp_actif):
