@@ -49,12 +49,21 @@
                  name="texte"
                  data-niveau-texte
                  value="{{ node.texte|default_if_none:'' }}"
+                 {% if node.niveau == "complement" %} autocomplete="off" data-qc-texte hx-get="{% url 'nitrates_admin_yaml_qc_suggestions' tree_pk=tree.pk %}" hx-trigger="input changed delay:300ms" hx-target="#qc-volet-edit-{{ path_str|slugify }}" hx-swap="innerHTML" hx-sync="this:replace" hx-include="closest form" {% endif %}
                  required>
         </label>
         {% for err in errors %}
           {% if err.field == "texte" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
         {% endfor %}
       </div>
+      {% if node.niveau == "complement" %}
+        {% comment %}Question complementaire : volet des questions existantes a reprendre (#620). Les reponses manquantes sont ajoutees a l'enregistrement.{% endcomment %}
+        <input type="hidden" name="branches_existantes" value="" data-qc-branches>
+        <p class="yaml-qc-reprise" data-qc-reprise hidden></p>
+        <div class="yaml-qc-volet"
+             id="qc-volet-edit-{{ path_str|slugify }}"
+             data-qc-volet></div>
+      {% endif %}
       <div class="yaml-tree__form-row">
         <label class="yaml-tree__form-label">
           <span>aide (optionnel)</span>

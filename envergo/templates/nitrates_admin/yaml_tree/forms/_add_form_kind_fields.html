@@ -12,15 +12,41 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>texte (question)</span>
-      <input type="text"
-             name="c_texte"
-             value="{{ form_data.c_texte|default_if_none:'' }}"
-             placeholder="auto suggéré selon le niveau (ex: Quel type de fertilisant…)">
+      {% if kind == "noeud_formulaire_complement" %}
+        {% comment %}Question complementaire : a la frappe, le volet propose les questions existantes a reprendre (#620).{% endcomment %}
+        <input type="text"
+               name="c_texte"
+               value="{{ form_data.c_texte|default_if_none:'' }}"
+               placeholder="Tapez la question : les questions existantes vous seront proposées"
+               autocomplete="off"
+               data-qc-texte
+               hx-get="{% url 'nitrates_admin_yaml_qc_suggestions' tree_pk=tree.pk %}"
+               hx-trigger="input changed delay:300ms, focus once"
+               hx-target="#qc-volet-add-{{ parent_path_str|slugify }}"
+               hx-swap="innerHTML"
+               hx-sync="this:replace"
+               hx-include="closest form">
+      {% else %}
+        <input type="text"
+               name="c_texte"
+               value="{{ form_data.c_texte|default_if_none:'' }}"
+               placeholder="auto suggéré selon le niveau (ex: Quel type de fertilisant…)">
+      {% endif %}
     </label>
     {% for err in errors %}
       {% if err.field == "texte" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
+  {% if kind == "noeud_formulaire_complement" %}
+    <input type="hidden"
+           name="c_branches_existantes"
+           value="{{ form_data.c_branches_existantes|default_if_none:'' }}"
+           data-qc-branches>
+    <p class="yaml-qc-reprise" data-qc-reprise hidden></p>
+    <div class="yaml-qc-volet"
+         id="qc-volet-add-{{ parent_path_str|slugify }}"
+         data-qc-volet></div>
+  {% endif %}
   <div class="yaml-tree__form-row">
     <label class="yaml-tree__form-label">
       <span>aide (optionnel)</span>

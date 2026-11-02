@@ -443,6 +443,25 @@ class EditNodeView(View):
         # swap, pas d'erreur -- bug renommage d'id).
         if new_data.get("id") and new_data["id"] != path[-1]:
             path = path[:-1] + (new_data["id"],)
+        # Question reprise via le volet (#620) : on ajoute les reponses qui
+        # manquent (branches a completer) et on re-rend le noeud ENTIER pour
+        # les montrer, pas seulement sa ligne.
+        branches = _branches_existantes_depuis_post(
+            request.POST.get("branches_existantes")
+        )
+        if branches and node.get("type_noeud") == "formulaire":
+
+            def _nb_branches():
+                cible = editor.get_node_at(tree.contenu, path) or {}
+                return len(cible.get("branches") or [])
+
+            avant = _nb_branches()
+            res = editor.provisionner_branches(tree, path, branches, request.user)
+            tree.refresh_from_db()
+            if res.ok and _nb_branches() > avant:
+                return _render_partial_node_response(
+                    request, tree, path, f"Question reprise : {res.summary}."
+                )
         node = editor.get_node_at(tree.contenu, path)
         from envergo.nitrates.templatetags.yaml_admin_extras import _contexte_arbre
         from envergo.nitrates.yaml_admin.preview import (
@@ -1375,7 +1394,11 @@ def _build_content_data(
         aide = post.get("c_aide", "").strip()
         if aide:
             data["aide"] = aide
-        data["branches"] = []
+        # Question reprise via le volet (#620) : ses reponses deviennent des
+        # branches a completer, sinon le noeud nait sans branche.
+        data["branches"] = _branches_existantes_depuis_post(
+            post.get("c_branches_existantes")
+        )
     elif kind == "noeud_catalogue":
         data["id"] = post.get("c_id", "").strip() or _auto_id(
             "n", parent_path, valeur, arbre
@@ -1995,8 +2018,38 @@ class ValidateTreeView(View):
             {
                 "tree": tree,
                 "errors": [_humanize_error(arbre, e) for e in errors],
+                "warnings": [
+                    _humanize_error(arbre, w) for w in _avertissements_qc(tree)
+                ],
             },
         )
+
+
+def _autres_arbres_actifs(tree: DecisionTree) -> list[tuple[str, dict]]:
+    """Arbres actifs de la cascade, hors celui que `tree` remplacera (meme
+    zone d'activation) : la reference pour reperer une QC deja posee
+    ailleurs sous un autre champ (#620)."""
+    return [
+        (t.name, t.contenu)
+        for t in DecisionTree.objects.filter(status=DecisionTree.STATUS_ACTIVE)
+        .exclude(pk=tree.pk)
+        .exclude(
+            scope=tree.scope,
+            region_code=tree.region_code,
+            activation_map=tree.activation_map,
+        )
+        .order_by("-weight", "name")
+    ]
+
+
+def _avertissements_qc(tree: DecisionTree) -> list[str]:
+    from envergo.nitrates.yaml_tree.validator import avertissements_qc
+
+    try:
+        return avertissements_qc(tree.contenu, _autres_arbres_actifs(tree))
+    except Exception:
+        # Un avertissement ne doit jamais casser la validation.
+        return []
 
 
 def _humanize_error(arbre: dict, raw_error: str) -> dict:
@@ -2574,3 +2627,122 @@ def _collecter_noeuds(contenu: dict, out: dict) -> None:
                 walk(it)
 
     walk(contenu.get("arbre", {}).get("noeud"))
+
+
+# ─── Reprise d'une question complementaire existante (#620) ────────────────
+
+
+def _catalogue_qc_pour(tree: DecisionTree):
+    """QC reutilisables vues depuis `tree` : celles des autres arbres actifs
+    de la cascade + celles de `tree` lui-meme (l'actif qu'il remplacera est
+    ecarte, sinon chaque question compterait deux fois)."""
+    from envergo.nitrates.yaml_tree.qc_champs import catalogue_qc, collecter_qc
+
+    occurrences = []
+    for nom, contenu in [(tree.name, tree.contenu)] + _autres_arbres_actifs(tree):
+        occurrences.extend(collecter_qc(contenu, arbre=nom))
+    return catalogue_qc(occurrences)
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class QcSuggestionsView(View):
+    """GET (htmx, a la frappe) : volet des questions complementaires
+    existantes qui ressemblent au texte saisi.
+
+    Reprendre une question existante, c'est reprendre son CHAMP : la reponse
+    de l'agriculteur est alors partagee et la question n'est pas reposee d'un
+    noeud ou d'un arbre a l'autre. Le volet propose aussi les reponses
+    (valeur + libelle), creees en branches a completer a l'enregistrement.
+
+    Lit le texte dans `c_texte` (ajout) ou `texte` (edition), le champ actuel
+    dans `c_champ` / `champ`. Reponse vide = rien a proposer (le volet se
+    referme)."""
+
+    def get(self, request, tree_pk):
+        from envergo.nitrates.yaml_tree.qc_champs import normaliser_texte, rechercher_qc
+
+        tree = get_object_or_404(DecisionTree, pk=tree_pk)
+        saisie = (
+            request.GET.get("c_texte")
+            or request.GET.get("texte")
+            or request.GET.get("q")
+            or ""
+        ).strip()
+        champ_actuel = (
+            request.GET.get("c_champ") or request.GET.get("champ") or ""
+        ).strip()
+        resultats = rechercher_qc(saisie, _catalogue_qc_pour(tree), limite=30)
+        if not resultats:
+            return HttpResponse("")
+        saisie_norm = normaliser_texte(saisie)
+        # Une meme question (texte + reponses) enregistree sous plusieurs
+        # champs n'est proposee qu'une fois, sous son champ le plus utilise :
+        # c'est celui qu'on veut voir repris. Les autres sont cites.
+        groupes: dict = {}
+        for score, qc in resultats:
+            cle = (
+                normaliser_texte(qc.texte),
+                frozenset(str(b["valeur"]) for b in qc.branches),
+            )
+            groupes.setdefault(cle, []).append((score, qc))
+        retenus = []
+        for membres in groupes.values():
+            membres.sort(key=lambda m: (-m[1].nb_occurrences, m[1].champ))
+            score = max(m[0] for m in membres)
+            autres = [m[1].champ for m in membres[1:]]
+            retenus.append((score, membres[0][1], autres))
+        retenus.sort(key=lambda r: (-r[0], -r[1].nb_occurrences, r[1].champ))
+        suggestions = []
+        for score, qc, autres_champs in retenus[:6]:
+            suggestions.append(
+                {
+                    "qc": qc,
+                    "autres_champs": autres_champs,
+                    "identique": normaliser_texte(qc.texte) == saisie_norm,
+                    "deja_choisie": bool(champ_actuel) and qc.champ == champ_actuel,
+                    "pourcentage": round(score * 100),
+                    "donnees": json.dumps(
+                        {
+                            "champ": qc.champ,
+                            "texte": qc.texte,
+                            "aide": qc.aide or "",
+                            "branches": qc.branches,
+                        },
+                        ensure_ascii=False,
+                    ),
+                }
+            )
+        return render(
+            request,
+            "nitrates_admin/yaml_tree/forms/_qc_suggestions.html",
+            {
+                "tree": tree,
+                "suggestions": suggestions,
+                "identique": any(s["identique"] for s in suggestions),
+            },
+        )
+
+
+def _branches_existantes_depuis_post(raw: str | None) -> list[dict]:
+    """Branches (valeur + libelle) d'une question reprise via le volet,
+    transmises en JSON par le formulaire. Tout ce qui n'est pas une valeur
+    scalaire est ignore."""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    out = []
+    for b in data if isinstance(data, list) else []:
+        if not isinstance(b, dict):
+            continue
+        valeur = b.get("valeur")
+        if not isinstance(valeur, (str, bool, int)) or valeur == "":
+            continue
+        branche = {"valeur": valeur}
+        libelle = b.get("libelle")
+        if isinstance(libelle, str) and libelle.strip():
+            branche["libelle"] = libelle.strip()
+        out.append(branche)
+    return out

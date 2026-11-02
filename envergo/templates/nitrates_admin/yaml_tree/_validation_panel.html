@@ -38,4 +38,24 @@
               onclick="document.getElementById('yaml-admin-validation-panel').remove()">Fermer</button>
     </div>
   {% endif %}
+  {% if warnings %}
+    <div class="yaml-admin__validation-header yaml-admin__validation-header--warn">
+      <strong>⚠ {{ warnings|length }} avertissement{{ warnings|length|pluralize }}</strong>
+      (non bloquant{{ warnings|length|pluralize }}) : questions complémentaires à harmoniser.
+    </div>
+    <ul class="yaml-admin__validation-errors yaml-admin__validation-errors--warn">
+      {% for w in warnings %}
+        <li title="{{ w.raw }}">
+          {% if w.kind %}
+            <span class="yaml-admin__validation-kind yaml-admin__validation-kind--{{ w.kind }}">{{ w.kind }}</span>
+          {% endif %}
+          {% if w.label %}
+            <code class="yaml-admin__validation-techid"
+                  title="Identifiant technique — recherchez-le dans l'éditeur">{{ w.label }}</code>
+          {% endif %}
+          <span class="yaml-admin__validation-msg">{{ w.message }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
 </div>

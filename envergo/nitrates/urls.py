@@ -62,6 +62,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditRegleView,
     InsertParentView,
     NoeudsCiblesView,
+    QcSuggestionsView,
     ReorderBranchesView,
     RestoreRevisionView,
     UndoLastView,
@@ -212,6 +213,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/",
         AddChildView.as_view(),
         name="nitrates_admin_yaml_add_child",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/qc-suggestions/",
+        QcSuggestionsView.as_view(),
+        name="nitrates_admin_yaml_qc_suggestions",
     ),
     path(
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/cancel/",
