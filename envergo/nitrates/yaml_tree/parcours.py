@@ -296,6 +296,27 @@ def _descendre(
             chemin_partiel=chemin[:-1],
         )
 
+    if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
+        try:
+            branche = _choisir_branche(noeud, valeur)
+        except ParcoursError:
+            # Reponse inconnue de cette QC : lien partage avant un renommage
+            # de valeur (#620, ex plan_epandage=icpe_autre devenu non_concerne).
+            # On repose la question au lieu d'arreter tout le parcours
+            # (« Epandage NON_DISPONIBLE »). Les formulaires principaux
+            # (culture, fertilisant) gardent l'erreur : une valeur inconnue y
+            # est un vrai bug.
+            sans_reponse = {k: v for k, v in contexte.items() if k != champ}
+            questions = _collecter_questions(
+                noeud, sans_reponse, index_ids, resoudre_catalogue
+            )
+            return QuestionsSubsidiaires(
+                questions=questions, chemin_partiel=chemin[:-1]
+            )
+        return _descendre_branche(
+            branche, contexte, chemin, index_ids, resoudre_catalogue
+        )
+
     branche = _choisir_branche(noeud, valeur)
     return _descendre_branche(branche, contexte, chemin, index_ids, resoudre_catalogue)
 
