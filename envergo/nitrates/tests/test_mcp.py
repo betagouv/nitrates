@@ -874,3 +874,54 @@ def test_limite_sur_les_seuls_appels_d_outils(client, mcp_actif, monkeypatch):
         for _ in range(3)
     ]
     assert statuts == [200, 200, 429]
+
+
+def test_comparer_des_produits_precis_en_une_vue(client, parcelle_marne):
+    """Deux composts entre lesquels l'agriculteur hesite : une seule vue
+    plutot qu'un simuler_epandage par produit."""
+    resultat = _appel(
+        client,
+        "comparer_fertilisants",
+        lat=LAT,
+        lng=LNG,
+        culture="colza",
+        date="01/12",
+        fertilisants=[
+            "compost_dechets_verts_matures",
+            "compost_dechets_verts_jeunes_ligneux",
+        ],
+        reponses={"plan_epandage": "icpe_autre"},
+    )
+    sortie = resultat["structuredContent"]
+    assert sortie["statut"] == "resultat"
+    ids = {ligne["id"] for lignes in sortie["types"].values() for ligne in lignes}
+    assert ids == {
+        "compost_dechets_verts_matures",
+        "compost_dechets_verts_jeunes_ligneux",
+    }
+    assert resultat["_meta"]["nitrates/titre"] == "Colza : comparaison des produits"
+    assert len(resultat["_meta"]["nitrates/rangees"]) == 2
+
+
+def test_comparer_quelques_cultures(client, parcelle_marne):
+    sortie = _appel(
+        client,
+        "comparer_cultures",
+        lat=LAT,
+        lng=LNG,
+        fertilisant="dejection_sans_litiere",
+        date="01/12",
+        cultures="colza, mais",
+    )["structuredContent"]
+    ids = {ligne["id"] for lignes in sortie["cultures"].values() for ligne in lignes}
+    assert ids == {"colza", "mais"}
+    erreur = _appel(
+        client,
+        "comparer_cultures",
+        lat=LAT,
+        lng=LNG,
+        fertilisant="dejection_sans_litiere",
+        date="01/12",
+        cultures=["ble_qui_n_existe_pas"],
+    )
+    assert erreur["isError"] is True

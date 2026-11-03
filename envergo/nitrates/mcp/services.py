@@ -1308,10 +1308,14 @@ def comparer_cultures(
     *,
     reponses: dict | None = None,
     base_url: str = "",
+    cultures: list[str] | None = None,
 ) -> dict:
     """« Sur quelles cultures puis-je épandre ce produit à telle date ? » :
-    une simulation par culture du catalogue, même parcelle, même date."""
+    une simulation par culture du catalogue (ou par culture de `cultures`),
+    même parcelle, même date."""
     _, fertilisant = parametres_fertilisant(fertilisant_id)
+    for culture_id in cultures or []:
+        parametres_culture(culture_id)  # id inconnu : erreur de saisie
     combinaisons = [
         {
             "cle": culture["id"],
@@ -1321,6 +1325,7 @@ def comparer_cultures(
         }
         for groupe in catalogue_cultures()["groupes"]
         for culture in groupe["cultures"]
+        if not cultures or culture["id"] in cultures
     ]
     type_ = fertilisant["type"].replace("type_", "type ")
     sortie = _comparer(
@@ -1353,6 +1358,7 @@ def comparer_fertilisants(
     *,
     reponses: dict | None = None,
     base_url: str = "",
+    fertilisants: list[str] | None = None,
 ) -> dict:
     """« Je ne sais pas encore quoi épandre » : pour une culture, le calendrier
     de chaque type de fertilisant (0, Ia, Ib, II, II digestat, III), avec un
@@ -1360,19 +1366,35 @@ def comparer_fertilisants(
     from envergo.nitrates.matrice import LIGNES_FERTILISANTS
 
     _, libelle_culture = parametres_culture(culture_id)
-    exemples = dict(Fertilisant.objects.values_list("identifiant", "libelle_public"))
     combinaisons = []
-    for ligne in LIGNES_FERTILISANTS:
-        fertilisant_id = ligne["contexte"]["sous_fertilisant"]
-        exemple = exemples.get(fertilisant_id, "")
-        combinaisons.append(
-            {
-                "cle": ligne["id"],
-                "libelle": f"{ligne['label']} (ex. {_court(exemple, 45).lower()})",
-                "culture": culture_id,
-                "fertilisant": fertilisant_id,
-            }
+    if fertilisants:
+        # Produits precis a comparer (ex. deux composts) : une ligne chacun
+        for fertilisant_id in fertilisants:
+            _, fert = parametres_fertilisant(fertilisant_id)
+            combinaisons.append(
+                {
+                    "cle": fertilisant_id,
+                    "libelle": f"{_court(fert['libelle'], 60)} "
+                    f"({fert['type'].replace('type_', 'type ')})",
+                    "culture": culture_id,
+                    "fertilisant": fertilisant_id,
+                }
+            )
+    else:
+        exemples = dict(
+            Fertilisant.objects.values_list("identifiant", "libelle_public")
         )
+        for ligne in LIGNES_FERTILISANTS:
+            fertilisant_id = ligne["contexte"]["sous_fertilisant"]
+            exemple = exemples.get(fertilisant_id, "")
+            combinaisons.append(
+                {
+                    "cle": ligne["id"],
+                    "libelle": f"{ligne['label']} (ex. {_court(exemple, 45).lower()})",
+                    "culture": culture_id,
+                    "fertilisant": fertilisant_id,
+                }
+            )
     sortie = _comparer(
         loc,
         combinaisons,
@@ -1380,7 +1402,11 @@ def comparer_fertilisants(
         reponses=reponses,
         base_url=base_url,
         entete={"culture": {"id": culture_id, "libelle": libelle_culture}},
-        titre_image=f"{libelle_culture} : calendrier par type de fertilisant",
+        titre_image=(
+            f"{libelle_culture} : comparaison des produits"
+            if fertilisants
+            else f"{libelle_culture} : calendrier par type de fertilisant"
+        ),
     )
     if sortie.get("statut") == "resultat":
         sortie["types"] = sortie.pop("lignes")
