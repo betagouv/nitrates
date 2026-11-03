@@ -1136,3 +1136,129 @@ def _check_branches_booleennes_exhaustives(arbre: dict) -> list[str]:
 
 def _short_repr(obj: dict) -> str:
     return obj.get("id") or obj.get("valeur") or "(?)"
+
+
+# ─── Avertissements non bloquants : QC redondantes (#620) ───────────────────
+
+
+def _resume_texte(texte: str, n: int = 90) -> str:
+    return texte if len(texte) <= n else texte[: n - 1].rstrip() + "…"
+
+
+def _resume_valeurs(valeurs) -> str:
+    return ", ".join(sorted(valeurs))
+
+
+def avertissements_qc(
+    arbre: dict, autres_arbres: list[tuple[str, dict]] | None = None
+) -> list[str]:
+    """Avertissements NON bloquants sur les questions complementaires (#620).
+
+    La reponse a une QC est rangee sous son `champ` : c'est lui qui evite de
+    reposer une question deja repondue, dans l'arbre et d'un arbre a l'autre
+    de la cascade. On signale donc :
+      - [qc_redondante] la meme question (texte affiche + reponses) posee
+        sous plusieurs champs, dans l'arbre ou par rapport aux `autres_arbres`
+        (liste de (nom, contenu), typiquement les autres arbres actifs) : elle
+        sera reposee ;
+      - [qc_valeurs] un meme champ dont les reponses possibles different selon
+        les noeuds : une reponse donnee a un endroit peut ne correspondre a
+        aucune branche ailleurs.
+    Ne leve jamais : la validation bloquante reste `validate_arbre`.
+    """
+    from collections import defaultdict
+
+    from envergo.nitrates.yaml_tree.qc_champs import collecter_qc
+
+    avertissements: list[str] = []
+    locales = collecter_qc(arbre)
+
+    par_cle = defaultdict(list)
+    for o in locales:
+        par_cle[o.cle].append(o)
+    for occs in par_cle.values():
+        champs = sorted({o.champ for o in occs})
+        if len(champs) < 2:
+            continue
+        detail = ", ".join(
+            f"{c} ('{next(o.noeud_id for o in occs if o.champ == c)}')" for c in champs
+        )
+        avertissements.append(
+            f"[qc_redondante] noeud '{occs[0].noeud_id}' : la question "
+            f"« {_resume_texte(occs[0].texte)} » est posée sous {len(champs)} "
+            f"champs différents ({detail}). La réponse sera redemandée : "
+            f"utilisez un seul champ."
+        )
+
+    par_champ = defaultdict(lambda: defaultdict(list))
+    for o in locales:
+        par_champ[o.champ][o.valeurs].append(o)
+    for champ, jeux in sorted(par_champ.items()):
+        if len(jeux) < 2:
+            continue
+        detail = " / ".join(
+            f"{_resume_valeurs(v)} ('{occs[0].noeud_id}')" for v, occs in jeux.items()
+        )
+        avertissements.append(
+            f"[qc_valeurs] noeud '{next(iter(jeux.values()))[0].noeud_id}' : le "
+            f"champ {champ} n'a pas les mêmes réponses selon les nœuds ({detail})."
+        )
+
+    # Entre arbres : un message par couple de champs (et non par arbre ni par
+    # noeud), sinon une meme question dupliquee dans 4 arbres noie l'ecran.
+    redondances: dict[tuple, tuple] = {}
+    divergences: dict[str, tuple] = {}
+    valeurs_locales: dict[str, set] = defaultdict(set)
+    premiere: dict[str, object] = {}
+    for o in locales:
+        valeurs_locales[o.champ] |= o.valeurs
+        premiere.setdefault(o.champ, o)
+    for nom, contenu in autres_arbres or []:
+        autres = collecter_qc(contenu, arbre=nom)
+        champs_par_cle = defaultdict(set)
+        valeurs_par_champ = defaultdict(set)
+        for o in autres:
+            champs_par_cle[o.cle].add(o.champ)
+            valeurs_par_champ[o.champ].add(o.valeurs)
+        for o in locales:
+            for autre_champ in champs_par_cle.get(o.cle, set()) - {o.champ}:
+                occ, arbres = redondances.setdefault((o.champ, autre_champ), (o, []))
+                if nom not in arbres:
+                    arbres.append(nom)
+        # Reponses d'un champ qui n'existent que d'un cote : une reponse
+        # donnee ici ne trouverait pas de branche la-bas (ou l'inverse).
+        for champ, ici in valeurs_locales.items():
+            la_bas: set = set()
+            for v in valeurs_par_champ.get(champ, set()):
+                la_bas |= v
+            if la_bas and la_bas != ici:
+                occ, details = divergences.setdefault(champ, (premiere[champ], {}))
+                details[nom] = (ici - la_bas, la_bas - ici)
+    par_champ_local: dict[str, tuple] = {}
+    for (champ, autre_champ), (o, arbres) in sorted(redondances.items()):
+        occ, autres = par_champ_local.setdefault(champ, (o, []))
+        autres.append(f"{autre_champ} ({', '.join(f'« {n} »' for n in arbres)})")
+    for champ, (o, autres) in par_champ_local.items():
+        avertissements.append(
+            f"[qc_redondante] noeud '{o.noeud_id}' : la question "
+            f"« {_resume_texte(o.texte)} » (champ {champ}) existe déjà dans "
+            f"d'autres arbres sous un autre champ : {' ; '.join(autres)}. La "
+            f"réponse ne passera pas d'un arbre à l'autre : reprenez un de ces "
+            f"champs (le plus utilisé de préférence)."
+        )
+    for champ, (o, details) in sorted(divergences.items()):
+        parties = []
+        for nom, (seulement_ici, seulement_la_bas) in details.items():
+            bouts = []
+            if seulement_ici:
+                bouts.append(f"{_resume_valeurs(seulement_ici)} absent là-bas")
+            if seulement_la_bas:
+                bouts.append(f"{_resume_valeurs(seulement_la_bas)} absent ici")
+            parties.append(f"« {nom} » : {', '.join(bouts)}")
+        avertissements.append(
+            f"[qc_valeurs] noeud '{o.noeud_id}' : le champ {champ} n'a pas les "
+            f"mêmes réponses que dans d'autres arbres ({' ; '.join(parties)}). "
+            f"Une réponse donnée d'un côté peut ne correspondre à aucune branche "
+            f"de l'autre."
+        )
+    return avertissements

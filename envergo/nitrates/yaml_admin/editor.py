@@ -27,6 +27,8 @@ Addressing :
 
 from __future__ import annotations
 
+import copy
+import json
 from dataclasses import dataclass, field
 from io import StringIO
 
@@ -505,6 +507,114 @@ def delete_node(
         mutate=lambda contenu: _apply_delete_node(contenu, path),
         summary=f"Nœud {node.get('id', '')} supprimé",
     )
+
+
+def provisionner_branches(
+    tree: DecisionTree,
+    path: tuple[str, ...],
+    branches: list[dict],
+    user,
+) -> EditResult:
+    """Ajoute a un noeud les branches (valeur + libelle) qui lui manquent,
+    sans contenu : des squelettes a completer (#620, reprise d'une question
+    existante). Les branches deja presentes ne sont jamais touchees, une
+    seule revision couvre tout l'ajout."""
+    node = get_node_at(tree.contenu, path)
+    if node is None:
+        return EditResult.fail([FieldError("", "Nœud introuvable.")])
+    existantes = {
+        str(b.get("valeur"))
+        for b in node.get("branches") or []
+        if isinstance(b, dict) and "valeur" in b
+    }
+    a_ajouter = []
+    for b in branches:
+        if not isinstance(b, dict) or "valeur" not in b:
+            continue
+        if str(b["valeur"]) in existantes:
+            continue
+        squelette = {"valeur": b["valeur"]}
+        if b.get("libelle"):
+            squelette["libelle"] = b["libelle"]
+        res = validate_node_local(squelette, "branche")
+        if not res.ok:
+            return EditResult.from_validation(res)
+        existantes.add(str(b["valeur"]))
+        a_ajouter.append(squelette)
+    if not a_ajouter:
+        return EditResult.success(summary="Aucune réponse à ajouter")
+
+    def _mutate(contenu):
+        cible = get_node_at(contenu, path)
+        if cible is not None:
+            cible.setdefault("branches", []).extend(dict(b) for b in a_ajouter)
+
+    return _commit_mutation(
+        tree=tree,
+        user=user,
+        action=DecisionTreeRevision.ACTION_ADD,
+        target_path="/".join(path),
+        description=(
+            f"Réponses de la question existante ajoutées à {node.get('id', '')}"
+        ),
+        mutate=_mutate,
+        summary=f"{len(a_ajouter)} réponse(s) ajoutée(s)",
+    )
+
+
+def renommer_champs_qc(
+    tree: DecisionTree,
+    mapping: dict[str, str],
+    user,
+    description: str = "Normalisation des champs de questions complémentaires",
+) -> EditResult:
+    """Renomme des champs dans tout l'arbre (#620) : `champ` des noeuds et
+    toutes leurs references (expressions, remap_contexte, inputs_requis).
+
+    Meme pipeline que les autres mutations (revision d'avant + sauvegarde
+    atomique). Le YAML brut garde ses commentaires quand il est fidele au
+    contenu ; sinon il est re-genere depuis le contenu, comme l'editeur."""
+    from envergo.nitrates.yaml_tree.qc_champs import (
+        RenommageImpossible,
+        renommer_champs,
+    )
+
+    try:
+        modifs = renommer_champs(copy.deepcopy(tree.contenu), mapping)
+    except RenommageImpossible as exc:
+        return EditResult.fail([FieldError("champ", str(exc))])
+    if not modifs:
+        return EditResult.success(summary="Aucun champ à renommer")
+
+    brut = None
+    raw = tree.contenu_yaml_brut or ""
+    if raw.strip():
+        yaml = YAML(typ="rt")
+        yaml.preserve_quotes = True
+        yaml.width = 4096
+        try:
+            doc = yaml.load(StringIO(raw))
+            fidele = json.loads(json.dumps(doc)) == json.loads(json.dumps(tree.contenu))
+        except Exception:
+            fidele = False
+        if fidele:
+            renommer_champs(doc, mapping)
+            buf = StringIO()
+            yaml.dump(doc, buf)
+            brut = buf.getvalue()
+
+    with transaction.atomic():
+        DecisionTreeRevision.record(
+            tree,
+            action=DecisionTreeRevision.ACTION_RENAME,
+            user=user,
+            target_path="",
+            description=description,
+        )
+        renommer_champs(tree.contenu, mapping)
+        tree.contenu_yaml_brut = brut if brut is not None else _dump_yaml(tree.contenu)
+        tree.save(update_fields=["contenu", "contenu_yaml_brut", "updated_at"])
+    return EditResult.success(summary=f"{len(modifs)} référence(s) renommée(s)")
 
 
 def convert_node_to_catalogue_parametre(

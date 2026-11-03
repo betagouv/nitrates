@@ -30,14 +30,14 @@ const INSEE_REIMS_51 = '51454'; // non montagne
 test.describe('Branche prairie_plus_6_mois : 8 feuilles via URL', () => {
   const cases = [
     {
-      label: 'type_0 + plan_epandage=icpe_a -> r_prairie_plus_6_type_0_icpe_a',
-      params: 'type_fertilisant=type_0&plan_epandage=icpe_a',
+      label: 'type_0 + plan_epandage_autorisation=icpe_a -> r_prairie_plus_6_type_0_icpe_a',
+      params: 'type_fertilisant=type_0&plan_epandage_autorisation=icpe_a',
       regle: 'r_prairie_plus_6_type_0_icpe_a',
       contains: ['15/12', '15/01'],
     },
     {
-      label: 'type_0 + plan_epandage=autre -> r_prairie_plus_6_type_0',
-      params: 'type_fertilisant=type_0&plan_epandage=autre',
+      label: 'type_0 + plan_epandage_autorisation=autre -> r_prairie_plus_6_type_0',
+      params: 'type_fertilisant=type_0&plan_epandage_autorisation=autre',
       regle: 'r_prairie_plus_6_type_0',
       contains: ['15/12', '15/01'],
     },

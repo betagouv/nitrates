@@ -35,12 +35,12 @@ arbre:
                     branches:
                     - noeud:
                         id: q_false
-                        champ: 'false'
-                        texte: 'Votre culture est-elle un:'
+                        champ: culture_orge_escourgeon_lin
+                        texte: 'Votre culture est-elle :'
                         niveau: complement
                         branches:
-                        - valeur: Orge d'hiver, escourgeon ou lin d'hiver.
-                          libelle: Orge d'hiver, escourgeon ou lin d'hiver.
+                        - valeur: orge_escourgeon_lin
+                          libelle: Orge d'hiver, escourgeon ou lin d'hiver
                           feuille_vide: true
                         - regle:
                             id: r_culture_hiver_type_iii_false_autre
@@ -49,7 +49,7 @@ arbre:
                             - au: 14/02
                               du: 01/07
                             inputs_requis: []
-                          valeur: Autre
+                          valeur: autre
                           libelle: Autre
                         type_noeud: formulaire
                       valeur: false
@@ -131,8 +131,7 @@ arbre:
                   expression: sous_culture_form=='cultures_perennes_vignes'
                 - noeud:
                     id: q_legumes
-                    aide: ''
-                    champ: legumes_wip
+                    champ: legumes_implantation
                     texte: 'Vos légumes ont-ils été implantés :'
                     niveau: complement
                     branches:
@@ -168,8 +167,8 @@ arbre:
                           renvoi_arbre: national
                         - noeud:
                             id: q_type_iii
-                            champ: type_iii
-                            texte: Est-ce que votre culture est irriguée?
+                            champ: culture_irriguee
+                            texte: Est-ce que votre culture est irriguée ?
                             niveau: complement
                             branches:
                             - regle:
@@ -194,7 +193,7 @@ arbre:
                           valeur: type_III
                           libelle: Type_III
                         type_noeud: formulaire
-                      valeur: Avant le 1er juin
+                      valeur: avant_1er_juin
                       libelle: Avant le 1er juin
                     - noeud:
                         id: q_a_compte_du_1er_juin
@@ -239,8 +238,8 @@ arbre:
                           valeur: type_III
                           libelle: Type_III
                         type_noeud: formulaire
-                      valeur: A compter du 1er juin
-                      libelle: A compter du 1er juin
+                      valeur: a_partir_1er_juin
+                      libelle: À compter du 1er juin
                     type_noeud: formulaire
                   valeur: Légumes
                   libelle: Légumes
@@ -313,3 +312,17 @@ metadata:
   source: Transpilation arrêté PAR7 Hauts-de-France (docx consolidé) — skill text2yaml v10.1
   version: 0.1.0-draft
   source_juridique: "Arrêté établissant le programme d'actions régional en vue de la protection des eaux contre la pollution par les nitrates d'origine agricole en Hauts-de-France (entrée en vigueur 1er août 2024) — article 2 (I : périodes d'interdiction ; II-A : condition d'épandage sur couvert non exporté).\n"
+rappels_dates:
+- inputs:
+  - id: date_semis_couvert
+    rappel_max: 20/09
+  - id: date_destruction_couvert
+    rappel_min:
+    - date_semis_couvert+8semaines
+    - 01/11
+  sous_cultures:
+  - cine_avant_3112
+  - cine_apres_0101
+  - cie_avant_3112
+  - cie_apres_0101
+  source_juridique: PAR7 Hauts-de-France, article 2.II.B

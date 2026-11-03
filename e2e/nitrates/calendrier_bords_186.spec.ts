@@ -27,7 +27,7 @@ const URL_BORD_GAUCHE =
 
 /** Zones aux deux bords (capture 3 du ticket). */
 const URL_DEUX_BORDS =
-  '/simulateur/?lat=49.2583&lng=4.0345&code_insee=51454&occupation_sol=couvert_intercultures&sous_culture=cine_apres_0101&type_fertilisant=type_II&plan_epandage=icpe_autre&categorie_fertilisant=digestats&sous_fertilisant=digestat_brut_methanisation';
+  '/simulateur/?lat=49.2583&lng=4.0345&code_insee=51454&occupation_sol=couvert_intercultures&sous_culture=cine_apres_0101&type_fertilisant=type_II&plan_epandage=non_concerne&categorie_fertilisant=digestats&sous_fertilisant=digestat_brut_methanisation';
 
 /** Calendrier DYNAMIQUE (calculatrice, .calc-cal) : même contrat de rendu. */
 const URL_DYNAMIQUE =

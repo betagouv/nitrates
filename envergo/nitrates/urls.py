@@ -62,6 +62,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
     EditRegleView,
     InsertParentView,
     NoeudsCiblesView,
+    QcSuggestionsView,
     ReorderBranchesView,
     RestoreRevisionView,
     UndoLastView,
@@ -69,6 +70,7 @@ from envergo.nitrates.views_admin_yaml_edit import (
 )
 from envergo.nitrates.views_contenu_rich_preview import ContenuRichPreviewView
 from envergo.nitrates.views_kit_media import KitMediaView
+from envergo.nitrates.views_mcp import IconeMcpView, ImageMcpView, McpView
 from envergo.nitrates.views_retour import RetourUtilisateurCreateView
 from envergo.nitrates.views_seo import llms_txt, robots_txt, sitemap_xml
 from envergo.nitrates.views_stats import StatsView
@@ -136,6 +138,17 @@ urlpatterns = [
         "api/retour/",
         RetourUtilisateurCreateView.as_view(),
         name="nitrates_retour",
+    ),
+    # Serveur MCP pour les assistants conversationnels (POC, flag NITRATES_MCP).
+    # Les deux formes : un client MCP ne suit pas la redirection APPEND_SLASH
+    # d'un POST.
+    path("mcp/", McpView.as_view(), name="nitrates_mcp"),
+    path("mcp", McpView.as_view()),
+    path("mcp/icone.png", IconeMcpView.as_view(), name="nitrates_mcp_icone"),
+    path(
+        "mcp/image/<slug:cle>.png",
+        ImageMcpView.as_view(),
+        name="nitrates_mcp_image",
     ),
     path(
         "admin/nitrates/contenu-rich/preview/",
@@ -212,6 +225,11 @@ urlpatterns = [
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/",
         AddChildView.as_view(),
         name="nitrates_admin_yaml_add_child",
+    ),
+    path(
+        "admin/nitrates/arbre-decision/<int:tree_pk>/edit/qc-suggestions/",
+        QcSuggestionsView.as_view(),
+        name="nitrates_admin_yaml_qc_suggestions",
     ),
     path(
         "admin/nitrates/arbre-decision/<int:tree_pk>/edit/add-child/cancel/",

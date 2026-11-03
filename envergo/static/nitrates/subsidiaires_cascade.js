@@ -46,8 +46,11 @@
     function rafraichirVisibilite(parentChamp) {
       const valeur = valeurActuelle(parentChamp);
       for (const g of dependants.get(parentChamp) || []) {
-        const attendue = g.dataset.qcParentValeur;
-        if (valeur !== null && String(valeur) === String(attendue)) {
+        // Plusieurs reponses du parent peuvent reveler la meme question (#620).
+        const attendues = (
+          g.dataset.qcParentValeurs || g.dataset.qcParentValeur || ""
+        ).split("||");
+        if (valeur !== null && attendues.includes(String(valeur))) {
           g.hidden = false;
         } else {
           g.hidden = true;

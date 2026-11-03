@@ -33,15 +33,15 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
       // Note 2026-05-12 : la luzerne type_0 renvoie maintenant vers le NOEUD
       // q_prairie_plus6_type_0_icpe (au lieu de la regle directe), donc une
       // QC `plan_epandage` est requise.
-      label: 'type_0 + plan_epandage=autre -> r_prairie_plus_6_type_0 (15/12 -> 15/01)',
-      params: 'type_fertilisant=type_0&plan_epandage=autre',
+      label: 'type_0 + plan_epandage_autorisation=autre -> r_prairie_plus_6_type_0 (15/12 -> 15/01)',
+      params: 'type_fertilisant=type_0&plan_epandage_autorisation=autre',
       regle: 'r_prairie_plus_6_type_0',
       contains: ['15/12', '15/01'],
     },
     {
       label:
         'type_I + ICPE A + IAA -> r_luzerne_I_icpe_a_iaa (calculatrice)',
-      params: 'type_fertilisant=type_I&plan_epandage=icpe_a&fertilisant_iaa=true',
+      params: 'type_fertilisant=type_I&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=true',
       regle: 'r_luzerne_I_icpe_a_iaa',
       // Regle calculatrice : la periode est dans parametres.periode_reglementaire
       // (pas dans periodes), et le template MVP ne rend pas encore les dates
@@ -52,13 +52,13 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
     {
       label: 'type_I + ICPE A + non IAA -> r_luzerne_I_icpe_a_sans_iaa',
       params:
-        'type_fertilisant=type_I&plan_epandage=icpe_a&fertilisant_iaa=false',
+        'type_fertilisant=type_I&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=false',
       regle: 'r_luzerne_I_icpe_a_sans_iaa',
       contains: ['15/12', '15/01'],
     },
     {
       label: 'type_I + autre -> r_luzerne_I_autre',
-      params: 'type_fertilisant=type_I&plan_epandage=autre',
+      params: 'type_fertilisant=type_I&plan_epandage_autorisation=autre',
       regle: 'r_luzerne_I_autre',
       contains: ['15/12', '15/01'],
     },
@@ -66,7 +66,7 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
       label:
         'type_II + ICPE A + IAA -> r_luzerne_II_icpe_a_iaa (calculatrice)',
       params:
-        'type_fertilisant=type_II&plan_epandage=icpe_a&fertilisant_iaa=true',
+        'type_fertilisant=type_II&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=true',
       regle: 'r_luzerne_II_icpe_a_iaa',
       // Calculatrice : pas d'assertion sur les dates (cf. ci-dessus).
       contains: [],
@@ -77,20 +77,20 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
       label:
         'type_II + ICPE A + non IAA + effluent_peu_charge=false -> r_prairie_plus_6_type_II',
       params:
-        'type_fertilisant=type_II&plan_epandage=icpe_a&fertilisant_iaa=false&effluent_peu_charge=false',
+        'type_fertilisant=type_II&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=false&effluent_peu_charge=false',
       regle: 'r_prairie_plus_6_type_II',
       contains: ['15/11', '15/01'],
     },
     {
       label: 'type_II + autre + effluent_peu_charge=false -> r_prairie_plus_6_type_II',
-      params: 'type_fertilisant=type_II&plan_epandage=autre&effluent_peu_charge=false',
+      params: 'type_fertilisant=type_II&plan_epandage_autorisation=autre&effluent_peu_charge=false',
       regle: 'r_prairie_plus_6_type_II',
       contains: ['15/11', '15/01'],
     },
     {
       label:
         'type_III + ICPE A + IAA + Accous (montagne note 7) -> r_luzerne_III_iaa_montagne_note7',
-      params: `type_fertilisant=type_III&plan_epandage=icpe_a&fertilisant_iaa=true&code_insee=${INSEE_ACCOUS_64}`,
+      params: `type_fertilisant=type_III&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=true&code_insee=${INSEE_ACCOUS_64}`,
       regle: 'r_luzerne_III_iaa_montagne_note7',
       // Calculatrice : pas d'assertion sur les dates.
       contains: [],
@@ -98,27 +98,27 @@ test.describe('Branche luzerne : 12 cas via URL', () => {
     {
       label:
         'type_III + ICPE A + IAA + Aiguebelette (montagne note 6) -> r_luzerne_III_iaa_montagne_note6',
-      params: `type_fertilisant=type_III&plan_epandage=icpe_a&fertilisant_iaa=true&code_insee=${INSEE_AIGUEBELETTE_73}`,
+      params: `type_fertilisant=type_III&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=true&code_insee=${INSEE_AIGUEBELETTE_73}`,
       regle: 'r_luzerne_III_iaa_montagne_note6',
       contains: [],
     },
     {
       label:
         'type_III + ICPE A + IAA + Reims (hors montagne) -> r_luzerne_III_iaa_non_montagne',
-      params: `type_fertilisant=type_III&plan_epandage=icpe_a&fertilisant_iaa=true&code_insee=${INSEE_REIMS_51}`,
+      params: `type_fertilisant=type_III&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=true&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_luzerne_III_iaa_non_montagne',
       contains: [],
     },
     {
       label:
         'type_III + ICPE A + non IAA -> renvoi r_prairie_plus_6_type_III',
-      params: `type_fertilisant=type_III&plan_epandage=icpe_a&fertilisant_iaa=false&code_insee=${INSEE_REIMS_51}`,
+      params: `type_fertilisant=type_III&plan_epandage_autorisation=icpe_a&fertilisant_iaa_aliments=false&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_prairie_plus_6_type_III',
       contains: ['01/10', '31/01'],
     },
     {
       label: 'type_III + autre -> renvoi r_prairie_plus_6_type_III',
-      params: `type_fertilisant=type_III&plan_epandage=autre&code_insee=${INSEE_REIMS_51}`,
+      params: `type_fertilisant=type_III&plan_epandage_autorisation=autre&code_insee=${INSEE_REIMS_51}`,
       regle: 'r_prairie_plus_6_type_III',
       contains: ['01/10', '31/01'],
     },

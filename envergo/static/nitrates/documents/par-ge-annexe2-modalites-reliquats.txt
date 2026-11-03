@@ -1,0 +1,349 @@
+Annexe 2 : Dispositif de surveillance des reliquats azotés
+
+a) Cas des épandages réalisés dans le cadre d’un plan d’épandage soumis à autorisation et à
+étude d’impact ou d’incidence [note (1)] :
+Le dispositif de surveillance pluriannuel des teneurs en azote nitrique et ammoniacal des eaux
+lixiviées (suivi hydrogéologique), et le cas échéant, des reliquats azotés avant épandage, est proposé
+par le pétitionnaire puis validé par l’autorisation initiale ou complémentaire délivrée par le préfet. Le
+dispositif de surveillance dans sa globalité, permet un suivi représentatif de l’impact des épandages
+réalisés pendant les périodes de dérogation à l’interdiction d’épandage définies par le programme
+d’actions et précise également les actions mises en œuvre en cas de dépassement de critères
+associés à un risque significatif de lixiviation de l’azote.
+Par ailleurs, le dispositif de surveillance des reliquats azotés avant épandage évoqué pour les
+fertilisants qui n’entrent pas dans la définition des types 0, I.a ou effluents peu chargés, est le même
+que celui définit au point b) ci-dessous en ce qui concerne le protocole de réalisation des mesures de
+reliquat. Le suivi est réalisé à hauteur d’une analyse minimum de reliquat azoté par tranche de 20
+hectares épandus sur la période de dérogation d’épandage et par type de précédent cultural.
+Les résultats du dispositif de surveillance sont transmis annuellement à l’administration de tutelle et
+les justificatifs tenus à disposition en cas de contrôle.
+
+b) Cas des épandages non encadrés par une autorisation préfectorale [notes (2) et (3)] et du
+dispositif de surveillance des reliquats azotés en cas de mobilisation des adaptations de la
+couverture des sols en interculture longue (article 13)
+L’indicateur de lixiviation est défini comme le reliquat azoté avant épandage, lorsque cette mesure est
+possible. Une analyse est réalisée pour chaque îlot cultural représentatif concerné par les épandages
+pendant la période d’interdiction.
+Protocole à respecter pour la réalisation des mesures de reliquats :
+
+
+Prélèvements réalisés dans la plus grande zone homogène de la parcelle,
+
+
+
+L’échantillon représentatif est constitué d’un minimum de 14 carottages élémentaires répartis
+sur un cercle de 20 à 30 m de diamètre,
+
+
+
+Les carottages élémentaires sont effectués sur une profondeur de deux ou trois horizons de
+30 cm selon la profondeur du sol,
+
+
+
+Les prélèvements sont effectués avant tout épandage de fertilisant azoté prévu pendant la
+période d’interdiction,
+
+
+
+À défaut de prescriptions relatives au transport des échantillons, définies par le laboratoire,
+l’échantillon représentatif doit être réfrigéré rapidement et transmis dans les 3 jours, ou bien
+être préalablement congelés,
+
+
+
+Il est recommandé d’attendre les résultats des mesures effectuées avant de procéder aux
+épandages.
+
+Îlots culturaux représentatifs :
+
+
+Le nombre de mesures de reliquat à réaliser est au minimum d’une mesure par tranche de
+20 ha de surface réceptrice des épandages.
+
+
+
+Il y a au moins une mesure de reliquat par exploitation agricole distincte et par type de
+précédent cultural selon les familles suivantes : céréales d’hiver, cultures de printemps et
+pseudo-céréales, oléagineux, protéagineux et légumineuses, légumes et fruits, autres.
+
+Sols impropres à la réalisation de reliquats : (réalisation d’un bilan azoté post-récolte sur chaque îlot ) :
+Lorsque la mesure du reliquat azoté n’est pas possible du fait d’un sol impropre à sa réalisation,
+l’indicateur est le bilan azoté post récolte calculé sur chaque îlot concerné par les épandages. Les
+sols impropres à la réalisation d’un reliquat sont les suivants :
+• Départements des Ardennes (08), de l’Aube (10), de la Marne (51) et de la Haute-Marne (52) :
+
+Types de sol
+
+G1 - sols argilo-calcaires très
+superficiels avec cailloux
+G2 - sols argilo-calcaires
+superficiels avec cailloux
+G3 - sols argilo-calcaires
+moyennement profonds
+avec cailloux
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+profondeur moyenne
+dans l’horizon de
+d’enracinement pour un
+surface
+blé (cm)
+< 20
+
+oui
+
+20-40
+
+oui
+
+40-60
+
+oui
+
+Petites régions agricoles où le
+type de sol est majoritaire *
+Barrois
+Plateau langrois montagne
+Vignoble du Barrois
+Barrois
+Barrois vallée
+Plateau langrois montagne
+Vignoble du Barrois
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.
+
+• Départements de la Meurthe-et-Moselle (54), de la Meuse (55), de la Moselle (57) et des
+Vosges (88) :
+
+Types de sol
+
+Sols à cailloux
+
+Sols argilocalcaires
+
+Sols sur marne peu
+profonde
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+Petites régions agricoles où le
+profondeur moyenne
+dans l’horizon de
+type de sol est majoritaire *
+d’enracinement pour un
+surface
+blé (cm)
+<40
+oui
+Argonne
+Barrois
+Chatenois
+Côtes de Meuse
+40-80
+oui
+Pays de Montmédy
+Pays Haut lorrain
+Plateau de Haye
+Plateau Lorrain
+
+< 60
+
+non
+
+Argonne
+Barrois
+Chatenois
+Côtes de Meuse
+Montagne Vosgienne
+Pays de Montmédy
+Plateau Lorrain
+Vôge
+Woëvre
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.
+
+• Départements du bas-Rhin (67) et de Haut-Rhin (68) :
+
+Types de sol
+
+67 : Sol sableux des rivières
+vosgiennes Nord
+67 : Sol sableux à limonosableux des rivières
+vosgiennes Centre
+67 : Ried brun caillouteux
+68 : Sol superficiel de Hardt
+68 : Ochsenfeld
+
+Profondeur indicative
+de sol avant la roche ou Présence de cailloux
+profondeur moyenne
+dans l’horizon de
+d’enracinement pour un
+surface
+blé (cm)
+
+Petites régions agricoles où le
+type de sol est majoritaire *
+
+Superficiel
+
+parfois
+
+67 : Plaine du Rhin
+
+Superficiel
+
+non
+
+67 : Plaine du Rhin
+67 : Région sous-Vosgienne
+
+Superficiel
+Superficiel
+Superficiel
+
+oui
+oui
+oui
+
+67 : Ried
+68 : Hardt
+68 : Oschsenfeld
+
+* Par petite région agricole, il est possible de définir les classes de sols majoritairement présentes, sachant qu’il peut
+exister des exceptions liées à la diversité des pédopaysages.
+
+Le bilan azoté post récolte est la différence entre les apports d’azote réalisés sur l'îlot cultural et les
+exportations en azote par la culture (organes récoltés). Le bilan azoté post-récolte est calculé pour
+une campagne culturale. Ainsi le bilan calculé suite à la récolte de la culture principale de l’année N
+tient compte :
+
+
+de l’ensemble des apports d’azote réalisés entre la récolte de la culture principale précédente
+(année N-1) et la récolte de la culture principale de l’année N ;
+
+
+
+et des exportations en azote, liées à la récolte de la culture principale de l’année N et le cas
+échéant des exportations en azote de la culture dérobée implantée entre la récolte de la
+culture principale précédente (année N-1) et la récolte de la culture principale de l’année N.
+
+Les données à utiliser dans ce calcul sont :
+
+
+les quantités d’azote total des apports réalisés sur la culture principale et le cas échéant
+pendant l’interculture précédent la culture principale ;
+
+
+
+les rendements (et le cas échéant les teneurs en protéines) de la culture principale et le cas
+échéant de la culture dérobée la précédent ;
+
+
+
+la teneur en azote des organes récoltés fixés par la brochure du COMIFER « Teneur en azote
+des végétaux récoltés (2013) - pour les cultures de plein champ, les principaux fourrages et la
+vigne » https://comifer.asso.fr/les-brochures/
+
+Exemple de tableau de calcul du bilan azoté post-récolte pour les cultures fourragères (hors prairies)
+et non fourragères :
+
+Transmission des résultats :
+Les résultats des mesures du reliquat azoté sont transmis à la Direction départementale des
+territoires dans le mois suivant la fin de la campagne d’épandage. Ils sont accompagnés, pour
+chaque point de mesure, des informations suivantes :
+
+
+identification du producteur des fertilisants épandus,
+
+
+
+identification de l’exploitation réceptrice des épandages,
+
+
+
+date du prélèvement,
+
+
+
+identification PAC de l’îlot ou coordonnées GPS,
+
+
+
+profondeur des prélèvements,
+
+
+
+couvert d’interculture en place et précédent cultural.
+
+Le cas échéant, la transmission pourra être réalisée via le site « Mes démarches simplifiées »
+(www.demarches-simplifiees.fr).
+Les justificatifs sont tenus à disposition en cas de contrôle. Le cas échéant, les bilans azotés post
+récolte sont transmis dans les mêmes délais pour les îlots concernés.
+
+c) Cas des épandages sur luzerne après la dernière coupe [note (12)] :
+Le dispositif de surveillance pluriannuel des reliquats azotés avant épandage est proposé par le
+pétitionnaire puis validé par l’autorisation initiale ou complémentaire délivrée par le préfet.
+Il permet soit de raisonner les apports pendant les périodes d’interdiction d’épandage, si les résultats
+sont connus avant les épandages, soit d’améliorer les campagnes d’épandage ultérieures si les
+résultats sont connus tardivement. Dans tous les cas, un bilan annuel est réalisé puis transmis à
+l’administration de tutelle.
+L’indicateur de lixiviation est défini comme le reliquat azoté avant épandage, lorsque cette mesure est
+possible. Une analyse est réalisée pour chaque îlot cultural représentatif concerné par les épandages
+pendant la période d’interdiction.
+Protocole à respecter pour la réalisation des mesures de reliquats :
+
+
+Prélèvements réalisés dans la plus grande zone homogène de la parcelle,
+
+
+
+L’échantillon représentatif est constitué d’un minimum de 14 carottages élémentaires répartis
+sur un cercle de 20 à 30 m de diamètre,
+
+
+
+Les carottages élémentaires sont effectués sur une profondeur de deux ou trois horizons de
+30 cm selon la profondeur du sol,
+
+
+
+Les prélèvements sont effectués avant tout épandage de fertilisant azoté prévu pendant la
+période d’interdiction,
+
+
+
+À défaut de prescriptions relatives au transport des échantillons, définies par le laboratoire,
+l’échantillon représentatif doit être réfrigéré rapidement et transmis dans les 3 jours, ou bien
+être préalablement congelés,
+
+
+
+Il est recommandé d’attendre les résultats des mesures effectuées avant de procéder aux
+épandages.
+
+Îlots culturaux représentatifs :
+
+
+Le nombre de mesures de reliquat à réaliser est au minimum d’une mesure par tranche de
+20 ha de surface réceptrice des épandages.
+
+
+
+Il y a au moins une mesure de reliquat par années d’implantation de la luzerne.
+
+Sols impropres à la réalisation de reliquats : (réalisation d’un bilan azoté post-récolte sur chaque îlot ) :
+Lorsque la mesure du reliquat azoté n’est pas possible du fait d’un sol impropre à sa réalisation,
+l’indicateur est le bilan azoté post récolte calculé sur chaque îlot concerné par les épandages. Les
+sols impropres à la réalisation d’un reliquat sont les mêmes que pour le cas « b) Cas des épandages
+non encadrés par une autorisation préfectorale [notes (2) et (3)] » ci avant présenté.
+Le bilan azoté post récolte est la différence entre les apports d’azote réalisés sur l’îlot cultural et les
+exportations en azote par la culture (organes récoltés). Le bilan azoté post-récolte est le même que
+pour le cas « b) Cas des épandages non encadrés par une autorisation préfectorale [notes (2) et
+(3)] » ci avant présenté.
+
+Justificatifs :
+Les justificatifs sont tenus à disposition en cas de contrôle.
