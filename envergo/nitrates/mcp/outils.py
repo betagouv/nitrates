@@ -202,6 +202,15 @@ def _simuler(arguments: dict, base_url: str) -> dict:
     return sortie
 
 
+def _liste(valeur) -> list[str] | None:
+    """Liste d'ids, ou None : tolere une chaine seule ou separee par virgules."""
+    if not valeur:
+        return None
+    if isinstance(valeur, str):
+        valeur = valeur.split(",")
+    return [str(v).strip() for v in valeur if str(v).strip()] or None
+
+
 def _comparer(arguments: dict, base_url: str) -> dict:
     manque = _elements_manquants(
         arguments,
@@ -224,6 +233,7 @@ def _comparer(arguments: dict, base_url: str) -> dict:
         arguments.get("date") or "",
         reponses=arguments.get("reponses") or {},
         base_url=base_url,
+        cultures=_liste(arguments.get("cultures")),
     )
 
 
@@ -249,6 +259,7 @@ def _comparer_types(arguments: dict, base_url: str) -> dict:
         arguments.get("date") or "",
         reponses=arguments.get("reponses") or {},
         base_url=base_url,
+        fertilisants=_liste(arguments.get("fertilisants")),
     )
 
 
@@ -348,11 +359,13 @@ OUTILS = [
             "plafond d'azote éventuel, et réponse à une date précise si `date` "
             "est donnée. Peut renvoyer statut=questions_complementaires : poser "
             "alors ces questions à l'agriculteur et rappeler l'outil avec "
-            "`reponses`. Renvoie l'image du calendrier : la montrer plutôt que "
-            "de recopier les dates. Si le résultat contient `dates_a_preciser` (dates du "
+            "`reponses`. Si le résultat contient `dates_a_preciser` (dates du "
             "couvert ou du semis), rappeler l'outil avec ces dates plutôt que de "
             "calculer soi-même. Toujours donner le `lien_simulation` à "
-            "l'agriculteur."
+            "l'agriculteur. UN produit sur UNE culture, UN appel par réponse : "
+            "chaque appel affiche une vue. Pour comparer plusieurs produits, "
+            "appeler une seule fois comparer_fertilisants avec `fertilisants` ; "
+            "plusieurs cultures, comparer_cultures avec `cultures`."
         ),
         schema={
             "type": "object",
@@ -386,7 +399,8 @@ OUTILS = [
             "indique sur quelles cultures l'épandage est autorisé, autorisé "
             "sous conditions, interdit, ou dépend d'une précision. Répond à « "
             "j'ai du lisier à sortir en février, sur quoi je peux l'épandre ? ». "
-            "Renvoie une image du calendrier par culture : la montrer."
+            "Avec `cultures`, compare seulement ces cultures. Une seule vue pour "
+            "toutes : ne pas appeler simuler_epandage culture par culture."
         ),
         schema={
             "type": "object",
@@ -395,6 +409,11 @@ OUTILS = [
                 "fertilisant": {
                     "type": "string",
                     "description": "id de fertilisant (cf. lister_fertilisants).",
+                },
+                "cultures": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Facultatif : ids des seules cultures à comparer.",
                 },
                 "date": _DATE,
                 "reponses": _REPONSES,
@@ -405,12 +424,15 @@ OUTILS = [
     ),
     Outil(
         nom="comparer_fertilisants",
-        titre="Calendrier par type de fertilisant",
+        titre="Comparer des fertilisants",
         description=(
             "Pour une culture, une parcelle et une date : le calendrier de chaque "
             "type de fertilisant (0, Ia, Ib, II, II digestat, III) en une seule "
             "vue. Répond à « je ne sais pas encore quoi épandre, quelles sont les "
-            "règles ? ». Ne jamais répondre de mémoire."
+            "règles ? ». Avec `fertilisants` (ids précis), compare ces produits "
+            "(ex. deux composts entre lesquels l'agriculteur hésite) : ne pas "
+            "appeler simuler_epandage produit par produit. Ne jamais répondre de "
+            "mémoire."
         ),
         schema={
             "type": "object",
@@ -421,6 +443,14 @@ OUTILS = [
                     "description": (
                         "id de culture (cf. lister_cultures), ou mot générique "
                         "(« couvert ») : l'outil fera alors choisir l'agriculteur."
+                    ),
+                },
+                "fertilisants": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Facultatif : ids de produits précis à comparer (cf. "
+                        "lister_fertilisants), au lieu des six types."
                     ),
                 },
                 "date": _DATE,
