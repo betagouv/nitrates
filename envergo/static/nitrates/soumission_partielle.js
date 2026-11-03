@@ -108,7 +108,21 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
-  let renduAffiche = (history.state && history.state[CLE_RENDU]) || nouvelIdRendu();
+  // Un retour / une avance du navigateur peut arriver pendant le chargement,
+  // avant ce script (defer) : le script inline de simulateur.html note alors
+  // le rendu de CE document et l'entree visee. Si elle porte un autre rendu,
+  // on la charge (sinon la page afficherait l'etape precedente sous l'URL de
+  // la suivante).
+  const renduInitial = window.NITRATES_RENDU_INITIAL;
+  const etatPrecoce = window.NITRATES_POPSTATE_PRECOCE;
+  const viseePrecoce = etatPrecoce && etatPrecoce[CLE_RENDU];
+  if (viseePrecoce && viseePrecoce !== renduInitial) {
+    window.location.replace(window.location.href);
+    return;
+  }
+
+  let renduAffiche =
+    renduInitial || (history.state && history.state[CLE_RENDU]) || nouvelIdRendu();
   try {
     history.replaceState(
       Object.assign({}, history.state, { [CLE_RENDU]: renduAffiche }),
@@ -121,7 +135,8 @@
   window.addEventListener("popstate", function (e) {
     const rendu = e.state && e.state[CLE_RENDU];
     if (!rendu || rendu === renduAffiche) return;
-    window.location.reload();
+    // Charge l'URL de l'entree visee, sans ajouter d'entree d'historique.
+    window.location.replace(window.location.href);
   });
 
   function pousserUrl(url) {

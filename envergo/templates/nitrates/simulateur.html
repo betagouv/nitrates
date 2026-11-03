@@ -28,6 +28,12 @@
   {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
   {% if catalog_js %}{{ catalog_js|json_script:"nitrates-catalog-data" }}{% endif %}
   <script>
+    // #273 : rendu de ce document et retour / avance du navigateur survenus
+    // avant soumission_partielle.js (defer), qui les traite a son demarrage.
+    window.NITRATES_RENDU_INITIAL = (history.state || {}).nitratesRendu;
+    window.addEventListener("popstate", function (e) {
+      window.NITRATES_POPSTATE_PRECOCE = e.state;
+    });
     // Force le path des marker icons Leaflet : sans ca, Leaflet derive
     // le path a partir du JS courant (hashe par whitenoise) -> 404.
     L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";
