@@ -147,6 +147,46 @@ test.describe('#273 soumission htmx du simulateur', () => {
     expect(await pageRechargee(page)).toBe(false);
   });
 
+  test('Modifier puis autre fertilisant : la meme QC revient pre-cochee', async ({
+    page,
+  }) => {
+    // Couvert interculture longue + digestat brut : QC plan d'epandage ICPE.
+    await page.goto(
+      `/simulateur/?lat=${REIMS_LAT}&lng=${REIMS_LNG}&code_insee=51454` +
+        '&cflow_destination=couvert_sur&cflow_type_couvert=couvert_intercultures_longue' +
+        '&cflow_couvert_recolte=recolte&categorie_culture=couvert_intercultures_longue' +
+        '&sous_culture_form=couvert_recolte_plus_en_place_apres_3112' +
+        '&date_semis_couvert=15/08&date_destruction_couvert=15/11' +
+        '&occupation_sol=couvert_intercultures&sous_culture=cie_avant_3112' +
+        '&categorie_fertilisant=digestats&sous_fertilisant=digestat_brut_methanisation' +
+        '&type_fertilisant=type_II',
+    );
+    const icpeA = page.locator(
+      '[data-qc-champ="plan_epandage"] input[type="radio"][value="icpe_a"]',
+    );
+    await expect(icpeA).toHaveCount(1, { timeout: 30000 });
+    // Clic DOM natif : le libelle contient un lien de glossaire (ICPE, #436).
+    await icpeA.evaluate((el: HTMLInputElement) => el.click());
+    await soumettreSimulation(page);
+    await expect(page.locator('.result-col')).toBeVisible();
+
+    // Modifier, autre fertilisant qui pose la meme question.
+    await page.locator('[data-recap-modifier]').click();
+    await page.locator('label[for="id_categorie_fertilisant__fumiers"]').click();
+    await page.locator('label[for="id_sous_fertilisant__fumier_volaille"]').click();
+    expect(new URL(page.url()).searchParams.get('plan_epandage')).toBeNull();
+    await soumettreSimulation(page);
+
+    const groupe = page.locator('#qc-bloc [data-qc-champ="plan_epandage"]');
+    await expect(groupe).toBeVisible();
+    await expect(groupe.locator('input[value="icpe_a"]')).toBeChecked();
+    await expect(groupe.locator('.qc-question__reprise')).toBeVisible();
+
+    // Nouvelle simulation (page vierge) : rien n'est repris.
+    await page.goto(`/simulateur/?lng=${REIMS_LNG}&lat=${REIMS_LAT}`);
+    await expect(page.locator('.qc-question__reprise')).toHaveCount(0);
+  });
+
   test('erreur serveur : repli sur la soumission classique', async ({ page }) => {
     await remplirMaisDigestat(page);
     await marquerPage(page);

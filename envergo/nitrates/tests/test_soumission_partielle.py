@@ -61,6 +61,7 @@ def test_modules_qc_et_resultat_charges_sans_resultat(client, nitrates_site):
     modules sont donc charges des la page vierge."""
     html = client.get("/simulateur/").content.decode()
     for module in (
+        "qc_reponses_precedentes.js",
         "subsidiaires_cascade.js",
         "scroll_resultat.js",
         "recap_choix.js",
@@ -68,6 +69,11 @@ def test_modules_qc_et_resultat_charges_sans_resultat(client, nitrates_site):
         "calculatrice-calendrier.js",
     ):
         assert module in html, module
+    # La reprise des reponses QC pre-coche avant que la cascade des QC ne
+    # revele les questions enfants.
+    assert html.index("qc_reponses_precedentes.js") < html.index(
+        "subsidiaires_cascade.js"
+    )
 
 
 def test_zones_remplacables_presentes_sur_la_page_vierge(client, nitrates_site):

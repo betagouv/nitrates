@@ -102,6 +102,8 @@
   apparaitre QC et resultat sans recharger la page ; chacun se (re)branche sur
   l'evenement nitrates:rendu-remplace.
   {% endcomment %}
+  {# #273 : reprise des reponses QC apres « Modifier », AVANT subsidiaires_cascade.js. #}
+  <script defer src="{% static_v 'nitrates/qc_reponses_precedentes.js' %}"></script>
   <script defer src="{% static_v 'nitrates/subsidiaires_cascade.js' %}"></script>
   {# Recadre la vue apres soumission : QC en attente -> bloc QC en haut ; #}
   {# resultat final -> section Localisation/resultat en haut (#112). #}
