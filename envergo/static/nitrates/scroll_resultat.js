@@ -1,8 +1,10 @@
 // Auto-scroll apres une soumission du simulateur (#112).
 //
-// Le parcours est un GET full-reload : apres "Lancer la simulation", le
-// navigateur repositionne la page tout en haut (sur le hero), alors que la
-// suite logique est plus bas. On recadre donc la vue :
+// Arrivee sur une page resultat (lien partage, retour arriere, repli sans
+// htmx) : le navigateur part tout en haut (sur le hero), alors que la suite
+// logique est plus bas. Depuis #273, la soumission passe en htmx sans
+// rechargement : meme cadrage, rejoue a chaque nitrates:rendu-remplace. On
+// recadre donc la vue :
 //
 //   - QC en attente  -> on amene le bloc "Questions complementaires" en HAUT
 //     de l'ecran (block:start), pleine page, pour qu'il soit evident qu'il
@@ -33,6 +35,15 @@
   const LG_BREAKPOINT = 992;
 
   function cible() {
+    // #273 : ce module est charge sur toutes les pages. Sans resultat ni QC en
+    // attente (formulaire vierge, retour en saisie), il n'y a rien a cadrer.
+    if (
+      !document.querySelector(".result-col") &&
+      !document.querySelector("#qc-bloc[data-qc-en-attente='true']")
+    ) {
+      return null;
+    }
+
     // QC en attente : on cale le BLOC "Questions complementaires" (avec son
     // titre) en haut du viewport -> l'utilisateur voit le titre + la 1re
     // question. (Cibler la question interne masquait le titre du bloc.)
@@ -55,8 +66,9 @@
     return fallback ? { el: fallback, block: "start" } : null;
   }
 
-  const target = cible();
-  if (!target) return;
+  // Cible courante (recalculee a chaque recadrage : apres une soumission htmx,
+  // #273, le bloc QC / la colonne resultat sont de nouveaux elements).
+  let target = null;
 
   const reduceMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
@@ -108,14 +120,20 @@
   // initial, on programme des RE-SCROLLS correctifs a 150/500/1000 ms, et un
   // dernier sur window.load, pour rattraper tout reflow tardif. scrollVers est
   // idempotent (recalcule la position a chaque appel).
-  function scrollQuandStable() {
+  // `corriger` : re-scrolls correctifs apres le scroll anime. Utiles au
+  // chargement de page (tuiles carte, images qui decalent la cible), nuisibles
+  // apres une soumission htmx : la carte est deja la, et un re-scroll
+  // instantane couperait l'animation en cours (#273).
+  function scrollQuandStable(corriger) {
+    target = cible();
+    if (!target) return;
     let lastHeight = -1;
     let stableFrames = 0;
     let elapsed = 0;
     const STEP = 80; // ms entre 2 mesures
     const MAX = 1200; // ms max d'attente
 
-    function corriger() {
+    function recaler() {
       scrollVers("auto");
     }
 
@@ -133,9 +151,11 @@
         scrollVers(reduceMotion ? "auto" : "smooth");
         // Re-scrolls correctifs pour rattraper les reflows tardifs (tuiles
         // carte, images). Sans animation pour ne pas "sauter" visuellement.
-        setTimeout(corriger, 150);
-        setTimeout(corriger, 500);
-        setTimeout(corriger, 1000);
+        if (corriger) {
+          setTimeout(recaler, 150);
+          setTimeout(recaler, 500);
+          setTimeout(recaler, 1000);
+        }
         return;
       }
       setTimeout(tick, STEP);
@@ -146,8 +166,21 @@
   // On part de window.load (images + carte demandees). Si la page est deja
   // chargee, on enchaine directement.
   if (document.readyState === "complete") {
-    scrollQuandStable();
+    scrollQuandStable(true);
   } else {
-    window.addEventListener("load", scrollQuandStable, { once: true });
+    window.addEventListener(
+      "load",
+      function () {
+        scrollQuandStable(true);
+      },
+      { once: true }
+    );
   }
+
+  // #273 : apres une soumission htmx, meme cadrage (bloc QC ou resultat), une
+  // fois la mise en page stabilisee (transition d'entree de la colonne
+  // resultat), sans re-scroll correctif.
+  document.addEventListener("nitrates:rendu-remplace", function () {
+    scrollQuandStable(false);
+  });
 })();

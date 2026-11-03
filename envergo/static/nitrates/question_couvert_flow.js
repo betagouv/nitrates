@@ -1097,6 +1097,15 @@
       appliquerCouvert();
       mettreAJourBouton();
     });
+
+    // #273 : résultat affiché sans rechargement (soumission htmx) -> les dates
+    // Q4 de gauche s'effacent, comme au chargement d'une page résultat (elles
+    // feraient doublon avec celles du calendrier dynamique à droite).
+    document.addEventListener("nitrates:rendu-remplace", function () {
+      if (!resultatAffiche()) return;
+      cacher("q_dates_couvert");
+      majGatingDates();
+    });
   }
 
   // Reconstruit l'état du flow à partir des valeurs déjà présentes (params URL

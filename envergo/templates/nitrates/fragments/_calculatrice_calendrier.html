@@ -35,5 +35,8 @@ sorte les PC plafond du drawer et peigne en vert une règle 100 % plafond.
 {% endcomment %}
 {% calculatrice_data_json ev.regle codes_prescription as calc_data %}
 {{ calc_data|json_script:"nitrates-calculatrice-data" }}
-
-<script defer src="{% static_v 'nitrates/calculatrice-calendrier.js' %}"></script>
+{% comment %}
+#273 : calculatrice-calendrier.js est charge par simulateur.html sur toutes les
+pages (un <script> injecte par une soumission htmx ne s'executerait pas) ; il
+s'initialise sur ce bloc au chargement et a chaque nitrates:rendu-remplace.
+{% endcomment %}

@@ -1267,6 +1267,29 @@ html.nitrates-construction-visible .nitrates-progress {
   background: #8585f6;
 }
 
+/* #273 : chargement de la soumission htmx, sous le bouton. Meme barre que la
+   localisation, sur toute la largeur du formulaire (retour Max : trop etroite
+   a la largeur du bouton), un peu plus epaisse. */
+.nitrates-soumission-chargement {
+  margin-top: 16px;
+}
+
+.nitrates-soumission-chargement .nitrates-loc-loading__bar {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.nitrates-soumission-chargement .nitrates-loc-loading__fill {
+  border-radius: 4px;
+}
+
+/* Pendant la requete, le bouton ne relance rien (hx-sync remplacerait la
+   requete en cours, inutile sur un double clic). */
+#form-simulateur[aria-busy="true"] #form-submit-row button[type="submit"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 /* ─── #271 chantier 3 : drawer « Conditions d'épandage » ─────────────────────
    Panneau latéral qui slide depuis la droite. 2/3 de large sur desktop, plein
    écran sur mobile. Ouvert/fermé par drawer_conditions.js (classe --ouvert). */

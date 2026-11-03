@@ -16,6 +16,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { soumettreSimulation } from './soumission';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -139,10 +140,10 @@ test.describe('Branche culture_de_printemps : flow question complementaire', () 
 
     // Le radio est dans le form principal, on submit via le bouton. Quand une
     // QC est en attente, le bouton s'intitule « Suivant » (#160).
-    await page
-      .getByRole('button', { name: 'Suivant', exact: true })
-      .click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(
+      page,
+      page.getByRole('button', { name: 'Suivant', exact: true }),
+    );
 
     const body = page.locator('body');
     await expect(body).toContainText('r_printemps_II_fertirrig');

@@ -1840,7 +1840,9 @@
   // en interrogeant DebugView pour le point du résultat (lat/lng des hidden).
   // Ainsi la 1re comparaison au re-clic se fait DebugView vs DebugView (valeurs
   // cohérentes), sans dépendre du catalog moulinette qui peut diverger.
-  (function initScopeReference() {
+  // #273 : idem à chaque résultat affiché sans rechargement (soumission htmx) ;
+  // la référence d'un résultat précédent (autre point) est d'abord oubliée.
+  function initScopeReference() {
     const form = document.getElementById("form-simulateur");
     if (!form || !form.hasAttribute("data-resultat-affiche")) return;
     const lat = (latInput.value || "").trim();
@@ -1858,5 +1860,11 @@
         if (data) publierRappelsCouvert(data);
       })
       .catch(() => {});
-  })();
+  }
+  initScopeReference();
+  document.addEventListener("nitrates:rendu-remplace", function (e) {
+    if (!e.detail || !e.detail.resultat) return;
+    scopeReference = null;
+    initScopeReference();
+  });
 })();

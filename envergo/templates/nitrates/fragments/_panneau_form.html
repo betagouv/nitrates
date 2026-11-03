@@ -26,9 +26,23 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
 {% if %} imbriqués entre l'ouverture et la fermeture ; le tag est bien apparié
 (cf. </form> en fin de fichier). On désactive donc H025 sur ce fichier.
 {% endcomment %}
+{% comment %}
+#273 : la soumission part en htmx (hx-get, meme URL que le GET natif) et
+soumission_partielle.js ne remplace que ce qui change (#zone-recap, #zone-qc,
+.result-col...) : la carte et les reponses deja saisies restent en
+place, plus de rechargement de page. method/action restent pour le repli sans
+JS. hx-swap="none" : le remplacement est fait par soumission_partielle.js.
+hx-params : le jeton CSRF du recueil d'email (zone fermee) n'a rien a faire
+dans l'URL d'une simulation.
+{% endcomment %}
 <form id="form-simulateur"
       method="get"
       action="{{ request.path }}"
+      hx-get="{{ request.path }}"
+      hx-trigger="submit"
+      hx-sync="this:replace"
+      hx-swap="none"
+      hx-params="not csrfmiddlewaretoken"
       {% if afficher_resultat and not qc_en_attente %}data-resultat-affiche="1"{% endif %}>
 
   {# ─── Localisation ───────────────────────────────────────────────── #}
@@ -219,29 +233,33 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
     avec un bouton « Modifier » qui ré-affiche le formulaire et masque le
     résultat (via reset_form.js #135). Rendu seulement en page résultat.
       {% endcomment %}
-      {% if afficher_resultat and not qc_en_attente %}
-        <aside id="recap-choix"
-               class="recap-choix"
-               aria-label="Récapitulatif de vos choix">
-          {# Choix culture/couvert/fertilisant : remplis côté JS depuis l'état du form. #}
-          <div class="recap-choix__liste" data-recap-liste></div>
+      {# #273 : zone remplacee par soumission_partielle.js apres chaque soumission. #}
+      <div class="nitrates-zone" id="zone-recap">
+        {% if afficher_resultat and not qc_en_attente %}
+          <aside id="recap-choix"
+                 class="recap-choix"
+                 aria-label="Récapitulatif de vos choix">
+            {# Choix culture/couvert/fertilisant : remplis côté JS depuis l'état du form. #}
+            <div class="recap-choix__liste" data-recap-liste></div>
 
-          {% comment %}
+            {% comment %}
           Questions complémentaires : on NE détaille PAS (dynamique, peu
           synthétisable). On mentionne juste leur nombre ; pour les voir/modifier,
           l'utilisateur clique « Modifier ».
-          {% endcomment %}
-          {% if qc_repondues %}
-            <div class="recap-choix__qc-note">
-              + {{ qc_repondues|length }} question{{ qc_repondues|length|pluralize }} complémentaire{{ qc_repondues|length|pluralize }}
-            </div>
-          {% endif %}
+            {% endcomment %}
+            {% if qc_repondues %}
+              <div class="recap-choix__qc-note">
+                + {{ qc_repondues|length }} question{{ qc_repondues|length|pluralize }} complémentaire{{ qc_repondues|length|pluralize }}
+              </div>
+            {% endif %}
 
-          <button type="button"
-                  class="fr-btn fr-btn--secondary fr-btn--sm recap-choix__modifier"
-                  data-recap-modifier>Modifier</button>
-        </aside>
-      {% endif %}
+            <button type="button"
+                    class="fr-btn fr-btn--secondary fr-btn--sm recap-choix__modifier"
+                    data-recap-modifier>Modifier</button>
+          </aside>
+        {% endif %}
+      </div>
+      {# /#zone-recap #}
 
       <div id="form-after-localisation"
            {% if not data.lat or not data.lng %}hidden{% endif %}
@@ -405,12 +423,19 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
   en colonne unique. Une fois tout repondu, ce bloc reste affiche en recap et
   le resultat apparait a droite.
         {% endcomment %}
-        {% if qc_en_attente or qc_repondues %}
-          <div class="form-section questions-complementaires-box"
-               style="margin-top: 32px">{% include "nitrates/fragments/_qc_sous_form.html" %}</div>
-        {% endif %}
+        {% comment %}
+        #273 : zone remplacee par soumission_partielle.js apres chaque soumission
+        (QC + hidden passthrough, qui dependent tous deux de la reponse serveur).
+        {% endcomment %}
+        <div class="nitrates-zone" id="zone-qc">
+          {% if qc_en_attente or qc_repondues %}
+            <div class="form-section questions-complementaires-box"
+                 style="margin-top: 32px">{% include "nitrates/fragments/_qc_sous_form.html" %}</div>
+          {% endif %}
 
-        {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
+          {% include "nitrates/fragments/_form_hidden_passthrough.html" %}
+        </div>
+        {# /#zone-qc #}
 
         {% comment %}
     Bouton de soumission. 3 etats :
@@ -431,6 +456,21 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
               Lancer la simulation
             {% endif %}
           </button>
+          {% comment %}
+          #273 : chargement pendant la requete htmx, meme barre "fake" que le
+          chargement de la localisation (montee asymptotique vers 90 %, pilotee
+          par soumission_partielle.js).
+          {% endcomment %}
+          <div id="nitrates-soumission-chargement"
+               class="nitrates-loc-loading nitrates-soumission-chargement"
+               hidden
+               role="status"
+               aria-live="polite">
+            <p class="nitrates-loc-loading__label">Calcul de votre simulation…</p>
+            <div class="nitrates-loc-loading__bar">
+              <div class="nitrates-loc-loading__fill"></div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -443,6 +483,11 @@ questions/résultat. djLint (H025) croit à tort le <form> orphelin à cause des
     Colonne droite (#271) : résultat final, 2/3 de large, seulement quand un
     résultat est prêt et qu'aucune QC n'est en attente. Inclus DANS le <form>
     pour rester dans la même grille que la colonne gauche sous la carte.
+    {% endcomment %}
+    {% comment %}
+    #273 : pas d'enveloppe ici (les gouttieres DSFR visent les enfants directs de
+    la grille) : soumission_partielle.js ajoute / remplace / retire la .result-col
+    elle-meme, en derniere position de la .results-row.
     {% endcomment %}
     {% if afficher_resultat and not qc_en_attente %}
       <div class="fr-col-12 fr-col-lg-8 result-col">{% include "nitrates/fragments/_panneau_resultat.html" %}</div>

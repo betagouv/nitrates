@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { soumettreSimulation } from './soumission';
 
 // Le simulateur charge Leaflet + WMTS IGN + GeoJSON ZV ; les workers
 // paralleles peuvent OOM-crash le conteneur node. On serialise par fichier.
@@ -363,7 +364,7 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
     // gating cascade). On complète la cascade fertilisant avant de lancer.
     await clickCascadeRadio(page, 'categorie_fertilisant', 'engrais_mineral');
     await clickCascadeRadio(page, 'sous_fertilisant', 'engrais_azote_mineral');
-    await page.locator('button[type="submit"]').click();
+    await soumettreSimulation(page);
 
     // Page resultat
     await expect(page).toHaveURL(/\/simulateur\/\?/);
@@ -399,7 +400,7 @@ test.describe('Simulateur nitrates : flow complet et resultats', () => {
     );
     await expect(page.locator('#id_type_fertilisant')).toHaveValue('type_0');
 
-    await page.locator('button[type="submit"]').click();
+    await soumettreSimulation(page);
 
     await expect(page).toHaveURL(/\/simulateur\/\?/);
     await expect(page.locator('body')).toContainText('r_colza_type_0');

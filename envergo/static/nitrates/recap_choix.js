@@ -11,18 +11,20 @@
 //      repasse en mode saisie (réutilise reset_form.js #135).
 //
 // Rien n'est fait hors page résultat (l'encart n'est rendu par le template que
-// quand afficher_resultat est vrai).
+// quand afficher_resultat est vrai). #273 : l'encart peut apparaître sans
+// rechargement (soumission htmx) -> il est relu à chaque fois, l'init est
+// rejouée sur nitrates:rendu-remplace et « Modifier » passe par délégation.
 
 (function () {
   "use strict";
 
-  var encart = document.getElementById("recap-choix");
-  if (!encart) return; // pas sur une page résultat
-
   var form = document.getElementById("form-simulateur");
   var formApres = document.getElementById("form-after-localisation");
-  var liste = encart.querySelector("[data-recap-liste]");
-  var btnModifier = encart.querySelector("[data-recap-modifier]");
+  if (!form) return;
+
+  function encartCourant() {
+    return document.getElementById("recap-choix");
+  }
 
   // ─── Helpers de lecture des libellés (état courant du form) ─────────────
 
@@ -100,6 +102,9 @@
   }
 
   function rendre() {
+    var encart = encartCourant();
+    var liste = encart && encart.querySelector("[data-recap-liste]");
+    if (!liste) return;
     var lignes = construireLignes();
     liste.innerHTML = "";
     lignes.forEach(function (l) {
@@ -121,6 +126,8 @@
 
   // Affiche le récap et masque le formulaire complet (état page résultat).
   function afficherRecap() {
+    var encart = encartCourant();
+    if (!encart) return;
     if (formApres) formApres.hidden = true;
     encart.hidden = false;
     rendre();
@@ -131,7 +138,8 @@
   // reset_form.js : on retire l'attribut data-resultat-affiche, on enlève la
   // colonne résultat et on repasse la grille en colonne unique, puis on notifie.
   function modifier() {
-    encart.hidden = true;
+    var encart = encartCourant();
+    if (encart) encart.hidden = true;
     if (formApres) formApres.hidden = false;
 
     // Retire le résultat affiché (colonne droite + split) et repasse en saisie.
@@ -157,16 +165,24 @@
     }
   }
 
-  if (btnModifier) btnModifier.addEventListener("click", modifier);
+  document.addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest("[data-recap-modifier]")) modifier();
+  });
 
   // Au chargement de la page résultat : masque le form, montre le récap.
   // Les libellés (radios du flow + cascade fertilisant) sont rejoués de façon
   // ASYNCHRONE (fetch référentiels puis rendu) -> on rend une première fois tout
   // de suite (masque le form), puis on re-rend quand le flow signale qu'il a fini
   // (nitrates:form-revealed) et via quelques essais différés en filet.
-  afficherRecap();
+  function initRecap() {
+    if (!encartCourant()) return;
+    afficherRecap();
+    [150, 400, 900].forEach(function (ms) {
+      setTimeout(rendre, ms);
+    });
+  }
+
+  initRecap();
   document.addEventListener("nitrates:form-revealed", rendre);
-  [150, 400, 900].forEach(function (ms) {
-    setTimeout(rendre, ms);
-  });
+  document.addEventListener("nitrates:rendu-remplace", initRecap);
 })();

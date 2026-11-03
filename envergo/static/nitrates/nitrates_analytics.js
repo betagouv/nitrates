@@ -82,4 +82,16 @@
       track("Simulation2Plus");
     }
   });
+
+  // #273 : « Lancer la simulation » / « Suivant » ne rechargent plus la page
+  // (soumission htmx). Chaque etape reste comptee comme une page vue, avec la
+  // meme URL qu'avant le passage en htmx, pour garder des statistiques
+  // comparables.
+  document.addEventListener("nitrates:rendu-remplace", function (e) {
+    var d = (e && e.detail) || {};
+    if (d.urlPrecedente) _paq.push(["setReferrerUrl", d.urlPrecedente]);
+    _paq.push(["setCustomUrl", d.url || window.location.href]);
+    _paq.push(["setDocumentTitle", document.title]);
+    _paq.push(["trackPageView"]);
+  });
 })();

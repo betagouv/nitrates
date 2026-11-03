@@ -372,7 +372,9 @@
     );
     const nouvelle =
       window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
-    window.history.replaceState(null, "", nouvelle);
+    // On garde history.state : il porte l'identifiant de rendu de
+    // soumission_partielle.js (#273), qui pilote le retour arriere.
+    window.history.replaceState(window.history.state, "", nouvelle);
     synchroniserFormDepuisUrl(qs);
   }
 
@@ -466,12 +468,17 @@
   // saisie : une fois qu'on vient d'un resultat, l'URL doit rester le reflet
   // fidele du formulaire jusqu'a la prochaine navigation, sinon elle porte des
   // reponses qui ne sont plus a l'ecran.
-  if (
-    document.querySelector(".result-col") ||
-    document.getElementById("qc-bloc")
-  ) {
-    form.setAttribute("data-miroir-url-actif", "");
+  function armerMiroirUrl() {
+    if (
+      document.querySelector(".result-col") ||
+      document.getElementById("qc-bloc")
+    ) {
+      form.setAttribute("data-miroir-url-actif", "");
+    }
   }
+  armerMiroirUrl();
+  // #273 : resultat / QC affiches sans rechargement (soumission htmx).
+  document.addEventListener("nitrates:rendu-remplace", armerMiroirUrl);
 
   // Expose pour les tests unitaires (jsdom / node) sans polluer l'API
   // publique : uniquement la fonction pure de construction du dict.

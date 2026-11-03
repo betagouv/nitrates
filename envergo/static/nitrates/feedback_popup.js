@@ -252,86 +252,97 @@
     });
 
     // ── Ouverture automatique : fin de la premiere simulation, une fois ─────
-    if (!document.querySelector("[data-nitrates-fin-simulation]")) return;
-    if (dejaDemande()) return;
+    // #273 : la fin de simulation peut arriver sans rechargement (soumission
+    // htmx) -> on (re)tente d'armer a chaque nitrates:rendu-remplace ; une
+    // seule fois par page.
+    var armee = false;
+    function armerOuvertureAuto() {
+      if (armee) return;
+      if (!document.querySelector("[data-nitrates-fin-simulation]")) return;
+      if (dejaDemande()) return;
+      armee = true;
 
-    // Anti-collision (#435) : cartes de definition et drawer conditions
-    // partagent le bord droit. On n'ouvre pas tant qu'ils sont affiches, et
-    // s'ils s'ouvrent apres nous on s'efface le temps qu'ils se referment.
-    function encombrementActif() {
-      return (
-        document.body.classList.contains("drawer-open") ||
-        !!document.querySelector(".def-carte--ouverte")
-      );
-    }
-
-    var autoFaite = false;
-    var ouvertureEnAttente = false;
-
-    function ouvrirAuto() {
-      if (autoFaite || ouvert || dejaDemande()) return;
-      if (encombrementActif()) {
-        ouvertureEnAttente = true;
-        return;
+      // Anti-collision (#435) : cartes de definition et drawer conditions
+      // partagent le bord droit. On n'ouvre pas tant qu'ils sont affiches, et
+      // s'ils s'ouvrent apres nous on s'efface le temps qu'ils se referment.
+      function encombrementActif() {
+        return (
+          document.body.classList.contains("drawer-open") ||
+          !!document.querySelector(".def-carte--ouverte")
+        );
       }
-      autoFaite = true;
-      ecrire("localStorage", STORAGE_KEY, "auto"); // une fois et une seule
-      reinitialiser();
-      montrer(); // non modal : pas de vol de focus
-    }
 
-    window.setInterval(function () {
-      if (ouvert) {
-        root.classList.toggle("nitrates-feedback--efface", encombrementActif());
-      } else if (ouvertureEnAttente && !encombrementActif()) {
-        ouvertureEnAttente = false;
-        ouvrirAuto();
+      var autoFaite = false;
+      var ouvertureEnAttente = false;
+
+      function ouvrirAuto() {
+        if (autoFaite || ouvert || dejaDemande()) return;
+        if (encombrementActif()) {
+          ouvertureEnAttente = true;
+          return;
+        }
+        autoFaite = true;
+        ecrire("localStorage", STORAGE_KEY, "auto"); // une fois et une seule
+        reinitialiser();
+        montrer(); // non modal : pas de vol de focus
       }
-    }, 1000);
 
-    // Declencheur 1 : intention de sortie au curseur (sortie par le haut du
-    // viewport), arme apres un temps de lecture minimal.
-    var armementExit = Date.now() + DELAI_ARMEMENT_MS;
-    document.addEventListener("mouseout", function (e) {
-      if (autoFaite || ouvert) return;
-      if (Date.now() < armementExit) return;
-      if (e.relatedTarget !== null) return;
-      if (e.clientY > 0) return;
-      ouvrirAuto();
-    });
+      window.setInterval(function () {
+        if (ouvert) {
+          root.classList.toggle("nitrates-feedback--efface", encombrementActif());
+        } else if (ouvertureEnAttente && !encombrementActif()) {
+          ouvertureEnAttente = false;
+          ouvrirAuto();
+        }
+      }, 1000);
 
-    // Declencheur 2 (fallback, mobile) : DELAI_INACTION_MS sans clic. Le
-    // compteur tourne en temps reel ; onglet masque -> on attend le retour.
-    var echeance = Date.now() + DELAI_INACTION_MS;
-    document.addEventListener(
-      "click",
-      function () {
+      // Declencheur 1 : intention de sortie au curseur (sortie par le haut du
+      // viewport), arme apres un temps de lecture minimal.
+      var armementExit = Date.now() + DELAI_ARMEMENT_MS;
+      document.addEventListener("mouseout", function (e) {
         if (autoFaite || ouvert) return;
-        echeance = Date.now() + DELAI_INACTION_MS;
-      },
-      true
-    );
-    var pollTimer = window.setInterval(function () {
-      if (autoFaite || dejaDemande()) {
-        window.clearInterval(pollTimer);
-        return;
-      }
-      if (Date.now() >= echeance && document.visibilityState === "visible") {
-        window.clearInterval(pollTimer);
+        if (Date.now() < armementExit) return;
+        if (e.relatedTarget !== null) return;
+        if (e.clientY > 0) return;
         ouvrirAuto();
-      }
-    }, 1000);
-    document.addEventListener("visibilitychange", function () {
-      if (
-        document.visibilityState === "visible" &&
-        !autoFaite &&
-        !dejaDemande() &&
-        Date.now() >= echeance
-      ) {
-        window.clearInterval(pollTimer);
-        ouvrirAuto();
-      }
-    });
+      });
+
+      // Declencheur 2 (fallback, mobile) : DELAI_INACTION_MS sans clic. Le
+      // compteur tourne en temps reel ; onglet masque -> on attend le retour.
+      var echeance = Date.now() + DELAI_INACTION_MS;
+      document.addEventListener(
+        "click",
+        function () {
+          if (autoFaite || ouvert) return;
+          echeance = Date.now() + DELAI_INACTION_MS;
+        },
+        true
+      );
+      var pollTimer = window.setInterval(function () {
+        if (autoFaite || dejaDemande()) {
+          window.clearInterval(pollTimer);
+          return;
+        }
+        if (Date.now() >= echeance && document.visibilityState === "visible") {
+          window.clearInterval(pollTimer);
+          ouvrirAuto();
+        }
+      }, 1000);
+      document.addEventListener("visibilitychange", function () {
+        if (
+          document.visibilityState === "visible" &&
+          !autoFaite &&
+          !dejaDemande() &&
+          Date.now() >= echeance
+        ) {
+          window.clearInterval(pollTimer);
+          ouvrirAuto();
+        }
+      });
+    }
+
+    armerOuvertureAuto();
+    document.addEventListener("nitrates:rendu-remplace", armerOuvertureAuto);
   }
 
   if (document.readyState === "loading") {

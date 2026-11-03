@@ -24,6 +24,7 @@
 import { test, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { soumettreSimulation } from './soumission';
 
 const MANIFESTE = path.join(__dirname, '_capture_par_ge_manifeste.json');
 const OUT_DIR = path.join(__dirname, '_captures_par_ge');
@@ -80,8 +81,7 @@ async function atteindreResultat(
         .locator('button[type="submit"]', { hasText: /Lancer|Relancer|Suivant/ })
         .first();
       if (await lancer.isVisible().catch(() => false)) {
-        await lancer.click();
-        await page.waitForLoadState('networkidle');
+        await soumettreSimulation(page, lancer);
         continue;
       }
       return false;
@@ -104,8 +104,7 @@ async function atteindreResultat(
       .locator('button[type="submit"]', { hasText: /Suivant|Relancer|Lancer/ })
       .first();
     if (!(await submit.isVisible().catch(() => false))) return false;
-    await submit.click();
-    await page.waitForLoadState('networkidle');
+    await soumettreSimulation(page, submit);
     if (repondu === 0) {
       const calendrier = await page
         .locator('.calendrier-epandage')
