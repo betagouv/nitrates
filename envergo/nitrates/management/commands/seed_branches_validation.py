@@ -96,7 +96,9 @@ CASCADE_TO_FORM_KEY = {
     "type_fertilisant": "type_fertilisant",
     "couvert_duree": "couvert_duree",
     "fertilisant_iaa": "fertilisant_iaa",
+    "fertilisant_iaa_aliments": "fertilisant_iaa_aliments",
     "plan_epandage": "plan_epandage",
+    "plan_epandage_autorisation": "plan_epandage_autorisation",
     "effluent_peu_charge": "effluent_peu_charge",
     "fertirrigation": "fertirrigation",
 }
