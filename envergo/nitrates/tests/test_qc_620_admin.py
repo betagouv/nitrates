@@ -198,6 +198,122 @@ def test_groupe_restreint_l_application(arbres):
     assert champs(drafts[0]) == ["fertirrigation"]
 
 
+def test_rien_a_normaliser():
+    actif("PAN", contenu(qc("q_a", "fertilisant_iaa")))
+    out = StringIO()
+    call_command("normaliser_champs_qc", "--apply", stdout=out)
+    assert "Aucune question posee sous plusieurs champs." in out.getvalue()
+    assert "Rien a normaliser." in out.getvalue()
+    assert not DecisionTree.objects.filter(status=DecisionTree.STATUS_DRAFT).exists()
+
+
+def test_plan_signale_divergences_proches_et_polarite_contraire():
+    actif(
+        "PAN",
+        contenu(
+            qc("q_a", "fertilisant_iaa"),
+            qc(
+                "q_b",
+                "pas_a",
+                branches=[
+                    {
+                        "valeur": True,
+                        "libelle": "Non",
+                        "regle": {"id": "r_b1", "type": "libre"},
+                    },
+                    {
+                        "valeur": False,
+                        "libelle": "Oui",
+                        "regle": {"id": "r_b2", "type": "libre"},
+                    },
+                ],
+            ),
+            qc(
+                "q_c",
+                "plan_epandage",
+                "Plan d'épandage ICPE ?",
+                [
+                    {"valeur": "icpe_a", "regle": {"id": "r_c1", "type": "libre"}},
+                    {"valeur": "autre", "regle": {"id": "r_c2", "type": "libre"}},
+                ],
+            ),
+            qc("q_d", "culture_irriguee", "Culture irriguée ?"),
+        ),
+    )
+    actif(
+        "PAR",
+        contenu(
+            qc(
+                "q_e",
+                "plan_epandage",
+                "Plan d'épandage ICPE ?",
+                [
+                    {"valeur": "icpe_a", "regle": {"id": "r_e1", "type": "libre"}},
+                    {"valeur": "Non", "regle": {"id": "r_e2", "type": "libre"}},
+                ],
+            ),
+            qc("q_f", "type_iii", "Est-ce que votre culture est irriguée ?"),
+        ),
+        scope="region",
+        region_code="32",
+        weight=10,
+    )
+    out = StringIO()
+    call_command("normaliser_champs_qc", stdout=out)
+    texte = out.getvalue()
+    assert "Meme champ, reponses differentes" in texte and "plan_epandage" in texte
+    assert "Ecartes (libelle contraire de la valeur)" in texte and "q_b" in texte
+    assert "Textes proches" in texte and "culture_irriguee ~ type_iii" in texte
+
+
+def test_brouillon_qui_utilise_un_ancien_champ_est_signale(arbres):
+    pan, _ = arbres
+    brouillon = DecisionTree.clone_to_draft(pan)
+    out = StringIO()
+    call_command("normaliser_champs_qc", stdout=out)
+    assert "Brouillons qui utilisent un ancien champ" in out.getvalue()
+    assert "icpe_ed" in out.getvalue()
+    assert brouillon.name in out.getvalue() or "PAN" in out.getvalue()
+
+
+def test_erreur_de_validation_preexistante_ne_bloque_pas(arbres):
+    """Une erreur deja presente sur l'actif (ici une regle sans type) n'est pas
+    imputee a la normalisation : le brouillon est quand meme cree."""
+    pan, _ = arbres
+    data = copy.deepcopy(pan.contenu)
+    data["arbre"]["noeud"]["branches"][0]["noeud"]["branches"][0]["regle"] = {
+        "id": "r_casse"
+    }
+    pan.contenu = data
+    pan.contenu_yaml_brut = pyyaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    pan.save()
+    call_command("normaliser_champs_qc", "--apply", stdout=StringIO())
+    assert DecisionTree.objects.filter(
+        status=DecisionTree.STATUS_DRAFT, parent=pan
+    ).exists()
+
+
+def test_utilisateur_inconnu_refuse(arbres):
+    with pytest.raises(CommandError, match="inconnu"):
+        call_command(
+            "normaliser_champs_qc",
+            "--apply",
+            "--utilisateur",
+            "personne@test.local",
+            stdout=StringIO(),
+        )
+
+
+def test_fusion_impossible_refusee(arbres):
+    with pytest.raises(CommandError):
+        call_command(
+            "normaliser_champs_qc",
+            "--fusionner",
+            "fertilisant_iaa,champ_absent",
+            stdout=StringIO(),
+        )
+
+
 def test_activer_sans_apply_refuse(arbres):
     with pytest.raises(CommandError):
         call_command("normaliser_champs_qc", "--activer", stdout=StringIO())
