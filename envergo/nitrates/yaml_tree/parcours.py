@@ -147,6 +147,11 @@ class QuestionFormulaire:
     choix: list[dict] = field(default_factory=list)  # [{valeur, libelle?}, ...]
     parent_champ: str | None = None
     parent_valeur: Any = None
+    # Toutes les reponses du parent qui revelent la question. Une meme QC
+    # (meme champ) peut pendre sous plusieurs branches du parent (ex question
+    # IAA sous plan_epandage=icpe_a ET =icpe_ed, #620) : elle doit s'afficher
+    # pour chacune. `parent_valeur` reste la premiere (compatibilite).
+    parent_valeurs: list = field(default_factory=list)
 
 
 @dataclass
@@ -289,6 +294,27 @@ def _descendre(
             source=noeud.get("source", ""),
             reference=noeud.get("reference"),
             chemin_partiel=chemin[:-1],
+        )
+
+    if type_noeud == "formulaire" and noeud.get("niveau") == "complement":
+        try:
+            branche = _choisir_branche(noeud, valeur)
+        except ParcoursError:
+            # Reponse inconnue de cette QC : lien partage avant un renommage
+            # de valeur (#620, ex plan_epandage=icpe_autre devenu non_concerne).
+            # On repose la question au lieu d'arreter tout le parcours
+            # (« Epandage NON_DISPONIBLE »). Les formulaires principaux
+            # (culture, fertilisant) gardent l'erreur : une valeur inconnue y
+            # est un vrai bug.
+            sans_reponse = {k: v for k, v in contexte.items() if k != champ}
+            questions = _collecter_questions(
+                noeud, sans_reponse, index_ids, resoudre_catalogue
+            )
+            return QuestionsSubsidiaires(
+                questions=questions, chemin_partiel=chemin[:-1]
+            )
+        return _descendre_branche(
+            branche, contexte, chemin, index_ids, resoudre_catalogue
         )
 
     branche = _choisir_branche(noeud, valeur)
@@ -902,9 +928,26 @@ def _ajouter_question(
     parent_champ: str | None = None,
     parent_valeur: Any = None,
 ) -> None:
-    """Ajoute une question si pas deja presente (par champ)."""
+    """Ajoute une question si pas deja presente (par champ).
+
+    Une question deja presente qui reapparait sous une AUTRE reponse du meme
+    parent gagne cette reponse dans `parent_valeurs` : sans ca, seule la
+    premiere branche du parent la revelait et les autres repartaient en
+    aller-retour serveur (QC redondante non detectee, #620). Si elle
+    reapparait sans condition, elle devient inconditionnelle."""
     champ = noeud["champ"]
-    if any(q.champ == champ for q in questions):
+    existante = next((q for q in questions if q.champ == champ), None)
+    if existante is not None:
+        if existante.parent_champ is None:
+            return
+        if parent_champ is None:
+            existante.parent_champ = None
+            existante.parent_valeur = None
+            existante.parent_valeurs = []
+        elif parent_champ == existante.parent_champ and not any(
+            _valeurs_egales(v, parent_valeur) for v in existante.parent_valeurs
+        ):
+            existante.parent_valeurs.append(parent_valeur)
         return
     questions.append(
         QuestionFormulaire(
@@ -919,6 +962,7 @@ def _ajouter_question(
             ],
             parent_champ=parent_champ,
             parent_valeur=parent_valeur,
+            parent_valeurs=[parent_valeur] if parent_champ is not None else [],
         )
     )
 

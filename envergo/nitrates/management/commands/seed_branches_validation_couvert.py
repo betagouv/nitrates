@@ -135,7 +135,6 @@ CHAMPS_COMPLEMENT = (
     "plan_epandage",
     "fertilisant_iaa",
     "effluent_peu_charge",
-    "icpe_ed",
 )
 
 # Champs DERIVES du YAML : recalcules a chaque seed, ecrases meme sur une

@@ -1,0 +1,72 @@
+{% comment %}
+Volet des questions complementaires existantes (#620), rendu a la frappe du
+texte d'une question complementaire (QcSuggestionsView). Reprendre une
+question, c'est reprendre son champ : la reponse n'est alors pas redemandee.
+Le clic sur "Reprendre" est gere par nitrates_admin/qc_suggestions.js.
+Variables : suggestions [{qc, identique, deja_choisie, pourcentage, donnees}],
+identique (bool).
+{% endcomment %}
+<aside class="yaml-qc-volet__panel"
+       role="region"
+       aria-label="Questions complémentaires existantes">
+  <header class="yaml-qc-volet__header">
+    <p class="yaml-qc-volet__titre">
+      {% if identique %}
+        Cette question existe déjà
+      {% else %}
+        Une question proche existe peut-être déjà
+      {% endif %}
+    </p>
+    <button type="button"
+            class="yaml-qc-volet__fermer"
+            data-qc-volet-fermer
+            aria-label="Fermer le volet"
+            title="Fermer (Échap)">×</button>
+  </header>
+  <p class="yaml-qc-volet__hint">
+    Reprenez une question existante plutôt que d'en créer une nouvelle : elle
+    garde le même champ, et l'agriculteur n'aura pas à y répondre deux fois
+    (dans cet arbre comme d'un arbre à l'autre).
+  </p>
+  <ul class="yaml-qc-volet__liste">
+    {% for s in suggestions %}
+      <li class="yaml-qc-suggestion{% if s.identique %} yaml-qc-suggestion--identique{% endif %}">
+        {% if s.identique %}
+          <p class="yaml-qc-suggestion__badge">Texte identique</p>
+        {% elif s.deja_choisie %}
+          <p class="yaml-qc-suggestion__badge yaml-qc-suggestion__badge--info">Champ déjà utilisé ici</p>
+        {% endif %}
+        <p class="yaml-qc-suggestion__texte">{{ s.qc.texte }}</p>
+        {% if s.qc.aide %}<p class="yaml-qc-suggestion__aide">💡 {{ s.qc.aide }}</p>{% endif %}
+        <p class="yaml-qc-suggestion__reponses">
+          <span class="yaml-qc-suggestion__label">Réponses :</span>
+          {% for b in s.qc.branches %}
+            <span class="yaml-qc-suggestion__reponse" title="valeur : {{ b.valeur }}">{{ b.libelle|default:b.valeur }}</span>
+          {% endfor %}
+        </p>
+        <p class="yaml-qc-suggestion__meta">
+          champ <code>{{ s.qc.champ }}</code>
+          · {{ s.qc.nb_occurrences }} nœud{{ s.qc.nb_occurrences|pluralize }}
+          · {{ s.qc.arbres|join:", " }}
+        </p>
+        {% if s.autres_champs %}
+          <p class="yaml-qc-suggestion__doublons">
+            Même question aussi enregistrée sous
+            {% for c in s.autres_champs %}
+              <code>{{ c }}</code>
+              {% if not forloop.last %},{% endif %}
+            {% endfor %}
+            : reprenez plutôt ce champ-ci, le plus utilisé.
+          </p>
+        {% endif %}
+        <button type="button"
+                class="yaml-admin__btn yaml-admin__btn--primary yaml-admin__btn--small"
+                data-qc-utiliser="{{ s.donnees }}">Reprendre cette question</button>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="yaml-qc-volet__nouvelle">
+    Aucune ne correspond ? Continuez votre saisie : une nouvelle question sera
+    créée, avec son propre champ.
+  </p>
+</aside>

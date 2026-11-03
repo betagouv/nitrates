@@ -24,7 +24,9 @@ Inputs du partial :
 {% with valeur_parent_str=q.parent_valeur|stringformat:"s" %}
   <div class="form-question-group qc-question{% if not forloop_first %} qc-question--spaced{% endif %}"
        data-qc-champ="{{ q.champ }}"
-       {% if q.parent_champ %}data-qc-parent-champ="{{ q.parent_champ }}" data-qc-parent-valeur="{{ valeur_parent_str }}" hidden{% endif %}>
+       {% if q.parent_champ %}data-qc-parent-champ="{{ q.parent_champ }}" data-qc-parent-valeur="{{ valeur_parent_str }}"{% if q.parent_valeurs %} data-qc-parent-valeurs="{{ q.parent_valeurs|join:'||' }}"{% endif %}
+       hidden
+       {% endif %}>
     {# Termes du glossaire cliquables dans la question (carte #110) #}
     <p class="form-question-text">{{ q.texte|glossaire }} *</p>
     {% for c in q.choix %}

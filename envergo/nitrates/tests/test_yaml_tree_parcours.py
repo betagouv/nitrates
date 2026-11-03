@@ -20,6 +20,7 @@ from envergo.nitrates.yaml_tree.parcours import (
     QuestionsSubsidiaires,
     RenvoiArbre,
     Resultat,
+    _choisir_branche,
     _collecter_questions,
     collecter_qc_du_chemin,
     normaliser_codes_prescription,
@@ -303,6 +304,50 @@ def test_valeur_inconnue_dans_contexte_leve_parcours_error():
             {"en_zone_vulnerable": True, "occupation_sol": "valeur_inexistante"},
         )
     assert "valeur_inexistante" in str(exc.value)
+
+
+def _arbre_avec_qc() -> dict:
+    """Une QC a 2 reponses sous la zone vulnerable."""
+    return {
+        "metadata": {"version": "test"},
+        "arbre": {
+            "noeud": {
+                "type_noeud": "formulaire",
+                "niveau": "complement",
+                "id": "q_icpe",
+                "champ": "plan_epandage",
+                "texte": "Plan d'epandage ICPE ?",
+                "branches": [
+                    {
+                        "valeur": "icpe_a",
+                        "libelle": "Oui, autorisation",
+                        "regle": {"id": "r_icpe_a", "type": "libre"},
+                    },
+                    {
+                        "valeur": "non_concerne",
+                        "libelle": "Non concerne",
+                        "regle": {"id": "r_non_concerne", "type": "libre"},
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_qc_valeur_inconnue_repose_la_question():
+    """#620 : ancien lien qui porte une valeur renommee depuis
+    (plan_epandage=icpe_autre devenu non_concerne) -> la question est reposee
+    au lieu d'arreter le parcours."""
+    res = parcours(_arbre_avec_qc(), {"plan_epandage": "icpe_autre"})
+    assert isinstance(res, QuestionsSubsidiaires)
+    assert [q.champ for q in res.questions] == ["plan_epandage"]
+    assert [c["valeur"] for c in res.questions[0].choix] == ["icpe_a", "non_concerne"]
+
+
+def test_qc_valeur_connue_descend():
+    res = parcours(_arbre_avec_qc(), {"plan_epandage": "non_concerne"})
+    assert isinstance(res, Resultat)
+    assert res.regle_id == "r_non_concerne"
 
 
 # ─── Fallback type_I = union {type_Ia, type_Ib} ─────────────────────────────
@@ -755,9 +800,12 @@ def test_branche_valeur_singulier_prime_si_specifique():
 def test_valeur_inconnue_liste_les_valeurs_pluriel_disponibles():
     """Le message d'erreur d'une valeur inconnue doit lister AUSSI les valeurs
     des branches `valeurs:` (pluriel), pas seulement les `valeur:` (singulier),
-    pour aider le juriste a diagnostiquer (couvre la branche `extend`)."""
+    pour aider le juriste a diagnostiquer (couvre la branche `extend`).
+    Appel direct : sur une QC, le parcours repose la question au lieu de
+    remonter l'erreur (#620)."""
+    noeud = _arbre_avec_valeurs_regroupees()["arbre"]["noeud"]
     with pytest.raises(ParcoursError) as exc:
-        parcours(_arbre_avec_valeurs_regroupees(), {"plan_epandage": "inconnu"})
+        _choisir_branche(noeud, "inconnu")
     msg = str(exc.value)
     # Valeurs singulier ET pluriel listees.
     assert "icpe_a" in msg

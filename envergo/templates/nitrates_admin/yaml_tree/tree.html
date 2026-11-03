@@ -1,6 +1,6 @@
 {% extends "nitrates_admin/base.html" %}
 
-{% load static yaml_admin_extras %}
+{% load static yaml_admin_extras nitrates_tags %}
 
 {% block title %}Arbre de décision{% endblock %}
 
@@ -457,6 +457,8 @@
       enterprise).
       {% endcomment %}
       <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
+      {% comment %}Volet de reprise des questions complementaires existantes (#620).{% endcomment %}
+      <script src="{% static_v 'nitrates_admin/qc_suggestions.js' %}"></script>
       <script>
         (function () {
           const TREE_PK = {{ tree.pk|default:'null' }};

@@ -682,6 +682,21 @@ body.yaml-admin--busy .yaml-admin__global-overlay {
   color: #b71c1c;
 }
 
+.yaml-admin__validation-header--warn {
+  background: #fff4e5;
+  color: #6d4c00;
+}
+
+.yaml-admin__validation-errors--warn li {
+  border-bottom-color: #f3e2c4;
+}
+
+.yaml-admin__validation-kind--qc_redondante,
+.yaml-admin__validation-kind--qc_valeurs {
+  background: #ffe0b2;
+  color: #6d4c00;
+}
+
 .yaml-admin__validation-header > .yaml-admin__btn {
   margin-left: auto;
 }
@@ -1841,4 +1856,170 @@ details[open] > summary.yaml-tree__row::before {
 
 .yaml-tree__periode-masque input[type="checkbox"] {
   margin: 0;
+}
+
+/* ─── Volet de reprise des questions complémentaires existantes (#620) ──── */
+
+.yaml-qc-volet:empty {
+  display: none;
+}
+
+.yaml-qc-volet__panel {
+  position: fixed;
+  top: 5rem;
+  right: 1rem;
+  z-index: 1000;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #c9d3e6;
+  border-left: 4px solid #1f4789;
+  border-radius: 4px;
+  box-shadow: 0 6px 24px rgb(0 0 18 / 18%);
+  padding: 0.75rem 1rem 1rem;
+  font-size: 0.85rem;
+  color: #161616;
+  cursor: default;
+  white-space: normal;
+}
+
+.yaml-qc-volet__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.yaml-qc-volet__titre {
+  flex: 1;
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1f4789;
+}
+
+.yaml-qc-volet__fermer {
+  border: none;
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #555;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.yaml-qc-volet__fermer:hover {
+  color: #161616;
+}
+
+.yaml-qc-volet__hint {
+  margin: 0.35rem 0 0.6rem;
+  color: #555;
+}
+
+.yaml-qc-volet__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.yaml-qc-suggestion {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.5rem 0.65rem;
+  background: #fafbfd;
+}
+
+.yaml-qc-suggestion--identique {
+  border-color: #1f4789;
+  background: #eef2fb;
+}
+
+.yaml-qc-suggestion__badge {
+  display: inline-block;
+  margin: 0 0 0.3rem;
+  padding: 0 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #1f4789;
+  color: #fff;
+}
+
+.yaml-qc-suggestion__badge--info {
+  background: #e3e3fd;
+  color: #1f4789;
+}
+
+.yaml-qc-suggestion__texte {
+  margin: 0 0 0.3rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.yaml-qc-suggestion__aide {
+  margin: 0 0 0.3rem;
+  color: #555;
+}
+
+.yaml-qc-suggestion__reponses {
+  margin: 0 0 0.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: baseline;
+}
+
+.yaml-qc-suggestion__label {
+  color: #555;
+}
+
+.yaml-qc-suggestion__reponse {
+  border: 1px solid #c9d3e6;
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  background: #fff;
+  font-size: 0.8rem;
+}
+
+.yaml-qc-suggestion__meta {
+  margin: 0 0 0.45rem;
+  color: #666;
+  font-size: 0.78rem;
+}
+
+.yaml-qc-suggestion__doublons {
+  margin: 0 0 0.45rem;
+  padding: 0.3rem 0.5rem;
+  background: #fff4e5;
+  color: #6d4c00;
+  font-size: 0.78rem;
+  border-radius: 3px;
+}
+
+.yaml-qc-volet__nouvelle {
+  margin: 0.75rem 0 0;
+  color: #555;
+  font-style: italic;
+}
+
+.yaml-qc-reprise {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #18753c;
+  background: #e6f4ea;
+  color: #18753c;
+  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.yaml-qc-reprise[hidden] {
+  display: none;
 }
