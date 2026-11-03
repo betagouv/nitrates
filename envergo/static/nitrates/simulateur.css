@@ -1268,9 +1268,19 @@ html.nitrates-construction-visible .nitrates-progress {
 }
 
 /* #273 : chargement de la soumission htmx, sous le bouton. Meme barre que la
-   localisation, bornee a la largeur d'un bouton large. */
+   localisation, sur toute la largeur du formulaire (retour Max : trop etroite
+   a la largeur du bouton), un peu plus epaisse. */
 .nitrates-soumission-chargement {
-  max-width: 360px;
+  margin-top: 16px;
+}
+
+.nitrates-soumission-chargement .nitrates-loc-loading__bar {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.nitrates-soumission-chargement .nitrates-loc-loading__fill {
+  border-radius: 4px;
 }
 
 /* Pendant la requete, le bouton ne relance rien (hx-sync remplacerait la
