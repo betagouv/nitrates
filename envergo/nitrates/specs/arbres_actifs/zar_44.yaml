@@ -38,6 +38,9 @@ arbre:
                             texte: Êtes-vous dans le cas d'un épandage de vinasse avant betterave ?
                             niveau: complement
                             branches:
+                            - valeur: true
+                              libelle: Oui
+                              feuille_vide: true
                             - noeud:
                                 id: q_culture_printemps_type_II_effluent_peu_charge_semis_apres_1mars_sans_vinasse
                                 champ: fertirrigation
@@ -59,7 +62,7 @@ arbre:
                                     inputs_requis:
                                     - id: date_semis_couvert
                                       type: date
-                                      label: Date de semis du couvert
+                                      label: Date prévue de semis du couvert
                                       label_court: semis
                                       placeholder: 15/08
                                     code_prescription: pc6
@@ -77,7 +80,7 @@ arbre:
                                     inputs_requis:
                                     - id: date_semis_couvert
                                       type: date
-                                      label: Date de semis du couvert
+                                      label: Date prévue de semis du couvert
                                       label_court: semis
                                       placeholder: 15/08
                                   valeur: false
@@ -85,9 +88,6 @@ arbre:
                                 type_noeud: formulaire
                               valeur: false
                               libelle: Non
-                            - valeur: true
-                              libelle: Oui
-                              feuille_vide: true
                             type_noeud: formulaire
                           valeur: true
                           libelle: Oui
@@ -127,7 +127,7 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ia_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -150,7 +150,7 @@ arbre:
                           libelle: Non
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - regle:
                         id: r_couvert_interculture_cine_apres_0101_type_Ia_icpe_autre
                         type: interdiction
@@ -158,14 +158,13 @@ arbre:
                         - au: 15/01
                           du: 15/11
                         code_prescription: pc12
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia
                   libelle: Type Ia
                 - noeud:
                     id: q_couvert_interculture_cine_apres_0101_type_Ib
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -176,9 +175,12 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
                         - regle:
                             id: r_couvert_interculture_cine_apres_0101_type_Ib_icpe_ed_non_iaa
                             type: interdiction
@@ -188,12 +190,9 @@ arbre:
                             code_prescription: pc12
                           valeur: false
                           libelle: Non
-                        - valeur: true
-                          libelle: Oui
-                          feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - regle:
                         id: r_couvert_interculture_cine_apres_0101_type_Ib_icpe_autre
                         type: interdiction
@@ -201,14 +200,13 @@ arbre:
                         - au: 15/01
                           du: 15/11
                         code_prescription: pc12
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
                   libelle: Type Ib
                 - noeud:
                     id: q_couvert_interculture_cine_apres_0101_type_II
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -244,7 +242,7 @@ arbre:
                                     inputs_requis:
                                     - id: date_semis_couvert
                                       type: date
-                                      label: Date de semis du couvert
+                                      label: Date prévue de semis du couvert
                                       label_court: semis
                                       placeholder: 15/08
                                     code_prescription: pc12
@@ -253,10 +251,13 @@ arbre:
                                   expression: categorie_fertilisant == 'digestats'
                                 - noeud:
                                     id: q_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_pas_digestats
-                                    champ: pas_un_digestats
-                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                    champ: fertilisant_iaa
+                                    texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                     niveau: complement
                                     branches:
+                                    - valeur: true
+                                      libelle: Oui
+                                      feuille_vide: true
                                     - regle:
                                         id: r_couvert_interculture_cine_apres_0101_type_II_icpe_ed_hors_note5_pas_effluent_peu_charge_pas_digestats_non_iaa
                                         type: interdiction
@@ -267,9 +268,6 @@ arbre:
                                         code_prescription: pc12
                                       valeur: false
                                       libelle: Non
-                                    - valeur: true
-                                      libelle: 'True'
-                                      feuille_vide: true
                                     type_noeud: formulaire
                                   valeur: Pas digestats
                                   libelle: Pas un digestats
@@ -284,7 +282,7 @@ arbre:
                         reference: zone_note_5
                         type_noeud: catalogue
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - noeud:
                         id: n_couvert_interculture_cine_apres_0101_type_II_icpe_autre
                         champ: zone_note_5
@@ -313,7 +311,7 @@ arbre:
                                     inputs_requis:
                                     - id: date_semis_couvert
                                       type: date
-                                      label: Date de semis du couvert
+                                      label: Date prévue de semis du couvert
                                       label_court: semis
                                       placeholder: 15/08
                                     code_prescription: pc12
@@ -340,7 +338,7 @@ arbre:
                           libelle: Pas concerné par la note 5
                         reference: zone_note_5
                         type_noeud: catalogue
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_II
@@ -359,7 +357,6 @@ arbre:
                 branches:
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_Ia
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -370,9 +367,12 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
                         - regle:
                             id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_ed_non_iaa
                             type: calculatrice
@@ -389,18 +389,15 @@ arbre:
                             - id: date_destruction_prevue
                               max: 31/12
                               type: date
-                              label: Date de destruction prévue
-                              label_court: destruction
+                              label: Date prévue de fin du couvert
+                              label_court: fin du couvert
                               placeholder: 15/03
                             code_prescription: pc13
                           valeur: false
                           libelle: Non
-                        - valeur: true
-                          libelle: Oui
-                          feuille_vide: true
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - regle:
                         id: r_couvert_interculture_cine_avant_3112_type_Ia_icpe_autre
                         type: calculatrice
@@ -417,18 +414,17 @@ arbre:
                         - id: date_destruction_prevue
                           max: 31/12
                           type: date
-                          label: Date de destruction prévue
-                          label_court: destruction
+                          label: Date prévue de fin du couvert
+                          label_court: fin du couvert
                           placeholder: 15/03
                         code_prescription: pc13
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ia
                   libelle: Type Ia
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_Ib
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -439,9 +435,12 @@ arbre:
                     - noeud:
                         id: q_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed
                         champ: fertilisant_iaa
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
+                        - valeur: true
+                          libelle: Oui
+                          feuille_vide: true
                         - regle:
                             id: r_couvert_interculture_cine_avant_3112_type_Ib_icpe_ed_non_iaa
                             type: calculatrice
@@ -460,24 +459,21 @@ arbre:
                             inputs_requis:
                             - id: date_semis_couvert
                               type: date
-                              label: Date de semis du couvert
+                              label: Date prévue de semis du couvert
                               label_court: semis
                               placeholder: 15/08
                             - id: date_destruction_couvert
                               max: 31/12
                               type: date
-                              label: Date de destruction du couvert
-                              label_court: destruction
+                              label: Date prévue de fin du couvert
+                              label_court: fin du couvert
                               placeholder: 01/11
                             code_prescription: pc13
                           valeur: false
-                          libelle: non
-                        - valeur: true
-                          libelle: oui
-                          feuille_vide: true
+                          libelle: Non
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - regle:
                         id: r_couvert_interculture_cine_avant_3112_type_Ib_icpe_autre
                         type: calculatrice
@@ -496,24 +492,23 @@ arbre:
                         inputs_requis:
                         - id: date_semis_couvert
                           type: date
-                          label: Date de semis du couvert
+                          label: Date prévue de semis du couvert
                           label_court: semis
                           placeholder: 15/08
                         - id: date_destruction_couvert
                           max: 31/12
                           type: date
-                          label: Date de destruction du couvert
-                          label_court: destruction
+                          label: Date prévue de fin du couvert
+                          label_court: fin du couvert
                           placeholder: 01/11
                         code_prescription: pc13
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_Ib
                   libelle: Type Ib
                 - noeud:
                     id: q_couvert_interculture_cine_avant_3112_type_II
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -547,14 +542,14 @@ arbre:
                                 inputs_requis:
                                 - id: date_semis_couvert
                                   type: date
-                                  label: Date de semis du couvert
+                                  label: Date prévue de semis du couvert
                                   label_court: semis
                                   placeholder: 15/08
                                 - id: date_destruction_couvert
                                   max: 31/12
                                   type: date
-                                  label: Date de destruction du couvert
-                                  label_court: destruction
+                                  label: Date prévue de fin du couvert
+                                  label_court: fin du couvert
                                   placeholder: 01/11
                                 code_prescription: pc13
                               valeur: Digestats
@@ -562,10 +557,13 @@ arbre:
                               expression: categorie_fertilisant=='digestats'
                             - noeud:
                                 id: q_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_pas_digestats
-                                champ: pas_digestats
-                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                                champ: fertilisant_iaa
+                                texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                                 niveau: complement
                                 branches:
+                                - valeur: true
+                                  libelle: Oui
+                                  feuille_vide: true
                                 - regle:
                                     id: r_couvert_interculture_cine_avant_3112_type_II_icpe_ed_pas_un_effluent_peu_pas_digestats_non_iaa
                                     type: calculatrice
@@ -584,21 +582,18 @@ arbre:
                                     inputs_requis:
                                     - id: date_semis_couvert
                                       type: date
-                                      label: Date de semis du couvert
+                                      label: Date prévue de semis du couvert
                                       label_court: semis
                                       placeholder: 15/08
                                     - id: date_destruction_couvert
                                       max: 31/12
                                       type: date
-                                      label: Date de destruction du couvert
-                                      label_court: destruction
+                                      label: Date prévue de fin du couvert
+                                      label_court: fin du couvert
                                       placeholder: 01/11
                                     code_prescription: pc13
                                   valeur: false
                                   libelle: Non
-                                - valeur: true
-                                  libelle: Oui
-                                  feuille_vide: true
                                 type_noeud: formulaire
                               valeur: Pas Digestats
                               libelle: Pas Digestats
@@ -609,7 +604,7 @@ arbre:
                           expression: sous_fertilisant !='effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - noeud:
                         id: n_couvert_interculture_cine_avant_3112_type_II_icpe_autre
                         champ: effluent_peu_charge_elevage
@@ -637,12 +632,12 @@ arbre:
                                 - id: date_destruction_prevue
                                   max: 31/12
                                   type: date
-                                  label: Date de destruction prévue
-                                  label_court: destruction
+                                  label: Date prévue de fin du couvert
+                                  label_court: fin du couvert
                                   placeholder: 15/03
                                 - id: date_semis_couvert
                                   type: date
-                                  label: Date de semis du couvert
+                                  label: Date prévue de semis du couvert
                                   label_court: semis
                                   placeholder: 15/08
                                 code_prescription: pc13
@@ -668,12 +663,12 @@ arbre:
                                 - id: date_destruction_prevue
                                   max: 31/12
                                   type: date
-                                  label: Date de destruction prévue
-                                  label_court: destruction
+                                  label: Date prévue de fin du couvert
+                                  label_court: fin du couvert
                                   placeholder: 15/03
                                 - id: date_semis_couvert
                                   type: date
-                                  label: Date de semis du couvert
+                                  label: Date prévue de semis du couvert
                                   label_court: semis
                                   placeholder: 15/08
                                 code_prescription: pc13
@@ -684,7 +679,7 @@ arbre:
                           valeur: 'False'
                           expression: sous_fertilisant !='effluents_peu_charges_elevage'
                         type_noeud: catalogue_parametre
-                      valeur: icpe_autre
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_II
@@ -705,3 +700,17 @@ arbre:
       valeur: true
     reference: zone_vulnerable_nitrates
     type_noeud: catalogue
+rappels_dates:
+- inputs:
+  - id: date_semis_couvert
+    rappel_max: 30/09
+  - id: date_destruction_couvert
+    rappel_min:
+    - date_semis_couvert+11semaines
+    - 15/10
+  sous_cultures:
+  - cine_avant_3112
+  - cine_apres_0101
+  - cie_avant_3112
+  - cie_apres_0101
+  source_juridique: PAR7 Grand Est, article 19.3° (ZAR) et article 10.1°

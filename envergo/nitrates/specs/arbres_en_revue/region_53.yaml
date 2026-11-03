@@ -322,7 +322,9 @@ arbre:
                         - au: 31/01
                           du: 01/10
                         source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type II (3) (renforcement du 01/10 au 15/11 et du 15/01 au 31/01) ; annexe 6, note (3) (effluents peu chargés autorisés pendant la période d'interdiction, 20 kg N efficace/ha)
-                        code_prescription: pc7
+                        code_prescription:
+                        - pc7
+                        - pc16
                       valeur: true
                       libelle: Oui
                       expression: sous_fertilisant in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
@@ -333,6 +335,7 @@ arbre:
                         - au: 31/01
                           du: 01/10
                         source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type II (renforcement du 01/10 au 15/11 et du 15/01 au 31/01)
+                        code_prescription: pc16
                       valeur: false
                       libelle: Non
                       expression: sous_fertilisant not in ('effluents_peu_charges_elevage', 'effluents_peu_charges_non_elevage')
@@ -346,6 +349,7 @@ arbre:
                     - au: 31/01
                       du: 01/09
                     source_juridique: Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « Prairies implantées depuis plus de six mois dont prairies permanentes, luzerne », type III (renforcement du 01/09 au 30/09)
+                    code_prescription: pc16
                   valeur: type_III
                   libelle: Type III
                 type_noeud: formulaire
@@ -359,13 +363,13 @@ arbre:
                 branches:
                 - noeud:
                     id: q_luzerne_II_icpe
-                    champ: plan_epandage
+                    champ: plan_epandage_autorisation
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
                     niveau: complement
                     branches:
                     - noeud:
                         id: q_luzerne_II_icpe_a_iaa
-                        champ: fertilisant_iaa
+                        champ: fertilisant_iaa_aliments
                         texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ?
                         niveau: complement
                         branches:
@@ -406,13 +410,13 @@ arbre:
                   libelle: Type II
                 - noeud:
                     id: q_luzerne_III_icpe
-                    champ: plan_epandage
+                    champ: plan_epandage_autorisation
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE soumis à autorisation ?
                     niveau: complement
                     branches:
                     - noeud:
                         id: q_luzerne_III_icpe_a_iaa
-                        champ: fertilisant_iaa
+                        champ: fertilisant_iaa_aliments
                         texte: Le fertilisant utilisé est-il issu du traitement et/ou de la transformation de matières premières en vue de la fabrication de produits alimentaires ou d'aliments pour animaux ?
                         niveau: complement
                         branches:
@@ -565,8 +569,8 @@ arbre:
                     - id: date_destruction_couvert
                       max: 31/12
                       type: date
-                      label: Date de destruction prévue du couvert
-                      label_court: destruction
+                      label: Date prévue de fin du couvert
+                      label_court: fin du couvert
                       placeholder: 01/11
                     source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction à partir de 20 jours avant destruction)"
                     code_prescription:
@@ -590,14 +594,14 @@ arbre:
                     inputs_requis:
                     - id: date_semis_couvert
                       type: date
-                      label: Date de semis du couvert
+                      label: Date prévue de semis du couvert
                       label_court: semis
                       placeholder: 15/08
                     - id: date_destruction_couvert
                       max: 31/12
                       type: date
-                      label: Date de destruction prévue du couvert
-                      label_court: destruction
+                      label: Date prévue de fin du couvert
+                      label_court: fin du couvert
                       placeholder: 01/11
                     source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type I (renforcement du 01/09 au 15/11) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
                     code_prescription:
@@ -628,14 +632,14 @@ arbre:
                         inputs_requis:
                         - id: date_semis_couvert
                           type: date
-                          label: Date de semis du couvert
+                          label: Date prévue de semis du couvert
                           label_court: semis
                           placeholder: 15/08
                         - id: date_destruction_couvert
                           max: 31/12
                           type: date
-                          label: Date de destruction prévue du couvert
-                          label_court: destruction
+                          label: Date prévue de fin du couvert
+                          label_court: fin du couvert
                           placeholder: 01/11
                         source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; annexe 6, note (1) (septembre : effluents peu chargés seuls, 20 uN efficace/ha ; octobre à décembre interdit, GREN) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
                         code_prescription:
@@ -660,14 +664,14 @@ arbre:
                         inputs_requis:
                         - id: date_semis_couvert
                           type: date
-                          label: Date de semis du couvert
+                          label: Date prévue de semis du couvert
                           label_court: semis
                           placeholder: 15/08
                         - id: date_destruction_couvert
                           max: 31/12
                           type: date
-                          label: Date de destruction prévue du couvert
-                          label_court: destruction
+                          label: Date prévue de fin du couvert
+                          label_court: fin du couvert
                           placeholder: 01/11
                         source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type II (renforcement du 01/09 au 15/10) ; note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (interdiction du 01/07 à semis - 15 j et à partir de destruction - 20 j)"
                         code_prescription:
@@ -696,7 +700,7 @@ arbre:
                     - id: date_semis_couvert
                       max: 31/12
                       type: date
-                      label: Date de semis du couvert
+                      label: Date prévue de semis du couvert
                       label_court: semis
                       placeholder: 15/08
                     source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11 ; « max. 15 j après semis ») ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
@@ -715,7 +719,6 @@ arbre:
                 branches:
                 - noeud:
                     id: q_cie_apres_0101_type_0_icpe
-                    aide: ''
                     champ: plan_epandage
                     texte: S'agit-il d'un épandage prévu dans le cadre d'un plan d'épandage ICPE ?
                     niveau: complement
@@ -744,14 +747,14 @@ arbre:
                         inputs_requis:
                         - id: date_semis_couvert
                           type: date
-                          label: Date de semis du couvert
+                          label: Date prévue de semis du couvert
                           label_court: semis
                           placeholder: 15/08
                         - id: date_destruction_couvert
                           min: 01/01
                           type: date
-                          label: Date de destruction prévue du couvert
-                          label_court: destruction
+                          label: Date prévue de fin du couvert
+                          label_court: fin du couvert
                           placeholder: 15/01
                         source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
                         code_prescription:
@@ -762,8 +765,8 @@ arbre:
                       libelle: Oui, plan d'épandage ICPE soumis à autorisation
                     - noeud:
                         id: q_cie_apres_0101_type_0_iaa
-                        champ: fertilisant_q6
-                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale ou, de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
+                        champ: fertilisant_iaa
+                        texte: Le fertilisant utilisé est-il issu de traitement et transformations de matières premières en vue de la fabrication de produit alimentaire pour l'alimentation humaine ou animale, ou de la préparation et du conditionnement de vins, ou de la production par distillation d'alcools de bouche d'origine agricole ?
                         niveau: complement
                         branches:
                         - regle:
@@ -790,14 +793,14 @@ arbre:
                             inputs_requis:
                             - id: date_semis_couvert
                               type: date
-                              label: Date de semis du couvert
+                              label: Date prévue de semis du couvert
                               label_court: semis
                               placeholder: 15/08
                             - id: date_destruction_couvert
                               min: 01/01
                               type: date
-                              label: Date de destruction prévue du couvert
-                              label_court: destruction
+                              label: Date prévue de fin du couvert
+                              label_court: fin du couvert
                               placeholder: 15/01
                             source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », note (1) de l'annexe 6 : apport sur dérobées interdit en octobre, novembre et décembre (arrêté GREN Bretagne du 29/03/2023 : juillet 50 uN/ha ou août 40 uN/ha, sans cumul) ; PAN : arrêté du 19/12/2011 modifié, annexe I (CIE toujours en place après le 01/01, type 0 : tolérances ICPE / IAA du 15/12 au 15/01, non fermées par le texte de 2026 ; ne jouent plus que du 01/01 au 15/01)"
                             code_prescription:
@@ -821,7 +824,7 @@ arbre:
                           libelle: Non
                         type_noeud: formulaire
                       valeur: icpe_ed
-                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration.
+                      libelle: Oui, plan d'épandage ICPE soumis à enregistrement ou à déclaration
                     - regle:
                         id: r_cie_apres_0101_type_0_autre
                         type: interdiction
@@ -832,7 +835,7 @@ arbre:
                         code_prescription:
                         - pc12
                         - pc_bzh_derobees
-                      valeur: Non
+                      valeur: non_concerne
                       libelle: Non concerné
                     type_noeud: formulaire
                   valeur: type_0
@@ -901,7 +904,7 @@ arbre:
                     inputs_requis:
                     - id: date_semis_couvert
                       type: date
-                      label: Date de semis du couvert
+                      label: Date prévue de semis du couvert
                       label_court: semis
                       placeholder: 15/08
                     source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11 ; « max. 15 j après semis ») ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
@@ -1006,7 +1009,7 @@ arbre:
                     inputs_requis:
                     - id: date_semis_couvert
                       type: date
-                      label: Date de semis du couvert
+                      label: Date prévue de semis du couvert
                       label_court: semis
                       placeholder: 15/08
                     source_juridique: "Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié), art. 4.1 ; annexe 6, ligne « CIE (1) implantés à l'automne ou en fin d'été », type III (renforcement du 01/09 au 15/11) ; PAN : arrêté du 19/12/2011 modifié, annexe I (fenêtre semis à semis + 15 j)"
@@ -1031,3 +1034,13 @@ metadata:
   source: "PAR Bretagne modifié (arrêté du 28/08/2026), mesure 1 : calendrier d'épandage. v3.2, diff du PAN actif."
   version: 0.3.2-draft
   source_juridique: 'Arrêté préfectoral régional du 28/08/2026 établissant le PAR Bretagne (PAR 7 modifié) : art. 4.1 (calendrier, annexe 6), art. 4.2 (flexibilité, non modélisée), art. 6.1 (fertilisation des CINE), annexe 6 (renforcements régionaux du calendrier, notes * et (1) à (4)), annexe 7 (zones 1 et 2 maïs).'
+rappels_dates:
+- inputs:
+  - id: date_destruction_couvert
+    rappel_min: 01/02
+  sous_cultures:
+  - cine_avant_3112
+  - cine_apres_0101
+  - cie_avant_3112
+  - cie_apres_0101
+  source_juridique: "PAR7 Bretagne (modifié 2026-08-28), article 6.3 (date d'implantation selon la récolte du précédent : non rappelée)"
