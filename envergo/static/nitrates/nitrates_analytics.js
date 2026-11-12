@@ -21,18 +21,24 @@
 (function () {
   "use strict";
 
-  var _paq = (window._paq = window._paq || []);
+  // Relire window._paq a chaque envoi, ne jamais le garder dans une variable :
+  // matomo.js (async) remplace le tableau par son propre objet une fois charge,
+  // et ce script (defer) passe souvent avant lui. Un push sur l'ancien tableau
+  // est perdu sans erreur (~0 events sur Firefox et mobile en prod).
+  function paq() {
+    return (window._paq = window._paq || []);
+  }
 
   // Fiabilise l'envoi juste avant une navigation (submit = GET full-reload) :
   // Matomo bascule sur navigator.sendBeacon au lieu d'une image bloquante.
-  _paq.push(["alwaysUseSendBeacon"]);
+  paq().push(["alwaysUseSendBeacon"]);
 
   function track(action, name) {
     // name optionnel (ex: departement). Categorie fixe "Simulateur".
     if (name === undefined) {
-      _paq.push(["trackEvent", "Simulateur", action]);
+      paq().push(["trackEvent", "Simulateur", action]);
     } else {
-      _paq.push(["trackEvent", "Simulateur", action, name]);
+      paq().push(["trackEvent", "Simulateur", action, name]);
     }
   }
 
@@ -89,9 +95,10 @@
   // comparables.
   document.addEventListener("nitrates:rendu-remplace", function (e) {
     var d = (e && e.detail) || {};
-    if (d.urlPrecedente) _paq.push(["setReferrerUrl", d.urlPrecedente]);
-    _paq.push(["setCustomUrl", d.url || window.location.href]);
-    _paq.push(["setDocumentTitle", document.title]);
-    _paq.push(["trackPageView"]);
+    var q = paq();
+    if (d.urlPrecedente) q.push(["setReferrerUrl", d.urlPrecedente]);
+    q.push(["setCustomUrl", d.url || window.location.href]);
+    q.push(["setDocumentTitle", document.title]);
+    q.push(["trackPageView"]);
   });
 })();
