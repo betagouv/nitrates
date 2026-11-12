@@ -372,8 +372,11 @@ def carte_png(
             [x - 17, y - 17, x + 17, y + 17], fill="white", outline=couleur, width=4
         )
         texte = str(numero)
+        # Centre le trace des chiffres (et non la boite de la police, plus
+        # haute) sur le centre de la bulle.
+        g, h, dr, b = d.textbbox((0, 0), texte, font=f_num)
         d.text(
-            (x - d.textlength(texte, font=f_num) / 2, y - 14),
+            (x - (g + dr) / 2, y - (h + b) / 2),
             texte,
             font=f_num,
             fill=couleur,

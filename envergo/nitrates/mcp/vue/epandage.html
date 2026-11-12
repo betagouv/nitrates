@@ -274,14 +274,19 @@
         border: 1px solid var(--trait);
       }
 
-      .numero {
+      /* leaflet.css est charge apres cette feuille et remet les icones en
+         display: block : le selecteur double garde le centrage du numero.
+         Taille et ancrage viennent de iconSize (carteLeaflet). */
+      .leaflet-marker-icon.numero {
+        box-sizing: border-box;
         background: #fff;
         border: 3px solid #ce0500;
         border-radius: 50%;
-        width: 30px !important;
-        height: 30px !important;
-        display: grid;
-        place-items: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
         font-weight: 700;
         color: #ce0500;
       }
@@ -712,7 +717,7 @@
     (carte.zones || []).forEach(function (z) {
       var couche = L.geoJSON(z.geojson, { style: { color: "#ce0500", weight: 2, fillColor: "#ce0500", fillOpacity: 0.2 } }).addTo(groupe);
       var c = couche.getBounds().getCenter();
-      L.marker(c, { icon: L.divIcon({ className: "numero", html: String(z.numero) }), interactive: false }).addTo(map);
+      L.marker(c, { icon: L.divIcon({ className: "numero", html: String(z.numero), iconSize: [30, 30] }), interactive: false }).addTo(map);
     });
     if (carte.parcelle) L.geoJSON(carte.parcelle, { style: { color: "#161616", weight: 2, fillColor: "#ffd200", fillOpacity: 0.6 } }).addTo(groupe);
     if (carte.point) L.circleMarker([carte.point.lat, carte.point.lng], { radius: 7, color: "#161616", fillColor: "#161616", fillOpacity: 1 }).addTo(groupe);
