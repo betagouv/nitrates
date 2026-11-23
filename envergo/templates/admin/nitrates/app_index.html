@@ -250,17 +250,25 @@ classDiagram
     </div>
   {% endfor %}
 
-  {# Mermaid via CDN — chargé uniquement sur cette page admin. #}
-  <script type="module">
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'default',
-      securityLevel: 'strict',
-    });
-  </script>
+  {% comment %}
+    Mermaid via CDN, en dev uniquement (DEBUG, sans CSP). En production la CSP
+    n'autorise pas jsdelivr : l'import etait deja bloque. Ne pas poser le
+    nonce sans garde : un import depuis un module qui porte le nonce herite
+    de ce nonce et passerait la CSP, ce qui chargerait un script tiers
+    (version flottante mermaid@10) dans l'admin de production.
+  {% endcomment %}
+  {% if DEBUG %}
+    <script type="module" nonce="{{ csp_nonce }}">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'default',
+        securityLevel: 'strict',
+      });
+    </script>
+  {% endif %}
 
   <style>
     /* On extend base_site.html directement (pas app_index.html), donc

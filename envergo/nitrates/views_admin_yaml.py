@@ -35,15 +35,15 @@ from envergo.nitrates.yaml_tree import load_tree_admin, load_tree_raw
 _VUES = {"arbre", "brut", "split"}
 _MODES = {"lecture", "edition"}
 
-# L'admin nitrates charge deux CDN : htmx depuis unpkg (layout base.html) et
-# CodeMirror depuis cdnjs (éditeur YAML, CSS + JS). La CSP globale nitrates est
-# volontairement stricte ('self' pour scripts/styles) pour le simulateur
-# public ; on élargit uniquement pour cette vue admin (derrière login) au lieu
-# d'ouvrir ces CDN à tout le public.
+# L'éditeur YAML charge CodeMirror depuis cdnjs (CSS + JS). La CSP globale
+# nitrates est volontairement stricte ('self' + nonce pour les scripts) pour le
+# simulateur public ; on élargit uniquement pour cette vue admin (derrière
+# login) au lieu d'ouvrir ce CDN à tout le public. htmx (layout base.html) est
+# servi en propre, unpkg n'est plus nécessaire. Ne pas ajouter
+# 'unsafe-inline' ici : les scripts inline passent par le nonce CSP.
 _CDNJS = "https://cdnjs.cloudflare.com"  # CodeMirror (éditeur YAML)
-_UNPKG = "https://unpkg.com"  # htmx (layout admin)
 _CSP_ADMIN_YAML = {
-    "script-src": [_CDNJS, _UNPKG],
+    "script-src": [_CDNJS],
     "style-src": [_CDNJS],
 }
 

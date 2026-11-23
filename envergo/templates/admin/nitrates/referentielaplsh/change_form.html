@@ -85,7 +85,7 @@ Bouton « texte brut » pour voir/éditer le format canonique.
     color: #555;
   }
 </style>
-<script>
+<script nonce="{{ csp_nonce }}">
     (function () {
       const FERTILISANTS = JSON.parse(
         document.getElementById('aplsh-fertilisants').textContent

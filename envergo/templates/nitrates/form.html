@@ -13,7 +13,7 @@
   {% leaflet_js %}
   {% couleurs_zones "zv_nitrates" as zv_couleurs %}
   {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // Force le path des marker icons Leaflet : sans ca, Leaflet derive
     // le path a partir du JS courant (hashe par whitenoise) -> 404.
     L.Icon.Default.imagePath = "{% static 'leaflet/images/' %}";

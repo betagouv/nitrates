@@ -777,7 +777,7 @@ total = {{ poids.volatilisation }}·volat + {{ poids.lixiviation }}·lixiv + {{ 
     </div>
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.addEventListener('DOMContentLoaded', function () {
       // ── Rechargement SANS saut de page : on refait la requête GET en
       // arrière-plan et on ne remplace que le bloc sol et le panneau de

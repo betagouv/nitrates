@@ -508,7 +508,7 @@ suppression — le déclenche et il peut rester collé en haut de page).
   veut PAS retraiter — pour atterrir sur la prochaine vierge. Si toutes ont été
   touchées -> pas de scroll. La ligne ciblée est surlignée brièvement.
   {% endcomment %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function () {
       function scrollFirstUntouched() {
         var rows = document.querySelectorAll(".vc-row");

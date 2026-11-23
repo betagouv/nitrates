@@ -7,7 +7,7 @@
 <div class="yaml-tree__add-form"
      id="add-zone-{{ parent_path_str|slugify }}"
      data-add-form-init="true">
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // Auto-populate du libelle et de l'id quand l'utilisateur tape la valeur.
     // On ne touche jamais a un champ deja modifie manuellement (data-touched).
     (function () {

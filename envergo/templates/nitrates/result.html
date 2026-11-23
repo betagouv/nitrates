@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script>window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";</script>
+  <script nonce="{{ csp_nonce }}">window.NITRATES_ARBRE_URL = "{% url 'nitrates_arbre' %}";</script>
   <script defer src="{% static 'nitrates/subsidiaires.js' %}"></script>
 {% endblock %}
 

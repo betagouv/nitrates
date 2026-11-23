@@ -22,6 +22,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 
+from envergo.middleware.csp import get_nonce
 from envergo.nitrates.probe import collect
 
 
@@ -52,7 +53,9 @@ def probe_dash(request):
     if request.GET.get("json"):
         return JsonResponse(collect())
     token = request.GET.get("token", "")
-    html = _DASH_HTML.replace("__TOKEN__", json.dumps(token))
+    # Nonce CSP d'abord (le jeton vient de la requete), cf. script-src.
+    html = _DASH_HTML.replace("__CSP_NONCE__", str(get_nonce(request)))
+    html = html.replace("__TOKEN__", json.dumps(token))
     return HttpResponse(html, content_type="text/html; charset=utf-8")
 
 
@@ -100,7 +103,7 @@ toutes les 2 s. Une serie par container. Carte #111.</p>
     <canvas id="c-db"></canvas></div>
   <div class="card"><h2>Etat courant</h2><table id="tbl"></table></div>
 </div>
-<script>
+<script nonce="__CSP_NONCE__">
 const TOKEN = __TOKEN__;
 const N = 150;
 const series = {majflt:[], psimem:[], psiio:[], disk:[], db:[]};

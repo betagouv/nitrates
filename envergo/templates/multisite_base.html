@@ -54,7 +54,7 @@
               src="{% static '@gouvfr/dsfr/dist/dsfr.nomodule.min.js' %}"></script>
       <script defer src="{% static 'js/libs/spinner.js' %}"></script>
 
-      <script>
+      <script nonce="{{ csp_nonce }}">
         var EVENTS_URL = "{% url 'events' %}";
         var CSRF_TOKEN = '{{ csrf_token }}';
         var MAPPING_CREATE_URL = "{% url 'urlmapping_create' %}";
@@ -68,7 +68,7 @@
       {% block extra_js %}{% endblock %}
 
     {% endblock javascript %}
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Add class to indicate that js is available
       let html = document.documentElement;
       html.classList.remove('nojs');
@@ -79,7 +79,7 @@
       }
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Quick and stupid fix for this DSFR issue:
       // https://github.com/GouvernementFR/dsfr/issues/515
       window.addEventListener('load', function() {
@@ -99,7 +99,7 @@
       });
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Remove the top bar message, and set a cookie to not display it again
       function hideTopBar() {
         let topBar = document.getElementById('top-bar');
@@ -115,7 +115,7 @@
       }
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Track Top bar link clicks to Matomo
       function trackTopBarLinkClicks() {
         let topBar = document.getElementById('top-bar');
@@ -131,14 +131,14 @@
       window.addEventListener('load', trackTopBarLinkClicks);
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Detect print events
       window.addEventListener('beforeprint', function() {
         _paq.push(['trackEvent', 'Print', 'Before']);
       });
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Setup the sticky slim header
       window.addEventListener("load", function() {
         const header = document.querySelector('.fr-header.header-legacy');
