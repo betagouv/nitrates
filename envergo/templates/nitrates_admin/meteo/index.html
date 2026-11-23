@@ -1,6 +1,6 @@
 {% extends "nitrates_admin/base.html" %}
 
-{% load static leaflet_tags %}
+{% load static leaflet_tags nitrates_tags %}
 
 {% block title %}POC Météo — fenêtres d'épandage{% endblock %}
 
@@ -531,7 +531,7 @@
     <div class="meteo-widget" id="widget-comparaison">
       <h2>📊 Comparaison des fenêtres (7 jours, créneaux de 3 h)</h2>
       <form method="get" class="meteo-form-modele">
-        {% for cle, valeur in request.GET.items %}
+        {% for cle, valeur in request.GET|paires %}
           {% if cle != "modele" %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endif %}
         {% endfor %}
         <label for="modele">Modèle météo</label>

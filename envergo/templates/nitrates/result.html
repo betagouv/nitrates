@@ -129,7 +129,7 @@
                     inputs avec le meme name.
                     {% endcomment %}
                     {% with subsidiary_fields=ev.questions_subsidiaires.champs_set %}
-                      {% for key, value in data.items %}
+                      {% for key, value in data|paires %}
                         {% if value and key not in subsidiary_fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
                       {% endfor %}
                     {% endwith %}

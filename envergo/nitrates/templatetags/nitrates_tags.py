@@ -43,6 +43,22 @@ def static_v(path: str) -> str:
 
 
 @register.filter
+def paires(d):
+    """Couples (cle, valeur) d'un dict ou d'un QueryDict, pour
+    `{% for cle, valeur in data|paires %}`.
+
+    A utiliser a la place de `data.items` des que les cles viennent de la
+    requete : le moteur de gabarits essaie `data["items"]` avant la methode
+    `.items()`, donc `?items=abc` faisait iterer la chaine "abc" et levait
+    un ValueError (500 en prod, scanner XSS du 18/11/2026). Le filtre recoit
+    l'objet lui-meme et appelle la methode, aucune cle ne peut la masquer.
+    """
+    if not d:
+        return []
+    return list(d.items())
+
+
+@register.filter
 def get_item(d, key):
     """Filtre dict[key] pour le template (Django ne le supporte pas
     nativement quand la cle a des caracteres speciaux).
