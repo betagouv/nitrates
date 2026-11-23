@@ -135,7 +135,7 @@ moulinette, request (pour draft_tree_id).
     <div class="nitrates-debug-panel__section">
       <h5 class="nitrates-debug-panel__title">Contexte (resolutions formulaire + catalogue)</h5>
       <dl class="nitrates-debug-panel__dl">
-        {% for cle, valeur in ev.contexte.items %}
+        {% for cle, valeur in ev.contexte|paires %}
           <dt>{{ cle }}</dt>
           <dd>
             <code>{{ valeur }}</code>

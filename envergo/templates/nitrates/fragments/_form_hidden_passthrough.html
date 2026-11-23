@@ -9,8 +9,9 @@ Le contexte fournit :
   - cascade_fields : noms des champs cascade et hidden type_fertilisant
   - qc_actifs : noms des QC actuellement re-saisis
 {% endcomment %}
+{% load nitrates_tags %}
 
-{% for key, value in data.items %}
+{% for key, value in data|paires %}
   {% if value %}
     {% if key not in cascade_fields and key not in qc_actifs and key not in qc_repondues_champs %}
       <input type="hidden" name="{{ key }}" value="{{ value }}">
