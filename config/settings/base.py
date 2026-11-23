@@ -263,6 +263,9 @@ TEMPLATES = [
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
+                # Nonce CSP des <script> inline (backport Django 6.0).
+                # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO
+                "envergo.utils.context_processors.csp",
                 "envergo.utils.context_processors.settings_context",
                 "envergo.utils.context_processors.multi_sites_context",
                 "envergo.utils.context_processors.newsletter_context",

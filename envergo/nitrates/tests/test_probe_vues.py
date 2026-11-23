@@ -6,11 +6,14 @@ un 404 de routage, pas celui de la vue. On teste donc les vues elles-mêmes.
 """
 
 import json
+import re
 
 import pytest
 from django.test import RequestFactory
 
+from envergo.middleware.csp import ContentSecurityPolicyMiddleware
 from envergo.nitrates import views_probe
+from envergo.utils.csp import CSP
 
 TOKEN = "jeton-de-test-111"
 
@@ -55,3 +58,14 @@ def test_probe_dash_rend_la_page_avec_le_jeton(rf):
 def test_probe_dash_sert_le_json_a_lui_meme(rf):
     r = views_probe.probe_dash(rf.get("/", {"token": TOKEN, "json": "1"}))
     assert json.loads(r.content) == {"container": "web-1"}
+
+
+def test_probe_dash_script_porte_le_nonce_csp(rf, settings):
+    """CSP sans 'unsafe-inline' : le script de la page porte le nonce annoncé
+    dans l'en-tête, sinon le navigateur le bloque."""
+    settings.SECURE_CSP = {"script-src": [CSP.SELF, CSP.NONCE]}
+    settings.SECURE_CSP_REPORT_ONLY = {}
+    middleware = ContentSecurityPolicyMiddleware(views_probe.probe_dash)
+    r = middleware(rf.get("/", {"token": TOKEN}))
+    nonce = re.search(r"'nonce-([^']+)'", r["Content-Security-Policy"]).group(1)
+    assert f'<script nonce="{nonce}">' in r.content.decode()

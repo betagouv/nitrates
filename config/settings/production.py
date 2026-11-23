@@ -359,10 +359,17 @@ SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=FROM_EMAIL["amenagement"]["adm
 #   - sentry.incubateur.net : monitoring erreurs
 #   - Matomo beta.gouv     : stats (à implémenter prochainement, autorisé en amont)
 # Tout le reste (scripts, styles, fonts) est servi en propre ('self').
-# 'unsafe-inline' reste nécessaire tant que des <script>/style inline existent
-# dans les templates (migration vers nonce = chantier séparé).
 #
-# L'admin (éditeur YAML CodeMirror via cdnjs/unpkg) élargit cette politique
+# Scripts inline : PAS de 'unsafe-inline' dans script-src. Chaque <script>
+# inline des gabarits porte nonce="{{ csp_nonce }}" (context processor
+# envergo.utils.context_processors.csp), et CSP.NONCE est remplacé par le
+# nonce de la requête dans l'en-tête. Un <script> inline sans nonce est
+# bloqué : en ajouter un sans l'attribut casse la page en production (le test
+# test_csp_nonce_pages le détecte sur les pages publiques).
+# Côté styles, 'unsafe-inline' reste dans style-src (attributs style= et
+# <style> des gabarits, feuille d'indicateurs htmx) : chantier séparé.
+#
+# L'admin (éditeur YAML CodeMirror via cdnjs) élargit cette politique
 # au cas par cas via csp_update, pas ici — cf. views_admin_yaml.
 _GEOPF = "https://data.geopf.fr"  # IGN / Géoplateforme (carto + géocodage)
 _BAN = "https://api-adresse.data.gouv.fr"  # Base Adresse Nationale
@@ -381,7 +388,7 @@ _MATOMO = "https://*.beta.gouv.fr"  # Stats Matomo (à venir)
 
 _CSP_POLICY = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE, _SENTRY, _MATOMO],
+    "script-src": [CSP.SELF, CSP.NONCE, _SENTRY, _MATOMO],
     "connect-src": [CSP.SELF, _GEOPF, _BAN, _GEO_API, _SENTRY, _MATOMO],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
     "img-src": [CSP.SELF, _GEOPF, _CELLAR_S3, _CELLAR_S3_SUB, "data:", _MATOMO],

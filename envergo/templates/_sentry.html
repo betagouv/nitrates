@@ -1,7 +1,7 @@
 {% load static %}
 
 {% if SENTRY_KEY %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     window.sentryOnLoad = function () {
       Sentry.init({ environment: "{{ ENV_NAME }}" });
     };

@@ -143,7 +143,7 @@
           {% endif %}
 
           {# Monte CodeMirror sur les <textarea data-yaml-editor>. data-yaml-editor-readonly -> lecture seule. Sync via editor.save() on change (cf. _codemirror_assets.html). #}
-          <script>
+          <script nonce="{{ csp_nonce }}">
             (function () {
               document.querySelectorAll("[data-yaml-editor]").forEach((ta) => {
                 if (ta.dataset.cmMounted === "1") return;
@@ -159,7 +159,7 @@
       </div>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Toggle "Afficher les identifiants techniques" (q_, n_, r_).
       // Persiste dans localStorage. Defaut : ON (afficher).
       (function () {
@@ -182,7 +182,7 @@
       })();
     </script>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
       // Deeplink #regle=X : ouvre tous les ancestors et scroll sur la regle.
       // ?edit=1 : si pas deja en mode edition, redirect vers editer-actif/
       // en preservant le hash.
@@ -375,7 +375,7 @@
     {# Highlight + scroll apres chaque swap d'edition / fermeture de form. #}
     {# Cible : tout element dont l'id commence par regle-block- / branche-block- / node-row-. #}
     {# Permet de garder le repere visuel apres save / cancel (le DOM se reconstruit, le focus est perdu). #}
-    <script>
+    <script nonce="{{ csp_nonce }}">
       (function () {
         const PREFIXES = ['regle-block-', 'branche-block-', 'node-row-'];
         function matches(el) {
@@ -459,7 +459,7 @@
       <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
       {% comment %}Volet de reprise des questions complementaires existantes (#620).{% endcomment %}
       <script src="{% static_v 'nitrates_admin/qc_suggestions.js' %}"></script>
-      <script>
+      <script nonce="{{ csp_nonce }}">
         (function () {
           const TREE_PK = {{ tree.pk|default:'null' }};
           const ENDPOINT = TREE_PK

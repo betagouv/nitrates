@@ -25,7 +25,7 @@ from envergo.geodata.models import Department
 from envergo.moulinette.models import ConfigAmenagement, ConfigHaie
 from envergo.moulinette.views import MoulinetteMixin
 from envergo.pages.models import NewsItem
-from envergo.utils.context_processors import multi_sites_context, settings_context
+from envergo.utils.context_processors import csp, multi_sites_context, settings_context
 from envergo.utils.tools import get_site_literal
 
 logger = logging.getLogger(__name__)
@@ -386,13 +386,23 @@ def server_error(request, template_name=ERROR_500_TEMPLATE_NAME):
         return HttpResponseServerError(
             ERROR_PAGE_TEMPLATE % {"title": "Server Error (500)", "details": ""},
         )
-    context = {**multi_sites_context(request), **settings_context(request)}
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : nonce CSP des scripts inline.
+    context = {
+        **multi_sites_context(request),
+        **settings_context(request),
+        **csp(request),
+    }
     return HttpResponseServerError(template.render(context))
 
 
 def rate_limited(request):
     """429 error handler."""
-    context = {**multi_sites_context(request), **settings_context(request)}
+    # REVERT_AT_MERGE_TIME_FOR_UPSTREAM_ENVERGO : nonce CSP des scripts inline.
+    context = {
+        **multi_sites_context(request),
+        **settings_context(request),
+        **csp(request),
+    }
     template = loader.get_template("429.html")
     return HttpResponse(template.render(context), status=429)
 

@@ -268,7 +268,7 @@
 {% block extra_js %}
   {% if not lecture_seule %}
     <script src="{% static 'nitrates_admin/sortable.min.js' %}"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     (function () {
       const toggleUrl = "{% url 'nitrates_admin_ouverture_toggle' %}";
       const toggleRegionUrl = "{% url 'nitrates_admin_ouverture_toggle_region' %}";

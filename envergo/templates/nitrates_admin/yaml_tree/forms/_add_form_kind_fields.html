@@ -151,7 +151,7 @@ laisse l'option de le forcer manuellement pour les cas a la marge.
       {% if err.field == "champ" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
     {% endfor %}
   </div>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function () {
       const sourceSelect = document.querySelector('[data-catalogue-source-select]');
       const refSelect = document.querySelector('[data-catalogue-ref-select]');

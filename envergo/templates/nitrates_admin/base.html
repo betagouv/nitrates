@@ -126,8 +126,25 @@
        responseHandling = swap aussi sur 422 (validation echouee) en plus
        des 2xx, pour que les fragments d'erreur des endpoints d'edition
     s'affichent dans le formulaire.{% endcomment %}
-    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-    <script>
+    {% comment %}
+      htmx servi en propre (meme fichier que unpkg htmx.org@2.0.4, vendorise
+      pour le simulateur) : la CSP de production n'autorise pas unpkg sur les
+      pages admin hors editeur YAML, htmx y etait donc bloque.
+    {% endcomment %}
+    <script src="{% static 'nitrates/vendor/htmx-2.0.4.min.js' %}" defer></script>
+    <script nonce="{{ csp_nonce }}">
+      {% comment %}
+        CSP sans 'unsafe-inline' : htmx recree les <script> des fragments
+        swappes (formulaires d'edition inline qui utilisent
+        document.currentScript). Ils portent le nonce de LEUR requete, pas
+        celui de la page : on donne a htmx le nonce de la page, qu'il pose sur
+        les scripts qu'il recree. Lu sur la balise courante (propriete .nonce),
+        jamais expose dans un attribut du DOM.
+{% endcomment %}
+      const _cspNonce = document.currentScript ? document.currentScript.nonce : '';
+      function _appliquerNonceHtmx() {
+        if (window.htmx && _cspNonce) htmx.config.inlineScriptNonce = _cspNonce;
+      }
       function _getCsrfToken() {
         const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
         if (m) return decodeURIComponent(m[1]);
@@ -137,8 +154,10 @@
       document.addEventListener('htmx:configRequest', function(evt) {
         // Toute requete htmx unsafe (POST/PUT/DELETE) doit porter X-CSRFToken.
         evt.detail.headers['X-CSRFToken'] = _getCsrfToken();
+        _appliquerNonceHtmx();
       });
       document.addEventListener('DOMContentLoaded', function() {
+        _appliquerNonceHtmx();
         if (window.htmx) {
           htmx.config.responseHandling = [
             { code: '204', swap: false },

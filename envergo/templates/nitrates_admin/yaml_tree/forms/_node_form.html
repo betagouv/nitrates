@@ -90,7 +90,7 @@
           {% for c in champs %}<option value="{{ c }}" label="(niveau: {{ niveau }})"></option>{% endfor %}
         {% endfor %}
       </datalist>
-      <script>
+      <script nonce="{{ csp_nonce }}">
         // Auto-suggest du texte + champ selon le niveau choisi.
         // Pour complement : on laisse vide, le datalist guide.
         // L'utilisateur peut surcharger : on ne touche pas a un input
@@ -169,7 +169,7 @@
           {% if err.field == "source" %}<small class="yaml-tree__form-field-error">{{ err.message }}</small>{% endif %}
         {% endfor %}
       </div>
-      <script>
+      <script nonce="{{ csp_nonce }}">
         (function () {
           const select = document.querySelector('[data-catalogue-ref-select]');
           const champInput = document.querySelector('[data-catalogue-champ-input]');

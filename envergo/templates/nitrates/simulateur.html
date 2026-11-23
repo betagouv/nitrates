@@ -27,7 +27,7 @@
   {% couleurs_zones "zv_nitrates" as zv_couleurs %}
   {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
   {% if catalog_js %}{{ catalog_js|json_script:"nitrates-catalog-data" }}{% endif %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     // #273 : rendu de ce document et retour / avance du navigateur survenus
     // avant soumission_partielle.js (defer), qui les traite a son demarrage.
     window.NITRATES_RENDU_INITIAL = (history.state || {}).nitratesRendu;

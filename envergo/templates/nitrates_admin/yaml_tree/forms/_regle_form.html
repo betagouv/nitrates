@@ -594,7 +594,7 @@
                   hx-swap="outerHTML">Annuler</button>
         </div>
 
-        <script>
+        <script nonce="{{ csp_nonce }}">
       // Adapte les champs visibles selon le type choisi.
       // - `regime` (par periode) + `condition` : autorisation_sous_condition uniquement
       // - `Calculatrice` (composant + inputs_requis) : calculatrice uniquement
@@ -667,7 +667,7 @@
       })();
         </script>
 
-        <script>
+        <script nonce="{{ csp_nonce }}">
       // Bouton "+ Ajouter une periode" : clone la derniere ligne de periode
       // et incremente l'index dans les `name="periodes-N-..."` pour que
       // Django parse correctement N entrees au POST.
@@ -756,7 +756,7 @@
       })();
         </script>
 
-        <script>
+        <script nonce="{{ csp_nonce }}">
       // Calculatrice : bouton "+ Ajouter un input requis" + bouton 🗑 par carte.
       // Pas d'aller-retour serveur : le DOM est modifie cote client, persiste
       // au submit comme les periodes.

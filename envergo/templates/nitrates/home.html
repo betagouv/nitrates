@@ -13,7 +13,7 @@
   {% leaflet_js %}
   {% couleurs_zones "zv_nitrates" as zv_couleurs %}
   {{ zv_couleurs|json_script:"nitrates-zv-couleurs" }}
-  <script>
+  <script nonce="{{ csp_nonce }}">
     window.NITRATES_DEBUG_URL = "{% url 'nitrates_debug' %}";
     window.NITRATES_ZV_GEOJSON_URL = "{% url 'nitrates_zv_geojson' %}";
   </script>
