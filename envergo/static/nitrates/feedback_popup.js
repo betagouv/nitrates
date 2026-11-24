@@ -1,8 +1,8 @@
-/* #284 / #435 / #518 — Encart « Une suggestion, un avis ? ».
+/* #284 / #435 / #518 — Encart « Donnez votre avis ».
  *
  * L'encart (note + commentaire, puis proposition bêta-testeur) est présent sur
  * toutes les pages (fragment _retours.html) :
- *   - ouverture MANUELLE par le bouton flottant « Une suggestion, un avis ? »,
+ *   - ouverture MANUELLE par le bouton flottant « Donnez votre avis »,
  *     à tout moment, autant de fois que voulu (on peut redonner son avis) ;
  *   - ouverture AUTOMATIQUE une seule fois par visiteur, à la fin de la
  *     première simulation (page résultat, marqueur [data-nitrates-fin-

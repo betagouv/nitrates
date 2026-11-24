@@ -4,7 +4,7 @@
 #518 — Retours utilisateurs, sur toutes les pages (maquette Coralie du 07/10) :
   - lien de pied de page « Signaler un bug, une erreur » -> modale DSFR de
     signalement (bug_floater.js : capteurs console / réseau, POST type "bug") ;
-  - bouton flottant « Une suggestion, un avis ? » -> encart note + commentaire,
+  - bouton flottant « Donnez votre avis » (#661) -> encart note + commentaire,
     puis proposition de devenir bêta-testeur (feedback_popup.js, POST type
     "feedback"). L'encart s'ouvre aussi tout seul UNE fois après la première
     simulation ; ensuite seulement sur clic du bouton.
@@ -17,13 +17,14 @@ deux scripts sur toutes les pages (le simulateur était le seul à en porter un)
      id="nitrates-retours"
      data-region-code="{{ moulinette.catalog.region_code|default:'' }}">
 
-  {# ── Bouton flottant « Une suggestion, un avis ? » ───────────────────────── #}
+  {# ── Bouton flottant « Donnez votre avis » (#661) ────────────────────────── #}
   <button type="button"
           class="nitrates-avis__toggle"
           id="nitrates-avis-toggle"
           aria-controls="nitrates-feedback"
           aria-expanded="false"
-          title="Une suggestion, un avis ?">
+          aria-label="Donnez votre avis"
+          title="Donnez votre avis">
     <svg viewBox="0 0 24 24"
          width="22"
          height="22"
@@ -31,7 +32,7 @@ deux scripts sur toutes les pages (le simulateur était le seul à en porter un)
          focusable="false">
       <path fill="currentColor" d="M12 2a10 10 0 1 1-4.37 19L2 22l1.04-5.6A10 10 0 0 1 12 2Zm0 2a8 8 0 0 0-6.88 12.1l.22.37-.6 3.2 3.25-.58.37.2A8 8 0 1 0 12 4Zm-3.7 7.6a.9.9 0 0 1 1.23.33 2.85 2.85 0 0 0 4.94 0 .9.9 0 1 1 1.56.9 4.65 4.65 0 0 1-8.06 0 .9.9 0 0 1 .33-1.23Z" />
     </svg>
-    <span class="nitrates-avis__toggle-label">Une suggestion, un avis&nbsp;?</span>
+    <span class="nitrates-avis__toggle-label">Donnez votre avis</span>
   </button>
 
   {# ── Encart avis (non modal) ─────────────────────────────────────────────── #}
@@ -47,7 +48,7 @@ deux scripts sur toutes les pages (le simulateur était le seul à en porter un)
 
       {# Volet 1 : note (étoiles) + commentaire #}
       <div class="nitrates-feedback__volet" data-feedback-volet-note>
-        <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">Une suggestion, un avis&nbsp;?</p>
+        <p class="nitrates-feedback__titre fr-h6" id="nitrates-feedback-titre">Donnez votre avis</p>
 
         <div class="nitrates-feedback__stars"
              role="radiogroup"

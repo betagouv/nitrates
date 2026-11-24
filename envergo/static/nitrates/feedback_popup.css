@@ -17,7 +17,7 @@
 }
 
 /* Le conteneur racine ne couvre plus l'écran : c'est l'encart lui-même.
-   #518 : posé au-dessus du bouton « Une suggestion, un avis ? ». */
+   #518 : posé au-dessus du bouton « Donnez votre avis ». */
 .nitrates-feedback {
   position: fixed;
   right: 16px;
