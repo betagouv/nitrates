@@ -1310,6 +1310,46 @@
         font-weight: 700;
       }
 
+      pre.diff .ctx {
+        color: var(--texte-2);
+      }
+
+      pre.diff .chemin {
+        color: var(--hunk);
+        white-space: normal;
+        font-style: italic;
+        padding-bottom: 2px;
+      }
+
+      pre.diff .deplier {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: color-mix(in srgb, var(--hunk) 10%, transparent);
+        padding: 2px 12px;
+        margin: 2px 0;
+      }
+
+      pre.diff .deplier button {
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        color: var(--hunk);
+        background: transparent;
+        border: 1px solid color-mix(in srgb, var(--hunk) 45%, transparent);
+        border-radius: 4px;
+        padding: 0 6px;
+      }
+
+      pre.diff .deplier button:hover {
+        background: color-mix(in srgb, var(--hunk) 18%, transparent);
+      }
+
+      pre.diff .deplier i {
+        color: var(--texte-2);
+        font-size: 11px;
+      }
+
       details>summary {
         cursor: pointer;
         color: var(--texte-2);
@@ -1776,6 +1816,172 @@ function chargerPaquet() { try { return JSON.parse(lire("paquet") || "[]"); } ca
 function sauverPaquet() { ecrire("paquet", JSON.stringify(etat.paquet)); }
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ─── Diff dépliable : contexte à la demande et chemin des ancêtres ─────
+// Le diff unifié n'a que 3 lignes de contexte. Le texte complet du côté
+// « source » du diff est dans D.textes : on déplie depuis lui les lignes
+// masquées entre deux blocs (avant / après), comme sur GitLab.
+const PAS_CONTEXTE = 20;
+const CLES_CHEMIN = new Set(["id", "champ", "valeur"]);
+
+function lireBlocsDiff(texte) {
+  const blocs = [];
+  let b = null;
+  for (const ln of texte.split("\n")) {
+    const m = ln.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+    if (m) {
+      const a = +m[1], na = m[2] === undefined ? 1 : +m[2];
+      // na = 0 : insertion pure APRÈS la ligne a, le bloc ne couvre aucune ligne source.
+      const debut = na ? a : a + 1;
+      b = { a, na, b: +m[3], nb: m[4] === undefined ? 1 : +m[4], debut, fin: debut + na - 1, lignes: [] };
+      blocs.push(b);
+    } else if (b) b.lignes.push(ln);
+  }
+  return blocs;
+}
+
+// Une ligne YAML (ou JSON indenté) : indentation, tiret de liste, clé.
+function analyserLigne(l) {
+  if (!l || !l.trim() || l.trim().startsWith("#")) return null;
+  const m = l.match(/^(\s*)(-\s+)?(?:["']?([\w.\- ]+?)["']?\s*:(?=\s|$))?\s*(.*)$/);
+  if (!m) return null;
+  const ind = m[1].length, tiret = m[2] || "";
+  return { ind, tiret: !!tiret, cleInd: ind + tiret.length, cle: m[3] || null, val: (m[4] || "").replace(/,$/, "").trim() };
+}
+
+// Chemin d'une ligne dans l'arbre : `source` = texte complet, `idx` = nombre
+// de lignes du texte au-dessus d'elle, `courante` = la ligne elle-même.
+// 1. On remonte et on note chaque mapping traversé (ligne de début et
+//    indentation de ses clés) jusqu'à la racine.
+// 2. Pour chacun, on lit les clés qui l'identifient (id, champ, valeur) sur
+//    TOUT le mapping : dans ces arbres, la `valeur:` d'une branche est écrite
+//    après son sous-arbre (`noeud:` / `regle:`), donc sous la ligne modifiée.
+// On termine par la clé parente immédiate (ex. `periodes`).
+function cheminAncetres(source, idx, courante) {
+  const c = analyserLigne(courante);
+  if (!c) return [];
+  const maps = [];
+  let parent = null;
+  // `cle` = indentation des clés du mapping courant (null : on est dans une
+  // liste). Une ligne parente a une indentation de clé < `seuil`.
+  let cle = c.tiret ? null : c.cleInd;
+  let seuil = c.tiret ? c.ind + 1 : c.cleInd;
+  for (let k = idx - 1; k >= 0; k--) {
+    const p = analyserLigne(source[k]);
+    if (!p) continue;
+    if (cle !== null && p.tiret && p.cleInd === cle) {
+      // Début de l'élément de liste dont on parcourait le mapping.
+      maps.push({ debut: k, cle });
+      cle = null; seuil = p.ind + 1;
+    } else if (p.cleInd < seuil) {
+      if (cle !== null) maps.push({ debut: k + 1, cle });
+      if (p.cle && !parent && !CLES_CHEMIN.has(p.cle)) parent = p.cle;
+      if (p.tiret) { maps.push({ debut: k, cle: p.cleInd }); cle = null; seuil = p.ind + 1; }
+      else { cle = p.cleInd; seuil = p.cleInd; }
+    }
+  }
+  if (cle !== null) maps.push({ debut: 0, cle });
+  const chemin = [];
+  for (const m of maps.reverse()) {
+    for (let j = m.debut; j < source.length; j++) {
+      const p = analyserLigne(source[j]);
+      if (!p) continue;
+      if (j > m.debut && (p.cleInd < m.cle || (p.tiret && p.cleInd <= m.cle))) break;
+      if (p.cleInd === m.cle && p.cle && CLES_CHEMIN.has(p.cle)) chemin.push({ cle: p.cle, val: p.val });
+    }
+  }
+  if (parent) chemin.push({ cle: null, val: parent });
+  return chemin;
+}
+
+// Forme courte du chemin : `champ = valeur` par niveau, puis l'id du dernier
+// mapping (la règle) et la clé parente. Forme longue en infobulle.
+function cheminCourt(chemin) {
+  const parts = [];
+  let champ = null, id = null;
+  for (const e of chemin) {
+    if (e.cle === "champ") { champ = e.val; id = null; }
+    else if (e.cle === "valeur") { parts.push(champ ? `${champ} = ${e.val}` : `= ${e.val}`); champ = null; id = null; }
+    else if (e.cle === "id") id = e.val;
+  }
+  if (id) parts.push(id);
+  const fin = chemin[chemin.length - 1];
+  if (fin && fin.cle === null) parts.push(fin.val);
+  return parts;
+}
+
+// Rend le diff dans `pre` avec des rangées de dépliage. `source` = lignes du
+// texte de départ du diff stocké ; `inverse` = la page affiche le diff à
+// l'envers (signes et en-têtes permutés) ; `chemins` = afficher les ancêtres.
+function rendreDiffDepliable(pre, entete, texteDiff, source, inverse, chemins, tronque) {
+  const blocs = lireBlocsDiff(texteDiff);
+  const n = source.length;
+  const trous = blocs.map((b, i) => ({ debut: i ? blocs[i - 1].fin + 1 : 1, fin: b.debut - 1, haut: 0, bas: 0 }));
+  const dernier = blocs[blocs.length - 1];
+  const trouFin = dernier && !tronque ? { debut: dernier.fin + 1, fin: n, haut: 0, bas: 0 } : null;
+  const ligneCtx = (i) => `<span class="ctx">${esc(" " + source[i - 1]) || " "}</span>`;
+  const rangee = (t, idx, place) => {
+    const total = t.fin - t.debut + 1, cache = total - t.haut - t.bas;
+    if (cache <= 0) return "";
+    const pas = Math.min(PAS_CONTEXTE, cache);
+    const btn = (act, txt, titre) => `<button type="button" data-trou="${idx}" data-act="${act}" title="${titre}">${txt}</button>`;
+    const boutons = [];
+    // t.haut = lignes visibles en haut du trou (suite du bloc précédent),
+    // t.bas = lignes visibles en bas du trou (juste au-dessus du bloc suivant).
+    if (place !== "debut") boutons.push(btn("haut", `↓ ${pas} lignes`, "Afficher la suite, sous le bloc précédent"));
+    if (place !== "fin") boutons.push(btn("bas", `↑ ${pas} lignes`, "Afficher les lignes juste au-dessus du bloc suivant"));
+    boutons.push(btn("tout", `tout (${cache})`, "Afficher toutes les lignes masquées"));
+    return `<span class="deplier">${boutons.join("")}<i>${cache} ligne${cache > 1 ? "s" : ""} masquée${cache > 1 ? "s" : ""}</i></span>`;
+  };
+  const trou = (t, idx, place) => {
+    if (t.fin < t.debut) return "";
+    let h = "";
+    for (let i = t.debut; i < t.debut + t.haut && i <= t.fin; i++) h += ligneCtx(i);
+    h += rangee(t, idx, place);
+    for (let i = Math.max(t.debut + t.haut, t.fin - t.bas + 1); i <= t.fin; i++) h += ligneCtx(i);
+    return h;
+  };
+  const dessiner = () => {
+    let h = entete;
+    blocs.forEach((b, i) => {
+      h += trou(trous[i], i, i ? "milieu" : "debut");
+      const tete = inverse ? `@@ -${b.b},${b.nb} +${b.a},${b.na} @@` : `@@ -${b.a},${b.na} +${b.b},${b.nb} @@`;
+      h += `<span class="hunk">${esc(tete)}</span>`;
+      if (chemins) {
+        // Première ligne modifiée du bloc : ses ancêtres dans le texte source.
+        let ia = b.debut, courante = null;
+        for (const ln of b.lignes) {
+          if (ln[0] === " ") { ia++; continue; }
+          if (ln[0] === "-" || ln[0] === "+") { courante = ln.slice(1); break; }
+        }
+        const ch = courante === null ? [] : cheminAncetres(source, ia - 1, courante);
+        if (ch.length) {
+          const long = ch.map((e) => (e.cle ? `${e.cle}: ${e.val}` : e.val)).join(" › ");
+          h += `<span class="chemin" title="Chemin de la première ligne modifiée du bloc :\n${esc(long)}">↳ ${cheminCourt(ch).map(esc).join(" › ")}</span>`;
+        }
+      }
+      for (let ln of b.lignes) {
+        let c = ln[0];
+        if (inverse && (c === "+" || c === "-")) { c = c === "+" ? "-" : "+"; ln = c + ln.slice(1); }
+        h += `<span class="${c === "+" ? "add" : c === "-" ? "del" : ""}">${esc(ln) || " "}</span>`;
+      }
+    });
+    if (trouFin) h += trou(trouFin, blocs.length, "fin");
+    pre.innerHTML = h;
+  };
+  pre.onclick = (ev) => {
+    const bt = ev.target.closest("button[data-trou]");
+    if (!bt) return;
+    const idx = +bt.dataset.trou, t = idx < trous.length ? trous[idx] : trouFin;
+    const cache = t.fin - t.debut + 1 - t.haut - t.bas;
+    if (bt.dataset.act === "tout") t.haut += cache;
+    else t[bt.dataset.act] += Math.min(PAS_CONTEXTE, cache);
+    const avant = pre.scrollTop;
+    dessiner();
+    pre.scrollTop = avant;
+  };
+  dessiner();
+}
 function depuis(iso) {
   if (!iso) return "";
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -2393,12 +2599,10 @@ function zoneComparer(l) {
     const df = cle && D.diffs[cle];
     if (!df) { pre.innerHTML = '<span class="muet">Diff indisponible.</span>'; info.textContent = ""; return; }
     info.textContent = `${df.lignes} lignes de diff${df.tronque ? " (tronqué)" : ""}`;
-    pre.innerHTML = `<span class="fic">--- ${esc(libEnv(l, g))}</span><span class="fic">+++ ${esc(libEnv(l, d))}</span>` + df.texte.split("\n").map((ln) => {
-      let c = ln[0];
-      if (c === "@") return `<span class="hunk">${esc(ln)}</span>`;
-      if (inverse && (c === "+" || c === "-")) { c = c === "+" ? "-" : "+"; ln = c + ln.slice(1); }
-      return `<span class="${c === "+" ? "add" : c === "-" ? "del" : ""}">${esc(ln) || " "}</span>`;
-    }).join("");
+    const entete = `<span class="fic">--- ${esc(libEnv(l, g))}</span><span class="fic">+++ ${esc(libEnv(l, d))}</span>`;
+    // Texte de départ du diff stocké (plus petite empreinte) : sert au dépliage.
+    const source = (D.textes[inverse ? tb : ta] || "").split("\n");
+    rendreDiffDepliable(pre, entete, df.texte, source, inverse, l.famille === "arbre", df.tronque);
   };
   const maj = () => {
     g = z.querySelector("#cg").value; d = z.querySelector("#cd").value;
