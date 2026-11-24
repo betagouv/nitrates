@@ -1,10 +1,20 @@
 /* #285 / #518 — Retours utilisateurs (fragment _retours.html) :
-   - bouton flottant « Une suggestion, un avis ? » en bas a droite ;
+   - bouton flottant « Donnez votre avis » en bas a droite ;
    - lien de pied de page « Signaler un bug, une erreur » + titre de sa modale.
    L'encart d'avis lui-meme est style par feedback_popup.css. */
 
-/* ── Bouton flottant « Une suggestion, un avis ? » ──────────────────────── */
+/* ── Bouton flottant « Donnez votre avis » ──────────────────────────────── */
+
+/* #661 : fond, bordure bleu France, texte et icone blancs, survol #1212ff
+   (survol standard DSFR). Tokens DSFR « action-high » : memes valeurs en
+   clair, et le theme sombre suit tout seul (cf. override plus bas).
+   Le DSFR peint le survol / l'appui des boutons via `--hover` / `--active`
+   (regle `button:not(:disabled):hover`, plus specifique que la notre) : on
+   les renseigne, comme le fait fr-btn. */
 .nitrates-avis__toggle {
+  --hover: var(--background-action-high-blue-france-hover, #1212ff);
+  --active: var(--background-action-high-blue-france-active, #2323ff);
+
   position: fixed;
   right: 1rem;
   bottom: 1rem;
@@ -13,10 +23,10 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem 1.25rem;
-  border: 1px solid var(--border-default-grey, #ddd);
+  border: 1px solid var(--border-action-high-blue-france, #000091);
   border-radius: 999px;
-  background: var(--background-default-grey, #fff);
-  color: var(--text-action-high-blue-france, #000091);
+  background-color: var(--background-action-high-blue-france, #000091);
+  color: #fff;
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.25;
@@ -25,11 +35,12 @@
   transition:
     box-shadow 0.15s ease,
     transform 0.15s ease,
-    background 0.15s ease;
+    background-color 0.15s ease;
 }
 
 .nitrates-avis__toggle:hover {
-  background: var(--background-alt-blue-france, #f5f5fe);
+  border-color: var(--background-action-high-blue-france-hover, #1212ff);
+  background-color: var(--background-action-high-blue-france-hover, #1212ff);
   box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
   transform: translateY(-1px);
 }
@@ -41,6 +52,13 @@
 
 .nitrates-avis__toggle svg {
   flex: 0 0 auto;
+}
+
+/* Theme sombre : le fond « action-high » devient bleu clair (#8585f6), le
+   texte blanc n'y serait plus lisible -> texte inverse DSFR (bleu fonce),
+   comme un fr-btn primaire. */
+[data-fr-theme="dark"] .nitrates-avis__toggle {
+  color: var(--text-inverted-blue-france, #000091);
 }
 
 /* Mobile : le bouton se reduit a la bulle (maquette Coralie). */
