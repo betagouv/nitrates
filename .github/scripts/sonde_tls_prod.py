@@ -74,6 +74,7 @@ def main():
         )
 
     contexte = ssl.create_default_context()
+    contexte.minimum_version = ssl.TLSVersion.TLSv1_2
     jours = []
     for ip in sorted(set(ips_zone) | set(ips_pool)):
         for domaine in DOMAINES:
