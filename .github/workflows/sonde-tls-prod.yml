@@ -1,0 +1,70 @@
+name: Sonde TLS prod
+
+# Vérifie que chaque IP d'entrée Scalingo présente le certificat de
+# nitrates.beta.gouv.fr (et www), et que la zone DNS pointe toujours sur le
+# pool d'entrée annoncé par Scalingo. Voir .github/scripts/sonde_tls_prod.py.
+#
+# Pourquoi : en novembre 2026, des testeurs ont reçu
+# NET::ERR_CERT_COMMON_NAME_INVALID (certificat générique
+# *.osc-secnum-fr1.scalingo.io servi à la place du nôtre) sans qu'aucune
+# supervision ne le voie. updown.io ne teste qu'une connexion toutes les
+# 5 minutes ; un frontal défaillant parmi plusieurs lui échappe.
+#
+# Alerte : notification ntfy (secret NTFY_TOPIC, jamais en clair dans ce dépôt
+# public) + job en échec. Tant que c'est cassé, chaque passage re-notifie.
+#
+# Les crons GitHub dérivent (voir restart-nightly.yml) : un passage toutes les
+# 15 minutes en théorie, parfois bien moins. Suffisant pour un problème qui
+# dure des heures ; ne remplace pas updown pour une coupure franche.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  # Rejouée sur les PR qui modifient la sonde, pour la valider avant merge.
+  pull_request:
+    paths:
+      - .github/workflows/sonde-tls-prod.yml
+      - .github/scripts/sonde_tls_prod.py
+
+concurrency:
+  group: sonde-tls-prod
+  cancel-in-progress: false
+
+jobs:
+  sonde:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Sonder les IP d'entrée
+        id: sonde
+        run: |
+          set +e
+          python3 .github/scripts/sonde_tls_prod.py > sonde.txt
+          rc=$?
+          cat sonde.txt
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit $rc
+
+      - name: Alerter (ntfy)
+        if: failure() && steps.sonde.outputs.rc == '1'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then
+            echo "::warning::secret NTFY_TOPIC absent : pas de notification"
+            exit 0
+          fi
+          curl -sS -H "Title: nitrates prod : certificat TLS anormal" \
+               -H "Priority: urgent" -H "Tags: rotating_light,lock" \
+               -H "Click: $RUN_URL" \
+               --data-binary @sonde.txt "https://ntfy.sh/$NTFY_TOPIC"
